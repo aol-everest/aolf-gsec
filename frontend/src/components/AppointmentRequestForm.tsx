@@ -98,8 +98,48 @@ export const AppointmentRequestForm: React.FC = () => {
     }
   }, [watchCountry]);
 
-  const onSubmit = (data: AppointmentFormData) => {
-    console.log('Form submitted with data:', data);
+  const onSubmit = async (data: AppointmentFormData) => {
+    try {
+      const response = await fetch('http://localhost:8000/appointments/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+        body: JSON.stringify({
+          dignitary: {
+            honorific_title: data.dignitaryHonorificTitle,
+            first_name: data.dignitaryFirstName,
+            last_name: data.dignitaryLastName,
+            email: data.dignitaryEmail,
+            phone: data.dignitaryPhone,
+            primary_domain: data.dignitaryPrimaryDomain,
+            title_in_organization: data.dignitaryTitleInOrganization,
+            organization: data.dignitaryOrganization,
+            bio_summary: data.dignitaryBioSummary,
+            linked_in_or_website: data.dignitaryLinkedInOrWebsite,
+            country: data.dignitaryCountry,
+            state: data.dignitaryState,
+            city: data.dignitaryCity,
+            pre_meeting_notes: data.dignitaryPreMeetingNotes,
+          },
+          poc_relationship_type: data.pocRelationshipType,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit appointment request');
+      }
+
+      const result = await response.json();
+      console.log('Appointment created:', result);
+      
+      // TODO: Show success message and redirect
+      
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      // TODO: Show error message
+    }
   };
 
   return (
