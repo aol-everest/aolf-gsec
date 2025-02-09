@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime, timedelta
-import PyJWT as jwt
+import jwt
 from google.oauth2 import id_token
 from google.auth.transport import requests
 import os
@@ -144,12 +144,19 @@ async def create_appointment(
     )
     db.add(poc)
     
+    # Convert preferred_date string to Date object
+    preferred_date = datetime.strptime(appointment.preferred_date, "%Y-%m-%d").date()
+    
     # Create appointment
     db_appointment = models.Appointment(
         requester_id=current_user.id,
         dignitary_id=dignitary.id,
         status="pending",
-        **appointment.dict(exclude={'dignitary', 'poc_relationship_type'})
+        purpose=appointment.purpose,
+        preferred_date=preferred_date,
+        preferred_time=appointment.preferred_time,
+        duration=appointment.duration,
+        location=appointment.location
     )
     db.add(db_appointment)
     db.commit()

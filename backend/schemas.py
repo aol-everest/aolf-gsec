@@ -56,6 +56,11 @@ class Dignitary(DignitaryBase):
 class AppointmentCreate(BaseModel):
     dignitary: DignitaryCreate
     poc_relationship_type: str
+    purpose: str
+    preferred_date: str  # Will be converted to Date in the model
+    preferred_time: Optional[str] = None
+    duration: Optional[str] = None
+    location: Optional[str] = None
 
 class Appointment(BaseModel):
     id: int

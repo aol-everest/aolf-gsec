@@ -45,6 +45,13 @@ interface AppointmentFormData {
   dignitaryState: string;
   dignitaryCity: string;
   dignitaryPreMeetingNotes: string;
+
+  // Appointment Information
+  purpose: string;
+  preferredDate: string;
+  preferredTime: string;
+  duration: string;
+  location: string;
 }
 
 export const AppointmentRequestForm: React.FC = () => {
@@ -84,6 +91,13 @@ export const AppointmentRequestForm: React.FC = () => {
       dignitaryState: '',
       dignitaryCity: '',
       dignitaryPreMeetingNotes: '',
+
+      // Appointment Information
+      purpose: '',
+      preferredDate: '',
+      preferredTime: '',
+      duration: '',
+      location: '',
     }
   });
 
@@ -124,6 +138,11 @@ export const AppointmentRequestForm: React.FC = () => {
             pre_meeting_notes: data.dignitaryPreMeetingNotes,
           },
           poc_relationship_type: data.pocRelationshipType,
+          purpose: data.purpose,
+          preferred_date: data.preferredDate,
+          preferred_time: data.preferredTime,
+          duration: data.duration,
+          location: data.location,
         }),
       });
 
@@ -437,6 +456,71 @@ export const AppointmentRequestForm: React.FC = () => {
             {...register('dignitaryPreMeetingNotes')}
             error={!!errors.dignitaryPreMeetingNotes}
             helperText={errors.dignitaryPreMeetingNotes?.message}
+          />
+        </Grid>
+
+        {/* Add Appointment Information Section */}
+        <Grid item xs={12} sx={{ mt: 4 }}>
+          <Typography variant="h6" gutterBottom>
+            Appointment Information
+          </Typography>
+        </Grid>
+
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            multiline
+            rows={4}
+            label="Purpose of Meeting"
+            {...register('purpose', { required: 'Purpose is required' })}
+            error={!!errors.purpose}
+            helperText={errors.purpose?.message}
+          />
+        </Grid>
+
+        <Grid item xs={12} md={6}>
+          <TextField
+            fullWidth
+            type="date"
+            label="Preferred Date"
+            InputLabelProps={{ shrink: true }}
+            {...register('preferredDate', { required: 'Preferred date is required' })}
+            error={!!errors.preferredDate}
+            helperText={errors.preferredDate?.message}
+          />
+        </Grid>
+
+        <Grid item xs={12} md={6}>
+          <TextField
+            fullWidth
+            type="time"
+            label="Preferred Time"
+            InputLabelProps={{ shrink: true }}
+            {...register('preferredTime')}
+            error={!!errors.preferredTime}
+            helperText={errors.preferredTime?.message}
+          />
+        </Grid>
+
+        <Grid item xs={12} md={6}>
+          <TextField
+            fullWidth
+            label="Duration"
+            placeholder="e.g., 30 minutes, 1 hour"
+            {...register('duration')}
+            error={!!errors.duration}
+            helperText={errors.duration?.message}
+          />
+        </Grid>
+
+        <Grid item xs={12} md={6}>
+          <TextField
+            fullWidth
+            label="Location"
+            placeholder="e.g., Virtual, Office Address"
+            {...register('location')}
+            error={!!errors.location}
+            helperText={errors.location?.message}
           />
         </Grid>
 

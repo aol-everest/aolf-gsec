@@ -41,7 +41,7 @@ frontend/.elasticbeanstalk/*.cfg.yml
 frontend/.elasticbeanstalk/*.global.yml
 
 # Python Virtual Environment
-frontend/venv/
+frontend/.venv/
 frontend/__pycache__/
 frontend/*.py[cod]
 
@@ -49,6 +49,7 @@ frontend/*.py[cod]
 frontend/instance/
 
 # Ignore Python cache files
+backend/.venv/
 backend/__pycache__/
 *.pyc
 *.pyo
