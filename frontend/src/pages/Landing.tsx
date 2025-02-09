@@ -48,7 +48,7 @@ const Landing: React.FC = () => {
             }}
           >
             <img
-              src="/AOLF_Logo.png"
+              src="/aolf-logo.png"
               alt="AOLF Logo"
               style={{ width: 200, height: 'auto', marginBottom: 24 }}
             />
