@@ -100,7 +100,7 @@ export const AppointmentRequestForm: React.FC = () => {
 
   const onSubmit = async (data: AppointmentFormData) => {
     try {
-      const response = await fetch('http://localhost:8000/appointments/', {
+      const response = await fetch('http://localhost:8001/appointments/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

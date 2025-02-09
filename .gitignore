@@ -47,9 +47,12 @@ frontend/*.py[cod]
 
 # Flask Cache & Compiled files
 frontend/instance/
-frontend/*.pyc
-frontend/*.pyo
-frontend/*.pyd
+
+# Ignore Python cache files
+backend/__pycache__/
+*.pyc
+*.pyo
+*.pyd
 
 # Google App Engine
 # Ignore GCP service account credentials (if stored locally)

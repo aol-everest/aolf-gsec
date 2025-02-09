@@ -1,0 +1,10 @@
+---
+description: Applies to commands run in composer or elsewhere needed to setup or run the application/project
+globs: 
+---
+
+# Your rule content
+
+- You can @ files here
+- You can use markdown but dont have to
+For any commands used for setup of environment for the project, add the command and a comment in commands.sh file

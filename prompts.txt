@@ -19,3 +19,19 @@ Page 4: Dignitary list:
 
 Page 5: Profile page:
 - The POC can update their first name, last name, phone number
+
+
+
+
+
+
+
+
+
+Lets do below:
+
+(1) Convert @backend code to FastAPI
+(2) Create the API for creating appointments and update @AppointmentRequestForm.tsx to call the API on submit. Anything else?
+(3) When a user logs in, lets create a user in @user.py if it does not exist. If exists we might need to pull their ID to the front end? We would also need to verify the Google login on the backend by hitting the Google APIs?
+(4) Update the backend to manage some kind of authentication for the front end app to call the APIs. I am assuming JWT using the Google token.
+(5) Update the models to ensure all attributes in @frontend code is also present in backend for dignitary

@@ -1,22 +1,34 @@
-from app import db
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
+from sqlalchemy.orm import relationship
 from datetime import datetime
+from database import Base
 
-class Dignitary(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    first_name = db.Column(db.String(100))
-    last_name = db.Column(db.String(100))
-    name = db.Column(db.String(100), nullable=False)
-    email = db.Column(db.String(120))
-    phone = db.Column(db.String(20))
-    honorific_title = db.Column(db.String(100))
-    primary_domain = db.Column(db.String(100))
-    title_in_organization = db.Column(db.String(100))
-    organization = db.Column(db.String(100))
-    bio_summary = db.Column(db.String(100))
-    linked_in_or_website = db.Column(db.String(100))
-    country = db.Column(db.String(100))
-    state = db.Column(db.String(100))
-    city = db.Column(db.String(100))
-    pre_meeting_notes = db.Column(db.String(100))
-    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow) 
+class Dignitary(Base):
+    __tablename__ = "dignitaries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    honorific_title = Column(String, nullable=False)
+    first_name = Column(String, nullable=False)
+    last_name = Column(String, nullable=False)
+    email = Column(String, nullable=False)
+    phone = Column(String)
+    primary_domain = Column(String, nullable=False)
+    title_in_organization = Column(String, nullable=False)
+    organization = Column(String, nullable=False)
+    bio_summary = Column(Text, nullable=False)
+    linked_in_or_website = Column(String)
+    country = Column(String, nullable=False)
+    state = Column(String, nullable=False)
+    city = Column(String, nullable=False)
+    pre_meeting_notes = Column(Text)
+    
+    # Foreign keys
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    creator = relationship("User", foreign_keys=[created_by])
+    appointments = relationship("Appointment", back_populates="dignitary")
+    point_of_contacts = relationship("DignitaryPointOfContact", back_populates="dignitary") 
