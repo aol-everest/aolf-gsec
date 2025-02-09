@@ -1,0 +1,21 @@
+Build a portal to people to request for appointments with Gurudev Sri Sri Ravi Shankar. 
+
+The portal will have 4 pages
+
+Page 1: Landing page:
+- Integrate mandatory Google login
+
+Page 2: Post login, appointment request form
+- The form will be used by Dignitaries, point of contacts for dignitaries or Gurudev's secretarriat.
+- When requesting an appointment, the person can request for themselves or a dignitary
+- Inputs for the appointment request form are attached in the screenshot.
+- In the request form, they can select an existing dignitary they have requested for in the past, and autofill the details.
+
+Page 3: Appointment status:
+- The POC can view list of their appointment requests and status of the same.
+
+Page 4: Dignitary list:
+- The POC can view the list of dignitaries they have requested for
+
+Page 5: Profile page:
+- The POC can update their first name, last name, phone number

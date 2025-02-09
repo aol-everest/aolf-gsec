@@ -1,0 +1,79 @@
+# Node.js dependencies
+frontend/node_modules/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# Environment variables
+frontend/.env
+frontend/.env.local
+frontend/.env.development
+frontend/.env.test
+frontend/.env.production
+
+# Logs
+frontend/logs
+frontend/*.log
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# Build output
+frontend/build
+frontend/dist
+frontend/.DS_Store
+frontend/.vscode/
+frontend/.idea/
+frontend/*.swp
+
+# Editor & OS-specific files
+frontend/Thumbs.db
+frontend/*.bak
+frontend/*.swo
+frontend/*.swp
+frontend/*.swn
+frontend/*.swd
+frontend/*.sublime-*
+
+# AWS Elastic Beanstalk
+frontend/.elasticbeanstalk/*
+frontend/.elasticbeanstalk/*.cfg.yml
+frontend/.elasticbeanstalk/*.global.yml
+
+# Python Virtual Environment
+frontend/venv/
+frontend/__pycache__/
+frontend/*.py[cod]
+
+# Flask Cache & Compiled files
+frontend/instance/
+frontend/*.pyc
+frontend/*.pyo
+frontend/*.pyd
+
+# Google App Engine
+# Ignore GCP service account credentials (if stored locally)
+frontend/.gcloudignore
+
+# Snowflake
+frontend/*.sql-journal
+frontend/.DS_Store
+
+# Database files
+frontend/*.sqlite3
+frontend/db.sqlite3
+
+# Ignore static files that are auto-generated
+frontend/staticfiles/
+frontend/media/
+
+# Ignore AWS credential files (if stored locally)
+frontend/.aws/
+
+# Ignore Google OAuth credentials
+frontend/.google/
+frontend/.google/credentials.json
+frontend/.google/token.json
+frontend/.google/refresh_token.json
+frontend/.google/credentials.json
+frontend/.google/token.json
