@@ -62,10 +62,14 @@ export const AppointmentRequestForm: React.FC = () => {
     setValue,
   } = useForm<AppointmentFormData>({
     defaultValues: {
+      // POC Information
       pocFirstName: userInfo?.name?.split(' ')[0] || '',
       pocLastName: userInfo?.name?.split(' ').slice(1).join(' ') || '',
       pocEmail: userInfo?.email || '',
+      pocPhone: '',
       pocRelationshipType: RELATIONSHIP_TYPES[0],
+
+      // Dignitary Information
       dignitaryHonorificTitle: HONORIFIC_TITLES[0],
       dignitaryFirstName: '',
       dignitaryLastName: '',
@@ -157,6 +161,7 @@ export const AppointmentRequestForm: React.FC = () => {
             <InputLabel>Relationship Type</InputLabel>
             <Select
               label="Relationship Type"
+              defaultValue={RELATIONSHIP_TYPES[0]}
               {...register('pocRelationshipType', { required: 'Relationship type is required' })}
             >
               {RELATIONSHIP_TYPES.map((type) => (
@@ -185,6 +190,7 @@ export const AppointmentRequestForm: React.FC = () => {
             <InputLabel>Honorific Title</InputLabel>
             <Select
               label="Honorific Title"
+              defaultValue={HONORIFIC_TITLES[0]}
               {...register('dignitaryHonorificTitle', { required: 'Honorific title is required' })}
             >
               {HONORIFIC_TITLES.map((title) => (
@@ -247,6 +253,7 @@ export const AppointmentRequestForm: React.FC = () => {
             <InputLabel>Primary Domain</InputLabel>
             <Select
               label="Primary Domain"
+              defaultValue={PRIMARY_DOMAINS[0]}
               {...register('dignitaryPrimaryDomain', { required: 'Primary domain is required' })}
             >
               {PRIMARY_DOMAINS.map((domain) => (

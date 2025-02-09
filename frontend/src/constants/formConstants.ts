@@ -14,6 +14,9 @@ export const PRIMARY_DOMAINS = [
 ] as const;
 
 export const HONORIFIC_TITLES = [
+  'Mr.',
+  'Mrs.',
+  'Ms.',
   'Admiral',
   'Air Chief Marshal',
   'Ambassador',
@@ -40,9 +43,6 @@ export const HONORIFIC_TITLES = [
   'Justice',
   'Kami',
   'Lt. Col',
-  'Mr.',
-  'Mrs.',
-  'Ms.',
   'Pastor',
   'Priest',
   'Prof.',
