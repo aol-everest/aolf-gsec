@@ -54,7 +54,7 @@ export const AppointmentRequestForm: React.FC = () => {
   const { userInfo } = useAuth();
   const [selectedCountryCode, setSelectedCountryCode] = useState<string>('');
   
-  console.log('Current country code:', selectedCountryCode);
+  // console.log('Current country code:', selectedCountryCode);
 
   const {
     register,
@@ -73,10 +73,10 @@ export const AppointmentRequestForm: React.FC = () => {
 
   // Watch for country changes to reset state and city when country changes
   const watchCountry = watch('dignitaryCountry');
-  console.log('Watched country value:', watchCountry);
+  // console.log('Watched country value:', watchCountry);
 
   useEffect(() => {
-    console.log('Country changed, resetting state and city');
+    // console.log('Country changed, resetting state and city');
     if (watchCountry === '') {
       setSelectedCountryCode('');
     }

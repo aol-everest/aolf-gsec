@@ -135,11 +135,11 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   componentRestrictions,
   onPlaceSelect,
 }) => {
-  console.log(`[${label}] Rendering with:`, {
-    value,
-    types,
-    componentRestrictions,
-  });
+//   console.log(`[${label}] Rendering with:`, {
+//     value,
+//     types,
+//     componentRestrictions,
+//   });
 
   const [inputValue, setInputValue] = useState<string>(value || '');
   const [options, setOptions] = useState<Place[]>([]);
@@ -150,12 +150,12 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   const [placesService, setPlacesService] = useState<google.maps.places.PlacesService | null>(null);
 
   useEffect(() => {
-    console.log(`[${label}] Value changed to:`, value);
+    // console.log(`[${label}] Value changed to:`, value);
     setInputValue(value || '');
   }, [value, label]);
 
   const initializeAutocompleteService = useCallback(() => {
-    console.log(`[${label}] Initializing AutocompleteService`);
+    // console.log(`[${label}] Initializing AutocompleteService`);
     if (!window.google?.maps?.places) {
       console.error(`[${label}] Google Maps Places API not available`);
       setUseGoogleMaps(false);
@@ -164,7 +164,7 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
 
     try {
       const service = new window.google.maps.places.AutocompleteService();
-      console.log(`[${label}] AutocompleteService created successfully`);
+    //   console.log(`[${label}] AutocompleteService created successfully`);
       setAutocompleteService(service);
     } catch (error) {
       console.error(`[${label}] Error initializing AutocompleteService:`, error);
@@ -173,7 +173,7 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   }, [label]);
 
   useEffect(() => {
-    console.log(`[${label}] Setting up Google Maps with API key:`, GOOGLE_MAPS_API_KEY ? 'Present' : 'Missing');
+    // console.log(`[${label}] Setting up Google Maps with API key:`, GOOGLE_MAPS_API_KEY ? 'Present' : 'Missing');
     
     if (!GOOGLE_MAPS_API_KEY) {
       console.error(`[${label}] No API key provided`);
@@ -182,14 +182,14 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
     }
 
     const setupService = () => {
-      console.log(`[${label}] Setting up service after script load`);
+      // console.log(`[${label}] Setting up service after script load`);
       window.googleMapsInitialized = true;
       initializeAutocompleteService();
     };
 
     // Check if Google Maps is already fully loaded
     if (window.google?.maps?.places) {
-      console.log(`[${label}] Google Maps already loaded, setting up service`);
+      // console.log(`[${label}] Google Maps already loaded, setting up service`);
       setupService();
       return;
     }
@@ -197,9 +197,9 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
     // If the script exists but hasn't loaded yet
     const existingScript = document.querySelector('script[src*="maps.googleapis.com/maps/api/js"]');
     if (existingScript) {
-      console.log(`[${label}] Script exists but not loaded, adding load listener`);
+      // console.log(`[${label}] Script exists but not loaded, adding load listener`);
       const loadHandler = () => {
-        console.log(`[${label}] Existing script loaded`);
+        // console.log(`[${label}] Existing script loaded`);
         setupService();
       };
       existingScript.addEventListener('load', loadHandler);
@@ -207,20 +207,20 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
     }
 
     // Add new script if none exists
-    console.log(`[${label}] No script found, adding new one`);
+    // console.log(`[${label}] No script found, adding new one`);
     const script = document.createElement('script');
     script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
     script.async = true;
     script.defer = true;
 
     const loadHandler = () => {
-      console.log(`[${label}] New script loaded`);
+      // console.log(`[${label}] New script loaded`);
       setupService();
     };
 
     script.addEventListener('load', loadHandler);
     script.addEventListener('error', (error) => {
-      console.error(`[${label}] Failed to load Google Maps script:`, error);
+      // console.error(`[${label}] Failed to load Google Maps script:`, error);
       setScriptError('Failed to load Google Maps script');
       setUseGoogleMaps(false);
     });
