@@ -13,6 +13,12 @@ import {
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import LocationAutocomplete from './LocationAutocomplete';
+import { 
+  PRIMARY_DOMAINS, 
+  HONORIFIC_TITLES, 
+  PrimaryDomain, 
+  HonorificTitle 
+} from '../constants/formConstants';
 
 interface AppointmentFormData {
   // POC Information
@@ -22,12 +28,12 @@ interface AppointmentFormData {
   pocPhone: string;
 
   // Dignitary Information
-  dignitaryHonorificTitle: string;
+  dignitaryHonorificTitle: HonorificTitle;
   dignitaryFirstName: string;
   dignitaryLastName: string;
   dignitaryEmail: string;
   dignitaryPhone: string;
-  dignitaryPrimaryDomain: 'Business' | 'Government' | 'Religious' | 'Spiritual' | 'Sports' | 'Entertainment' | 'Media' | 'Education' | 'Healthcare';
+  dignitaryPrimaryDomain: PrimaryDomain;
   dignitaryTitleInOrganization: string;
   dignitaryOrganization: string;
   dignitaryBioSummary: string;
@@ -37,18 +43,6 @@ interface AppointmentFormData {
   dignitaryCity: string;
   dignitaryPreMeetingNotes: string;
 }
-
-const PRIMARY_DOMAINS = [
-  'Business',
-  'Government',
-  'Religious',
-  'Spiritual',
-  'Sports',
-  'Entertainment',
-  'Media',
-  'Education',
-  'Healthcare',
-] as const;
 
 export const AppointmentRequestForm: React.FC = () => {
   const { userInfo } = useAuth();
@@ -148,13 +142,24 @@ export const AppointmentRequestForm: React.FC = () => {
         </Grid>
         
         <Grid item xs={12} md={6}>
-          <TextField
-            fullWidth
-            label="Honorific Title"
-            {...register('dignitaryHonorificTitle', { required: 'Honorific title is required' })}
-            error={!!errors.dignitaryHonorificTitle}
-            helperText={errors.dignitaryHonorificTitle?.message}
-          />
+          <FormControl fullWidth error={!!errors.dignitaryHonorificTitle}>
+            <InputLabel>Honorific Title</InputLabel>
+            <Select
+              label="Honorific Title"
+              {...register('dignitaryHonorificTitle', { required: 'Honorific title is required' })}
+            >
+              {HONORIFIC_TITLES.map((title) => (
+                <MenuItem key={title} value={title}>
+                  {title}
+                </MenuItem>
+              ))}
+            </Select>
+            {errors.dignitaryHonorificTitle && (
+              <Typography color="error" variant="caption">
+                {errors.dignitaryHonorificTitle.message}
+              </Typography>
+            )}
+          </FormControl>
         </Grid>
         
         <Grid item xs={12} md={6}>
