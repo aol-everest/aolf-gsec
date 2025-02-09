@@ -17,7 +17,9 @@ import {
   PRIMARY_DOMAINS, 
   HONORIFIC_TITLES, 
   PrimaryDomain, 
-  HonorificTitle 
+  HonorificTitle,
+  RELATIONSHIP_TYPES,
+  RelationshipType,
 } from '../constants/formConstants';
 
 interface AppointmentFormData {
@@ -26,6 +28,7 @@ interface AppointmentFormData {
   pocLastName: string;
   pocEmail: string;
   pocPhone: string;
+  pocRelationshipType: RelationshipType;
 
   // Dignitary Information
   dignitaryHonorificTitle: HonorificTitle;
@@ -62,6 +65,21 @@ export const AppointmentRequestForm: React.FC = () => {
       pocFirstName: userInfo?.name?.split(' ')[0] || '',
       pocLastName: userInfo?.name?.split(' ').slice(1).join(' ') || '',
       pocEmail: userInfo?.email || '',
+      pocRelationshipType: RELATIONSHIP_TYPES[0],
+      dignitaryHonorificTitle: HONORIFIC_TITLES[0],
+      dignitaryFirstName: '',
+      dignitaryLastName: '',
+      dignitaryEmail: '',
+      dignitaryPhone: '',
+      dignitaryPrimaryDomain: PRIMARY_DOMAINS[0],
+      dignitaryTitleInOrganization: '',
+      dignitaryOrganization: '',
+      dignitaryBioSummary: '',
+      dignitaryLinkedInOrWebsite: '',
+      dignitaryCountry: '',
+      dignitaryState: '',
+      dignitaryCity: '',
+      dignitaryPreMeetingNotes: '',
     }
   });
 
@@ -132,6 +150,27 @@ export const AppointmentRequestForm: React.FC = () => {
             error={!!errors.pocPhone}
             helperText={errors.pocPhone?.message}
           />
+        </Grid>
+
+        <Grid item xs={12} md={6}>
+          <FormControl fullWidth error={!!errors.pocRelationshipType}>
+            <InputLabel>Relationship Type</InputLabel>
+            <Select
+              label="Relationship Type"
+              {...register('pocRelationshipType', { required: 'Relationship type is required' })}
+            >
+              {RELATIONSHIP_TYPES.map((type) => (
+                <MenuItem key={type} value={type}>
+                  {type}
+                </MenuItem>
+              ))}
+            </Select>
+            {errors.pocRelationshipType && (
+              <Typography color="error" variant="caption">
+                {errors.pocRelationshipType.message}
+              </Typography>
+            )}
+          </FormControl>
         </Grid>
 
         {/* Dignitary Information Section */}

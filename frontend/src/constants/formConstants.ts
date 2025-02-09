@@ -1,11 +1,14 @@
+export const RELATIONSHIP_TYPES = [
+  'Direct',
+  'Indirect',
+] as const;
+
 export const PRIMARY_DOMAINS = [
   'Business',
   'Government',
-  'Religious',
-  'Spiritual',
+  'Religious / Spiritual',
   'Sports',
-  'Entertainment',
-  'Media',
+  'Entertainment & Media',
   'Education',
   'Healthcare',
 ] as const;
@@ -61,3 +64,4 @@ export const HONORIFIC_TITLES = [
 
 export type PrimaryDomain = typeof PRIMARY_DOMAINS[number];
 export type HonorificTitle = typeof HONORIFIC_TITLES[number]; 
+export type RelationshipType = typeof RELATIONSHIP_TYPES[number];
