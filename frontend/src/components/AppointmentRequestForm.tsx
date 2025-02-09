@@ -1,5 +1,5 @@
-import React from 'react';
-import { useForm } from 'react-hook-form';
+import React, { useState, useEffect } from 'react';
+import { useForm, Controller, Control } from 'react-hook-form';
 import {
   Box,
   Button,
@@ -12,6 +12,7 @@ import {
   Grid,
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
+import LocationAutocomplete from './LocationAutocomplete';
 
 interface AppointmentFormData {
   // POC Information
@@ -51,10 +52,17 @@ const PRIMARY_DOMAINS = [
 
 export const AppointmentRequestForm: React.FC = () => {
   const { userInfo } = useAuth();
+  const [selectedCountryCode, setSelectedCountryCode] = useState<string>('');
+  
+  console.log('Current country code:', selectedCountryCode);
+
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
+    watch,
+    setValue,
   } = useForm<AppointmentFormData>({
     defaultValues: {
       pocFirstName: userInfo?.name?.split(' ')[0] || '',
@@ -63,9 +71,19 @@ export const AppointmentRequestForm: React.FC = () => {
     }
   });
 
+  // Watch for country changes to reset state and city when country changes
+  const watchCountry = watch('dignitaryCountry');
+  console.log('Watched country value:', watchCountry);
+
+  useEffect(() => {
+    console.log('Country changed, resetting state and city');
+    if (watchCountry === '') {
+      setSelectedCountryCode('');
+    }
+  }, [watchCountry]);
+
   const onSubmit = (data: AppointmentFormData) => {
-    // TODO: Submit to API
-    console.log(data);
+    console.log('Form submitted with data:', data);
   };
 
   return (
@@ -244,32 +262,78 @@ export const AppointmentRequestForm: React.FC = () => {
         </Grid>
         
         <Grid item xs={12} md={4}>
-          <TextField
-            fullWidth
-            label="Country"
-            {...register('dignitaryCountry', { required: 'Country is required' })}
-            error={!!errors.dignitaryCountry}
-            helperText={errors.dignitaryCountry?.message}
+          <Controller
+            name="dignitaryCountry"
+            control={control}
+            rules={{ required: 'Country is required' }}
+            render={({ field }) => (
+              <LocationAutocomplete
+                label="Country"
+                value={field.value}
+                onChange={(value) => {
+                  field.onChange(value);
+                  // Reset state and city when country changes
+                  setValue('dignitaryState', '');
+                  setValue('dignitaryCity', '');
+                }}
+                error={!!errors.dignitaryCountry}
+                helperText={errors.dignitaryCountry?.message}
+                types={['country']}
+                onPlaceSelect={(place) => {
+                  if (!place?.address_components) return;
+                  
+                  const countryComponent = place.address_components.find(
+                    component => component.types.includes('country')
+                  );
+
+                  if (countryComponent) {
+                    setSelectedCountryCode(countryComponent.short_name);
+                  }
+                }}
+              />
+            )}
           />
         </Grid>
         
         <Grid item xs={12} md={4}>
-          <TextField
-            fullWidth
-            label="State"
-            {...register('dignitaryState', { required: 'State is required' })}
-            error={!!errors.dignitaryState}
-            helperText={errors.dignitaryState?.message}
+          <Controller
+            name="dignitaryState"
+            control={control}
+            rules={{ required: 'State is required' }}
+            render={({ field }) => (
+              <LocationAutocomplete
+                label="State"
+                value={field.value}
+                onChange={(value) => {
+                  field.onChange(value.split(',')[0]);
+                }}
+                error={!!errors.dignitaryState}
+                helperText={errors.dignitaryState?.message}
+                types={['administrative_area_level_1']}
+                componentRestrictions={selectedCountryCode ? { country: selectedCountryCode } : undefined}
+              />
+            )}
           />
         </Grid>
         
         <Grid item xs={12} md={4}>
-          <TextField
-            fullWidth
-            label="City"
-            {...register('dignitaryCity', { required: 'City is required' })}
-            error={!!errors.dignitaryCity}
-            helperText={errors.dignitaryCity?.message}
+          <Controller
+            name="dignitaryCity"
+            control={control}
+            rules={{ required: 'City is required' }}
+            render={({ field }) => (
+              <LocationAutocomplete
+                label="City"
+                value={field.value}
+                onChange={(value) => {
+                  field.onChange(value.split(',')[0]);
+                }}
+                error={!!errors.dignitaryCity}
+                helperText={errors.dignitaryCity?.message}
+                types={['locality', 'sublocality']}
+                componentRestrictions={selectedCountryCode ? { country: selectedCountryCode } : undefined}
+              />
+            )}
           />
         </Grid>
         
