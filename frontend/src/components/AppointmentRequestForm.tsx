@@ -510,8 +510,8 @@ export const AppointmentRequestForm: React.FC = () => {
         <Grid item xs={12} md={6}>
           <TextField
             fullWidth
-            label="Duration"
-            placeholder="e.g., 30 minutes, 1 hour"
+            label="Requested Duration"
+            placeholder="e.g., 10 minutes, 30 minutes, 1 hour"
             {...register('duration')}
             error={!!errors.duration}
             helperText={errors.duration?.message}
