@@ -422,6 +422,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 <TextField
                   fullWidth
                   label="First Name"
+                  InputLabelProps={{ shrink: true }}
                   {...dignitaryForm.register('dignitaryFirstName', { required: 'First name is required' })}
                   error={!!dignitaryForm.formState.errors.dignitaryFirstName}
                   helperText={dignitaryForm.formState.errors.dignitaryFirstName?.message}
@@ -432,6 +433,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 <TextField
                   fullWidth
                   label="Last Name"
+                  InputLabelProps={{ shrink: true }}
                   {...dignitaryForm.register('dignitaryLastName', { required: 'Last name is required' })}
                   error={!!dignitaryForm.formState.errors.dignitaryLastName}
                   helperText={dignitaryForm.formState.errors.dignitaryLastName?.message}
@@ -443,6 +445,7 @@ export const AppointmentRequestForm: React.FC = () => {
                   fullWidth
                   label="Email"
                   type="email"
+                  InputLabelProps={{ shrink: true }}
                   {...dignitaryForm.register('dignitaryEmail', { required: 'Email is required' })}
                   error={!!dignitaryForm.formState.errors.dignitaryEmail}
                   helperText={dignitaryForm.formState.errors.dignitaryEmail?.message}
@@ -453,6 +456,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 <TextField
                   fullWidth
                   label="Phone Number"
+                  InputLabelProps={{ shrink: true }}
                   {...dignitaryForm.register('dignitaryPhone')}
                   error={!!dignitaryForm.formState.errors.dignitaryPhone}
                   helperText={dignitaryForm.formState.errors.dignitaryPhone?.message}
@@ -480,6 +484,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 <TextField
                   fullWidth
                   label="Title in Organization"
+                  InputLabelProps={{ shrink: true }}
                   {...dignitaryForm.register('dignitaryTitleInOrganization', { required: 'Title is required' })}
                   error={!!dignitaryForm.formState.errors.dignitaryTitleInOrganization}
                   helperText={dignitaryForm.formState.errors.dignitaryTitleInOrganization?.message}
@@ -490,6 +495,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 <TextField
                   fullWidth
                   label="Organization"
+                  InputLabelProps={{ shrink: true }}
                   {...dignitaryForm.register('dignitaryOrganization', { required: 'Organization is required' })}
                   error={!!dignitaryForm.formState.errors.dignitaryOrganization}
                   helperText={dignitaryForm.formState.errors.dignitaryOrganization?.message}
@@ -502,6 +508,7 @@ export const AppointmentRequestForm: React.FC = () => {
                   multiline
                   rows={4}
                   label="Bio Summary"
+                  InputLabelProps={{ shrink: true }}
                   {...dignitaryForm.register('dignitaryBioSummary', { required: 'Bio summary is required' })}
                   error={!!dignitaryForm.formState.errors.dignitaryBioSummary}
                   helperText={dignitaryForm.formState.errors.dignitaryBioSummary?.message}
@@ -512,6 +519,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 <TextField
                   fullWidth
                   label="LinkedIn or Website URL"
+                  InputLabelProps={{ shrink: true }}
                   {...dignitaryForm.register('dignitaryLinkedInOrWebsite', { required: 'URL is required' })}
                   error={!!dignitaryForm.formState.errors.dignitaryLinkedInOrWebsite}
                   helperText={dignitaryForm.formState.errors.dignitaryLinkedInOrWebsite?.message}

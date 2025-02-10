@@ -146,16 +146,13 @@ async def create_appointment(
 ):
     print(f"Received appointment data: {appointment.dict()}")  # Debug log
     try:
-        # Convert preferred_date string to Date object
-        preferred_date = datetime.strptime(appointment.preferred_date, "%Y-%m-%d").date()
-        
         # Create appointment
         db_appointment = models.Appointment(
             requester_id=current_user.id,
             dignitary_id=appointment.dignitary_id,
             status="pending",
             purpose=appointment.purpose,
-            preferred_date=preferred_date,
+            preferred_date=appointment.preferred_date,  # No need to parse, it's already a date object
             preferred_time=appointment.preferred_time,
             duration=appointment.duration,
             location=appointment.location,
@@ -164,6 +161,7 @@ async def create_appointment(
         db.add(db_appointment)
         db.commit()
         db.refresh(db_appointment)
+        print(f"Appointment created: {db_appointment}")
         
         return db_appointment
     except Exception as e:

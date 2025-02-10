@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, date
 
 class GoogleToken(BaseModel):
     token: str
@@ -76,7 +76,7 @@ class Dignitary(DignitaryBase):
 class AppointmentBase(BaseModel):
     dignitary_id: int
     purpose: str
-    preferred_date: str
+    preferred_date: date
     preferred_time: Optional[str] = None
     duration: Optional[str] = None
     location: Optional[str] = None
@@ -91,13 +91,16 @@ class Appointment(AppointmentBase):
     id: int
     requester_id: int
     dignitary_id: int
-    preferred_date: str
     status: str
     created_at: datetime
     updated_at: datetime
 
     class Config:
-        orm_mode = True 
+        orm_mode = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat(),
+            date: lambda v: v.strftime("%Y-%m-%d")
+        }
 
 class DignitaryPointOfContactBase(BaseModel):
     dignitary_id: int
