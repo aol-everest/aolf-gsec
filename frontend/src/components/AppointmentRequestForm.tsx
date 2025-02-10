@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useForm, Controller, Control } from 'react-hook-form';
+import { getLocalDate } from '../utils/dateUtils';
 import {
   Box,
   Button,
@@ -484,6 +485,10 @@ export const AppointmentRequestForm: React.FC = () => {
             type="date"
             label="Preferred Date"
             InputLabelProps={{ shrink: true }}
+            inputProps={{ 
+              min: getLocalDate(0), // Min: today
+              max: getLocalDate(30), // Max: 30 days from today
+            }}
             {...register('preferredDate', { required: 'Preferred date is required' })}
             error={!!errors.preferredDate}
             helperText={errors.preferredDate?.message}
@@ -517,7 +522,7 @@ export const AppointmentRequestForm: React.FC = () => {
           <TextField
             fullWidth
             label="Location"
-            placeholder="e.g., Virtual, Office Address"
+            placeholder="e.g., Boone, Los Angeles, etc."
             {...register('location')}
             error={!!errors.location}
             helperText={errors.location?.message}
