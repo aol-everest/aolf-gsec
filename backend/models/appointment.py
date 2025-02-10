@@ -14,6 +14,7 @@ class Appointment(Base):
     preferred_time = Column(String)
     duration = Column(String)
     location = Column(String)
+    pre_meeting_notes = Column(Text)
     status = Column(String, default="pending")  # pending, approved, rejected
     
     # Timestamps

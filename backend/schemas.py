@@ -26,6 +26,12 @@ class User(UserBase):
     class Config:
         orm_mode = True
 
+class UserUpdate(BaseModel):
+    phone_number: Optional[str] = None
+
+    class Config:
+        orm_mode = True
+
 class DignitaryBase(BaseModel):
     honorific_title: str
     first_name: str
@@ -40,10 +46,24 @@ class DignitaryBase(BaseModel):
     country: str
     state: str
     city: str
-    pre_meeting_notes: Optional[str] = None
 
 class DignitaryCreate(DignitaryBase):
     pass
+
+class DignitaryUpdate(DignitaryBase):
+    honorific_title: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    primary_domain: Optional[str] = None
+    title_in_organization: Optional[str] = None
+    organization: Optional[str] = None
+    bio_summary: Optional[str] = None
+    linked_in_or_website: Optional[str] = None
+    country: Optional[str] = None
+    state: Optional[str] = None
+    city: Optional[str] = None
 
 class Dignitary(DignitaryBase):
     id: int
@@ -53,22 +73,48 @@ class Dignitary(DignitaryBase):
     class Config:
         orm_mode = True
 
-class AppointmentCreate(BaseModel):
-    dignitary: DignitaryCreate
-    poc_relationship_type: str
+class AppointmentBase(BaseModel):
+    dignitary_id: int
     purpose: str
-    preferred_date: str  # Will be converted to Date in the model
+    preferred_date: str
     preferred_time: Optional[str] = None
     duration: Optional[str] = None
     location: Optional[str] = None
+    pre_meeting_notes: Optional[str] = None
+    status: Optional[str] = None
 
-class Appointment(BaseModel):
+
+class AppointmentCreate(AppointmentBase):
+    pass
+
+class Appointment(AppointmentBase):
     id: int
     requester_id: int
     dignitary_id: int
+    preferred_date: str
     status: str
     created_at: datetime
     updated_at: datetime
 
     class Config:
         orm_mode = True 
+
+class DignitaryPointOfContactBase(BaseModel):
+    dignitary_id: int
+    poc_id: int
+    relationship_type: str
+
+class DignitaryPointOfContactCreate(DignitaryPointOfContactBase):
+    pass
+
+class DignitaryPointOfContact(DignitaryPointOfContactBase):
+    id: int
+    dignitary_id: int
+    poc_id: int
+    relationship_type: str
+    created_by: int
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
+

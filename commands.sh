@@ -34,6 +34,13 @@ pip install --upgrade pip
 source .venv/bin/activate && pip install --no-cache-dir "fastapi" "uvicorn" "sqlalchemy" "pydantic" "python-jose[cryptography]" "google-auth" "psycopg2-binary" "python-dotenv" "PyJWT" "requests" "google-auth-oauthlib"
 # pip install -r requirements.txt
 
+# Run the FastAPI application
+uvicorn app:app --reload
+
+python3 -m uvicorn app:app --reload --port 8001
+
+
+# PostgreSQL ------------------------------------------------------------------------------------
 
 # Install PostgreSQL    
 brew install postgresql
@@ -46,11 +53,12 @@ createuser -s postgres
 
 psql postgres -c "ALTER USER postgres PASSWORD 'postgres';"
 
-# Run the FastAPI application
-uvicorn app:app --reload
+# Drop and create the database
+psql postgres -c "SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pg_stat_activity.datname = 'aolf_gsec' AND pid <> pg_backend_pid();" && psql postgres -c "DROP DATABASE aolf_gsec;" && psql postgres -c "CREATE DATABASE aolf_gsec;"
 
-python3 -m uvicorn app:app --reload --port 8001
 
+# Miscellaneous ---------------------------------------------------------------------------------
 
 # Generate a JWT secret key
 python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+

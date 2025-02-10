@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useForm, Controller, Control } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { getLocalDate } from '../utils/dateUtils';
 import {
   Box,
@@ -11,6 +11,13 @@ import {
   TextField,
   Typography,
   Grid,
+  Stepper,
+  Step,
+  StepLabel,
+  Paper,
+  Radio,
+  RadioGroup,
+  FormControlLabel,
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import LocationAutocomplete from './LocationAutocomplete';
@@ -23,15 +30,19 @@ import {
   RelationshipType,
 } from '../constants/formConstants';
 
-interface AppointmentFormData {
-  // POC Information
+// Step 1: POC Information
+interface PocFormData {
   pocFirstName: string;
   pocLastName: string;
   pocEmail: string;
   pocPhone: string;
   pocRelationshipType: RelationshipType;
+}
 
-  // Dignitary Information
+// Step 2: Dignitary Information
+interface DignitaryFormData {
+  isExistingDignitary: boolean;
+  selectedDignitaryId?: number;
   dignitaryHonorificTitle: HonorificTitle;
   dignitaryFirstName: string;
   dignitaryLastName: string;
@@ -45,39 +56,41 @@ interface AppointmentFormData {
   dignitaryCountry: string;
   dignitaryState: string;
   dignitaryCity: string;
-  dignitaryPreMeetingNotes: string;
+}
 
-  // Appointment Information
+// Step 3: Appointment Information
+interface AppointmentFormData {
   purpose: string;
   preferredDate: string;
   preferredTime: string;
   duration: string;
   location: string;
+  preMeetingNotes: string;
 }
+
+const steps = ['Point of Contact Information', 'Dignitary Information', 'Appointment Details'];
 
 export const AppointmentRequestForm: React.FC = () => {
   const { userInfo } = useAuth();
+  const [activeStep, setActiveStep] = useState(0);
   const [selectedCountryCode, setSelectedCountryCode] = useState<string>('');
+  const [dignitaries, setDignitaries] = useState<any[]>([]);
   
-  // console.log('Current country code:', selectedCountryCode);
-
-  const {
-    register,
-    handleSubmit,
-    control,
-    formState: { errors },
-    watch,
-    setValue,
-  } = useForm<AppointmentFormData>({
+  // Forms for each step
+  const pocForm = useForm<PocFormData>({
     defaultValues: {
-      // POC Information
       pocFirstName: userInfo?.name?.split(' ')[0] || '',
       pocLastName: userInfo?.name?.split(' ').slice(1).join(' ') || '',
       pocEmail: userInfo?.email || '',
       pocPhone: '',
       pocRelationshipType: RELATIONSHIP_TYPES[0],
+    }
+  });
 
-      // Dignitary Information
+  const dignitaryForm = useForm<DignitaryFormData>({
+    defaultValues: {
+      isExistingDignitary: false,
+      selectedDignitaryId: undefined,
       dignitaryHonorificTitle: HONORIFIC_TITLES[0],
       dignitaryFirstName: '',
       dignitaryLastName: '',
@@ -91,456 +104,619 @@ export const AppointmentRequestForm: React.FC = () => {
       dignitaryCountry: '',
       dignitaryState: '',
       dignitaryCity: '',
-      dignitaryPreMeetingNotes: '',
+    }
+  });
 
-      // Appointment Information
+  const appointmentForm = useForm<AppointmentFormData>({
+    defaultValues: {
       purpose: '',
       preferredDate: '',
       preferredTime: '',
       duration: '',
       location: '',
+      preMeetingNotes: '',
     }
   });
 
-  // Watch for country changes to reset state and city when country changes
-  const watchCountry = watch('dignitaryCountry');
-  // console.log('Watched country value:', watchCountry);
-
+  // Fetch dignitaries assigned to the user
   useEffect(() => {
-    // console.log('Country changed, resetting state and city');
-    if (watchCountry === '') {
-      setSelectedCountryCode('');
-    }
-  }, [watchCountry]);
-
-  const onSubmit = async (data: AppointmentFormData) => {
-    try {
-      const response = await fetch('http://localhost:8001/appointments/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-        },
-        body: JSON.stringify({
-          dignitary: {
-            honorific_title: data.dignitaryHonorificTitle,
-            first_name: data.dignitaryFirstName,
-            last_name: data.dignitaryLastName,
-            email: data.dignitaryEmail,
-            phone: data.dignitaryPhone,
-            primary_domain: data.dignitaryPrimaryDomain,
-            title_in_organization: data.dignitaryTitleInOrganization,
-            organization: data.dignitaryOrganization,
-            bio_summary: data.dignitaryBioSummary,
-            linked_in_or_website: data.dignitaryLinkedInOrWebsite,
-            country: data.dignitaryCountry,
-            state: data.dignitaryState,
-            city: data.dignitaryCity,
-            pre_meeting_notes: data.dignitaryPreMeetingNotes,
+    const fetchDignitaries = async () => {
+      try {
+        const response = await fetch('http://localhost:8001/dignitaries/assigned', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
           },
-          poc_relationship_type: data.pocRelationshipType,
-          purpose: data.purpose,
-          preferred_date: data.preferredDate,
-          preferred_time: data.preferredTime,
-          duration: data.duration,
-          location: data.location,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to submit appointment request');
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setDignitaries(data);
+        }
+      } catch (error) {
+        console.error('Error fetching dignitaries:', error);
       }
+    };
+    fetchDignitaries();
+  }, []);
 
-      const result = await response.json();
-      console.log('Appointment created:', result);
-      
-      // TODO: Show success message and redirect
-      
-    } catch (error) {
-      console.error('Error submitting form:', error);
-      // TODO: Show error message
+  const handleNext = async () => {
+    if (activeStep === 0) {
+      const pocData = await pocForm.handleSubmit(async (data) => {
+        try {
+          // Update user's phone number
+          const response = await fetch('http://localhost:8001/users/me', {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+            },
+            body: JSON.stringify({
+              phone_number: data.pocPhone,
+            }),
+          });
+          if (!response.ok) throw new Error('Failed to update user');
+          setActiveStep(1);
+        } catch (error) {
+          console.error('Error updating user:', error);
+        }
+      })();
+    } else if (activeStep === 1) {
+      const dignitaryData = await dignitaryForm.handleSubmit(async (data) => {
+        try {
+          if (data.isExistingDignitary && data.selectedDignitaryId) {
+            // Update existing dignitary if changes were made
+            const response = await fetch(`http://localhost:8001/dignitaries/update/${data.selectedDignitaryId}`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+              },
+              body: JSON.stringify({
+                honorific_title: data.dignitaryHonorificTitle,
+                first_name: data.dignitaryFirstName,
+                last_name: data.dignitaryLastName,
+                email: data.dignitaryEmail,
+                phone: data.dignitaryPhone,
+                primary_domain: data.dignitaryPrimaryDomain,
+                title_in_organization: data.dignitaryTitleInOrganization,
+                organization: data.dignitaryOrganization,
+                bio_summary: data.dignitaryBioSummary,
+                linked_in_or_website: data.dignitaryLinkedInOrWebsite,
+                country: data.dignitaryCountry,
+                state: data.dignitaryState,
+                city: data.dignitaryCity,
+              }),
+            });
+            if (!response.ok) throw new Error('Failed to update dignitary');
+          } else {
+            // Create new dignitary
+            const response = await fetch('http://localhost:8001/dignitaries/new/', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+              },
+              body: JSON.stringify({
+                honorific_title: data.dignitaryHonorificTitle,
+                first_name: data.dignitaryFirstName,
+                last_name: data.dignitaryLastName,
+                email: data.dignitaryEmail,
+                phone: data.dignitaryPhone,
+                primary_domain: data.dignitaryPrimaryDomain,
+                title_in_organization: data.dignitaryTitleInOrganization,
+                organization: data.dignitaryOrganization,
+                bio_summary: data.dignitaryBioSummary,
+                linked_in_or_website: data.dignitaryLinkedInOrWebsite,
+                country: data.dignitaryCountry,
+                state: data.dignitaryState,
+                city: data.dignitaryCity,
+              }),
+            });
+            if (!response.ok) throw new Error('Failed to create dignitary');
+            const newDignitary = await response.json();
+            dignitaryForm.setValue('selectedDignitaryId', newDignitary.id);
+          }
+          setActiveStep(2);
+        } catch (error) {
+          console.error('Error handling dignitary:', error);
+        }
+      })();
+    } else if (activeStep === 2) {
+      const appointmentData = await appointmentForm.handleSubmit(async (data) => {
+        try {
+          const response = await fetch('http://localhost:8001/appointments/new', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+            },
+            body: JSON.stringify({
+              dignitary_id: dignitaryForm.getValues().selectedDignitaryId,
+              purpose: data.purpose,
+              preferred_date: data.preferredDate,
+              preferred_time: data.preferredTime,
+              duration: data.duration,
+              location: data.location,
+              pre_meeting_notes: data.preMeetingNotes,
+              status: 'pending'
+            }),
+          });
+          if (!response.ok) {
+            const errorData = await response.json();
+            console.error('Failed to create appointment:', errorData);
+            throw new Error('Failed to create appointment');
+          }
+          // Navigate to appointment status page or show success message
+        } catch (error) {
+          console.error('Error creating appointment:', error);
+        }
+      })();
+    }
+  };
+
+  const handleBack = () => {
+    setActiveStep((prevStep) => prevStep - 1);
+  };
+
+  const renderStepContent = (step: number) => {
+    switch (step) {
+      case 0:
+        return (
+          <Box component="form" onSubmit={pocForm.handleSubmit(handleNext)}>
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <Typography variant="h6" gutterBottom>
+                  Point of Contact Information
+                </Typography>
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="First Name"
+                  {...pocForm.register('pocFirstName')}
+                  disabled
+                />
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Last Name"
+                  {...pocForm.register('pocLastName')}
+                  disabled
+                />
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Email"
+                  type="email"
+                  {...pocForm.register('pocEmail')}
+                  disabled
+                />
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Phone Number"
+                  {...pocForm.register('pocPhone', { required: 'Phone number is required' })}
+                  error={!!pocForm.formState.errors.pocPhone}
+                  helperText={pocForm.formState.errors.pocPhone?.message}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Relationship Type</InputLabel>
+                  <Select
+                    label="Relationship Type"
+                    defaultValue={RELATIONSHIP_TYPES[0]}
+                    {...pocForm.register('pocRelationshipType')}
+                  >
+                    {RELATIONSHIP_TYPES.map((type) => (
+                      <MenuItem key={type} value={type}>
+                        {type}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
+          </Box>
+        );
+
+      case 1:
+        return (
+          <Box component="form" onSubmit={dignitaryForm.handleSubmit(handleNext)}>
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <Typography variant="h6" gutterBottom>
+                  Dignitary Information
+                </Typography>
+              </Grid>
+
+              <Grid item xs={12}>
+                <FormControl component="fieldset">
+                  <RadioGroup
+                    value={dignitaryForm.watch('isExistingDignitary').toString()}
+                    onChange={(e) => dignitaryForm.setValue('isExistingDignitary', e.target.value === 'true')}
+                  >
+                    <FormControlLabel 
+                      value="true" 
+                      control={<Radio />} 
+                      label="Select an existing dignitary" 
+                    />
+                    <FormControlLabel 
+                      value="false" 
+                      control={<Radio />} 
+                      label="Add a new dignitary" 
+                    />
+                  </RadioGroup>
+                </FormControl>
+              </Grid>
+
+              {dignitaryForm.watch('isExistingDignitary') ? (
+                <Grid item xs={12}>
+                  <FormControl fullWidth>
+                    <InputLabel>Select Dignitary</InputLabel>
+                    <Controller<DignitaryFormData>
+                      name="selectedDignitaryId"
+                      control={dignitaryForm.control}
+                      render={({ field }) => (
+                        <Select
+                          label="Select Dignitary"
+                          value={field.value ?? ''}
+                          onChange={(e) => {
+                            field.onChange(e.target.value);
+                            // Find the selected dignitary and populate form
+                            const selectedDignitary = dignitaries.find(d => d.id === e.target.value);
+                            if (selectedDignitary) {
+                              dignitaryForm.setValue('dignitaryHonorificTitle', selectedDignitary.honorific_title);
+                              dignitaryForm.setValue('dignitaryFirstName', selectedDignitary.first_name);
+                              dignitaryForm.setValue('dignitaryLastName', selectedDignitary.last_name);
+                              dignitaryForm.setValue('dignitaryEmail', selectedDignitary.email);
+                              dignitaryForm.setValue('dignitaryPhone', selectedDignitary.phone || '');
+                              dignitaryForm.setValue('dignitaryPrimaryDomain', selectedDignitary.primary_domain);
+                              dignitaryForm.setValue('dignitaryTitleInOrganization', selectedDignitary.title_in_organization);
+                              dignitaryForm.setValue('dignitaryOrganization', selectedDignitary.organization);
+                              dignitaryForm.setValue('dignitaryBioSummary', selectedDignitary.bio_summary);
+                              dignitaryForm.setValue('dignitaryLinkedInOrWebsite', selectedDignitary.linked_in_or_website);
+                              dignitaryForm.setValue('dignitaryCountry', selectedDignitary.country);
+                              dignitaryForm.setValue('dignitaryState', selectedDignitary.state);
+                              dignitaryForm.setValue('dignitaryCity', selectedDignitary.city);
+                            }
+                          }}
+                        >
+                          {dignitaries.map((dignitary) => (
+                            <MenuItem key={dignitary.id} value={dignitary.id}>
+                              {`${dignitary.honorific_title} ${dignitary.first_name} ${dignitary.last_name}`}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      )}
+                    />
+                  </FormControl>
+                </Grid>
+              ) : null}
+
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Honorific Title</InputLabel>
+                  <Select
+                    label="Honorific Title"
+                    defaultValue={HONORIFIC_TITLES[0]}
+                    {...dignitaryForm.register('dignitaryHonorificTitle')}
+                  >
+                    {HONORIFIC_TITLES.map((title) => (
+                      <MenuItem key={title} value={title}>
+                        {title}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="First Name"
+                  {...dignitaryForm.register('dignitaryFirstName', { required: 'First name is required' })}
+                  error={!!dignitaryForm.formState.errors.dignitaryFirstName}
+                  helperText={dignitaryForm.formState.errors.dignitaryFirstName?.message}
+                />
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Last Name"
+                  {...dignitaryForm.register('dignitaryLastName', { required: 'Last name is required' })}
+                  error={!!dignitaryForm.formState.errors.dignitaryLastName}
+                  helperText={dignitaryForm.formState.errors.dignitaryLastName?.message}
+                />
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Email"
+                  type="email"
+                  {...dignitaryForm.register('dignitaryEmail', { required: 'Email is required' })}
+                  error={!!dignitaryForm.formState.errors.dignitaryEmail}
+                  helperText={dignitaryForm.formState.errors.dignitaryEmail?.message}
+                />
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Phone Number"
+                  {...dignitaryForm.register('dignitaryPhone')}
+                  error={!!dignitaryForm.formState.errors.dignitaryPhone}
+                  helperText={dignitaryForm.formState.errors.dignitaryPhone?.message}
+                />
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Primary Domain</InputLabel>
+                  <Select
+                    label="Primary Domain"
+                    defaultValue={PRIMARY_DOMAINS[0]}
+                    {...dignitaryForm.register('dignitaryPrimaryDomain')}
+                  >
+                    {PRIMARY_DOMAINS.map((domain) => (
+                      <MenuItem key={domain} value={domain}>
+                        {domain}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Title in Organization"
+                  {...dignitaryForm.register('dignitaryTitleInOrganization', { required: 'Title is required' })}
+                  error={!!dignitaryForm.formState.errors.dignitaryTitleInOrganization}
+                  helperText={dignitaryForm.formState.errors.dignitaryTitleInOrganization?.message}
+                />
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Organization"
+                  {...dignitaryForm.register('dignitaryOrganization', { required: 'Organization is required' })}
+                  error={!!dignitaryForm.formState.errors.dignitaryOrganization}
+                  helperText={dignitaryForm.formState.errors.dignitaryOrganization?.message}
+                />
+              </Grid>
+              
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={4}
+                  label="Bio Summary"
+                  {...dignitaryForm.register('dignitaryBioSummary', { required: 'Bio summary is required' })}
+                  error={!!dignitaryForm.formState.errors.dignitaryBioSummary}
+                  helperText={dignitaryForm.formState.errors.dignitaryBioSummary?.message}
+                />
+              </Grid>
+              
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="LinkedIn or Website URL"
+                  {...dignitaryForm.register('dignitaryLinkedInOrWebsite', { required: 'URL is required' })}
+                  error={!!dignitaryForm.formState.errors.dignitaryLinkedInOrWebsite}
+                  helperText={dignitaryForm.formState.errors.dignitaryLinkedInOrWebsite?.message}
+                />
+              </Grid>
+              
+              <Grid item xs={12} md={4}>
+                <Controller
+                  name="dignitaryCountry"
+                  control={dignitaryForm.control}
+                  rules={{ required: 'Country is required' }}
+                  render={({ field }) => (
+                    <LocationAutocomplete
+                      label="Country"
+                      value={field.value}
+                      onChange={(value) => {
+                        field.onChange(value);
+                        // Reset state and city when country changes
+                        dignitaryForm.setValue('dignitaryState', '');
+                        dignitaryForm.setValue('dignitaryCity', '');
+                      }}
+                      error={!!dignitaryForm.formState.errors.dignitaryCountry}
+                      helperText={dignitaryForm.formState.errors.dignitaryCountry?.message}
+                      types={['country']}
+                      onPlaceSelect={(place) => {
+                        if (!place?.address_components) return;
+                        
+                        const countryComponent = place.address_components.find(
+                          component => component.types.includes('country')
+                        );
+
+                        if (countryComponent) {
+                          setSelectedCountryCode(countryComponent.short_name);
+                        }
+                      }}
+                    />
+                  )}
+                />
+              </Grid>
+              
+              <Grid item xs={12} md={4}>
+                <Controller
+                  name="dignitaryState"
+                  control={dignitaryForm.control}
+                  rules={{ required: 'State is required' }}
+                  render={({ field }) => (
+                    <LocationAutocomplete
+                      label="State"
+                      value={field.value}
+                      onChange={(value) => {
+                        field.onChange(value.split(',')[0]);
+                      }}
+                      error={!!dignitaryForm.formState.errors.dignitaryState}
+                      helperText={dignitaryForm.formState.errors.dignitaryState?.message}
+                      types={['administrative_area_level_1']}
+                      componentRestrictions={selectedCountryCode ? { country: selectedCountryCode } : undefined}
+                    />
+                  )}
+                />
+              </Grid>
+              
+              <Grid item xs={12} md={4}>
+                <Controller
+                  name="dignitaryCity"
+                  control={dignitaryForm.control}
+                  rules={{ required: 'City is required' }}
+                  render={({ field }) => (
+                    <LocationAutocomplete
+                      label="City"
+                      value={field.value}
+                      onChange={(value) => {
+                        field.onChange(value.split(',')[0]);
+                      }}
+                      error={!!dignitaryForm.formState.errors.dignitaryCity}
+                      helperText={dignitaryForm.formState.errors.dignitaryCity?.message}
+                      types={['locality', 'sublocality']}
+                      componentRestrictions={selectedCountryCode ? { country: selectedCountryCode } : undefined}
+                    />
+                  )}
+                />
+              </Grid>                  
+            </Grid>
+          </Box>
+        );
+
+      case 2:
+        return (
+          <Box component="form" onSubmit={appointmentForm.handleSubmit(handleNext)}>
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <Typography variant="h6" gutterBottom>
+                  Appointment Information
+                </Typography>
+              </Grid>
+
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={4}
+                  label="Purpose of Meeting"
+                  {...appointmentForm.register('purpose', { required: 'Purpose is required' })}
+                  error={!!appointmentForm.formState.errors.purpose}
+                  helperText={appointmentForm.formState.errors.purpose?.message}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  type="date"
+                  label="Preferred Date"
+                  InputLabelProps={{ shrink: true }}
+                  inputProps={{ 
+                    min: getLocalDate(0),
+                    max: getLocalDate(30),
+                  }}
+                  {...appointmentForm.register('preferredDate', { required: 'Preferred date is required' })}
+                  error={!!appointmentForm.formState.errors.preferredDate}
+                  helperText={appointmentForm.formState.errors.preferredDate?.message}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  type="time"
+                  label="Preferred Time"
+                  InputLabelProps={{ shrink: true }}
+                  {...appointmentForm.register('preferredTime')}
+                  error={!!appointmentForm.formState.errors.preferredTime}
+                  helperText={appointmentForm.formState.errors.preferredTime?.message}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Requested Duration"
+                  placeholder="e.g., 10 minutes, 30 minutes, 1 hour"
+                  {...appointmentForm.register('duration')}
+                  error={!!appointmentForm.formState.errors.duration}
+                  helperText={appointmentForm.formState.errors.duration?.message}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Location"
+                  placeholder="e.g., Boone, Los Angeles, etc."
+                  {...appointmentForm.register('location')}
+                  error={!!appointmentForm.formState.errors.location}
+                  helperText={appointmentForm.formState.errors.location?.message}
+                />
+              </Grid>
+
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={4}
+                  label="Pre-Meeting Notes"
+                  {...appointmentForm.register('preMeetingNotes')}
+                  error={!!appointmentForm.formState.errors.preMeetingNotes}
+                  helperText={appointmentForm.formState.errors.preMeetingNotes?.message}
+                />
+              </Grid>
+            </Grid>
+          </Box>
+        );
+
+      default:
+        return null;
     }
   };
 
   return (
-    <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ mt: 3 }}>
-      <Grid container spacing={3}>
-        {/* POC Information Section */}
-        <Grid item xs={12}>
-          <Typography variant="h6" gutterBottom>
-            Point of Contact Information
-          </Typography>
-        </Grid>
-        
-        <Grid item xs={12} md={6}>
-          <TextField
-            fullWidth
-            label="First Name"
-            {...register('pocFirstName', { required: 'First name is required' })}
-            error={!!errors.pocFirstName}
-            helperText={errors.pocFirstName?.message}
-            disabled // Since it's prefilled from Google
-          />
-        </Grid>
-        
-        <Grid item xs={12} md={6}>
-          <TextField
-            fullWidth
-            label="Last Name"
-            {...register('pocLastName', { required: 'Last name is required' })}
-            error={!!errors.pocLastName}
-            helperText={errors.pocLastName?.message}
-            disabled // Since it's prefilled from Google
-          />
-        </Grid>
-        
-        <Grid item xs={12} md={6}>
-          <TextField
-            fullWidth
-            label="Email"
-            type="email"
-            {...register('pocEmail', { required: 'Email is required' })}
-            error={!!errors.pocEmail}
-            helperText={errors.pocEmail?.message}
-            disabled // Since it's prefilled from Google
-          />
-        </Grid>
-        
-        <Grid item xs={12} md={6}>
-          <TextField
-            fullWidth
-            label="Phone Number"
-            {...register('pocPhone', { required: 'Phone number is required' })}
-            error={!!errors.pocPhone}
-            helperText={errors.pocPhone?.message}
-          />
-        </Grid>
+    <Box sx={{ width: '100%' }}>
+      <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
+        {steps.map((label) => (
+          <Step key={label}>
+            <StepLabel>{label}</StepLabel>
+          </Step>
+        ))}
+      </Stepper>
 
-        <Grid item xs={12} md={6}>
-          <FormControl fullWidth error={!!errors.pocRelationshipType}>
-            <InputLabel>Relationship Type</InputLabel>
-            <Select
-              label="Relationship Type"
-              defaultValue={RELATIONSHIP_TYPES[0]}
-              {...register('pocRelationshipType', { required: 'Relationship type is required' })}
-            >
-              {RELATIONSHIP_TYPES.map((type) => (
-                <MenuItem key={type} value={type}>
-                  {type}
-                </MenuItem>
-              ))}
-            </Select>
-            {errors.pocRelationshipType && (
-              <Typography color="error" variant="caption">
-                {errors.pocRelationshipType.message}
-              </Typography>
-            )}
-          </FormControl>
-        </Grid>
-
-        {/* Dignitary Information Section */}
-        <Grid item xs={12} sx={{ mt: 4 }}>
-          <Typography variant="h6" gutterBottom>
-            Dignitary Information
-          </Typography>
-        </Grid>
+      <Paper sx={{ p: 3 }}>
+        {renderStepContent(activeStep)}
         
-        <Grid item xs={12} md={6}>
-          <FormControl fullWidth error={!!errors.dignitaryHonorificTitle}>
-            <InputLabel>Honorific Title</InputLabel>
-            <Select
-              label="Honorific Title"
-              defaultValue={HONORIFIC_TITLES[0]}
-              {...register('dignitaryHonorificTitle', { required: 'Honorific title is required' })}
-            >
-              {HONORIFIC_TITLES.map((title) => (
-                <MenuItem key={title} value={title}>
-                  {title}
-                </MenuItem>
-              ))}
-            </Select>
-            {errors.dignitaryHonorificTitle && (
-              <Typography color="error" variant="caption">
-                {errors.dignitaryHonorificTitle.message}
-              </Typography>
-            )}
-          </FormControl>
-        </Grid>
-        
-        <Grid item xs={12} md={6}>
-          <TextField
-            fullWidth
-            label="First Name"
-            {...register('dignitaryFirstName', { required: 'First name is required' })}
-            error={!!errors.dignitaryFirstName}
-            helperText={errors.dignitaryFirstName?.message}
-          />
-        </Grid>
-        
-        <Grid item xs={12} md={6}>
-          <TextField
-            fullWidth
-            label="Last Name"
-            {...register('dignitaryLastName', { required: 'Last name is required' })}
-            error={!!errors.dignitaryLastName}
-            helperText={errors.dignitaryLastName?.message}
-          />
-        </Grid>
-        
-        <Grid item xs={12} md={6}>
-          <TextField
-            fullWidth
-            label="Email"
-            type="email"
-            {...register('dignitaryEmail', { required: 'Email is required' })}
-            error={!!errors.dignitaryEmail}
-            helperText={errors.dignitaryEmail?.message}
-          />
-        </Grid>
-        
-        <Grid item xs={12} md={6}>
-          <TextField
-            fullWidth
-            label="Phone Number"
-            {...register('dignitaryPhone')}
-            error={!!errors.dignitaryPhone}
-            helperText={errors.dignitaryPhone?.message}
-          />
-        </Grid>
-        
-        <Grid item xs={12} md={6}>
-          <FormControl fullWidth error={!!errors.dignitaryPrimaryDomain}>
-            <InputLabel>Primary Domain</InputLabel>
-            <Select
-              label="Primary Domain"
-              defaultValue={PRIMARY_DOMAINS[0]}
-              {...register('dignitaryPrimaryDomain', { required: 'Primary domain is required' })}
-            >
-              {PRIMARY_DOMAINS.map((domain) => (
-                <MenuItem key={domain} value={domain}>
-                  {domain}
-                </MenuItem>
-              ))}
-            </Select>
-            {errors.dignitaryPrimaryDomain && (
-              <Typography color="error" variant="caption">
-                {errors.dignitaryPrimaryDomain.message}
-              </Typography>
-            )}
-          </FormControl>
-        </Grid>
-        
-        <Grid item xs={12} md={6}>
-          <TextField
-            fullWidth
-            label="Title in Organization"
-            {...register('dignitaryTitleInOrganization', { required: 'Title is required' })}
-            error={!!errors.dignitaryTitleInOrganization}
-            helperText={errors.dignitaryTitleInOrganization?.message}
-          />
-        </Grid>
-        
-        <Grid item xs={12} md={6}>
-          <TextField
-            fullWidth
-            label="Organization"
-            {...register('dignitaryOrganization', { required: 'Organization is required' })}
-            error={!!errors.dignitaryOrganization}
-            helperText={errors.dignitaryOrganization?.message}
-          />
-        </Grid>
-        
-        <Grid item xs={12}>
-          <TextField
-            fullWidth
-            multiline
-            rows={4}
-            label="Bio Summary"
-            {...register('dignitaryBioSummary', { required: 'Bio summary is required' })}
-            error={!!errors.dignitaryBioSummary}
-            helperText={errors.dignitaryBioSummary?.message}
-          />
-        </Grid>
-        
-        <Grid item xs={12}>
-          <TextField
-            fullWidth
-            label="LinkedIn or Website URL"
-            {...register('dignitaryLinkedInOrWebsite', { required: 'URL is required' })}
-            error={!!errors.dignitaryLinkedInOrWebsite}
-            helperText={errors.dignitaryLinkedInOrWebsite?.message}
-          />
-        </Grid>
-        
-        <Grid item xs={12} md={4}>
-          <Controller
-            name="dignitaryCountry"
-            control={control}
-            rules={{ required: 'Country is required' }}
-            render={({ field }) => (
-              <LocationAutocomplete
-                label="Country"
-                value={field.value}
-                onChange={(value) => {
-                  field.onChange(value);
-                  // Reset state and city when country changes
-                  setValue('dignitaryState', '');
-                  setValue('dignitaryCity', '');
-                }}
-                error={!!errors.dignitaryCountry}
-                helperText={errors.dignitaryCountry?.message}
-                types={['country']}
-                onPlaceSelect={(place) => {
-                  if (!place?.address_components) return;
-                  
-                  const countryComponent = place.address_components.find(
-                    component => component.types.includes('country')
-                  );
-
-                  if (countryComponent) {
-                    setSelectedCountryCode(countryComponent.short_name);
-                  }
-                }}
-              />
-            )}
-          />
-        </Grid>
-        
-        <Grid item xs={12} md={4}>
-          <Controller
-            name="dignitaryState"
-            control={control}
-            rules={{ required: 'State is required' }}
-            render={({ field }) => (
-              <LocationAutocomplete
-                label="State"
-                value={field.value}
-                onChange={(value) => {
-                  field.onChange(value.split(',')[0]);
-                }}
-                error={!!errors.dignitaryState}
-                helperText={errors.dignitaryState?.message}
-                types={['administrative_area_level_1']}
-                componentRestrictions={selectedCountryCode ? { country: selectedCountryCode } : undefined}
-              />
-            )}
-          />
-        </Grid>
-        
-        <Grid item xs={12} md={4}>
-          <Controller
-            name="dignitaryCity"
-            control={control}
-            rules={{ required: 'City is required' }}
-            render={({ field }) => (
-              <LocationAutocomplete
-                label="City"
-                value={field.value}
-                onChange={(value) => {
-                  field.onChange(value.split(',')[0]);
-                }}
-                error={!!errors.dignitaryCity}
-                helperText={errors.dignitaryCity?.message}
-                types={['locality', 'sublocality']}
-                componentRestrictions={selectedCountryCode ? { country: selectedCountryCode } : undefined}
-              />
-            )}
-          />
-        </Grid>
-        
-        <Grid item xs={12}>
-          <TextField
-            fullWidth
-            multiline
-            rows={4}
-            label="Pre-Meeting Notes"
-            {...register('dignitaryPreMeetingNotes')}
-            error={!!errors.dignitaryPreMeetingNotes}
-            helperText={errors.dignitaryPreMeetingNotes?.message}
-          />
-        </Grid>
-
-        {/* Add Appointment Information Section */}
-        <Grid item xs={12} sx={{ mt: 4 }}>
-          <Typography variant="h6" gutterBottom>
-            Appointment Information
-          </Typography>
-        </Grid>
-
-        <Grid item xs={12}>
-          <TextField
-            fullWidth
-            multiline
-            rows={4}
-            label="Purpose of Meeting"
-            {...register('purpose', { required: 'Purpose is required' })}
-            error={!!errors.purpose}
-            helperText={errors.purpose?.message}
-          />
-        </Grid>
-
-        <Grid item xs={12} md={6}>
-          <TextField
-            fullWidth
-            type="date"
-            label="Preferred Date"
-            InputLabelProps={{ shrink: true }}
-            inputProps={{ 
-              min: getLocalDate(0), // Min: today
-              max: getLocalDate(30), // Max: 30 days from today
-            }}
-            {...register('preferredDate', { required: 'Preferred date is required' })}
-            error={!!errors.preferredDate}
-            helperText={errors.preferredDate?.message}
-          />
-        </Grid>
-
-        <Grid item xs={12} md={6}>
-          <TextField
-            fullWidth
-            type="time"
-            label="Preferred Time"
-            InputLabelProps={{ shrink: true }}
-            {...register('preferredTime')}
-            error={!!errors.preferredTime}
-            helperText={errors.preferredTime?.message}
-          />
-        </Grid>
-
-        <Grid item xs={12} md={6}>
-          <TextField
-            fullWidth
-            label="Requested Duration"
-            placeholder="e.g., 10 minutes, 30 minutes, 1 hour"
-            {...register('duration')}
-            error={!!errors.duration}
-            helperText={errors.duration?.message}
-          />
-        </Grid>
-
-        <Grid item xs={12} md={6}>
-          <TextField
-            fullWidth
-            label="Location"
-            placeholder="e.g., Boone, Los Angeles, etc."
-            {...register('location')}
-            error={!!errors.location}
-            helperText={errors.location?.message}
-          />
-        </Grid>
-
-        <Grid item xs={12}>
-          <Button 
-            type="submit" 
-            variant="contained" 
-            fullWidth
-            size="large"
-            sx={{ mt: 2 }}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
+          {activeStep !== 0 && (
+            <Button onClick={handleBack} sx={{ mr: 1 }}>
+              Back
+            </Button>
+          )}
+          <Button
+            variant="contained"
+            onClick={handleNext}
+            disabled={activeStep === steps.length}
           >
-            Submit Request
+            {activeStep === steps.length - 1 ? 'Submit' : 'Next'}
           </Button>
-        </Grid>
-      </Grid>
+        </Box>
+      </Paper>
     </Box>
   );
 };

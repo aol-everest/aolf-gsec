@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, status, Security
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime, timedelta
 import jwt
 from google.oauth2 import id_token
@@ -138,46 +138,110 @@ async def verify_google_token(
             detail=f"Invalid Google token: {str(e)}"
         )
 
-@app.post("/appointments/", response_model=schemas.Appointment)
+@app.post("/appointments/new", response_model=schemas.Appointment)
 async def create_appointment(
     appointment: schemas.AppointmentCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    # Create dignitary first
-    dignitary = models.Dignitary(
-        **appointment.dignitary.dict(),
+    print(f"Received appointment data: {appointment.dict()}")  # Debug log
+    try:
+        # Convert preferred_date string to Date object
+        preferred_date = datetime.strptime(appointment.preferred_date, "%Y-%m-%d").date()
+        
+        # Create appointment
+        db_appointment = models.Appointment(
+            requester_id=current_user.id,
+            dignitary_id=appointment.dignitary_id,
+            status="pending",
+            purpose=appointment.purpose,
+            preferred_date=preferred_date,
+            preferred_time=appointment.preferred_time,
+            duration=appointment.duration,
+            location=appointment.location,
+            pre_meeting_notes=appointment.pre_meeting_notes
+        )
+        db.add(db_appointment)
+        db.commit()
+        db.refresh(db_appointment)
+        
+        return db_appointment
+    except Exception as e:
+        print(f"Error creating appointment: {str(e)}")  # Debug log
+        raise
+
+@app.post("/dignitaries/new", response_model=schemas.Dignitary)
+async def new_dignitary(
+    dignitary: schemas.DignitaryCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    # Create new dignitary
+    new_dignitary = models.Dignitary(
+        **dignitary.dict(),
         created_by=current_user.id
     )
-    db.add(dignitary)
+    db.add(new_dignitary)
     db.commit()
-    db.refresh(dignitary)
-    
+    db.refresh(new_dignitary)
+
     # Create dignitary point of contact
     poc = models.DignitaryPointOfContact(
-        dignitary_id=dignitary.id,
+        dignitary_id=new_dignitary.id,
         poc_id=current_user.id,
-        relationship_type=appointment.poc_relationship_type,
+        relationship_type="POC",
         created_by=current_user.id
-    )
+    ) 
     db.add(poc)
-    
-    # Convert preferred_date string to Date object
-    preferred_date = datetime.strptime(appointment.preferred_date, "%Y-%m-%d").date()
-    
-    # Create appointment
-    db_appointment = models.Appointment(
-        requester_id=current_user.id,
-        dignitary_id=dignitary.id,
-        status="pending",
-        purpose=appointment.purpose,
-        preferred_date=preferred_date,
-        preferred_time=appointment.preferred_time,
-        duration=appointment.duration,
-        location=appointment.location
-    )
-    db.add(db_appointment)
     db.commit()
-    db.refresh(db_appointment)
+    db.refresh(poc)
+
+    return new_dignitary
+
+
+@app.patch("/dignitaries/update/{dignitary_id}", response_model=schemas.Dignitary)
+async def update_dignitary(
+    dignitary_id: int,
+    dignitary: schemas.DignitaryUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    # Check if dignitary exists
+    existing_dignitary = db.query(models.Dignitary).filter(models.Dignitary.id == dignitary_id).first()
+    if not existing_dignitary:
+        raise HTTPException(status_code=404, detail="Dignitary not found")
     
-    return db_appointment 
+    # Update dignitary  
+    for key, value in dignitary.dict(exclude_unset=True).items():
+        setattr(existing_dignitary, key, value)
+    db.commit()
+    db.refresh(existing_dignitary)
+    return existing_dignitary
+
+
+@app.get("/dignitaries/assigned", response_model=List[schemas.Dignitary])
+async def get_assigned_dignitaries(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all dignitaries assigned to the current user as POC"""
+    dignitaries = (
+        db.query(models.Dignitary)
+        .join(models.DignitaryPointOfContact)
+        .filter(models.DignitaryPointOfContact.poc_id == current_user.id)
+        .all()
+    )
+    return dignitaries
+
+@app.patch("/users/me", response_model=schemas.User)
+async def update_user(
+    user_update: schemas.UserUpdate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update current user's information"""
+    for key, value in user_update.dict(exclude_unset=True).items():
+        setattr(current_user, key, value)
+    db.commit()
+    db.refresh(current_user)
+    return current_user 

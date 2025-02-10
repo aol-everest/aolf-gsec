@@ -20,7 +20,6 @@ class Dignitary(Base):
     country = Column(String, nullable=False)
     state = Column(String, nullable=False)
     city = Column(String, nullable=False)
-    pre_meeting_notes = Column(Text)
     
     # Foreign keys
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
