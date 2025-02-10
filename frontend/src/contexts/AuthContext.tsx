@@ -44,30 +44,70 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (response: any) => {
     try {
-      const userInfoResponse = await fetch(
-        'https://www.googleapis.com/oauth2/v3/userinfo',
-        {
-          headers: {
-            Authorization: `Bearer ${response.access_token}`,
-          },
-        }
-      );
+      console.log('Google OAuth response:', response); // Debug log
       
-      const userInfo = await userInfoResponse.json();
+      // Exchange code for tokens
+      const tokensResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          code: response.code,
+          client_id: process.env.REACT_APP_GOOGLE_CLIENT_ID || '',
+          client_secret: process.env.REACT_APP_GOOGLE_CLIENT_SECRET || '',
+          redirect_uri: 'http://localhost:3000',  // Use the same redirect URI
+          grant_type: 'authorization_code',
+        }),
+      });
+
+      if (!tokensResponse.ok) {
+        const errorText = await tokensResponse.text();
+        console.error('Token exchange failed:', errorText); // Debug log
+        throw new Error(`Failed to exchange code for tokens: ${errorText}`);
+      }
+
+      const tokens = await tokensResponse.json();
+      console.log('Google tokens response:', tokens); // Debug log
+      
+      // Verify the token with our backend
+      const tokenResponse = await fetch('http://localhost:8001/verify-google-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token: tokens.id_token
+        }),
+      });
+
+      if (!tokenResponse.ok) {
+        const errorData = await tokenResponse.json();
+        console.error('Token verification failed:', errorData); // Debug log
+        throw new Error(`Failed to verify token with backend: ${errorData.detail}`);
+      }
+
+      const tokenData = await tokenResponse.json();
+      console.log('Backend token response:', tokenData); // Debug log
+      
+      // Decode the ID token to get user info
+      const base64Url = tokens.id_token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const userInfo = JSON.parse(window.atob(base64));
       
       // Update state
       setIsAuthenticated(true);
       setUserInfo(userInfo);
-      setAccessToken(response.access_token);
+      setAccessToken(tokenData.access_token);
       
       // Update localStorage
       localStorage.setItem('isAuthenticated', 'true');
       localStorage.setItem('userInfo', JSON.stringify(userInfo));
-      localStorage.setItem('accessToken', response.access_token);
+      localStorage.setItem('accessToken', tokenData.access_token);
       
       navigate('/appointment-form');
     } catch (error) {
-      console.error('Error fetching user info:', error);
+      console.error('Error during login:', error);
       throw error;
     }
   };

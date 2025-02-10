@@ -1,3 +1,6 @@
+
+secrets
+
 # Node.js dependencies
 frontend/node_modules/
 frontend/npm-debug.log*
@@ -48,13 +51,6 @@ frontend/*.py[cod]
 # Flask Cache & Compiled files
 frontend/instance/
 
-# Ignore Python cache files
-backend/.venv/
-backend/__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
 # Google App Engine
 # Ignore GCP service account credentials (if stored locally)
 frontend/.gcloudignore
@@ -81,3 +77,14 @@ frontend/.google/token.json
 frontend/.google/refresh_token.json
 frontend/.google/credentials.json
 frontend/.google/token.json
+
+
+# Ignore Python cache files
+backend/.venv/
+backend/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+backend/.env
+

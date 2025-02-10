@@ -15,6 +15,14 @@ class DignitaryPointOfContact(Base):
     
     # Relationships
     dignitary = relationship("Dignitary", back_populates="point_of_contacts")
-    poc = relationship("User", foreign_keys=[poc_id], back_populates="point_of_contacts")
-    creator = relationship("User", foreign_keys=[created_by])
+    poc = relationship(
+        "User",
+        foreign_keys=[poc_id],
+        back_populates="point_of_contacts"
+    )
+    creator = relationship(
+        "User",
+        foreign_keys=[created_by],
+        backref="created_point_of_contacts"
+    )
 

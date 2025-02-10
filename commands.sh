@@ -49,5 +49,8 @@ psql postgres -c "ALTER USER postgres PASSWORD 'postgres';"
 # Run the FastAPI application
 uvicorn app:app --reload
 
+python3 -m uvicorn app:app --reload --port 8001
 
 
+# Generate a JWT secret key
+python3 -c "import secrets; print(secrets.token_urlsafe(32))"

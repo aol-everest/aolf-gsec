@@ -60,23 +60,34 @@ async def get_current_user(
     db: Session = Depends(get_db),
     token: str = Security(oauth2_scheme)
 ) -> models.User:
+    print(f"Received token: {token[:10]}...")  # Print first 10 chars of token for debugging
+    
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
+        print(f"Attempting to decode token with SECRET_KEY: {SECRET_KEY[:5]}...")  # Print first 5 chars of secret key
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        print(f"Decoded payload: {payload}")
+        
         email: str = payload.get("sub")
         if email is None:
+            print("No email found in token payload")
             raise credentials_exception
-    except (jwt.InvalidTokenError, jwt.ExpiredSignatureError):
+            
+        print(f"Looking up user with email: {email}")
+        user = db.query(models.User).filter(models.User.email == email).first()
+        if user is None:
+            print("No user found with this email")
+            raise credentials_exception
+            
+        print(f"Found user: {user.email}")
+        return user
+    except Exception as e:
+        print(f"Error decoding token: {str(e)}")
         raise credentials_exception
-        
-    user = db.query(models.User).filter(models.User.email == email).first()
-    if user is None:
-        raise credentials_exception
-    return user
 
 @app.post("/verify-google-token", response_model=schemas.Token)
 async def verify_google_token(
@@ -84,16 +95,21 @@ async def verify_google_token(
     db: Session = Depends(get_db)
 ):
     try:
+        print(f"Received token for verification: {token.token[:50]}...") # Debug log
+        
         idinfo = id_token.verify_oauth2_token(
             token.token,
             requests.Request(),
             GOOGLE_CLIENT_ID
         )
+        print(f"Verified token info: {idinfo}") # Debug log
         
         # Check if user exists
         user = db.query(models.User).filter(models.User.email == idinfo['email']).first()
+        print(f"Found user: {user}") # Debug log
         
         if not user:
+            print("Creating new user") # Debug log
             # Create new user
             user = models.User(
                 google_id=idinfo['sub'],
@@ -107,6 +123,7 @@ async def verify_google_token(
         
         # Generate JWT token
         access_token = create_access_token(data={"sub": user.email})
+        print(f"Generated access token: {access_token[:50]}...") # Debug log
         
         return {
             "access_token": access_token,
@@ -114,10 +131,11 @@ async def verify_google_token(
             "user_id": user.id
         }
         
-    except ValueError:
+    except Exception as e:
+        print(f"Error verifying token: {str(e)}") # Debug log
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid Google token"
+            detail=f"Invalid Google token: {str(e)}"
         )
 
 @app.post("/appointments/", response_model=schemas.Appointment)

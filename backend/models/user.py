@@ -16,4 +16,8 @@ class User(Base):
     
     # Relationships
     appointments = relationship("Appointment", back_populates="requester")
-    point_of_contacts = relationship("DignitaryPointOfContact", back_populates="poc") 
+    point_of_contacts = relationship(
+        "DignitaryPointOfContact",
+        back_populates="poc",
+        foreign_keys="DignitaryPointOfContact.poc_id"
+    ) 

@@ -11,6 +11,9 @@ const Landing: React.FC = () => {
     onError: (error) => {
       console.error('Login Failed:', error);
     },
+    flow: 'auth-code',
+    scope: 'openid email profile',
+    redirect_uri: 'http://localhost:3000'
   });
 
   return (
