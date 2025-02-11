@@ -243,7 +243,7 @@ async def get_assigned_dignitaries(
     )
     return dignitaries
 
-@app.patch("/users/me", response_model=schemas.User)
+@app.patch("/users/me/update", response_model=schemas.User)
 async def update_user(
     user_update: schemas.UserUpdate,
     current_user: models.User = Depends(get_current_user),
@@ -254,6 +254,14 @@ async def update_user(
         setattr(current_user, key, value)
     db.commit()
     db.refresh(current_user)
+    return current_user
+
+@app.get("/users/me", response_model=schemas.User)
+async def get_current_user_info(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get current user's information"""
     return current_user
 
 @app.get("/appointments/my", response_model=List[schemas.Appointment])

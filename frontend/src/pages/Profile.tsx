@@ -1,13 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Container, Typography, Paper, Box, Button, Avatar, TextField, Snackbar, Alert } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import Layout from '../components/Layout';
 
 const Profile: React.FC = () => {
   const { userInfo, logout } = useAuth();
-  const [phoneNumber, setPhoneNumber] = useState(userInfo?.phone_number || '');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+  // Fetch user details including phone number
+  useEffect(() => {
+    const fetchUserDetails = async () => {
+      try {
+        const response = await fetch('http://localhost:8001/users/me', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setPhoneNumber(data.phone_number || '');
+        }
+      } catch (error) {
+        console.error('Error fetching user details:', error);
+      }
+    };
+
+    fetchUserDetails();
+  }, []);
 
   const handleSave = async () => {
     try {
@@ -23,14 +44,14 @@ const Profile: React.FC = () => {
       });
 
       if (response.ok) {
-        setMessage({ type: 'success', text: 'Phone number updated successfully' });
+        setMessage({ type: 'success', text: 'Profile updated successfully' });
         setIsEditing(false);
       } else {
-        setMessage({ type: 'error', text: 'Failed to update phone number' });
+        setMessage({ type: 'error', text: 'Failed to update profile' });
       }
     } catch (error) {
-      console.error('Error updating phone number:', error);
-      setMessage({ type: 'error', text: 'Error updating phone number' });
+      console.error('Error updating profile:', error);
+      setMessage({ type: 'error', text: 'Error updating profile' });
     }
   };
 
@@ -38,11 +59,16 @@ const Profile: React.FC = () => {
     <Layout>
       <Container maxWidth="md">
         <Box sx={{ py: 4 }}>
-          <Typography variant="h4" component="h1" gutterBottom>
-            Profile
-          </Typography>
-          <Paper sx={{ p: 3, mt: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+          <Paper sx={{ p: 3, mt: 2, position: 'relative' }}>
+            {/* Logout button in top right corner */}
+            <Box sx={{ position: 'absolute', top: 16, right: 16 }}>
+              <Button variant="outlined" color="error" onClick={logout}>
+                Logout
+              </Button>
+            </Box>
+
+            {/* User info section */}
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
               {userInfo?.picture && (
                 <Avatar
                   src={userInfo.picture}
@@ -51,52 +77,53 @@ const Profile: React.FC = () => {
                 />
               )}
               <Box>
-                <Typography variant="h6" gutterBottom>
+                <Typography variant="h5" gutterBottom>
                   {userInfo?.name || 'User Name'}
                 </Typography>
-                <Typography color="textSecondary" gutterBottom>
+                <Typography color="textSecondary">
                   {userInfo?.email || 'email@example.com'}
                 </Typography>
               </Box>
             </Box>
 
-            <Box sx={{ mt: 3 }}>
-              <Typography variant="subtitle1" gutterBottom>
+            {/* Form section */}
+            <Box sx={{ mt: 4 }}>
+              <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
                 Contact Information
               </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+              
+              <Box sx={{ mb: 3 }}>
                 <TextField
                   label="Phone Number"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
                   disabled={!isEditing}
                   fullWidth
-                  sx={{ maxWidth: 300 }}
                 />
-                {!isEditing ? (
-                  <Button variant="outlined" onClick={() => setIsEditing(true)}>
-                    Edit
-                  </Button>
-                ) : (
-                  <>
-                    <Button variant="contained" onClick={handleSave}>
-                      Save
-                    </Button>
-                    <Button variant="outlined" onClick={() => {
-                      setIsEditing(false);
-                      setPhoneNumber(userInfo?.phone_number || '');
-                    }}>
-                      Cancel
-                    </Button>
-                  </>
-                )}
               </Box>
+
+              {/* Add more fields here in the future */}
             </Box>
 
-            <Box sx={{ mt: 3 }}>
-              <Button variant="contained" color="error" onClick={logout}>
-                Logout
-              </Button>
+            {/* Action buttons at bottom */}
+            <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+              {!isEditing ? (
+                <Button variant="contained" onClick={() => setIsEditing(true)}>
+                  Edit Profile
+                </Button>
+              ) : (
+                <>
+                  <Button variant="outlined" onClick={() => {
+                    setIsEditing(false);
+                    setPhoneNumber(userInfo?.phone_number || '');
+                  }}>
+                    Cancel
+                  </Button>
+                  <Button variant="contained" onClick={handleSave}>
+                    Save Changes
+                  </Button>
+                </>
+              )}
             </Box>
           </Paper>
         </Box>

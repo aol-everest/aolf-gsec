@@ -148,12 +148,33 @@ export const AppointmentRequestForm: React.FC = () => {
     fetchDignitaries();
   }, []);
 
+  // Fetch POC phone number
+  useEffect(() => {
+    const fetchUserDetails = async () => {
+      try {
+        const response = await fetch('http://localhost:8001/users/me', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          pocForm.setValue('pocPhone', data.phone_number || '');
+        }
+      } catch (error) {
+        console.error('Error fetching user details:', error);
+      }
+    };
+
+    fetchUserDetails();
+  }, [pocForm]);
+
   const handleNext = async () => {
     if (activeStep === 0) {
       const pocData = await pocForm.handleSubmit(async (data) => {
         try {
           // Update user's phone number
-          const response = await fetch('http://localhost:8001/users/me', {
+          const response = await fetch('http://localhost:8001/users/me/update', {
             method: 'PATCH',
             headers: {
               'Content-Type': 'application/json',
@@ -315,6 +336,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 <TextField
                   fullWidth
                   label="Phone Number"
+                  InputLabelProps={{ shrink: true }}
                   {...pocForm.register('pocPhone', { required: 'Phone number is required' })}
                   error={!!pocForm.formState.errors.pocPhone}
                   helperText={pocForm.formState.errors.pocPhone?.message}
@@ -353,7 +375,6 @@ export const AppointmentRequestForm: React.FC = () => {
                   </RadioGroup>
                 </FormControl>
               </Grid>
-
               {dignitaryForm.watch('isExistingDignitary') ? (
                 <Grid item xs={12}>
                   <FormControl fullWidth>
@@ -364,7 +385,7 @@ export const AppointmentRequestForm: React.FC = () => {
                       render={({ field }) => (
                         <Select
                           label="Select Dignitary"
-                          value={field.value ?? ''}
+                          value={field.value || dignitaries[0]?.id} // Updated to select the first value by default and trigger onChange
                           onChange={(e) => {
                             field.onChange(e.target.value);
                             // Find the selected dignitary and populate form
