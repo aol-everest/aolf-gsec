@@ -128,7 +128,8 @@ async def verify_google_token(
         return {
             "access_token": access_token,
             "token_type": "bearer",
-            "user_id": user.id
+            "user_id": user.id,
+            "user": user,
         }
         
     except Exception as e:
@@ -187,7 +188,7 @@ async def new_dignitary(
     poc = models.DignitaryPointOfContact(
         dignitary_id=new_dignitary.id,
         poc_id=current_user.id,
-        relationship_type="POC",
+        relationship_type=dignitary.poc_relationship_type,
         created_by=current_user.id
     ) 
     db.add(poc)
@@ -214,6 +215,17 @@ async def update_dignitary(
         setattr(existing_dignitary, key, value)
     db.commit()
     db.refresh(existing_dignitary)
+
+    # Update POC relationship
+    poc = db.query(models.DignitaryPointOfContact).filter(
+        models.DignitaryPointOfContact.dignitary_id == dignitary_id, 
+        models.DignitaryPointOfContact.poc_id == current_user.id
+    ).first()
+    if poc:
+        poc.relationship_type = dignitary.poc_relationship_type
+        db.commit()
+        db.refresh(poc)
+
     return existing_dignitary
 
 

@@ -22,6 +22,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Divider,
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import LocationAutocomplete from './LocationAutocomplete';
@@ -41,7 +42,6 @@ interface PocFormData {
   pocLastName: string;
   pocEmail: string;
   pocPhone: string;
-  pocRelationshipType: RelationshipType;
 }
 
 // Step 2: Dignitary Information
@@ -61,6 +61,7 @@ interface DignitaryFormData {
   dignitaryCountry: string;
   dignitaryState: string;
   dignitaryCity: string;
+  pocRelationshipType: RelationshipType;
 }
 
 // Step 3: Appointment Information
@@ -91,8 +92,7 @@ export const AppointmentRequestForm: React.FC = () => {
       pocFirstName: userInfo?.name?.split(' ')[0] || '',
       pocLastName: userInfo?.name?.split(' ').slice(1).join(' ') || '',
       pocEmail: userInfo?.email || '',
-      pocPhone: '',
-      pocRelationshipType: RELATIONSHIP_TYPES[0],
+      pocPhone: userInfo?.phone_number || '',
     }
   });
 
@@ -113,6 +113,7 @@ export const AppointmentRequestForm: React.FC = () => {
       dignitaryCountry: '',
       dignitaryState: '',
       dignitaryCity: '',
+      pocRelationshipType: RELATIONSHIP_TYPES[0],
     }
   });
 
@@ -193,6 +194,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 country: data.dignitaryCountry,
                 state: data.dignitaryState,
                 city: data.dignitaryCity,
+                poc_relationship_type: data.pocRelationshipType,
               }),
             });
             if (!response.ok) throw new Error('Failed to update dignitary');
@@ -218,6 +220,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 country: data.dignitaryCountry,
                 state: data.dignitaryState,
                 city: data.dignitaryCity,
+                poc_relationship_type: data.pocRelationshipType,
               }),
             });
             if (!response.ok) throw new Error('Failed to create dignitary');
@@ -317,23 +320,6 @@ export const AppointmentRequestForm: React.FC = () => {
                   helperText={pocForm.formState.errors.pocPhone?.message}
                 />
               </Grid>
-
-              <Grid item xs={12} md={6}>
-                <FormControl fullWidth>
-                  <InputLabel>Relationship Type</InputLabel>
-                  <Select
-                    label="Relationship Type"
-                    defaultValue={RELATIONSHIP_TYPES[0]}
-                    {...pocForm.register('pocRelationshipType')}
-                  >
-                    {RELATIONSHIP_TYPES.map((type) => (
-                      <MenuItem key={type} value={type}>
-                        {type}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
             </Grid>
           </Box>
         );
@@ -411,6 +397,27 @@ export const AppointmentRequestForm: React.FC = () => {
                   </FormControl>
                 </Grid>
               ) : null}
+
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Relationship Type</InputLabel>
+                  <Select
+                    label="Relationship Type"
+                    defaultValue={RELATIONSHIP_TYPES[0]}
+                    {...dignitaryForm.register('pocRelationshipType')}
+                  >
+                    {RELATIONSHIP_TYPES.map((type) => (
+                      <MenuItem key={type} value={type}>
+                        {type}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} sx={{ my: 2 }}>
+                <Divider sx={{ my: 1 }} />
+              </Grid>
 
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth>

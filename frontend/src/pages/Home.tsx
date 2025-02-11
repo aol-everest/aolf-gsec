@@ -5,22 +5,7 @@ import {
   Container,
   Typography,
   Paper,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  Drawer,
-  AppBar,
-  Toolbar,
-  IconButton,
-  Avatar,
 } from '@mui/material';
-import {
-  CalendarToday as CalendarIcon,
-  ListAlt as ListIcon,
-  Person as PersonIcon,
-  Add as AddIcon,
-} from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import Layout from '../components/Layout';
 const drawerWidth = 240;
@@ -29,10 +14,6 @@ const Home: React.FC = () => {
   const { userInfo } = useAuth();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = React.useState(false);
-
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
-  };
 
   return (
     <Layout>

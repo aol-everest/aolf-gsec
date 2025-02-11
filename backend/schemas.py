@@ -5,11 +5,6 @@ from datetime import datetime, date
 class GoogleToken(BaseModel):
     token: str
 
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-    user_id: int
-
 class UserBase(BaseModel):
     email: EmailStr
     first_name: Optional[str] = None
@@ -32,6 +27,12 @@ class UserUpdate(BaseModel):
     class Config:
         orm_mode = True
 
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+    user_id: int
+    user: User
+
 class DignitaryBase(BaseModel):
     honorific_title: str
     first_name: str
@@ -48,7 +49,7 @@ class DignitaryBase(BaseModel):
     city: str
 
 class DignitaryCreate(DignitaryBase):
-    pass
+    poc_relationship_type: str
 
 class DignitaryUpdate(DignitaryBase):
     honorific_title: Optional[str] = None
@@ -64,6 +65,7 @@ class DignitaryUpdate(DignitaryBase):
     country: Optional[str] = None
     state: Optional[str] = None
     city: Optional[str] = None
+    poc_relationship_type: Optional[str] = None
 
 class Dignitary(DignitaryBase):
     id: int

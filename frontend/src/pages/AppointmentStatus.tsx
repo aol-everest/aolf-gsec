@@ -68,6 +68,12 @@ const AppointmentStatus: React.FC = () => {
 
   const columns: GridColDef[] = [
     {
+      field: 'id',
+      headerName: 'Request ID',
+      width: 100,
+      renderCell: (params: GridRenderCellParams) => params.value,
+    },
+    {
       field: 'dignitary',
       headerName: 'Dignitary',
       width: 200,
