@@ -1,11 +1,12 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { ThemeProvider, createTheme } from '@mui/material';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 // Pages
 import Landing from './pages/Landing';
+import Home from './pages/Home';
 import AppointmentForm from './pages/AppointmentForm';
 import AppointmentStatus from './pages/AppointmentStatus';
 import DignitaryList from './pages/DignitaryList';
@@ -25,6 +26,12 @@ const theme = createTheme({
   },
 });
 
+// Wrapper component to handle auth redirect
+const AuthRedirect = () => {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? <Navigate to="/home" replace /> : <Landing />;
+};
+
 function App() {
   return (
     <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID || ''}>
@@ -32,7 +39,15 @@ function App() {
         <Router>
           <AuthProvider>
             <Routes>
-              <Route path="/" element={<Landing />} />
+              <Route path="/" element={<AuthRedirect />} />
+              <Route
+                path="/home"
+                element={
+                  <PrivateRoute>
+                    <Home />
+                  </PrivateRoute>
+                }
+              />
               <Route
                 path="/appointment-form"
                 element={

@@ -91,6 +91,7 @@ class Appointment(AppointmentBase):
     id: int
     requester_id: int
     dignitary_id: int
+    dignitary: Dignitary
     status: str
     created_at: datetime
     updated_at: datetime

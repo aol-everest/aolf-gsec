@@ -18,6 +18,10 @@ import {
   Radio,
   RadioGroup,
   FormControlLabel,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import LocationAutocomplete from './LocationAutocomplete';
@@ -29,6 +33,7 @@ import {
   RELATIONSHIP_TYPES,
   RelationshipType,
 } from '../constants/formConstants';
+import { useNavigate } from 'react-router-dom';
 
 // Step 1: POC Information
 interface PocFormData {
@@ -75,6 +80,10 @@ export const AppointmentRequestForm: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0);
   const [selectedCountryCode, setSelectedCountryCode] = useState<string>('');
   const [dignitaries, setDignitaries] = useState<any[]>([]);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [submittedAppointment, setSubmittedAppointment] = useState<any>(null);
+  const [selectedDignitary, setSelectedDignitary] = useState<any>(null);
+  const navigate = useNavigate();
   
   // Forms for each step
   const pocForm = useForm<PocFormData>({
@@ -245,7 +254,9 @@ export const AppointmentRequestForm: React.FC = () => {
             console.error('Failed to create appointment:', errorData);
             throw new Error('Failed to create appointment');
           }
-          // Navigate to appointment status page or show success message
+          const appointmentResponse = await response.json();
+          setSubmittedAppointment(appointmentResponse);
+          setShowConfirmation(true);
         } catch (error) {
           console.error('Error creating appointment:', error);
         }
@@ -697,6 +708,88 @@ export const AppointmentRequestForm: React.FC = () => {
     }
   };
 
+  // Add confirmation dialog
+  const renderConfirmationDialog = () => {
+    if (!submittedAppointment) return null;
+
+    const dignitary = dignitaries.find(d => d.id === submittedAppointment.dignitary_id);
+    const dignitaryName = dignitary ? 
+      `${dignitary.honorific_title} ${dignitary.first_name} ${dignitary.last_name}` : 
+      'Selected Dignitary';
+
+    return (
+      <Dialog open={showConfirmation} maxWidth="sm" fullWidth>
+        <DialogTitle>Appointment Request Submitted Successfully</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="subtitle1" color="primary" gutterBottom>
+              Request ID: {submittedAppointment.id}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              Please save this ID for future reference and communication with the secretariat.
+            </Typography>
+          </Box>
+
+          <Typography variant="h6" gutterBottom>Request Summary</Typography>
+          
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <Typography variant="body1">
+                <strong>Dignitary:</strong> {dignitaryName}
+              </Typography>
+            </Grid>
+            <Grid item xs={12}>
+              <Typography variant="body1">
+                <strong>Preferred Date:</strong> {submittedAppointment.preferred_date}
+              </Typography>
+            </Grid>
+            {submittedAppointment.preferred_time && (
+              <Grid item xs={12}>
+                <Typography variant="body1">
+                  <strong>Preferred Time:</strong> {submittedAppointment.preferred_time}
+                </Typography>
+              </Grid>
+            )}
+            {submittedAppointment.duration && (
+              <Grid item xs={12}>
+                <Typography variant="body1">
+                  <strong>Duration:</strong> {submittedAppointment.duration}
+                </Typography>
+              </Grid>
+            )}
+            {submittedAppointment.location && (
+              <Grid item xs={12}>
+                <Typography variant="body1">
+                  <strong>Location:</strong> {submittedAppointment.location}
+                </Typography>
+              </Grid>
+            )}
+            <Grid item xs={12}>
+              <Typography variant="body1">
+                <strong>Purpose:</strong> {submittedAppointment.purpose}
+              </Typography>
+            </Grid>
+            {submittedAppointment.pre_meeting_notes && (
+              <Grid item xs={12}>
+                <Typography variant="body1">
+                  <strong>Pre-meeting Notes:</strong> {submittedAppointment.pre_meeting_notes}
+                </Typography>
+              </Grid>
+            )}
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => navigate('/home')}>
+            Go to Home
+          </Button>
+          <Button onClick={() => setShowConfirmation(false)} color="primary">
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+    );
+  };
+
   return (
     <Box sx={{ width: '100%' }}>
       <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
@@ -725,6 +818,8 @@ export const AppointmentRequestForm: React.FC = () => {
           </Button>
         </Box>
       </Paper>
+
+      {renderConfirmationDialog()}
     </Box>
   );
 };

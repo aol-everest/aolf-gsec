@@ -5,6 +5,7 @@ interface UserInfo {
   name?: string;
   email?: string;
   picture?: string;
+  phone_number?: string;
 }
 
 interface AuthContextType {

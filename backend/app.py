@@ -242,4 +242,17 @@ async def update_user(
         setattr(current_user, key, value)
     db.commit()
     db.refresh(current_user)
-    return current_user 
+    return current_user
+
+@app.get("/appointments/my", response_model=List[schemas.Appointment])
+async def get_my_appointments(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all appointments requested by the current user"""
+    appointments = (
+        db.query(models.Appointment)
+        .filter(models.Appointment.requester_id == current_user.id)
+        .all()
+    )
+    return appointments 
