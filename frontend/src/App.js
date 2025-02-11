@@ -1,8 +1,10 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
-import { ThemeProvider, createTheme } from '@mui/material';
+import { ThemeProvider } from '@mui/material';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import theme from './styles/theme';
+import './styles/global.css';
 
 // Pages
 import Landing from './pages/Landing';
@@ -14,17 +16,6 @@ import Profile from './pages/Profile';
 
 // Components
 import PrivateRoute from './components/PrivateRoute';
-
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#1976d2',
-    },
-    secondary: {
-      main: '#dc004e',
-    },
-  },
-});
 
 // Wrapper component to handle auth redirect
 const AuthRedirect = () => {
