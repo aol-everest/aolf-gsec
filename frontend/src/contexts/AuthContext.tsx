@@ -14,6 +14,8 @@ interface AuthContextType {
   accessToken: string | null;
   login: (response: any) => Promise<void>;
   logout: () => void;
+  updateUserInfo: (updates: Partial<UserInfo>) => Promise<void>;
+  refreshUserInfo: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -32,6 +34,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const navigate = useNavigate();
 
+  const refreshUserInfo = async () => {
+    try {
+      const response = await fetch('http://localhost:8001/users/me', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const updatedUserInfo = {
+          ...userInfo,
+          ...data,
+        };
+        setUserInfo(updatedUserInfo);
+        localStorage.setItem('userInfo', JSON.stringify(updatedUserInfo));
+      }
+    } catch (error) {
+      console.error('Error refreshing user info:', error);
+    }
+  };
+
+  const updateUserInfo = async (updates: Partial<UserInfo>) => {
+    try {
+      const response = await fetch('http://localhost:8001/users/me/update', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+        body: JSON.stringify(updates),
+      });
+
+      if (response.ok) {
+        await refreshUserInfo();
+      } else {
+        throw new Error('Failed to update user info');
+      }
+    } catch (error) {
+      console.error('Error updating user info:', error);
+      throw error;
+    }
+  };
+
   useEffect(() => {
     // Check localStorage on mount
     const storedAuth = localStorage.getItem('isAuthenticated') === 'true';
@@ -41,6 +86,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsAuthenticated(storedAuth);
     setUserInfo(storedUserInfo ? JSON.parse(storedUserInfo) : null);
     setAccessToken(storedToken);
+
+    // If authenticated, refresh user info
+    if (storedAuth && storedToken) {
+      refreshUserInfo();
+    }
   }, []);
 
   const login = async (response: any) => {
@@ -135,6 +185,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         accessToken,
         login,
         logout,
+        updateUserInfo,
+        refreshUserInfo,
       }}
     >
       {children}

@@ -148,26 +148,15 @@ export const AppointmentRequestForm: React.FC = () => {
     fetchDignitaries();
   }, []);
 
-  // Fetch POC phone number
+  // Update form values when userInfo changes
   useEffect(() => {
-    const fetchUserDetails = async () => {
-      try {
-        const response = await fetch('http://localhost:8001/users/me', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-          },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          pocForm.setValue('pocPhone', data.phone_number || '');
-        }
-      } catch (error) {
-        console.error('Error fetching user details:', error);
-      }
-    };
-
-    fetchUserDetails();
-  }, [pocForm]);
+    if (userInfo) {
+      pocForm.setValue('pocFirstName', userInfo.name?.split(' ')[0] || '');
+      pocForm.setValue('pocLastName', userInfo.name?.split(' ').slice(1).join(' ') || '');
+      pocForm.setValue('pocEmail', userInfo.email || '');
+      pocForm.setValue('pocPhone', userInfo.phone_number || '');
+    }
+  }, [userInfo, pocForm]);
 
   const handleNext = async () => {
     if (activeStep === 0) {

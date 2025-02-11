@@ -4,55 +4,32 @@ import { useAuth } from '../contexts/AuthContext';
 import Layout from '../components/Layout';
 
 const Profile: React.FC = () => {
-  const { userInfo, logout } = useAuth();
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const { userInfo, logout, updateUserInfo } = useAuth();
+  const [phoneNumber, setPhoneNumber] = useState(userInfo?.phone_number || '');
   const [isEditing, setIsEditing] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
-  // Fetch user details including phone number
+  // Update phone number when userInfo changes
   useEffect(() => {
-    const fetchUserDetails = async () => {
-      try {
-        const response = await fetch('http://localhost:8001/users/me', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-          },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setPhoneNumber(data.phone_number || '');
-        }
-      } catch (error) {
-        console.error('Error fetching user details:', error);
-      }
-    };
-
-    fetchUserDetails();
-  }, []);
+    if (userInfo?.phone_number !== undefined) {
+      setPhoneNumber(userInfo.phone_number);
+    }
+  }, [userInfo?.phone_number]);
 
   const handleSave = async () => {
     try {
-      const response = await fetch('http://localhost:8001/users/me', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-        },
-        body: JSON.stringify({
-          phone_number: phoneNumber,
-        }),
-      });
-
-      if (response.ok) {
-        setMessage({ type: 'success', text: 'Profile updated successfully' });
-        setIsEditing(false);
-      } else {
-        setMessage({ type: 'error', text: 'Failed to update profile' });
-      }
+      await updateUserInfo({ phone_number: phoneNumber });
+      setMessage({ type: 'success', text: 'Profile updated successfully' });
+      setIsEditing(false);
     } catch (error) {
       console.error('Error updating profile:', error);
       setMessage({ type: 'error', text: 'Error updating profile' });
     }
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    setPhoneNumber(userInfo?.phone_number || '');
   };
 
   return (
@@ -113,10 +90,7 @@ const Profile: React.FC = () => {
                 </Button>
               ) : (
                 <>
-                  <Button variant="outlined" onClick={() => {
-                    setIsEditing(false);
-                    setPhoneNumber(userInfo?.phone_number || '');
-                  }}>
+                  <Button variant="outlined" onClick={handleCancel}>
                     Cancel
                   </Button>
                   <Button variant="contained" onClick={handleSave}>
