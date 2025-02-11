@@ -735,7 +735,15 @@ export const AppointmentRequestForm: React.FC = () => {
       'Selected Dignitary';
 
     return (
-      <Dialog open={showConfirmation} maxWidth="sm" fullWidth>
+      <Dialog 
+        open={showConfirmation} 
+        maxWidth="sm" 
+        fullWidth
+        onClose={() => {
+          setShowConfirmation(false);
+          navigate('/home');
+        }}
+      >
         <DialogTitle>Appointment Request Submitted Successfully</DialogTitle>
         <DialogContent>
           <Box sx={{ mb: 3 }}>
@@ -796,10 +804,13 @@ export const AppointmentRequestForm: React.FC = () => {
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => navigate('/home')}>
-            Go to Home
-          </Button>
-          <Button onClick={() => setShowConfirmation(false)} color="primary">
+          <Button 
+            onClick={() => {
+              setShowConfirmation(false);
+              navigate('/home');
+            }} 
+            color="primary"
+          >
             Close
           </Button>
         </DialogActions>
