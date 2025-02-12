@@ -14,9 +14,10 @@ import { useAuth } from '../contexts/AuthContext';
 interface CustomAppBarProps {
   handleDrawerToggle: () => void;
   drawerWidth: number;
+  isDrawerOpen: boolean;
 }
 
-export default function CustomAppBar({ handleDrawerToggle, drawerWidth }: CustomAppBarProps) {
+export default function CustomAppBar({ handleDrawerToggle, drawerWidth, isDrawerOpen }: CustomAppBarProps) {
   const { userInfo, logout } = useAuth();
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
@@ -40,23 +41,41 @@ export default function CustomAppBar({ handleDrawerToggle, drawerWidth }: Custom
   };
 
   return (
-    <AppBar
-      position="fixed"
+    <AppBar 
+      position="fixed" 
       sx={{
-        width: { sm: `calc(100% - ${drawerWidth}px)` },
-        ml: { sm: `${drawerWidth}px` },
+        width: isDrawerOpen ? { sm: `calc(100% - ${drawerWidth}px)` } : '100%',
+        ml: isDrawerOpen ? { sm: `${drawerWidth}px` } : 0,
+        zIndex: (theme) => theme.zIndex.drawer + 1,
       }}
     >
       <Toolbar>
         <IconButton
           color="inherit"
-          edge="start"
+          aria-label="toggle drawer"
           onClick={handleDrawerToggle}
-          sx={{ mr: 2, display: { sm: 'none' } }}
+          edge="start"
+          sx={{ mr: 2 }}
         >
           <MenuIcon />
         </IconButton>
-        <Box sx={{ flexGrow: 1 }}>
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            alignItems: 'center',
+            flexGrow: 1 
+          }}
+        >
+          <img
+            src="/aolf-logo.png"
+            alt="AOLF Logo"
+            style={{ 
+              width: 40, 
+              height: 'auto', 
+              marginRight: 16,
+              display: 'block'
+            }}
+          />
           <Typography variant="h6" noWrap component="div">
             AOLF GSEC
           </Typography>

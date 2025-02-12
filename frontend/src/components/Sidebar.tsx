@@ -15,11 +15,11 @@ import PersonIcon from '@mui/icons-material/Person';
 
 interface SidebarProps {
   drawerWidth: number;
-  mobileOpen: boolean;
+  isOpen: boolean;
   handleDrawerToggle: () => void;
 }
 
-export default function Sidebar({ drawerWidth, mobileOpen, handleDrawerToggle }: SidebarProps) {
+export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: SidebarProps) {
   const navigate = useNavigate();
 
   const menuItems = [
@@ -67,29 +67,36 @@ export default function Sidebar({ drawerWidth, mobileOpen, handleDrawerToggle }:
   return (
     <Box
       component="nav"
-      sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
+      sx={{
+        width: isOpen ? drawerWidth : 0,
+        flexShrink: 0,
+        transition: (theme) =>
+          theme.transitions.create('width', {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.enteringScreen,
+          }),
+      }}
     >
-      <Drawer
-        variant="temporary"
-        open={mobileOpen}
-        onClose={handleDrawerToggle}
-        ModalProps={{
-          keepMounted: true,
-        }}
-        sx={{
-          display: { xs: 'block', sm: 'none' },
-          '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
-        }}
-      >
-        {drawer}
-      </Drawer>
       <Drawer
         variant="permanent"
         sx={{
-          display: { xs: 'none', sm: 'block' },
-          '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+          width: drawerWidth,
+          flexShrink: 0,
+          '& .MuiDrawer-paper': {
+            width: drawerWidth,
+            boxSizing: 'border-box',
+            transition: (theme) =>
+              theme.transitions.create('width', {
+                easing: theme.transitions.easing.sharp,
+                duration: theme.transitions.duration.enteringScreen,
+              }),
+            ...(!isOpen && {
+              width: 0,
+              overflowX: 'hidden',
+            }),
+          },
         }}
-        open
+        open={isOpen}
       >
         {drawer}
       </Drawer>

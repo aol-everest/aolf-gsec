@@ -1,7 +1,6 @@
 import React from 'react';
 import Box from '@mui/material/Box';
 import CssBaseline from '@mui/material/CssBaseline';
-import Toolbar from '@mui/material/Toolbar';
 import CustomAppBar from './AppBar';
 import Sidebar from './Sidebar';
 
@@ -12,19 +11,23 @@ interface LayoutProps {
 }
 
 export default function Layout({ children }: LayoutProps) {
-  const [mobileOpen, setMobileOpen] = React.useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = React.useState(true);
 
   const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
+    setIsDrawerOpen(!isDrawerOpen);
   };
 
   return (
     <Box sx={{ display: 'flex' }}>
       <CssBaseline />
-      <CustomAppBar handleDrawerToggle={handleDrawerToggle} drawerWidth={drawerWidth} />
+      <CustomAppBar 
+        handleDrawerToggle={handleDrawerToggle} 
+        drawerWidth={drawerWidth} 
+        isDrawerOpen={isDrawerOpen}
+      />
       <Sidebar
         drawerWidth={drawerWidth}
-        mobileOpen={mobileOpen}
+        isOpen={isDrawerOpen}
         handleDrawerToggle={handleDrawerToggle}
       />
       <Box
@@ -32,8 +35,15 @@ export default function Layout({ children }: LayoutProps) {
         sx={{
           flexGrow: 1,
           p: 3,
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
+          width: isDrawerOpen ? 
+            { sm: `calc(100% - ${drawerWidth}px)` } : 
+            '100%',
           mt: '64px', // Height of AppBar
+          transition: (theme) =>
+            theme.transitions.create(['width', 'margin'], {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.leavingScreen,
+            }),
         }}
       >
         {children}
