@@ -30,6 +30,7 @@ const Profile: React.FC = () => {
   const handleCancel = () => {
     setIsEditing(false);
     setPhoneNumber(userInfo?.phone_number || '');
+    console.log(userInfo);
   };
 
   return (
@@ -55,7 +56,7 @@ const Profile: React.FC = () => {
               )}
               <Box>
                 <Typography variant="h5" gutterBottom>
-                  {userInfo?.name || 'User Name'}
+                  {(userInfo?.first_name || 'User Name') + " " + (userInfo?.last_name || 'User Name')}
                 </Typography>
                 <Typography color="textSecondary">
                   {userInfo?.email || 'email@example.com'}

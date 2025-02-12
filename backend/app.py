@@ -115,9 +115,18 @@ async def verify_google_token(
                 google_id=idinfo['sub'],
                 email=idinfo['email'],
                 first_name=idinfo.get('given_name', ''),
-                last_name=idinfo.get('family_name', '')
+                last_name=idinfo.get('family_name', ''),
+                picture=idinfo.get('picture', '')
             )
             db.add(user)
+            db.commit()
+            db.refresh(user)
+        else:
+            print(f"User already exists: {user.email}") # Debug log
+            # Update user first name, last name, and picture if they exist
+            user.first_name = idinfo.get('given_name', user.first_name)
+            user.last_name = idinfo.get('family_name', user.last_name)
+            user.picture = idinfo.get('picture', user.picture)
             db.commit()
             db.refresh(user)
         
@@ -249,6 +258,7 @@ async def update_user(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    print(f"Received user update: {user_update.dict()}")
     """Update current user's information"""
     for key, value in user_update.dict(exclude_unset=True).items():
         setattr(current_user, key, value)

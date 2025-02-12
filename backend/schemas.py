@@ -10,6 +10,7 @@ class UserBase(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     phone_number: Optional[str] = None
+    picture: Optional[str] = None
 
 class UserCreate(UserBase):
     google_id: str
@@ -23,7 +24,7 @@ class User(UserBase):
 
 class UserUpdate(BaseModel):
     phone_number: Optional[str] = None
-
+    picture: Optional[str] = None
     class Config:
         orm_mode = True
 

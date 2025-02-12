@@ -6,6 +6,8 @@ interface UserInfo {
   email?: string;
   picture?: string;
   phone_number?: string;
+  first_name?: string;
+  last_name?: string;
 }
 
 interface AuthContextType {
@@ -145,15 +147,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const base64Url = tokens.id_token.split('.')[1];
       const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
       const userInfo = JSON.parse(window.atob(base64));
+      console.log('User info (extracted from ID token):', userInfo); // Debug log
+      console.log('User info (from backend):', tokenData.user); // Debug log
+      // Merge tokenData.user into userInfo
+      const mergedUserInfo = { ...userInfo, ...tokenData.user };
       
       // Update state
       setIsAuthenticated(true);
-      setUserInfo(userInfo);
+      setUserInfo(mergedUserInfo);
       setAccessToken(tokenData.access_token);
       
       // Update localStorage
       localStorage.setItem('isAuthenticated', 'true');
-      localStorage.setItem('userInfo', JSON.stringify(userInfo));
+      localStorage.setItem('userInfo', JSON.stringify(mergedUserInfo));
       localStorage.setItem('accessToken', tokenData.access_token);
       
       navigate('/appointment-form');

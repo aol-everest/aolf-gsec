@@ -12,6 +12,7 @@ class User(Base):
     first_name = Column(String)
     last_name = Column(String)
     phone_number = Column(String)
+    picture = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships
@@ -20,4 +21,4 @@ class User(Base):
         "DignitaryPointOfContact",
         back_populates="poc",
         foreign_keys="DignitaryPointOfContact.poc_id"
-    ) 
+    )
