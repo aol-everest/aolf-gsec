@@ -42,11 +42,10 @@ const colors = {
 // Define typography settings
 const typography = {
   fontFamily: [
-    'Inter',
+    'Roboto',
     '-apple-system',
     'BlinkMacSystemFont',
     '"Segoe UI"',
-    'Roboto',
     '"Helvetica Neue"',
     'Arial',
     'sans-serif',
@@ -82,9 +81,10 @@ const typography = {
     letterSpacing: '0em',
   },
   h6: {
-    fontWeight: 600,
-    fontSize: '1rem',
-    lineHeight: 1.2,
+    fontFamily: 'Lato',
+    fontWeight: 400,
+    fontSize: '1.6rem',
+    lineHeight: 1.4,
     letterSpacing: '0.0075em',
   },
   subtitle1: {
@@ -98,7 +98,7 @@ const typography = {
     letterSpacing: '0.00714em',
   },
   body1: {
-    fontSize: '1rem',
+    fontSize: '0.91rem',
     lineHeight: 1.5,
     letterSpacing: '0.00938em',
   },
@@ -118,6 +118,44 @@ const typography = {
 
 // Define component overrides
 const components = {
+  MuiMenuItem: {
+    styleOverrides: {
+      root: {
+        fontSize: '0.9rem',
+        fontFamily: 'Roboto',
+        fontColor: '#999',
+        fontWeight: 400,
+      },
+    },
+  },
+  MuiDrawer: {
+    styleOverrides: {
+      root: {
+        fontSize: '0.9rem',
+        fontFamily: 'Roboto',
+        fontColor: '#999',
+        fontWeight: 400,
+      },
+    },
+  },
+  MuiListItemIcon: {
+    styleOverrides: {
+      root: {
+        minWidth: '40px',
+        color: '#444',
+      },
+    },
+  },
+  MuiListItemText: {
+    styleOverrides: {
+      root: {
+        fontSize: '0.9rem',
+        fontFamily: 'Roboto',
+        fontWeight: 400,
+        color: '#666',
+      },
+    },
+  },
   MuiButton: {
     styleOverrides: {
       root: {
@@ -140,6 +178,7 @@ const components = {
       root: {
         borderRadius: '3px',
         boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+        color: '#333',
       },
     },
   },

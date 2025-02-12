@@ -29,7 +29,7 @@ const Home: React.FC = () => {
         <Container maxWidth="lg">
           <Paper sx={{ p: 4, mb: 4 }}>
             <Typography variant="h4" gutterBottom>
-              Welcome, {userInfo?.name?.split(' ')[0]}!
+              Welcome, {userInfo?.first_name}!
             </Typography>
             <Typography variant="body1" color="text.secondary" paragraph>
               You can manage appointment requests with Gurudev Sri Sri Ravi Shankar.

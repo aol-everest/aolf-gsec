@@ -29,22 +29,22 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
       onClick: () => navigate('/home'),
     },
     {
-      text: 'Create New Appointment',
+      text: 'Request Appointment',
       icon: <AddIcon />,
       onClick: () => navigate('/appointment-form'),
     },
     {
-      text: 'View Appointment Status',
+      text: 'Appointment Status',
       icon: <CalendarIcon />,
       onClick: () => navigate('/appointment-status'),
     },
     {
-      text: 'View List of Dignitaries',
+      text: 'Dignitaries',
       icon: <ListIcon />,
       onClick: () => navigate('/dignitary-list'),
     },
     {
-      text: 'View Profile',
+      text: 'My Profile',
       icon: <PersonIcon />,
       onClick: () => navigate('/profile'),
     },

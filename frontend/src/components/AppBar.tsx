@@ -70,14 +70,14 @@ export default function CustomAppBar({ handleDrawerToggle, drawerWidth, isDrawer
             src="/aolf-logo.png"
             alt="AOLF Logo"
             style={{ 
-              width: 40, 
-              height: 'auto', 
-              marginRight: 16,
+              height: 35, 
+              width: 'auto', 
+              marginRight: 23,
               display: 'block'
             }}
           />
           <Typography variant="h6" noWrap component="div">
-            AOLF GSEC
+            Art of Living GSEC
           </Typography>
         </Box>
         <div>
