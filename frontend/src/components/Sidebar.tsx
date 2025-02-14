@@ -12,7 +12,9 @@ import AddIcon from '@mui/icons-material/Add';
 import CalendarIcon from '@mui/icons-material/CalendarToday';
 import ListIcon from '@mui/icons-material/ListAlt';
 import PersonIcon from '@mui/icons-material/Person';
-
+import Typography from '@mui/material/Typography';
+import Divider from '@mui/material/Divider';
+import AdminIcon from '@mui/icons-material/AdminPanelSettings';
 interface SidebarProps {
   drawerWidth: number;
   isOpen: boolean;
@@ -50,11 +52,61 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
     },
   ];
 
+  const adminMenuItems = [
+    {
+      text: 'Users',
+      icon: <PersonIcon />,
+      onClick: () => navigate('/users-all'),
+    },
+    {
+      text: 'Dignitaries',
+      icon: <ListIcon />,
+      onClick: () => navigate('/dignitary-list-all'),
+    },
+    {
+      text: 'Appointments',
+      icon: <CalendarIcon />,
+      onClick: () => navigate('/appointment-status-all'),
+    },    
+  ];
+
   const drawer = (
     <Box>
-      <Toolbar />
+      <Toolbar>
+        <Typography variant="h6" align="center" style={{ margin: 'auto' }}>
+          <Box display="flex" justifyContent="center" alignItems="center">
+            <img
+              src="/aolf-logo.png"
+              alt="AOLF Logo"
+              style={{ 
+                height: 40, 
+                width: 'auto', 
+                display: 'inline-block'
+              }}
+            />
+          </Box>
+        </Typography>
+      </Toolbar>
       <List>
         {menuItems.map((item) => (
+          <ListItem button key={item.text} onClick={item.onClick}>
+            <ListItemIcon>{item.icon}</ListItemIcon>
+            <ListItemText primary={item.text} />
+          </ListItem>
+        ))}
+      </List>
+      <Divider />
+      <Typography variant="subtitle2" gutterBottom style={{ marginTop: '3px', marginBottom: '3px' }}>
+        <ListItem>
+          <ListItemIcon>
+            <AdminIcon />
+          </ListItemIcon>
+          <ListItemText primary="ADMIN" />
+        </ListItem>
+      </Typography>
+      <Divider />
+      <List>
+        {adminMenuItems.map((item) => (
           <ListItem button key={item.text} onClick={item.onClick}>
             <ListItemIcon>{item.icon}</ListItemIcon>
             <ListItemText primary={item.text} />

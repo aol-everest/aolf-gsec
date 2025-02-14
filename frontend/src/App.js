@@ -13,6 +13,9 @@ import AppointmentForm from './pages/AppointmentForm';
 import AppointmentStatus from './pages/AppointmentStatus';
 import DignitaryList from './pages/DignitaryList';
 import Profile from './pages/Profile';
+import UsersAll from './pages/UsersAll';
+import DignitaryListAll from './pages/DignitaryListAll';
+import AppointmentStatusAll from './pages/AppointmentStatusAll';
 
 // Components
 import PrivateRoute from './components/PrivateRoute';
@@ -68,6 +71,30 @@ function App() {
                 element={
                   <PrivateRoute>
                     <Profile />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/users-all"
+                element={
+                  <PrivateRoute>
+                    <UsersAll />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/dignitary-list-all"
+                element={
+                  <PrivateRoute>
+                    <DignitaryListAll />  
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/appointment-status-all"
+                element={ 
+                  <PrivateRoute>
+                    <AppointmentStatusAll />
                   </PrivateRoute>
                 }
               />

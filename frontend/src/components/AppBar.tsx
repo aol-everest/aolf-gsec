@@ -66,7 +66,7 @@ export default function CustomAppBar({ handleDrawerToggle, drawerWidth, isDrawer
             flexGrow: 1 
           }}
         >
-          <img
+          {/* <img
             src="/aolf-logo.png"
             alt="AOLF Logo"
             style={{ 
@@ -75,7 +75,7 @@ export default function CustomAppBar({ handleDrawerToggle, drawerWidth, isDrawer
               marginRight: 23,
               display: 'block'
             }}
-          />
+          /> */}
           <Typography variant="h6" noWrap component="div">
             Art of Living GSEC
           </Typography>

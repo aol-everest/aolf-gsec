@@ -96,6 +96,8 @@ const typography = {
     fontSize: '0.875rem',
     lineHeight: 1.5,
     letterSpacing: '0.00714em',
+    fontWeight: 600,
+    textTransform: 'uppercase' as const,
   },
   body1: {
     fontSize: '0.91rem',

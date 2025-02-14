@@ -1,14 +1,17 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Security
+from fastapi import FastAPI, Depends, HTTPException, status, Security, Request
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from typing import Optional, List
+from typing import Optional, List, Callable
 from datetime import datetime, timedelta
 import jwt
 from google.oauth2 import id_token
 from google.auth.transport import requests
 import os
 from dotenv import load_dotenv
+from jwt.exceptions import InvalidTokenError
+from functools import wraps
 
 from database import SessionLocal, engine
 import models
@@ -40,7 +43,6 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-
 # Dependency to get database session
 def get_db():
     db = SessionLocal()
@@ -57,14 +59,67 @@ def create_access_token(data: dict) -> str:
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+# Role checking middleware
+@app.middleware("http")
+async def role_checking_middleware(request: Request, call_next):
+    if request.url.path.endswith("/all"):
+        try:
+            # Get the token from the Authorization header
+            auth_header = request.headers.get("Authorization")
+            if not auth_header or not auth_header.startswith("Bearer "):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Not authenticated",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+            
+            token = auth_header.split(" ")[1]
+            
+            # Decode the token
+            try:
+                payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+                email = payload.get("sub")
+                if not email:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Invalid token",
+                    )
+                
+                # Get the user from the database
+                db = next(get_db())
+                user = db.query(models.User).filter(models.User.email == email).first()
+                if not user or user.role != models.UserRole.SECRETARIAT:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Not enough privileges",
+                    )
+                
+            except jwt.ExpiredSignatureError:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Token has expired",
+                )
+            except jwt.JWTError:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Could not validate credentials",
+                )
+            
+        except HTTPException as e:
+            return JSONResponse(
+                status_code=e.status_code,
+                content={"detail": e.detail},
+                headers=e.headers,
+            )
+    
+    response = await call_next(request)
+    return response
+
 # Dependency to get current user from token
 async def get_current_user(
     db: Session = Depends(get_db),
     token: str = Security(oauth2_scheme),
-    required_role: Optional[models.UserRole] = None
 ) -> models.User:
-    print(f"Received token: {token[:10]}...")  # Print first 10 chars of token for debugging
-    
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -76,39 +131,44 @@ async def get_current_user(
         detail="Token has expired",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
+
     try:
-        print(f"Attempting to decode token with SECRET_KEY: {SECRET_KEY[:5]}...")
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        print(f"Decoded payload: {payload}")
-        
         email: str = payload.get("sub")
         if email is None:
-            print("No email found in token payload")
             raise credentials_exception
             
-        print(f"Looking up user with email: {email}")
         user = db.query(models.User).filter(models.User.email == email).first()
         if user is None:
-            print("No user found with this email")
             raise credentials_exception
             
-        print(f"Found user: {user.email}")
-        if required_role and user.role != required_role:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You do not have sufficient privileges"
-            )
         return user
     except jwt.ExpiredSignatureError:
-        print("Token has expired")
         raise token_expired_exception
-    except jwt.JWTError as e:
-        print(f"JWT Error: {str(e)}")
+    except InvalidTokenError:
         raise credentials_exception
-    except Exception as e:
-        print(f"Error decoding token: {str(e)}")
-        raise credentials_exception
+
+def requires_role(required_role: models.UserRole):
+    def decorator(func: Callable):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            # Get the current user from the kwargs
+            current_user = kwargs.get('current_user')
+            if not current_user:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Not authenticated"
+                )
+            
+            if current_user.role != required_role:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Not enough privileges"
+                )
+            
+            return await func(*args, **kwargs)
+        return wrapper
+    return decorator
 
 @app.post("/verify-google-token", response_model=schemas.Token)
 async def verify_google_token(
@@ -163,6 +223,7 @@ async def verify_google_token(
             "token_type": "bearer",
             "user_id": user.id,
             "user": user,
+            "role": user.role,
         }
         
     except Exception as e:
@@ -278,8 +339,9 @@ async def get_assigned_dignitaries(
 
 
 @app.get("/dignitaries/all", response_model=List[schemas.Dignitary])
+@requires_role(models.UserRole.SECRETARIAT)
 async def get_all_dignitaries(
-    current_user: models.User = Depends(lambda: get_current_user(required_role=models.UserRole.SECRETARIAT)),  # Pass the required role
+    current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get all dignitaries"""
@@ -318,6 +380,20 @@ async def get_my_appointments(
     appointments = (
         db.query(models.Appointment)
         .filter(models.Appointment.requester_id == current_user.id)
+        .all()
+    )
+    print(f"Appointments: {appointments}")
+    return appointments 
+
+@app.get("/appointments/all", response_model=List[schemas.Appointment])
+@requires_role(models.UserRole.SECRETARIAT)
+async def get_all_appointments(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all appointments"""
+    appointments = (
+        db.query(models.Appointment)
         .all()
     )
     print(f"Appointments: {appointments}")
