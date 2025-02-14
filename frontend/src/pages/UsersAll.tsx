@@ -6,61 +6,52 @@ import {
 } from '@mui/x-data-grid';
 import Layout from '../components/Layout';
 
-interface Dignitary {
+interface User {
   id: number;
-  honorific_title: string;
+  google_id: string;
+  email: string;
   first_name: string;
   last_name: string;
-  email: string;
-  phone: string;
-  primary_domain: string;
-  title_in_organization: string;
-  organization: string;
-  country: string;
-  state: string;
-  city: string;
+  phone_number: string;
+  role: string;
+  created_at: string;
 }
 
-const DignitaryList: React.FC = () => {
-  const [dignitaries, setDignitaries] = useState<Dignitary[]>([]);
+const UsersAll: React.FC = () => {
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchDignitaries = async () => {
+    const fetchUsers = async () => {
       try {
-        const response = await fetch('http://localhost:8001/dignitaries/all', {
+        const response = await fetch('http://localhost:8001/users/all', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
           },
         });
         if (response.ok) {
           const data = await response.json();
-          setDignitaries(data);
+          setUsers(data);
         } else {
-          console.error('Failed to fetch dignitaries');
+          console.error('Failed to fetch users');
         }
       } catch (error) {
-        console.error('Error fetching dignitaries:', error);
+        console.error('Error fetching users:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchDignitaries();
+    fetchUsers();
   }, []);
 
   const columns: GridColDef[] = [
-    { field: 'honorific_title', headerName: 'Title', width: 100 },
     { field: 'first_name', headerName: 'First Name', width: 130 },
     { field: 'last_name', headerName: 'Last Name', width: 130 },
     { field: 'email', headerName: 'Email', width: 200 },
-    { field: 'phone', headerName: 'Phone', width: 130 },
-    { field: 'primary_domain', headerName: 'Domain', width: 130 },
-    { field: 'title_in_organization', headerName: 'Position', width: 150 },
-    { field: 'organization', headerName: 'Organization', width: 200 },
-    { field: 'country', headerName: 'Country', width: 130 },
-    { field: 'state', headerName: 'State', width: 130 },
-    { field: 'city', headerName: 'City', width: 130 },
+    { field: 'phone_number', headerName: 'Phone Number', width: 130 },
+    { field: 'role', headerName: 'Role', width: 130 },
+    { field: 'created_at', headerName: 'Created At', width: 200 },
   ];
 
   return (
@@ -68,17 +59,17 @@ const DignitaryList: React.FC = () => {
       <Container maxWidth="xl">
         <Box sx={{ py: 4 }}>
           <Typography variant="h4" component="h1" gutterBottom>
-            All Dignitaries
+            All Users
           </Typography>
           <Typography variant="h6" component="h2" gutterBottom>
-            All Dignitaries
+            All Users
           </Typography>
           <Paper sx={{ width: '100%', overflow: 'hidden' }}>
             <Box sx={{ height: 600, width: '100%' }}>
               <DataGrid
-                rows={dignitaries}
+                rows={users}
                 columns={columns}
-                rowCount={dignitaries.length}
+                rowCount={users.length}
                 initialState={{
                   pagination: {
                     paginationModel: {
@@ -100,4 +91,4 @@ const DignitaryList: React.FC = () => {
   );
 };
 
-export default DignitaryList; 
+export default UsersAll; 

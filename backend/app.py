@@ -398,3 +398,13 @@ async def get_all_appointments(
     )
     print(f"Appointments: {appointments}")
     return appointments 
+
+@app.get("/users/all", response_model=List[schemas.User])
+@requires_role(models.UserRole.SECRETARIAT)
+async def get_all_users(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all users"""
+    users = db.query(models.User).all()
+    return users
