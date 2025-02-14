@@ -2,6 +2,13 @@ from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
+from sqlalchemy import Enum
+import enum
+
+class UserRole(enum.Enum):
+    SECRETARIAT = "secretariat"
+    GENERAL = "general"
+    USHER = "usher"
 
 class User(Base):
     __tablename__ = "users"
@@ -13,6 +20,7 @@ class User(Base):
     last_name = Column(String)
     phone_number = Column(String)
     picture = Column(String)
+    role = Column(Enum(UserRole), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships

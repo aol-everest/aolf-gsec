@@ -40,6 +40,7 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
+
 # Dependency to get database session
 def get_db():
     db = SessionLocal()
@@ -58,7 +59,8 @@ def create_access_token(data: dict) -> str:
 # Dependency to get current user from token
 async def get_current_user(
     db: Session = Depends(get_db),
-    token: str = Security(oauth2_scheme)
+    token: str = Security(oauth2_scheme),
+    required_role: Optional[models.UserRole] = None
 ) -> models.User:
     print(f"Received token: {token[:10]}...")  # Print first 10 chars of token for debugging
     
@@ -84,6 +86,11 @@ async def get_current_user(
             raise credentials_exception
             
         print(f"Found user: {user.email}")
+        if required_role and user.role != required_role:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have sufficient privileges"
+            )
         return user
     except Exception as e:
         print(f"Error decoding token: {str(e)}")
@@ -252,6 +259,17 @@ async def get_assigned_dignitaries(
     )
     return dignitaries
 
+
+@app.get("/dignitaries/all", response_model=List[schemas.Dignitary])
+async def get_all_dignitaries(
+    current_user: models.User = Depends(lambda: get_current_user(required_role=models.UserRole.SECRETARIAT)),  # Pass the required role
+    db: Session = Depends(get_db)
+):
+    """Get all dignitaries"""
+    dignitaries = db.query(models.Dignitary).all()
+    return dignitaries
+
+
 @app.patch("/users/me/update", response_model=schemas.User)
 async def update_user(
     user_update: schemas.UserUpdate,
@@ -285,4 +303,5 @@ async def get_my_appointments(
         .filter(models.Appointment.requester_id == current_user.id)
         .all()
     )
+    print(f"Appointments: {appointments}")
     return appointments 
