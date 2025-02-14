@@ -59,60 +59,6 @@ def create_access_token(data: dict) -> str:
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-# =================================================================
-# Remove the blanket role-checking middleware.
-# (If you no longer need it, simply delete or comment out the middleware block.)
-# =================================================================
-# @app.middleware("http")
-# async def role_checking_middleware(request: Request, call_next):
-#     if request.url.path.endswith("/all"):
-#         try:
-#             auth_header = request.headers.get("Authorization")
-#             if not auth_header or not auth_header.startswith("Bearer "):
-#                 raise HTTPException(
-#                     status_code=status.HTTP_401_UNAUTHORIZED,
-#                     detail="Not authenticated",
-#                     headers={"WWW-Authenticate": "Bearer"},
-#                 )
-#             token = auth_header.split(" ")[1]
-#             try:
-#                 payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-#                 email = payload.get("sub")
-#                 if not email:
-#                     raise HTTPException(
-#                         status_code=status.HTTP_401_UNAUTHORIZED,
-#                         detail="Invalid token",
-#                     )
-#                 db = next(get_db())
-#                 user = db.query(models.User).filter(models.User.email == email).first()
-#                 if not user or user.role != models.UserRole.SECRETARIAT:
-#                     raise HTTPException(
-#                         status_code=status.HTTP_403_FORBIDDEN,
-#                         detail="Not enough privileges",
-#                     )
-#             except jwt.ExpiredSignatureError:
-#                 raise HTTPException(
-#                     status_code=status.HTTP_401_UNAUTHORIZED,
-#                     detail="Token has expired",
-#                 )
-#             except jwt.JWTError:
-#                 raise HTTPException(
-#                     status_code=status.HTTP_401_UNAUTHORIZED,
-#                     detail="Could not validate credentials",
-#                 )
-#         except HTTPException as e:
-#             return JSONResponse(
-#                 status_code=e.status_code,
-#                 content={"detail": e.detail},
-#                 headers=e.headers,
-#             )
-#     response = await call_next(request)
-#     return response
-
-# =================================================================
-# Updated requires_role decorator that preserves the original signature.
-# This ensures FastAPI can still inject dependencies (like current_user).
-# =================================================================
 def requires_role(required_role: models.UserRole):
     def decorator(func: Callable):
         @wraps(func)
