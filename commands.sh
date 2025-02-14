@@ -72,6 +72,9 @@ alembic init alembic
 # Create initial migration after setting up models
 alembic revision --autogenerate -m "Initial migration"
 
+# Autogenerate migrations for syncing with models
+alembic revision --autogenerate -m "Syncing with models"
+
 # Apply all pending migrations
 alembic upgrade head
 
