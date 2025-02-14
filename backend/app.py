@@ -51,7 +51,8 @@ def get_db():
 
 def create_access_token(data: dict) -> str:
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(hours=24)
+    # Increase expiration to 7 days
+    expire = datetime.utcnow() + timedelta(days=7)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -69,8 +70,15 @@ async def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    
+    token_expired_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Token has expired",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
     try:
-        print(f"Attempting to decode token with SECRET_KEY: {SECRET_KEY[:5]}...")  # Print first 5 chars of secret key
+        print(f"Attempting to decode token with SECRET_KEY: {SECRET_KEY[:5]}...")
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         print(f"Decoded payload: {payload}")
         
@@ -92,6 +100,12 @@ async def get_current_user(
                 detail="You do not have sufficient privileges"
             )
         return user
+    except jwt.ExpiredSignatureError:
+        print("Token has expired")
+        raise token_expired_exception
+    except jwt.JWTError as e:
+        print(f"JWT Error: {str(e)}")
+        raise credentials_exception
     except Exception as e:
         print(f"Error decoding token: {str(e)}")
         raise credentials_exception

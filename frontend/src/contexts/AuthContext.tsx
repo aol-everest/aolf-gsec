@@ -36,6 +36,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const navigate = useNavigate();
 
+  const handleTokenExpiration = () => {
+    console.log('Token has expired, logging out...');
+    logout();
+    navigate('/', { replace: true });
+  };
+
   const refreshUserInfo = async () => {
     try {
       const response = await fetch('http://localhost:8001/users/me', {
@@ -51,6 +57,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         setUserInfo(updatedUserInfo);
         localStorage.setItem('userInfo', JSON.stringify(updatedUserInfo));
+      } else if (response.status === 401) {
+        const errorData = await response.json();
+        if (errorData.detail === 'Token has expired') {
+          handleTokenExpiration();
+        }
       }
     } catch (error) {
       console.error('Error refreshing user info:', error);
@@ -70,8 +81,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (response.ok) {
         await refreshUserInfo();
-      } else {
-        throw new Error('Failed to update user info');
+      } else if (response.status === 401) {
+        const errorData = await response.json();
+        if (errorData.detail === 'Token has expired') {
+          handleTokenExpiration();
+        } else {
+          throw new Error('Failed to update user info');
+        }
       }
     } catch (error) {
       console.error('Error updating user info:', error);
