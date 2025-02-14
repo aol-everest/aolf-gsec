@@ -1,4 +1,3 @@
-
 # Frontend --------------------------------------------------------------------------------------
 
 # Install npm
@@ -33,7 +32,7 @@ pip install --upgrade pip
 # pip install "fastapi" "uvicorn" "sqlalchemy" "pydantic" "pydantic[email]" "python-jose[cryptography]" "google-auth" "psycopg2-binary" "python-dotenv" "requests" "google-auth-oauthlib"
 # pip install PyJWT
 # python3 -m pip install --upgrade pip setuptools wheel && pip install "fastapi[all]" "uvicorn[standard]" sqlalchemy pydantic python-jose[cryptography] google-auth psycopg2-binary python-dotenv PyJWT requests google-auth-oauthlib
-source .venv/bin/activate && pip install --no-cache-dir "fastapi" "uvicorn" "sqlalchemy" "pydantic" "python-jose[cryptography]" "google-auth" "psycopg2-binary" "python-dotenv" "PyJWT" "requests" "google-auth-oauthlib"
+source .venv/bin/activate && pip install --no-cache-dir "fastapi" "uvicorn" "sqlalchemy" "pydantic" "python-jose[cryptography]" "google-auth" "psycopg2-binary" "python-dotenv" "PyJWT" "requests" "google-auth-oauthlib" "alembic"
 # pip install -r requirements.txt
 
 # Run the FastAPI application
@@ -63,4 +62,41 @@ psql postgres -c "SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat
 
 # Generate a JWT secret key
 python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+
+# Alembic Commands -------------------------------------------------------------------------------
+
+# Initialize Alembic (first time only)
+cd backend
+alembic init alembic
+
+# Create initial migration after setting up models
+alembic revision --autogenerate -m "Initial migration"
+
+# Apply all pending migrations
+alembic upgrade head
+
+# Rollback one migration
+alembic downgrade -1
+
+# Rollback all migrations
+alembic downgrade base
+
+# Create a new migration for model changes
+alembic revision --autogenerate -m "Description of model changes"
+
+# View current migration version
+alembic current
+
+# View migration history
+alembic history --verbose
+
+# Verify migrations without applying them
+alembic upgrade head --sql
+
+# Common Alembic Workflow:
+# 1. Make changes to your SQLAlchemy models
+# 2. Create a new migration: alembic revision --autogenerate -m "Description of changes"
+# 3. Review the generated migration in alembic/versions/
+# 4. Apply the migration: alembic upgrade head
+# 5. To rollback if needed: alembic downgrade -1
 
