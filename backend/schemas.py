@@ -18,6 +18,7 @@ class UserCreate(UserBase):
 class User(UserBase):
     id: int
     created_at: datetime
+    role: str
 
     class Config:
         orm_mode = True

@@ -48,10 +48,18 @@ const UsersAll: React.FC = () => {
   const columns: GridColDef[] = [
     { field: 'first_name', headerName: 'First Name', width: 130 },
     { field: 'last_name', headerName: 'Last Name', width: 130 },
-    { field: 'email', headerName: 'Email', width: 200 },
+    { field: 'email', headerName: 'Email', width: 250 },
     { field: 'phone_number', headerName: 'Phone Number', width: 130 },
     { field: 'role', headerName: 'Role', width: 130 },
-    { field: 'created_at', headerName: 'Created At', width: 200 },
+    { 
+        field: 'created_at', 
+        headerName: 'Created On', 
+        width: 130,
+        renderCell: (params) => {
+            const date = new Date(params.value);
+            return date.toLocaleDateString();
+        }
+    },
   ];
 
   return (
