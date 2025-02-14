@@ -59,61 +59,80 @@ def create_access_token(data: dict) -> str:
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-# Role checking middleware
-@app.middleware("http")
-async def role_checking_middleware(request: Request, call_next):
-    if request.url.path.endswith("/all"):
-        try:
-            # Get the token from the Authorization header
-            auth_header = request.headers.get("Authorization")
-            if not auth_header or not auth_header.startswith("Bearer "):
+# =================================================================
+# Remove the blanket role-checking middleware.
+# (If you no longer need it, simply delete or comment out the middleware block.)
+# =================================================================
+# @app.middleware("http")
+# async def role_checking_middleware(request: Request, call_next):
+#     if request.url.path.endswith("/all"):
+#         try:
+#             auth_header = request.headers.get("Authorization")
+#             if not auth_header or not auth_header.startswith("Bearer "):
+#                 raise HTTPException(
+#                     status_code=status.HTTP_401_UNAUTHORIZED,
+#                     detail="Not authenticated",
+#                     headers={"WWW-Authenticate": "Bearer"},
+#                 )
+#             token = auth_header.split(" ")[1]
+#             try:
+#                 payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+#                 email = payload.get("sub")
+#                 if not email:
+#                     raise HTTPException(
+#                         status_code=status.HTTP_401_UNAUTHORIZED,
+#                         detail="Invalid token",
+#                     )
+#                 db = next(get_db())
+#                 user = db.query(models.User).filter(models.User.email == email).first()
+#                 if not user or user.role != models.UserRole.SECRETARIAT:
+#                     raise HTTPException(
+#                         status_code=status.HTTP_403_FORBIDDEN,
+#                         detail="Not enough privileges",
+#                     )
+#             except jwt.ExpiredSignatureError:
+#                 raise HTTPException(
+#                     status_code=status.HTTP_401_UNAUTHORIZED,
+#                     detail="Token has expired",
+#                 )
+#             except jwt.JWTError:
+#                 raise HTTPException(
+#                     status_code=status.HTTP_401_UNAUTHORIZED,
+#                     detail="Could not validate credentials",
+#                 )
+#         except HTTPException as e:
+#             return JSONResponse(
+#                 status_code=e.status_code,
+#                 content={"detail": e.detail},
+#                 headers=e.headers,
+#             )
+#     response = await call_next(request)
+#     return response
+
+# =================================================================
+# Updated requires_role decorator that preserves the original signature.
+# This ensures FastAPI can still inject dependencies (like current_user).
+# =================================================================
+def requires_role(required_role: models.UserRole):
+    def decorator(func: Callable):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            current_user = kwargs.get("current_user")
+            if current_user is None:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Not authenticated",
-                    headers={"WWW-Authenticate": "Bearer"},
+                    detail="Not authenticated"
                 )
-            
-            token = auth_header.split(" ")[1]
-            
-            # Decode the token
-            try:
-                payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-                email = payload.get("sub")
-                if not email:
-                    raise HTTPException(
-                        status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="Invalid token",
-                    )
-                
-                # Get the user from the database
-                db = next(get_db())
-                user = db.query(models.User).filter(models.User.email == email).first()
-                if not user or user.role != models.UserRole.SECRETARIAT:
-                    raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        detail="Not enough privileges",
-                    )
-                
-            except jwt.ExpiredSignatureError:
+            if current_user.role != required_role:
                 raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Token has expired",
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Not enough privileges"
                 )
-            except jwt.JWTError:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Could not validate credentials",
-                )
-            
-        except HTTPException as e:
-            return JSONResponse(
-                status_code=e.status_code,
-                content={"detail": e.detail},
-                headers=e.headers,
-            )
-    
-    response = await call_next(request)
-    return response
+            return await func(*args, **kwargs)
+        # Preserve the original function signature for dependency injection
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+    return decorator
 
 # Dependency to get current user from token
 async def get_current_user(
@@ -125,23 +144,19 @@ async def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
     token_expired_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Token has expired",
         headers={"WWW-Authenticate": "Bearer"},
     )
-
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
             raise credentials_exception
-            
         user = db.query(models.User).filter(models.User.email == email).first()
         if user is None:
             raise credentials_exception
-            
         return user
     except jwt.ExpiredSignatureError:
         raise token_expired_exception
