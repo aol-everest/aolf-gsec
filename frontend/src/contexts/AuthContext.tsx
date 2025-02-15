@@ -177,7 +177,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('isAuthenticated', 'true');
       localStorage.setItem('userInfo', JSON.stringify(mergedUserInfo));
       localStorage.setItem('accessToken', tokenData.access_token);
-      
+      localStorage.setItem('role', mergedUserInfo.role);
       navigate('/appointment-form');
     } catch (error) {
       console.error('Error during login:', error);

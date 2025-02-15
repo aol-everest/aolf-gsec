@@ -6,9 +6,9 @@ from sqlalchemy import Enum
 import enum
 
 class UserRole(enum.Enum):
-    SECRETARIAT = "secretariat"
-    GENERAL = "general"
-    USHER = "usher"
+    SECRETARIAT = "SECRETARIAT"
+    GENERAL = "GENERAL"
+    USHER = "USHER"
 
 class User(Base):
     __tablename__ = "users"

@@ -95,24 +95,28 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
           </ListItem>
         ))}
       </List>
-      <Divider />
-      <Typography variant="subtitle2" gutterBottom style={{ marginTop: '3px', marginBottom: '3px' }}>
-        <ListItem>
-          <ListItemIcon>
-            <AdminIcon />
-          </ListItemIcon>
-          <ListItemText primary="ADMIN" />
-        </ListItem>
-      </Typography>
-      <Divider />
-      <List>
-        {adminMenuItems.map((item) => (
-          <ListItem button key={item.text} onClick={item.onClick}>
-            <ListItemIcon>{item.icon}</ListItemIcon>
-            <ListItemText primary={item.text} />
-          </ListItem>
-        ))}
-      </List>
+      {localStorage.getItem('role') === 'SECRETARIAT' && (
+        <>
+          <Divider />
+          <Typography variant="subtitle2" gutterBottom style={{ marginTop: '3px', marginBottom: '3px' }}>
+            <ListItem>
+              <ListItemIcon>
+                <AdminIcon />
+              </ListItemIcon>
+              <ListItemText primary="ADMIN" />
+            </ListItem>
+          </Typography>
+          <Divider />
+          <List>
+            {adminMenuItems.map((item) => (
+              <ListItem button key={item.text} onClick={item.onClick}>
+                <ListItemIcon>{item.icon}</ListItemIcon>
+                <ListItemText primary={item.text} />
+              </ListItem>
+            ))}
+          </List>
+        </>
+      )}
     </Box>
   );
 
