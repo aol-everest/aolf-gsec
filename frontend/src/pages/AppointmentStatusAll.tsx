@@ -39,6 +39,7 @@ export interface Dignitary {
 
 export interface Appointment {
   id: number;
+  dignitary_id: number;
   dignitary: Dignitary;
   purpose: string;
   preferred_date: string;
@@ -150,6 +151,7 @@ const AppointmentStatusAll: React.FC = () => {
 
   const processRowUpdate = async (newRow: Appointment, oldRow: Appointment) => {
     try {
+      // Convert the date to the format expected by the backend (YYYY-MM-DD)
       const response = await fetch(`http://localhost:8001/admin/appointments/update/${newRow.id}`, {
         method: 'PATCH',
         headers: {
@@ -157,18 +159,24 @@ const AppointmentStatusAll: React.FC = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          appointment_date: newRow.appointment_date,
-          appointment_time: newRow.appointment_time,
-          duration: newRow.duration,
-          location: newRow.location,
+          dignitary_id: newRow.dignitary_id,
+          purpose: newRow.purpose,
+          preferred_date: newRow.preferred_date,
+          // appointment_date: newRow.appointment_date,
+          // appointment_time: newRow.appointment_time,
+          // duration: newRow.duration,
+          // location: newRow.location,
           status: newRow.status,
+          // last_updated_by: null, // This will be set by the backend
         }),
       });
       if (response.ok) {
         await fetchAppointments();
         return newRow;
       } else {
-        throw new Error('Failed to update appointment');
+        const errorData = await response.json();
+        console.error('Failed to update appointment:', errorData);
+        throw new Error(errorData.detail || 'Failed to update appointment');
       }
     } catch (error) {
       console.error('Error updating appointment:', error);
@@ -262,7 +270,7 @@ const AppointmentStatusAll: React.FC = () => {
     },
     {
       field: 'preferred_date_and_time',
-      headerName: 'Preferred Date and Time',
+      headerName: 'Preferred Date & Time',
       width: 200,
       editable: false,
       valueGetter: (value, row, column, apiRef) => {
