@@ -88,13 +88,19 @@ const AppointmentStatus: React.FC = () => {
     },
     // { field: 'purpose', headerName: 'Purpose', width: 200 },
     {
-      field: 'preferred_date_and_time',
-      headerName: 'Preferred Date & Time',
+      field: 'appointment_date_and_time',
+      headerName: 'Appointment Date & Time',
       width: 180,
       editable: false,
-      valueGetter: (value, row, column, apiRef) => {
-        const date = new Date(row.preferred_date + 'T' + row.preferred_time);
-        return date.toLocaleString();
+      renderCell: (params: GridRenderCellParams) => {
+        let date = new Date(params.row.preferred_date + 'T' + params.row.preferred_time);
+        let dateDisplay = "";
+        if (params.row.appointment_date && params.row.appointment_time) {
+          date = new Date(params.row.appointment_date + 'T' + params.row.appointment_time);
+          dateDisplay = date.toLocaleString();
+        } else {
+          return <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.7' }}>{date.toLocaleString()}<br /><span className="small-font">(requested)</span></div>;
+        }
       },
     },
     { field: 'duration', headerName: 'Duration', width: 100 },
