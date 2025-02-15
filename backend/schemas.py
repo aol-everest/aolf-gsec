@@ -121,6 +121,8 @@ class AppointmentAdmin(AppointmentBase):
     dignitary_id: int
     dignitary: DignitaryAdmin
     status: str
+    appointment_date: Optional[date] = None
+    appointment_time: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     meeting_notes: Optional[str] = None

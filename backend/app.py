@@ -301,17 +301,6 @@ async def get_assigned_dignitaries(
     return dignitaries
 
 
-@app.get("/admin/dignitaries/all", response_model=List[schemas.DignitaryAdmin])
-@requires_role(models.UserRole.SECRETARIAT)
-async def get_all_dignitaries(
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Get all dignitaries"""
-    dignitaries = db.query(models.Dignitary).all()
-    return dignitaries
-
-
 @app.patch("/users/me/update", response_model=schemas.User)
 async def update_user(
     user_update: schemas.UserUpdate,
@@ -347,6 +336,17 @@ async def get_my_appointments(
     )
     print(f"Appointments: {appointments}")
     return appointments 
+
+@app.get("/admin/dignitaries/all", response_model=List[schemas.DignitaryAdmin])
+@requires_role(models.UserRole.SECRETARIAT)
+async def get_all_dignitaries(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all dignitaries"""
+    dignitaries = db.query(models.Dignitary).all()
+    return dignitaries
+
 
 @app.get("/admin/appointments/all", response_model=List[schemas.AppointmentAdmin])
 @requires_role(models.UserRole.SECRETARIAT)

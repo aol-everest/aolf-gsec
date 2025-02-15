@@ -87,8 +87,16 @@ const AppointmentStatus: React.FC = () => {
       },
     },
     // { field: 'purpose', headerName: 'Purpose', width: 200 },
-    { field: 'preferred_date', headerName: 'Date', width: 130 },
-    { field: 'preferred_time', headerName: 'Time', width: 100 },
+    {
+      field: 'preferred_date_and_time',
+      headerName: 'Preferred Date & Time',
+      width: 180,
+      editable: false,
+      valueGetter: (value, row, column, apiRef) => {
+        const date = new Date(row.preferred_date + 'T' + row.preferred_time);
+        return date.toLocaleString();
+      },
+    },
     { field: 'duration', headerName: 'Duration', width: 100 },
     { field: 'location', headerName: 'Location', width: 150 },
     // { field: 'pre_meeting_notes', headerName: 'Notes', width: 200 },

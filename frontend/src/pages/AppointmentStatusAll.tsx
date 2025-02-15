@@ -124,23 +124,23 @@ const AppointmentStatusAll: React.FC = () => {
     setRowModesModel({ ...rowModesModel, [id]: { mode: GridRowModes.View } });
   };
 
-  const handleDeleteClick = (id: GridRowId) => async () => {
-    try {
-      const response = await fetch(`http://localhost:8001/admin/appointments/${id}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
-      });
-      if (response.ok) {
-        setAppointments((prev) => prev.filter((appointment) => appointment.id !== id));
-      } else {
-        console.error('Failed to delete appointment');
-      }
-    } catch (error) {
-      console.error('Error deleting appointment:', error);
-    }
-  };
+  // const handleDeleteClick = (id: GridRowId) => async () => {
+  //   try {
+  //     const response = await fetch(`http://localhost:8001/admin/appointments/${id}`, {
+  //       method: 'DELETE',
+  //       headers: {
+  //         Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+  //       },
+  //     });
+  //     if (response.ok) {
+  //       setAppointments((prev) => prev.filter((appointment) => appointment.id !== id));
+  //     } else {
+  //       console.error('Failed to delete appointment');
+  //     }
+  //   } catch (error) {
+  //     console.error('Error deleting appointment:', error);
+  //   }
+  // };
 
   const handleCancelClick = (id: GridRowId) => () => {
     setRowModesModel({
@@ -162,10 +162,10 @@ const AppointmentStatusAll: React.FC = () => {
           dignitary_id: newRow.dignitary_id,
           purpose: newRow.purpose,
           preferred_date: newRow.preferred_date,
-          // appointment_date: newRow.appointment_date,
-          // appointment_time: newRow.appointment_time,
-          // duration: newRow.duration,
-          // location: newRow.location,
+          appointment_date: newRow.appointment_date ? new Date(newRow.appointment_date).toISOString().split('T')[0] : null,
+          appointment_time: newRow.appointment_time,
+          duration: newRow.duration,
+          location: newRow.location,
           status: newRow.status,
           // last_updated_by: null, // This will be set by the backend
         }),
@@ -205,8 +205,8 @@ const AppointmentStatusAll: React.FC = () => {
     {
       field: 'actions',
       type: 'actions',
-      headerName: 'Actions',
-      width: 100,
+      headerName: '',
+      width: 56,
       cellClassName: 'actions',
       getActions: ({ id }) => {
         const isInEditMode = rowModesModel[id]?.mode === GridRowModes.Edit;
@@ -238,13 +238,13 @@ const AppointmentStatusAll: React.FC = () => {
             onClick={handleEditClick(id)}
             color="inherit"
           />,
-          <GridActionsCellItem
-            key="delete"
-            icon={<DeleteIcon />}
-            label="Delete"
-            onClick={handleDeleteClick(id)}
-            color="inherit"
-          />,
+          // <GridActionsCellItem
+          //   key="delete"
+          //   icon={<DeleteIcon />}
+          //   label="Delete"
+          //   onClick={handleDeleteClick(id)}
+          //   color="inherit"
+          // />,
         ];
       },
     },
@@ -271,7 +271,7 @@ const AppointmentStatusAll: React.FC = () => {
     {
       field: 'preferred_date_and_time',
       headerName: 'Preferred Date & Time',
-      width: 200,
+      width: 180,
       editable: false,
       valueGetter: (value, row, column, apiRef) => {
         const date = new Date(row.preferred_date + 'T' + row.preferred_time);
