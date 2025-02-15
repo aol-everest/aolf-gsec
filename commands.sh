@@ -57,6 +57,7 @@ psql postgres -c "ALTER USER postgres PASSWORD 'postgres';"
 # Drop and create the database
 psql postgres -c "SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pg_stat_activity.datname = 'aolf_gsec' AND pid <> pg_backend_pid();" && psql postgres -c "DROP DATABASE aolf_gsec;" && psql postgres -c "CREATE DATABASE aolf_gsec;"
 
+psql postgres
 
 # Miscellaneous ---------------------------------------------------------------------------------
 

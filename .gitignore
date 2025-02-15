@@ -88,3 +88,82 @@ backend/__pycache__/
 
 backend/.env
 
+
+# Frontend v2 -----------------------------------------------------------------------------------
+
+# Node.js dependencies
+frontendv2/node_modules/
+frontendv2/npm-debug.log*
+frontendv2/yarn-debug.log*
+frontendv2/yarn-error.log*
+
+# Environment variables
+frontendv2/.env
+frontendv2/.env.local
+frontendv2/.env.development
+frontendv2/.env.test
+frontendv2/.env.production
+
+# Logs
+frontendv2/logs
+frontendv2/*.log
+frontendv2/npm-debug.log*
+frontendv2/yarn-debug.log*
+frontendv2/yarn-error.log*
+
+# Build output
+frontendv2/build
+frontendv2/dist
+frontendv2/.DS_Store
+frontendv2/.vscode/
+frontendv2/.idea/
+frontendv2/*.swp
+
+# Editor & OS-specific files
+frontendv2/Thumbs.db
+frontendv2/*.bak
+frontendv2/*.swo
+frontendv2/*.swp
+frontendv2/*.swn
+frontendv2/*.swd
+frontendv2/*.sublime-*
+
+# AWS Elastic Beanstalk
+frontendv2/.elasticbeanstalk/*
+frontendv2/.elasticbeanstalk/*.cfg.yml
+frontendv2/.elasticbeanstalk/*.global.yml
+
+# Python Virtual Environment
+frontendv2/.venv/
+frontendv2/__pycache__/
+frontendv2/*.py[cod]
+
+# Flask Cache & Compiled files
+frontendv2/instance/
+
+# Google App Engine
+# Ignore GCP service account credentials (if stored locally)
+frontendv2/.gcloudignore
+
+# Snowflake
+frontendv2/*.sql-journal
+frontendv2/.DS_Store
+
+# Database files
+frontendv2/*.sqlite3
+frontendv2/db.sqlite3
+
+# Ignore static files that are auto-generated
+frontendv2/staticfiles/
+frontendv2/media/
+
+# Ignore AWS credential files (if stored locally)
+frontendv2/.aws/
+
+# Ignore Google OAuth credentials
+frontendv2/.google/
+frontendv2/.google/credentials.json
+frontendv2/.google/token.json
+frontendv2/.google/refresh_token.json
+frontendv2/.google/credentials.json
+frontendv2/.google/token.json
