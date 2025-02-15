@@ -306,7 +306,7 @@ async def get_all_dignitaries(
     db: Session = Depends(get_db)
 ):
     """Get all dignitaries"""
-    dignitaries = db.query(models.DignitaryAdmin).all()
+    dignitaries = db.query(models.Dignitary).all()
     return dignitaries
 
 
@@ -354,7 +354,7 @@ async def get_all_appointments(
 ):
     """Get all appointments"""
     appointments = (
-        db.query(models.AppointmentAdmin)
+        db.query(models.Appointment)
         .all()
     )
     print(f"Appointments: {appointments}")

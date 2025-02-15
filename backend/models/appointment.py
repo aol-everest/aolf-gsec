@@ -36,5 +36,9 @@ class Appointment(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    requester = relationship("User", back_populates="appointments")
+    requester = relationship(
+        "User",
+        back_populates="appointments",
+        foreign_keys=[requester_id]
+    )
     dignitary = relationship("Dignitary", back_populates="appointments") 

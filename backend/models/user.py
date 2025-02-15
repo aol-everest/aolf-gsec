@@ -23,10 +23,24 @@ class User(Base):
     role = Column(Enum(UserRole), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    # Relationships
-    appointments = relationship("Appointment", back_populates="requester")
+    # Relationships with explicit foreign keys
+    appointments = relationship(
+        "Appointment",
+        back_populates="requester",
+        foreign_keys="[Appointment.requester_id]"
+    )
+    approved_appointments = relationship(
+        "Appointment",
+        foreign_keys="[Appointment.approved_by]",
+        backref="approver"
+    )
+    updated_appointments = relationship(
+        "Appointment",
+        foreign_keys="[Appointment.last_updated_by]",
+        backref="last_updater"
+    )
     point_of_contacts = relationship(
         "DignitaryPointOfContact",
         back_populates="poc",
-        foreign_keys="DignitaryPointOfContact.poc_id"
+        foreign_keys="[DignitaryPointOfContact.poc_id]"
     )
