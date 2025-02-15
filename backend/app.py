@@ -299,14 +299,14 @@ async def get_assigned_dignitaries(
     return dignitaries
 
 
-@app.get("/dignitaries/all", response_model=List[schemas.Dignitary])
+@app.get("/dignitaries/all", response_model=List[schemas.DignitaryAdmin])
 @requires_role(models.UserRole.SECRETARIAT)
 async def get_all_dignitaries(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get all dignitaries"""
-    dignitaries = db.query(models.Dignitary).all()
+    dignitaries = db.query(models.DignitaryAdmin).all()
     return dignitaries
 
 
@@ -346,7 +346,7 @@ async def get_my_appointments(
     print(f"Appointments: {appointments}")
     return appointments 
 
-@app.get("/appointments/all", response_model=List[schemas.Appointment])
+@app.get("/appointments/all", response_model=List[schemas.AppointmentAdmin])
 @requires_role(models.UserRole.SECRETARIAT)
 async def get_all_appointments(
     current_user: models.User = Depends(get_current_user),
@@ -354,7 +354,7 @@ async def get_all_appointments(
 ):
     """Get all appointments"""
     appointments = (
-        db.query(models.Appointment)
+        db.query(models.AppointmentAdmin)
         .all()
     )
     print(f"Appointments: {appointments}")

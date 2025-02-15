@@ -77,6 +77,14 @@ class Dignitary(DignitaryBase):
     class Config:
         orm_mode = True
 
+class DignitaryAdmin(DignitaryBase):
+    id: int
+    created_by: int
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
+
 class AppointmentBase(BaseModel):
     dignitary_id: int
     purpose: str
@@ -86,7 +94,7 @@ class AppointmentBase(BaseModel):
     location: Optional[str] = None
     pre_meeting_notes: Optional[str] = None
     status: Optional[str] = None
-
+    approved_datetime: Optional[datetime] = None
 
 class AppointmentCreate(AppointmentBase):
     pass
@@ -106,6 +114,36 @@ class Appointment(AppointmentBase):
             datetime: lambda v: v.isoformat(),
             date: lambda v: v.strftime("%Y-%m-%d")
         }
+
+class AppointmentAdmin(AppointmentBase):
+    id: int
+    requester_id: int
+    dignitary_id: int
+    dignitary: DignitaryAdmin
+    status: str
+    created_at: datetime
+    updated_at: datetime
+    meeting_notes: Optional[str] = None
+    follow_up_actions: Optional[str] = None
+    secretariat_comments: Optional[str] = None
+    approved_datetime: Optional[datetime] = None
+    approved_by: Optional[int] = None
+    last_updated_by: Optional[int] = None
+
+    class Config:
+        orm_mode = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat(),
+            date: lambda v: v.strftime("%Y-%m-%d")
+        }
+
+class AppointmentAdminUpdate(AppointmentBase):
+    meeting_notes: Optional[str] = None
+    follow_up_actions: Optional[str] = None
+    secretariat_comments: Optional[str] = None
+    approved_datetime: Optional[datetime] = None
+    approved_by: Optional[int] = None
+    last_updated_by: Optional[int] = None
 
 class DignitaryPointOfContactBase(BaseModel):
     dignitary_id: int
