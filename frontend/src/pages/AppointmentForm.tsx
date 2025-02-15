@@ -1,6 +1,6 @@
 import React from 'react';
 import { Container, Typography, Paper, Box } from '@mui/material';
-import AppointmentRequestForm from '../components/AppointmentRequestForm';
+import { AppointmentRequestForm } from '../components/AppointmentRequestForm';
 import Layout from '../components/Layout';
 
 const AppointmentForm: React.FC = () => {
