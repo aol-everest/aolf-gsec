@@ -89,8 +89,8 @@ export const AppointmentRequestForm: React.FC = () => {
   // Forms for each step
   const pocForm = useForm<PocFormData>({
     defaultValues: {
-      pocFirstName: userInfo?.name?.split(' ')[0] || '',
-      pocLastName: userInfo?.name?.split(' ').slice(1).join(' ') || '',
+      pocFirstName: userInfo?.first_name || '',
+      pocLastName: userInfo?.last_name || '',
       pocEmail: userInfo?.email || '',
       pocPhone: userInfo?.phone_number || '',
     }
@@ -151,8 +151,8 @@ export const AppointmentRequestForm: React.FC = () => {
   // Update form values when userInfo changes
   useEffect(() => {
     if (userInfo) {
-      pocForm.setValue('pocFirstName', userInfo.name?.split(' ')[0] || '');
-      pocForm.setValue('pocLastName', userInfo.name?.split(' ').slice(1).join(' ') || '');
+      pocForm.setValue('pocFirstName', userInfo.first_name || '');
+      pocForm.setValue('pocLastName', userInfo.last_name || '');
       pocForm.setValue('pocEmail', userInfo.email || '');
       pocForm.setValue('pocPhone', userInfo.phone_number || '');
     }
@@ -820,7 +820,7 @@ export const AppointmentRequestForm: React.FC = () => {
 
   return (
     <Box sx={{ width: '100%' }}>
-      <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
+      <Stepper activeStep={activeStep} sx={{ mb: 4 }} alternativeLabel>
         {steps.map((label) => (
           <Step key={label}>
             <StepLabel>{label}</StepLabel>
