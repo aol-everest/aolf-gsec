@@ -301,7 +301,7 @@ async def get_assigned_dignitaries(
     return dignitaries
 
 
-@app.get("/dignitaries/all", response_model=List[schemas.DignitaryAdmin])
+@app.get("/admin/dignitaries/all", response_model=List[schemas.DignitaryAdmin])
 @requires_role(models.UserRole.SECRETARIAT)
 async def get_all_dignitaries(
     current_user: models.User = Depends(get_current_user),
@@ -348,7 +348,7 @@ async def get_my_appointments(
     print(f"Appointments: {appointments}")
     return appointments 
 
-@app.get("/appointments/all", response_model=List[schemas.AppointmentAdmin])
+@app.get("/admin/appointments/all", response_model=List[schemas.AppointmentAdmin])
 @requires_role(models.UserRole.SECRETARIAT)
 async def get_all_appointments(
     current_user: models.User = Depends(get_current_user),
@@ -362,7 +362,31 @@ async def get_all_appointments(
     print(f"Appointments: {appointments}")
     return appointments 
 
-@app.get("/users/all", response_model=List[schemas.User])
+
+@app.patch("/admin/appointments/update/{appointment_id}", response_model=schemas.AppointmentAdmin)
+@requires_role(models.UserRole.SECRETARIAT)
+async def update_appointment(
+    appointment_id: int,
+    appointment: schemas.AppointmentAdminUpdate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update an appointment"""
+    appointment = (
+        db.query(models.Appointment)
+        .filter(models.Appointment.id == appointment_id)
+        .first()
+    )
+    for key, value in appointment.dict(exclude_unset=True).items():
+        setattr(appointment, key, value)
+    appointment.last_updated_by = current_user.id
+    db.commit()
+    db.refresh(appointment)
+    print(f"Appointment updated: {appointment}")
+    return appointment 
+
+
+@app.get("/admin/users/all", response_model=List[schemas.User])
 @requires_role(models.UserRole.SECRETARIAT)
 async def get_all_users(
     current_user: models.User = Depends(get_current_user),

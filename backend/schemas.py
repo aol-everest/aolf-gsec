@@ -138,6 +138,11 @@ class AppointmentAdmin(AppointmentBase):
         }
 
 class AppointmentAdminUpdate(AppointmentBase):
+    appointment_date: Optional[date] = None
+    appointment_time: Optional[str] = None
+    duration: Optional[str] = None
+    location: Optional[str] = None
+    status: Optional[str] = None
     meeting_notes: Optional[str] = None
     follow_up_actions: Optional[str] = None
     secretariat_comments: Optional[str] = None

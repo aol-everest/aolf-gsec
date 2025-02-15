@@ -24,7 +24,7 @@ const UsersAll: React.FC = () => {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await fetch('http://localhost:8001/users/all', {
+        const response = await fetch('http://localhost:8001/admin/users/all', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
           },

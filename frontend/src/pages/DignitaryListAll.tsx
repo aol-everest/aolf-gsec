@@ -28,7 +28,7 @@ const DignitaryList: React.FC = () => {
   useEffect(() => {
     const fetchDignitaries = async () => {
       try {
-        const response = await fetch('http://localhost:8001/dignitaries/all', {
+        const response = await fetch('http://localhost:8001/admin/dignitaries/all', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
           },

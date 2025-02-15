@@ -20,6 +20,8 @@ class Appointment(Base):
     purpose = Column(Text, nullable=False)
     preferred_date = Column(Date, nullable=False)
     preferred_time = Column(String)
+    appointment_date = Column(Date)
+    appointment_time = Column(String)
     duration = Column(String)
     location = Column(String)
     pre_meeting_notes = Column(Text)
