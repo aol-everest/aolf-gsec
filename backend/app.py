@@ -367,7 +367,7 @@ async def get_all_appointments(
 @requires_role(models.UserRole.SECRETARIAT)
 async def update_appointment(
     appointment_id: int,
-    appointment: schemas.AppointmentAdminUpdate,
+    appointment_update: schemas.AppointmentAdminUpdate,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -377,13 +377,16 @@ async def update_appointment(
         .filter(models.Appointment.id == appointment_id)
         .first()
     )
-    for key, value in appointment.dict(exclude_unset=True).items():
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+        
+    for key, value in appointment_update.dict(exclude_unset=True).items():
         setattr(appointment, key, value)
     appointment.last_updated_by = current_user.id
     db.commit()
     db.refresh(appointment)
     print(f"Appointment updated: {appointment}")
-    return appointment 
+    return appointment
 
 
 @app.get("/admin/users/all", response_model=List[schemas.User])
