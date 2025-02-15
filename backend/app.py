@@ -158,7 +158,8 @@ async def verify_google_token(
                 email=idinfo['email'],
                 first_name=idinfo.get('given_name', ''),
                 last_name=idinfo.get('family_name', ''),
-                picture=idinfo.get('picture', '')
+                picture=idinfo.get('picture', ''),
+                last_login_at=datetime.utcnow(),
             )
             db.add(user)
             db.commit()
@@ -169,6 +170,7 @@ async def verify_google_token(
             user.first_name = idinfo.get('given_name', user.first_name)
             user.last_name = idinfo.get('family_name', user.last_name)
             user.picture = idinfo.get('picture', user.picture)
+            user.last_login_at = datetime.utcnow()
             # Update google_id if it's not set (for pre-defined users)
             if not user.google_id:
                 user.google_id = idinfo.get('sub')

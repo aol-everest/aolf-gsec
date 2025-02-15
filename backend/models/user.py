@@ -22,7 +22,9 @@ class User(Base):
     picture = Column(String)
     role = Column(Enum(UserRole), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_login_at = Column(DateTime)
+
     # Relationships with explicit foreign keys
     appointments = relationship(
         "Appointment",
