@@ -270,7 +270,7 @@ const AppointmentStatusAll: React.FC = () => {
     },
     {
       field: 'preferred_date_and_time',
-      headerName: 'Preferred Date & Time',
+      headerName: 'Requested Date & Time',
       width: 180,
       editable: false,
       valueGetter: (value, row, column, apiRef) => {
@@ -325,12 +325,12 @@ const AppointmentStatusAll: React.FC = () => {
     },
     {
       field: 'created_at',
-      headerName: 'Created',
+      headerName: 'Requested',
       width: 180,
       editable: false,
-      valueGetter: (params: GridRenderCellParams<Appointment>) => {
-        if (!params.row?.created_at) return '';
-        return new Date(params.row.created_at).toLocaleString();
+      valueGetter: (value, row, column, apiRef) => {
+        const date = new Date(row.created_at);
+        return date.toLocaleString();
       },
     },
     {
@@ -338,9 +338,9 @@ const AppointmentStatusAll: React.FC = () => {
       headerName: 'Last Updated',
       width: 180,
       editable: false,
-      valueGetter: (params: GridRenderCellParams<Appointment>) => {
-        if (!params.row?.updated_at) return '';
-        return new Date(params.row.updated_at).toLocaleString();
+      valueGetter: (value, row, column, apiRef) => {
+        const date = new Date(row.updated_at);
+        return date.toLocaleString();
       },
     },
   ];
