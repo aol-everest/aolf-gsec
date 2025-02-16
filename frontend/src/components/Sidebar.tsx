@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Drawer from '@mui/material/Drawer';
 import Toolbar from '@mui/material/Toolbar';
@@ -15,6 +15,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import Typography from '@mui/material/Typography';
 import Divider from '@mui/material/Divider';
 import AdminIcon from '@mui/icons-material/AdminPanelSettings';
+import { useTheme, useMediaQuery } from '@mui/material';
 import { addIcon, editCalendar, editIcon, homeIcon, calendarViewDayIcon, calendarAddIcon, listIcon, personListIcon, personIcon } from '../components/icons';
 
 interface SidebarProps {
@@ -25,32 +26,42 @@ interface SidebarProps {
 
 export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: SidebarProps) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  const handleNavigation = (path: string) => {
+    navigate(path);
+    if (isMobile) {
+      handleDrawerToggle();
+    }
+  };
 
   const menuItems = [
     {
       text: 'Home',
       icon: homeIcon,
-      onClick: () => navigate('/home'),
+      path: '/home',
     },
     {
       text: 'Request Appointment',
       icon: calendarAddIcon,
-      onClick: () => navigate('/appointment-form'),
+      path: '/appointment-form',
     },
     {
       text: 'Appointment Status',
       icon: listIcon,
-      onClick: () => navigate('/appointment-status'),
+      path: '/appointment-status',
     },
     {
       text: 'Dignitaries',
       icon: personListIcon,
-      onClick: () => navigate('/dignitary-list'),
+      path: '/dignitary-list',
     },
     {
       text: 'My Profile',
       icon: personIcon,
-      onClick: () => navigate('/profile'),
+      path: '/profile',
     },
   ];
 
@@ -58,17 +69,17 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
     {
       text: 'Users',
       icon: personListIcon,
-      onClick: () => navigate('/users-all'),
+      path: '/users-all',
     },
     {
       text: 'Dignitaries',
       icon: personListIcon,
-      onClick: () => navigate('/dignitary-list-all'),
+      path: '/dignitary-list-all',
     },
     {
       text: 'Appointments',
       icon: calendarViewDayIcon,
-      onClick: () => navigate('/appointment-status-all'),
+      path: '/appointment-status-all',
     },    
   ];
 
@@ -91,9 +102,35 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
       </Toolbar>
       <List>
         {menuItems.map((item) => (
-          <ListItem button key={item.text} onClick={item.onClick}>
-            <ListItemIcon>{item.icon}</ListItemIcon>
-            <ListItemText primary={item.text} />
+          <ListItem 
+            button 
+            key={item.text} 
+            onClick={() => handleNavigation(item.path)}
+            sx={{
+              backgroundColor: location.pathname === item.path ? 'rgba(0, 0, 0, 0.04)' : 'transparent',
+              '&:hover': {
+                backgroundColor: location.pathname === item.path ? 'rgba(0, 0, 0, 0.08)' : 'rgba(0, 0, 0, 0.04)',
+              },
+              borderLeft: location.pathname === item.path ? '4px solid' : '4px solid transparent',
+              borderLeftColor: theme.palette.primary.main,
+            }}
+          >
+            <ListItemIcon 
+              sx={{ 
+                color: location.pathname === item.path ? theme.palette.primary.main : 'inherit'
+              }}
+            >
+              {item.icon}
+            </ListItemIcon>
+            <ListItemText 
+              primary={item.text}
+              sx={{
+                '& .MuiTypography-root': {
+                  color: location.pathname === item.path ? theme.palette.primary.main : 'inherit',
+                  fontWeight: location.pathname === item.path ? 600 : 400,
+                },
+              }}
+            />
           </ListItem>
         ))}
       </List>
@@ -111,9 +148,35 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
           <Divider />
           <List>
             {adminMenuItems.map((item) => (
-              <ListItem button key={item.text} onClick={item.onClick}>
-                <ListItemIcon>{item.icon}</ListItemIcon>
-                <ListItemText primary={item.text} />
+              <ListItem 
+                button 
+                key={item.text} 
+                onClick={() => handleNavigation(item.path)}
+                sx={{
+                  backgroundColor: location.pathname === item.path ? 'rgba(0, 0, 0, 0.04)' : 'transparent',
+                  '&:hover': {
+                    backgroundColor: location.pathname === item.path ? 'rgba(0, 0, 0, 0.08)' : 'rgba(0, 0, 0, 0.04)',
+                  },
+                  borderLeft: location.pathname === item.path ? '4px solid' : '4px solid transparent',
+                  borderLeftColor: theme.palette.primary.main,
+                }}
+              >
+                <ListItemIcon 
+                  sx={{ 
+                    color: location.pathname === item.path ? theme.palette.primary.main : 'inherit'
+                  }}
+                >
+                  {item.icon}
+                </ListItemIcon>
+                <ListItemText 
+                  primary={item.text}
+                  sx={{
+                    '& .MuiTypography-root': {
+                      color: location.pathname === item.path ? theme.palette.primary.main : 'inherit',
+                      fontWeight: location.pathname === item.path ? 600 : 400,
+                    },
+                  }}
+                />
               </ListItem>
             ))}
           </List>
@@ -126,7 +189,7 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
     <Box
       component="nav"
       sx={{
-        width: isOpen ? drawerWidth : 0,
+        width: { sm: isOpen ? drawerWidth : 0 },
         flexShrink: 0,
         transition: (theme) =>
           theme.transitions.create('width', {
@@ -136,10 +199,13 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
       }}
     >
       <Drawer
-        variant="permanent"
+        variant={isMobile ? 'temporary' : 'permanent'}
+        open={isOpen}
+        onClose={handleDrawerToggle}
+        ModalProps={{
+          keepMounted: true, // Better open performance on mobile.
+        }}
         sx={{
-          width: drawerWidth,
-          flexShrink: 0,
           '& .MuiDrawer-paper': {
             width: drawerWidth,
             boxSizing: 'border-box',
@@ -154,7 +220,6 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
             }),
           },
         }}
-        open={isOpen}
       >
         {drawer}
       </Drawer>
