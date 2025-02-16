@@ -4,7 +4,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import CustomAppBar from './AppBar';
 import Sidebar from './Sidebar';
 
-const drawerWidth = 240;
+const drawerWidth = 260;
 
 interface LayoutProps {
   children: React.ReactNode;

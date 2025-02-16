@@ -107,18 +107,20 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
             key={item.text} 
             onClick={() => handleNavigation(item.path)}
             sx={{
-              backgroundColor: location.pathname === item.path ? 'rgba(0, 0, 0, 0.04)' : 'transparent',
+              // backgroundColor: location.pathname === item.path ? 'rgba(0, 0, 0, 0.04)' : 'transparent',
+              // backgroundColor: location.pathname === item.path ? theme.palette.primary.light : 'transparent',
+              backgroundColor: location.pathname === item.path ? theme.palette.secondary.main : 'transparent',
               '&:hover': {
-                backgroundColor: location.pathname === item.path ? 'rgba(0, 0, 0, 0.08)' : 'rgba(0, 0, 0, 0.04)',
+                backgroundColor: location.pathname === item.path ? theme.palette.secondary.light : theme.palette.secondary.light,
               },
               borderLeft: location.pathname === item.path ? '4px solid' : '4px solid transparent',
               borderLeftColor: theme.palette.primary.main,
             }}
           >
             <ListItemIcon 
-              sx={{ 
-                color: location.pathname === item.path ? theme.palette.primary.main : 'inherit'
-              }}
+              // sx={{ 
+              //   color: location.pathname === item.path ? theme.palette.primary.main : 'inherit'
+              // }}
             >
               {item.icon}
             </ListItemIcon>

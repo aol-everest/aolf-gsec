@@ -76,7 +76,7 @@ export default function CustomAppBar({ handleDrawerToggle, drawerWidth, isDrawer
               display: 'block'
             }}
           /> */}
-          <Typography variant="h6" noWrap component="div">
+          <Typography variant="h1" noWrap component="div">
             Art of Living GSEC
           </Typography>
         </Box>

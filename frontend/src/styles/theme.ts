@@ -3,14 +3,17 @@ import { createTheme, responsiveFontSizes } from '@mui/material/styles';
 // Define custom colors
 const colors = {
   primary: {
-    main: '#1976d2',
-    light: '#42a5f5',
+    // main: '#1976d2',
+    main: '#F9B818',
+    // light: '#42a5f5',
+    light: '#E0C685',
     dark: '#1565c0',
     contrastText: '#fff',
   },
   secondary: {
-    main: '#9c27b0',
-    light: '#ba68c8',
+    main: 'rgba(249, 184, 24, 0.4)',
+    light: 'rgba(249, 184, 24, 0.2)',
+    // light: '#ba68c8',
     dark: '#7b1fa2',
     contrastText: '#fff',
   },
@@ -37,6 +40,12 @@ const colors = {
     light: '#EC7063',
     dark: '#c0392b',
   },
+  // menu: {
+  //   main: 'rgba(249, 184, 24, 0.2)',
+  //   light: 'rgba(249, 184, 24, 0.4)',
+  //   dark: 'rgba(249, 184, 24, 0.2)',
+  //   contrastText: 'rgba(249, 184, 24, 0.4)',
+  // },
 };
 
 // Define typography settings
@@ -51,10 +60,11 @@ const typography = {
     'sans-serif',
   ].join(','),
   h1: {
-    fontWeight: 700,
-    fontSize: '2.5rem',
+    fontWeight: 400,
+    fontSize: '1.7rem',
     lineHeight: 1.2,
     letterSpacing: '-0.01562em',
+    fontFamily: 'Roboto Slab',
   },
   h2: {
     fontWeight: 700,
@@ -69,11 +79,13 @@ const typography = {
     letterSpacing: '0em',
   },
   h4: {
-    fontWeight: 600,
-    fontSize: '1.5rem',
-    lineHeight: 1.9,
-    letterSpacing: '0.00735em',
+    fontWeight: 400,
+    fontSize: '1.7rem',
+    lineHeight: 2,
+    letterSpacing: '0.009em',
     marginBottom: '16px',
+    fontFamily: 'Roboto Slab',
+    color: colors.primary.main,
   },
   h5: {
     fontWeight: 600,
@@ -138,6 +150,15 @@ const components = {
         fontFamily: 'Roboto',
         fontColor: '#999',
         fontWeight: 400,
+        // padding: '14px 23px 14px 23px',
+        width: '300px',
+      },
+    },
+  },
+  MuiListItem: {
+    styleOverrides: {
+      root: {
+        padding: '13px 23px 13px 23px',
       },
     },
   },
@@ -179,7 +200,7 @@ const components = {
   MuiPaper: {
     styleOverrides: {
       root: {
-        borderRadius: '3px',
+        // borderRadius: '3px',
         boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
         color: '#333',
       },

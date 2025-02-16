@@ -17,17 +17,17 @@ const AppointmentForm: React.FC = () => {
           <Typography variant="h4" component="h1" gutterBottom>
             Request an Appointment
           </Typography>
-          <Paper 
-            elevation={0}
-            sx={{ 
-              p: 4,
-              borderRadius: 2,
-              backgroundColor: 'rgba(255, 255, 255, 0.9)',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-            }}
-          >
-            <AppointmentRequestForm />
-          </Paper>
+            <Paper 
+              elevation={0}
+              sx={{ 
+                p: 4,
+                borderRadius: 2,
+                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+              }}
+            >
+              <AppointmentRequestForm />
+            </Paper>
         </Box>
       </Container>
     </Layout>
