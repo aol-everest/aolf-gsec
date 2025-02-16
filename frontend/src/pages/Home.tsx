@@ -17,16 +17,17 @@ const Home: React.FC = () => {
 
   return (
     <Layout>
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          p: 3,
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-          mt: 8,
-        }}
-      >
-        <Container maxWidth="lg">
+      <Container maxWidth="xl">
+        <Box
+          component="main"
+          sx={{
+            // flexGrow: 1,
+            // p: 3,
+            width: { sm: `calc(100% - ${drawerWidth}px)` },
+            // mt: 8,
+            py: 4,
+          }}
+        >
           <Paper sx={{ p: 4, mb: 4 }}>
             <Typography variant="h4" gutterBottom>
               Welcome, {userInfo?.first_name}!
@@ -36,8 +37,8 @@ const Home: React.FC = () => {
               Use the navigation menu to create new appointments, view existing requests, or manage your profile.
             </Typography>
           </Paper>
-        </Container>
-      </Box>
+        </Box>
+      </Container>
     </Layout>
   );
 };

@@ -71,8 +71,9 @@ const typography = {
   h4: {
     fontWeight: 600,
     fontSize: '1.5rem',
-    lineHeight: 1.2,
+    lineHeight: 1.9,
     letterSpacing: '0.00735em',
+    marginBottom: '16px',
   },
   h5: {
     fontWeight: 600,
@@ -81,11 +82,11 @@ const typography = {
     letterSpacing: '0em',
   },
   h6: {
-    fontFamily: 'Lato',
     fontWeight: 400,
-    fontSize: '1.6rem',
-    lineHeight: 1.4,
+    fontSize: '1.1rem',
+    lineHeight: 1.7,
     letterSpacing: '0.0075em',
+    // marginBottom: '16px',
   },
   subtitle1: {
     fontSize: '1rem',
@@ -198,6 +199,22 @@ const components = {
       root: {
         borderRadius: '12px',
         boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+      },
+    },
+  },
+  MuiBox: {
+    styleOverrides: {
+      root: {
+        padding: '0 0px',
+        margin: '0 0px 0 0px',
+      },
+    },
+  },
+  MuiContainer: {
+    styleOverrides: {
+      root: {
+        padding: '0 0px',
+        margin: '0 0px 0 0px',
       },
     },
   },

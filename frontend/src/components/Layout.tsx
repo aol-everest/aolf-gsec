@@ -38,12 +38,13 @@ export default function Layout({ children }: LayoutProps) {
           width: isDrawerOpen ? 
             { sm: `calc(100% - ${drawerWidth}px)` } : 
             '100%',
-          mt: '64px', // Height of AppBar
+          mt: '40px', // Height of AppBar
           transition: (theme) =>
             theme.transitions.create(['width', 'margin'], {
               easing: theme.transitions.easing.sharp,
               duration: theme.transitions.duration.leavingScreen,
             }),
+          // textAlign: 'left', // Added to align items to the left
         }}
       >
         {children}
