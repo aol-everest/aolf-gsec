@@ -92,6 +92,88 @@ backend/.env
 # Frontend v2 -----------------------------------------------------------------------------------
 
 # Node.js dependencies
+frontend-theme-demo/node_modules/
+frontend-theme-demo/npm-debug.log*
+frontend-theme-demo/yarn-debug.log*
+frontend-theme-demo/yarn-error.log*
+
+# Environment variables
+frontend-theme-demo/.env
+frontend-theme-demo/.env.local
+frontend-theme-demo/.env.development
+frontend-theme-demo/.env.test
+frontend-theme-demo/.env.production
+
+# Logs
+frontend-theme-demo/logs
+frontend-theme-demo/*.log
+frontend-theme-demo/npm-debug.log*
+frontend-theme-demo/yarn-debug.log*
+frontend-theme-demo/yarn-error.log*
+
+# Build output
+frontend-theme-demo/build
+frontend-theme-demo/dist
+frontend-theme-demo/.DS_Store
+frontend-theme-demo/.vscode/
+frontend-theme-demo/.idea/
+frontend-theme-demo/*.swp
+
+# Editor & OS-specific files
+frontend-theme-demo/Thumbs.db
+frontend-theme-demo/*.bak
+frontend-theme-demo/*.swo
+frontend-theme-demo/*.swp
+frontend-theme-demo/*.swn
+frontend-theme-demo/*.swd
+frontend-theme-demo/*.sublime-*
+
+# AWS Elastic Beanstalk
+frontend-theme-demo/.elasticbeanstalk/*
+frontend-theme-demo/.elasticbeanstalk/*.cfg.yml
+frontend-theme-demo/.elasticbeanstalk/*.global.yml
+
+# Python Virtual Environment
+frontend-theme-demo/.venv/
+frontend-theme-demo/__pycache__/
+frontend-theme-demo/*.py[cod]
+
+# Flask Cache & Compiled files
+frontend-theme-demo/instance/
+
+# Google App Engine
+# Ignore GCP service account credentials (if stored locally)
+frontend-theme-demo/.gcloudignore
+
+# Snowflake
+frontend-theme-demo/*.sql-journal
+frontend-theme-demo/.DS_Store
+
+# Database files
+frontend-theme-demo/*.sqlite3
+frontend-theme-demo/db.sqlite3
+
+# Ignore static files that are auto-generated
+frontend-theme-demo/staticfiles/
+frontend-theme-demo/media/
+
+# Ignore AWS credential files (if stored locally)
+frontend-theme-demo/.aws/
+
+# Ignore Google OAuth credentials
+frontend-theme-demo/.google/
+frontend-theme-demo/.google/credentials.json
+frontend-theme-demo/.google/token.json
+frontend-theme-demo/.google/refresh_token.json
+frontend-theme-demo/.google/credentials.json
+frontend-theme-demo/.google/token.json
+
+
+
+
+
+
+# ------------------------------------------------------------------------------------------------------------
 frontendv2/node_modules/
 frontendv2/npm-debug.log*
 frontendv2/yarn-debug.log*
