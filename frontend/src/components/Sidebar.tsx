@@ -15,6 +15,8 @@ import PersonIcon from '@mui/icons-material/Person';
 import Typography from '@mui/material/Typography';
 import Divider from '@mui/material/Divider';
 import AdminIcon from '@mui/icons-material/AdminPanelSettings';
+import { addIcon, editCalendar, editIcon, homeIcon, calendarViewDayIcon, calendarAddIcon, listIcon, personListIcon, personIcon } from '../components/icons';
+
 interface SidebarProps {
   drawerWidth: number;
   isOpen: boolean;
@@ -27,27 +29,27 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
   const menuItems = [
     {
       text: 'Home',
-      icon: <HomeIcon />,
+      icon: homeIcon,
       onClick: () => navigate('/home'),
     },
     {
       text: 'Request Appointment',
-      icon: <AddIcon />,
+      icon: calendarAddIcon,
       onClick: () => navigate('/appointment-form'),
     },
     {
       text: 'Appointment Status',
-      icon: <CalendarIcon />,
+      icon: listIcon,
       onClick: () => navigate('/appointment-status'),
     },
     {
       text: 'Dignitaries',
-      icon: <ListIcon />,
+      icon: personListIcon,
       onClick: () => navigate('/dignitary-list'),
     },
     {
       text: 'My Profile',
-      icon: <PersonIcon />,
+      icon: personIcon,
       onClick: () => navigate('/profile'),
     },
   ];
@@ -55,17 +57,17 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
   const adminMenuItems = [
     {
       text: 'Users',
-      icon: <PersonIcon />,
+      icon: personListIcon,
       onClick: () => navigate('/users-all'),
     },
     {
       text: 'Dignitaries',
-      icon: <ListIcon />,
+      icon: personListIcon,
       onClick: () => navigate('/dignitary-list-all'),
     },
     {
       text: 'Appointments',
-      icon: <CalendarIcon />,
+      icon: calendarViewDayIcon,
       onClick: () => navigate('/appointment-status-all'),
     },    
   ];

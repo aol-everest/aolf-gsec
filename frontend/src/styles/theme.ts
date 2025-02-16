@@ -144,7 +144,7 @@ const components = {
     styleOverrides: {
       root: {
         minWidth: '40px',
-        color: '#444',
+        color: '#637381',
       },
     },
   },
@@ -154,7 +154,7 @@ const components = {
         fontSize: '0.9rem',
         fontFamily: 'Roboto',
         fontWeight: 400,
-        color: '#666',
+        color: '#637381',
       },
     },
   },
