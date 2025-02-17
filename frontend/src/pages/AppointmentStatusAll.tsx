@@ -84,10 +84,26 @@ const AppointmentStatusAll: React.FC = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [rowModesModel, setRowModesModel] = useState<GridRowModesModel>({});
+  const [statusOptions, setStatusOptions] = useState<string[]>([]);
 
   useEffect(() => {
+    const fetchStatusOptions = async () => {
+      try {
+        const response = await fetch('http://localhost:8001/appointments/status-options', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          },
+        });
+        if (!response.ok) throw new Error('Failed to fetch status options');
+        const data = await response.json();
+        setStatusOptions(data);
+      } catch (error) {
+        console.error('Error fetching status options:', error);
+      }
+    };
+
+    fetchStatusOptions();
     fetchAppointments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchAppointments = async () => {
@@ -313,7 +329,7 @@ const AppointmentStatusAll: React.FC = () => {
       width: 130,
       editable: true,
       type: 'singleSelect',
-      valueOptions: STATUS_OPTIONS,
+      valueOptions: statusOptions,
       renderCell: (params: GridRenderCellParams<Appointment>) => (
         <Chip
           label={params.value}

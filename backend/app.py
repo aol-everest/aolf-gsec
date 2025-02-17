@@ -416,3 +416,8 @@ async def get_all_users(
     """Get all users"""
     users = db.query(models.User).all()
     return users
+
+@app.get("/appointments/status-options")
+async def get_appointment_status_options():
+    """Get all possible appointment status options"""
+    return [status.value for status in models.AppointmentStatus]

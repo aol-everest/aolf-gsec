@@ -70,11 +70,29 @@ const AppointmentTiles: React.FC = () => {
   const [filteredAppointments, setFilteredAppointments] = useState<Appointment[]>([]);
   const [activeStep, setActiveStep] = useState(0);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [statusOptions, setStatusOptions] = useState<string[]>([]);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
 
-  const STATUS_OPTIONS = ['PENDING', 'APPROVED', 'REJECTED', 'FOLLOW_UP'] as const;
+  useEffect(() => {
+    const fetchStatusOptions = async () => {
+      try {
+        const response = await fetch('http://localhost:8001/appointments/status-options', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          },
+        });
+        if (!response.ok) throw new Error('Failed to fetch status options');
+        const data = await response.json();
+        setStatusOptions(data);
+      } catch (error) {
+        console.error('Error fetching status options:', error);
+      }
+    };
+
+    fetchStatusOptions();
+  }, []);
 
   useEffect(() => {
     const fetchAppointments = async () => {
@@ -284,7 +302,7 @@ const AppointmentTiles: React.FC = () => {
               gap: 1, 
               flexWrap: 'wrap'
             }}>
-              {STATUS_OPTIONS.map((status) => (
+              {statusOptions.map((status) => (
                 <Chip
                   key={status}
                   label={`${status} (${appointments.filter(a => a.status === status).length})`}

@@ -67,8 +67,28 @@ const AppointmentEdit: React.FC = () => {
   const navigate = useNavigate();
   const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [loading, setLoading] = useState(true);
+  const [statusOptions, setStatusOptions] = useState<string[]>([]);
 
   const { control, handleSubmit, reset } = useForm<AppointmentFormData>();
+
+  useEffect(() => {
+    const fetchStatusOptions = async () => {
+      try {
+        const response = await fetch('http://localhost:8001/appointments/status-options', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          },
+        });
+        if (!response.ok) throw new Error('Failed to fetch status options');
+        const data = await response.json();
+        setStatusOptions(data);
+      } catch (error) {
+        console.error('Error fetching status options:', error);
+      }
+    };
+
+    fetchStatusOptions();
+  }, []);
 
   useEffect(() => {
     const fetchAppointment = async () => {
@@ -233,7 +253,7 @@ const AppointmentEdit: React.FC = () => {
                       <FormControl fullWidth>
                         <InputLabel>Status</InputLabel>
                         <Select {...field} label="Status">
-                          {STATUS_OPTIONS.map((status) => (
+                          {statusOptions.map((status) => (
                             <MenuItem key={status} value={status}>
                               {status}
                             </MenuItem>
