@@ -77,10 +77,15 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
       path: '/dignitary-list-all',
     },
     {
-      text: 'Appointments',
+      text: 'Appointments List',
       icon: calendarViewDayIcon,
       path: '/appointment-status-all',
-    },    
+    },
+    {
+      text: 'Appointments Tiles',
+      icon: calendarViewDayIcon,
+      path: '/appointment-tiles',
+    },
   ];
 
   const drawer = (

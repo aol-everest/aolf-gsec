@@ -16,6 +16,7 @@ import Profile from './pages/Profile';
 import UsersAll from './pages/UsersAll';
 import DignitaryListAll from './pages/DignitaryListAll';
 import AppointmentStatusAll from './pages/AppointmentStatusAll';
+import AppointmentTiles from './pages/AppointmentTiles';
 
 // Components
 import PrivateRoute from './components/PrivateRoute';
@@ -55,6 +56,14 @@ function App() {
                 element={
                   <PrivateRoute>
                     <AppointmentStatus />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/appointment-tiles"
+                element={
+                  <PrivateRoute>
+                    <AppointmentTiles />
                   </PrivateRoute>
                 }
               />
