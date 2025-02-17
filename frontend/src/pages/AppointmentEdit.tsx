@@ -132,7 +132,9 @@ const AppointmentEdit: React.FC = () => {
   return (
     <Layout>
       <Container>
-        <Box sx={{ py: 4 }}>
+        <Box sx={{ 
+          // py: 4 
+        }}>
           <Typography variant="h4" gutterBottom>
             Edit Appointment
           </Typography>
