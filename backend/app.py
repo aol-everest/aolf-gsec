@@ -362,6 +362,23 @@ async def get_all_appointments(
     print(f"Appointments: {appointments}")
     return appointments 
 
+@app.get("/admin/appointments/{appointment_id}", response_model=schemas.AppointmentAdmin)
+@requires_role(models.UserRole.SECRETARIAT)
+async def get_appointment(
+    appointment_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get an appointment"""
+    appointment = (
+        db.query(models.Appointment)
+        .filter(models.Appointment.id == appointment_id)
+        .first()
+    )
+    print(f"Appointment: {appointment}")
+    return appointment 
+
+
 
 @app.patch("/admin/appointments/update/{appointment_id}", response_model=schemas.AppointmentAdmin)
 @requires_role(models.UserRole.SECRETARIAT)

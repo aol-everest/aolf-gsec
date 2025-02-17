@@ -17,6 +17,7 @@ import UsersAll from './pages/UsersAll';
 import DignitaryListAll from './pages/DignitaryListAll';
 import AppointmentStatusAll from './pages/AppointmentStatusAll';
 import AppointmentTiles from './pages/AppointmentTiles';
+import AppointmentEdit from './pages/AppointmentEdit';
 
 // Components
 import PrivateRoute from './components/PrivateRoute';
@@ -64,6 +65,14 @@ function App() {
                 element={
                   <PrivateRoute>
                     <AppointmentTiles />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/appointment-edit/:id"
+                element={
+                  <PrivateRoute>
+                    <AppointmentEdit />
                   </PrivateRoute>
                 }
               />
