@@ -20,6 +20,15 @@ import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import Layout from '../components/Layout';
 
+interface User {
+  id: number;
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone_number: string;
+  role: string;
+}
+
 interface Dignitary {
   id: number;
   honorific_title: string;
@@ -41,6 +50,7 @@ interface Appointment {
   id: number;
   dignitary_id: number;
   dignitary: Dignitary;
+  requester: User;
   purpose: string;
   preferred_date: string;
   preferred_time: string;
@@ -71,7 +81,7 @@ const AppointmentTiles: React.FC = () => {
         });
         if (!response.ok) throw new Error('Failed to fetch appointments');
         const data = await response.json();
-        // console.log(data);
+        console.log(data);
         setAppointments(data);
       } catch (error) {
         console.error('Error fetching appointments:', error);
@@ -137,15 +147,19 @@ const AppointmentTiles: React.FC = () => {
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
               <Typography variant="subtitle2" color="text.secondary">Name</Typography>
-              <Typography>{appointment.dignitary.poc_first_name} {appointment.dignitary.poc_last_name}</Typography>
+              <Typography>{appointment.requester.first_name} {appointment.requester.last_name}</Typography>
             </Grid>
             <Grid item xs={12} sm={6}>
               <Typography variant="subtitle2" color="text.secondary">Email</Typography>
-              <Typography>{appointment.dignitary.poc_email}</Typography>
+              <Typography>{appointment.requester.email}</Typography>
             </Grid>
             <Grid item xs={12} sm={6}>
               <Typography variant="subtitle2" color="text.secondary">Phone</Typography>
-              <Typography>{appointment.dignitary.poc_phone || 'N/A'}</Typography>
+              <Typography>{appointment.requester.phone_number || 'N/A'}</Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">Role</Typography>
+              <Typography>{appointment.requester.role}</Typography>
             </Grid>
           </Grid>
         </Paper>

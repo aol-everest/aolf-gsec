@@ -157,6 +157,7 @@ class AppointmentAdmin(AppointmentBase):
     preferred_date: date
     preferred_time: Optional[str] = None
     dignitary: DignitaryAdmin
+    requester: User
     status: str
     appointment_date: Optional[date] = None
     appointment_time: Optional[str] = None
