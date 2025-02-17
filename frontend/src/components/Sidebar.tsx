@@ -118,9 +118,9 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
             }}
           >
             <ListItemIcon 
-              // sx={{ 
-              //   color: location.pathname === item.path ? theme.palette.primary.main : 'inherit'
-              // }}
+              sx={{ 
+                color: location.pathname === item.path ? theme.palette.primary.main : 'inherit'
+              }}
             >
               {item.icon}
             </ListItemIcon>
