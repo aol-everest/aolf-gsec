@@ -232,20 +232,24 @@ async def new_dignitary(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    # Extract poc_relationship_type and create dignitary without it
+    poc_relationship_type = dignitary.poc_relationship_type
+    dignitary_data = dignitary.dict(exclude={'poc_relationship_type'})
+    
     # Create new dignitary
     new_dignitary = models.Dignitary(
-        **dignitary.dict(),
+        **dignitary_data,
         created_by=current_user.id
     )
     db.add(new_dignitary)
     db.commit()
     db.refresh(new_dignitary)
 
-    # Create dignitary point of contact
+    # Create dignitary point of contact with the relationship type
     poc = models.DignitaryPointOfContact(
         dignitary_id=new_dignitary.id,
         poc_id=current_user.id,
-        relationship_type=dignitary.poc_relationship_type,
+        relationship_type=poc_relationship_type,
         created_by=current_user.id
     ) 
     db.add(poc)
@@ -267,8 +271,12 @@ async def update_dignitary(
     if not existing_dignitary:
         raise HTTPException(status_code=404, detail="Dignitary not found")
     
+    # Extract poc_relationship_type and create dignitary without it
+    poc_relationship_type = dignitary.poc_relationship_type
+    dignitary_data = dignitary.dict(exclude={'poc_relationship_type'}, exclude_unset=True)
+
     # Update dignitary  
-    for key, value in dignitary.dict(exclude_unset=True).items():
+    for key, value in dignitary_data.items():
         setattr(existing_dignitary, key, value)
     db.commit()
     db.refresh(existing_dignitary)
@@ -278,8 +286,8 @@ async def update_dignitary(
         models.DignitaryPointOfContact.dignitary_id == dignitary_id, 
         models.DignitaryPointOfContact.poc_id == current_user.id
     ).first()
-    if poc:
-        poc.relationship_type = dignitary.poc_relationship_type
+    if poc and poc_relationship_type and poc_relationship_type != poc.relationship_type:
+        poc.relationship_type = poc_relationship_type
         db.commit()
         db.refresh(poc)
 

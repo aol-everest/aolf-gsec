@@ -49,15 +49,17 @@ export interface Appointment {
   duration: string;
   location: string;
   pre_meeting_notes: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'FOLLOW_UP';
+  status: string;
   created_at: string;
   updated_at: string;
 }
 
-const STATUS_OPTIONS = ['PENDING', 'APPROVED', 'REJECTED', 'FOLLOW_UP'];
+interface StatusEditCellProps extends GridRenderEditCellParams<Appointment> {
+  statusOptions: string[];
+}
 
-const StatusEditCell = (props: GridRenderEditCellParams<Appointment>) => {
-  const { id, value, field } = props;
+const StatusEditCell = (props: StatusEditCellProps) => {
+  const { id, value, field, statusOptions } = props;
   const apiRef = useGridApiContext();
 
   const handleChange = (event: SelectChangeEvent) => {
@@ -71,7 +73,7 @@ const StatusEditCell = (props: GridRenderEditCellParams<Appointment>) => {
       fullWidth
       variant="standard"
     >
-      {STATUS_OPTIONS.map((option) => (
+      {statusOptions.map((option: string) => (
         <MenuItem key={option} value={option}>
           {option}
         </MenuItem>
@@ -337,7 +339,12 @@ const AppointmentStatusAll: React.FC = () => {
           size="small"
         />
       ),
-      renderEditCell: StatusEditCell,
+      renderEditCell: (params: GridRenderEditCellParams<Appointment>) => (
+        <StatusEditCell
+          {...params}
+          statusOptions={statusOptions}
+        />
+      ),
     },
     {
       field: 'created_at',

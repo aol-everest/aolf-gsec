@@ -85,6 +85,22 @@ export const AppointmentRequestForm: React.FC = () => {
   const [submittedAppointment, setSubmittedAppointment] = useState<any>(null);
   const [selectedDignitary, setSelectedDignitary] = useState<any>(null);
   const navigate = useNavigate();
+  const [statusOptions, setStatusOptions] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchStatusOptions = async () => {
+      const response = await fetch('http://localhost:8001/appointments/status-options', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setStatusOptions(data);
+      }
+    };
+    fetchStatusOptions();
+  }, []);
   
   // Forms for each step
   const pocForm = useForm<PocFormData>({
@@ -158,6 +174,7 @@ export const AppointmentRequestForm: React.FC = () => {
 
   // Function to populate dignitary form fields
   const populateDignitaryForm = (dignitary: any) => {
+    console.log('Populating dignitary form with:', dignitary);
     dignitaryForm.setValue('dignitaryHonorificTitle', dignitary.honorific_title);
     dignitaryForm.setValue('dignitaryFirstName', dignitary.first_name);
     dignitaryForm.setValue('dignitaryLastName', dignitary.last_name);
@@ -219,40 +236,8 @@ export const AppointmentRequestForm: React.FC = () => {
             );
 
             if (hasChanges) {
-              const response = await fetch(`http://localhost:8001/dignitaries/update/${data.selectedDignitaryId}`, {
-                method: 'PATCH',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-                },
-                body: JSON.stringify({
-                  honorific_title: data.dignitaryHonorificTitle,
-                  first_name: data.dignitaryFirstName,
-                  last_name: data.dignitaryLastName,
-                  email: data.dignitaryEmail,
-                  phone: data.dignitaryPhone,
-                  primary_domain: data.dignitaryPrimaryDomain,
-                  title_in_organization: data.dignitaryTitleInOrganization,
-                  organization: data.dignitaryOrganization,
-                  bio_summary: data.dignitaryBioSummary,
-                  linked_in_or_website: data.dignitaryLinkedInOrWebsite,
-                  country: data.dignitaryCountry,
-                  state: data.dignitaryState,
-                  city: data.dignitaryCity,
-                  poc_relationship_type: data.pocRelationshipType,
-                }),
-              });
-              if (!response.ok) throw new Error('Failed to update dignitary');
-            }
-          } else {
-            // Create new dignitary
-            const response = await fetch('http://localhost:8001/dignitaries/new/', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-              },
-              body: JSON.stringify({
+              // Dignitary update data without poc_relationship_type
+              const dignitaryUpdateData = {
                 honorific_title: data.dignitaryHonorificTitle,
                 first_name: data.dignitaryFirstName,
                 last_name: data.dignitaryLastName,
@@ -266,13 +251,64 @@ export const AppointmentRequestForm: React.FC = () => {
                 country: data.dignitaryCountry,
                 state: data.dignitaryState,
                 city: data.dignitaryCity,
-                poc_relationship_type: data.pocRelationshipType,
-              }),
+              };
+
+              const response = await fetch(`http://localhost:8001/dignitaries/update/${data.selectedDignitaryId}`, {
+                method: 'PATCH',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+                },
+                body: JSON.stringify(dignitaryUpdateData),
+              });
+              if (!response.ok) throw new Error('Failed to update dignitary');
+              const updatedDignitary = await response.json();
+              setSelectedDignitary(updatedDignitary);
+            }
+          } else {
+            // Create new dignitary
+            const dignitaryCreateData = {
+              honorific_title: data.dignitaryHonorificTitle,
+              first_name: data.dignitaryFirstName,
+              last_name: data.dignitaryLastName,
+              email: data.dignitaryEmail,
+              phone: data.dignitaryPhone || null,
+              primary_domain: data.dignitaryPrimaryDomain,
+              title_in_organization: data.dignitaryTitleInOrganization,
+              organization: data.dignitaryOrganization,
+              bio_summary: data.dignitaryBioSummary,
+              linked_in_or_website: data.dignitaryLinkedInOrWebsite,
+              country: data.dignitaryCountry,
+              state: data.dignitaryState,
+              city: data.dignitaryCity,
+              poc_relationship_type: data.pocRelationshipType,
+            };
+
+            console.log('Creating dignitary with data:', dignitaryCreateData);
+
+            const response = await fetch('http://localhost:8001/dignitaries/new/', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+              },
+              body: JSON.stringify(dignitaryCreateData),
             });
-            if (!response.ok) throw new Error('Failed to create dignitary');
+
+            if (!response.ok) {
+              const errorData = await response.json();
+              console.error('Failed to create dignitary:', errorData);
+              throw new Error(`Failed to create dignitary: ${JSON.stringify(errorData)}`);
+            }
             const newDignitary = await response.json();
-            dignitaryId = newDignitary.id;
-            dignitaryForm.setValue('selectedDignitaryId', dignitaryId);
+            
+            // Update the dignitaries list with the new dignitary
+            setDignitaries(prev => [...prev, newDignitary]);
+            
+            // Switch to existing dignitary mode and select the new dignitary
+            dignitaryForm.setValue('isExistingDignitary', true);
+            dignitaryForm.setValue('selectedDignitaryId', newDignitary.id);
+            setSelectedDignitary(newDignitary);
           }
           setActiveStep(2);
         } catch (error) {
@@ -296,7 +332,7 @@ export const AppointmentRequestForm: React.FC = () => {
               duration: data.duration,
               location: data.location,
               pre_meeting_notes: data.preMeetingNotes,
-              status: 'pending'
+              status: statusOptions[0],
             }),
           });
           if (!response.ok) {
