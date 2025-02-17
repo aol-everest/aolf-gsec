@@ -30,7 +30,7 @@ const Profile: React.FC = () => {
   const handleCancel = () => {
     setIsEditing(false);
     setPhoneNumber(userInfo?.phone_number || '');
-    console.log(userInfo);
+    // console.log(userInfo);
   };
 
   return (

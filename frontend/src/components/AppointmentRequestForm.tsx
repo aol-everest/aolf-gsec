@@ -77,7 +77,7 @@ interface AppointmentFormData {
 const steps = ['Point of Contact Information', 'Dignitary Information', 'Appointment Details'];
 
 export const AppointmentRequestForm: React.FC = () => {
-  const { userInfo } = useAuth();
+  const { userInfo, updateUserInfo } = useAuth();
   const [activeStep, setActiveStep] = useState(0);
   const [selectedCountryCode, setSelectedCountryCode] = useState<string>('');
   const [dignitaries, setDignitaries] = useState<any[]>([]);
@@ -162,18 +162,8 @@ export const AppointmentRequestForm: React.FC = () => {
     if (activeStep === 0) {
       const pocData = await pocForm.handleSubmit(async (data) => {
         try {
-          // Update user's phone number
-          const response = await fetch('http://localhost:8001/users/me/update', {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-            },
-            body: JSON.stringify({
-              phone_number: data.pocPhone,
-            }),
-          });
-          if (!response.ok) throw new Error('Failed to update user');
+          // Use updateUserInfo from AuthContext instead of direct API call
+          await updateUserInfo({ phone_number: data.pocPhone });
           setActiveStep(1);
         } catch (error) {
           console.error('Error updating user:', error);
