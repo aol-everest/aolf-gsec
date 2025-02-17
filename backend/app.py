@@ -12,7 +12,7 @@ import os
 from dotenv import load_dotenv
 from jwt.exceptions import InvalidTokenError
 from functools import wraps
-
+import json
 from database import SessionLocal, engine
 import models
 import schemas
@@ -398,12 +398,17 @@ async def update_appointment(
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
         
+    if appointment.status != models.AppointmentStatus.APPROVED.value and appointment_update.status == models.AppointmentStatus.APPROVED.value:
+        print("Appointment is approved")
+        appointment.approved_datetime = datetime.utcnow()
+        appointment.approved_by = current_user.id
+
     for key, value in appointment_update.dict(exclude_unset=True).items():
         setattr(appointment, key, value)
     appointment.last_updated_by = current_user.id
     db.commit()
     db.refresh(appointment)
-    print(f"Appointment updated: {appointment}")
+    print(f"Appointment updated: {json.dumps(appointment, default=str)}")
     return appointment
 
 
@@ -417,7 +422,7 @@ async def get_all_users(
     users = db.query(models.User).all()
     return users
 
-@app.get("/appointments/status-options")
+@app.get("/appointments/status-options", response_model=List[str])
 async def get_appointment_status_options():
     """Get all possible appointment status options"""
     return [status.value for status in models.AppointmentStatus]

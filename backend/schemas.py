@@ -168,7 +168,9 @@ class AppointmentAdmin(AppointmentBase):
     secretariat_comments: Optional[str] = None
     approved_datetime: Optional[datetime] = None
     approved_by: Optional[int] = None
+    approved_by_user: Optional[User] = None
     last_updated_by: Optional[int] = None
+    last_updated_by_user: Optional[User] = None
 
     class Config:
         orm_mode = True
@@ -176,4 +178,3 @@ class AppointmentAdmin(AppointmentBase):
             datetime: lambda v: v.isoformat(),
             date: lambda v: v.strftime("%Y-%m-%d")
         }
-

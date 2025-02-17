@@ -33,13 +33,13 @@ class User(Base):
     )
     approved_appointments = relationship(
         "Appointment",
-        foreign_keys="[Appointment.approved_by]",
-        backref="approver"
+        back_populates="approved_by_user",
+        foreign_keys="[Appointment.approved_by]"
     )
     updated_appointments = relationship(
         "Appointment",
-        foreign_keys="[Appointment.last_updated_by]",
-        backref="last_updater"
+        back_populates="last_updated_by_user",
+        foreign_keys="[Appointment.last_updated_by]"
     )
     point_of_contacts = relationship(
         "DignitaryPointOfContact",

@@ -43,4 +43,14 @@ class Appointment(Base):
         back_populates="appointments",
         foreign_keys=[requester_id]
     )
-    dignitary = relationship("Dignitary", back_populates="appointments") 
+    dignitary = relationship("Dignitary", back_populates="appointments")
+    approved_by_user = relationship(
+        "User",
+        back_populates="approved_appointments",
+        foreign_keys=[approved_by]
+    )
+    last_updated_by_user = relationship(
+        "User",
+        back_populates="updated_appointments",
+        foreign_keys=[last_updated_by]
+    )

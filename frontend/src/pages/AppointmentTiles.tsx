@@ -20,7 +20,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import Layout from '../components/Layout';
-
+import { formatDate } from '../utils/dateUtils';
 interface User {
   id: number;
   email: string;
@@ -60,9 +60,17 @@ interface Appointment {
   duration: string;
   location: string;
   pre_meeting_notes: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'FOLLOW_UP';
+  status: string;
   created_at: string;
   updated_at: string;
+  secretariat_notes: string;
+  follow_up_actions: string;
+  meeting_notes: string;
+  approved_datetime: string;
+  approved_by: number;
+  approved_by_user: User;
+  last_updated_by: number;
+  last_updated_by_user: User;
 }
 
 const AppointmentTiles: React.FC = () => {
@@ -106,6 +114,7 @@ const AppointmentTiles: React.FC = () => {
         const data = await response.json();
         setAppointments(data);
         setFilteredAppointments(data);
+        // console.log(data);
       } catch (error) {
         console.error('Error fetching appointments:', error);
       }
@@ -248,7 +257,7 @@ const AppointmentTiles: React.FC = () => {
         </Paper>
 
         {/* Appointment Information */}
-        <Paper elevation={0} sx={{ p: 2, borderRadius: 2 }}>
+        <Paper elevation={0} sx={{ p: 2, mb: 3, borderRadius: 2 }}>
           <Typography variant="h6" gutterBottom color="primary">
             Appointment Details
           </Typography>
@@ -281,6 +290,43 @@ const AppointmentTiles: React.FC = () => {
             )}
           </Grid>
         </Paper>
+
+        {/* Secretariat Notes */}
+        <Paper elevation={0} sx={{ p: 2, borderRadius: 2 }}>
+          <Typography variant="h6" gutterBottom color="primary">
+            Secretariat Notes
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">Notes</Typography>
+              <Typography>{appointment.secretariat_notes || 'N/A'}</Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">Follow-up Actions</Typography>
+              <Typography>{appointment.follow_up_actions || 'N/A'}</Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">Meeting Notes</Typography>
+              <Typography>{appointment.meeting_notes || 'N/A'}</Typography>
+            </Grid>
+          </Grid>
+        </Paper>
+
+        <Paper elevation={0} sx={{ p: 2, mb: 0, border: 'none', boxShadow: 'none', borderRadius: 0, bgcolor: 'transparent' }}>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              {appointment.last_updated_by_user && (
+                <Typography> Last Updated by: {appointment.last_updated_by_user?.first_name} {appointment.last_updated_by_user?.last_name} at {formatDate(appointment.updated_at)}</Typography>
+              )}
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              {appointment.approved_by_user && (
+                <Typography> Approved by: {appointment.approved_by_user?.first_name} {appointment.approved_by_user?.last_name} at {formatDate(appointment.approved_datetime)}</Typography>
+              )}
+            </Grid>
+          </Grid>
+        </Paper>
+
       </CardContent>
     </Card>
   );
