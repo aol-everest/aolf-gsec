@@ -38,12 +38,12 @@ const Profile: React.FC = () => {
       <Container maxWidth="md">
         <Box sx={{ py: 4 }}>
           <Paper sx={{ 
-            p: 3, 
+            p: 4, 
             // mt: 2, 
             position: 'relative' 
           }}>
             {/* Logout button in top right corner */}
-            <Box sx={{ position: 'absolute', top: 16, right: 16 }}>
+            <Box sx={{ position: 'absolute', top: 30, right: 30 }}>
               <Button variant="outlined" color="error" onClick={logout}>
                 Logout
               </Button>

@@ -118,21 +118,26 @@ const AppointmentTiles: React.FC = () => {
       elevation={3}
       sx={{ 
         m: 2,
+        pl: 2,
+        pr: 2,
+        pt: 0,
+        pb: 1,
         borderRadius: 2,
         position: 'relative',
         minHeight: isMobile ? 'auto' : '600px',
+        bgcolor: 'grey.50', 
       }}
     >
       <CardContent>
 
         {/* Requester Information */}
-        <Paper elevation={0} sx={{ p: 2, mb: 3, border: null, boxShadow: null, borderRadius: 0 }}>
+        <Paper elevation={0} sx={{ p: 2, mb: 0, border: 'none', boxShadow: 'none', borderRadius: 0, bgcolor: 'transparent' }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="h5" gutterBottom color="primary">
               Request #: {appointment.id}
             </Typography>
           </Box>
-          <Box sx={{ position: 'absolute', top: 31, right: 31 }}>
+          <Box sx={{ position: 'absolute', top: 25, right: 25 }}>
             <Chip 
                 label={appointment.status} 
                 color={getStatusColor(appointment.status) as any}
@@ -149,7 +154,7 @@ const AppointmentTiles: React.FC = () => {
         </Paper>
 
         {/* Point of Contact Information */}
-        <Paper elevation={0} sx={{ p: 2, mb: 3, bgcolor: 'grey.50', borderRadius: 2 }}>
+        <Paper elevation={0} sx={{ p: 2, mb: 3, borderRadius: 1 }}>
           <Typography variant="h6" gutterBottom color="primary">
             Point of Contact Information
           </Typography>
@@ -174,7 +179,7 @@ const AppointmentTiles: React.FC = () => {
         </Paper>
 
         {/* Dignitary Information */}
-        <Paper elevation={0} sx={{ p: 2, mb: 3, bgcolor: 'grey.50', borderRadius: 2 }}>
+        <Paper elevation={0} sx={{ p: 2, mb: 3, borderRadius: 2 }}>
           <Typography variant="h6" gutterBottom color="primary">
             Dignitary Information
           </Typography>
@@ -207,7 +212,7 @@ const AppointmentTiles: React.FC = () => {
         </Paper>
 
         {/* Appointment Information */}
-        <Paper elevation={0} sx={{ p: 2, mb: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
+        <Paper elevation={0} sx={{ p: 2, borderRadius: 2 }}>
           <Typography variant="h6" gutterBottom color="primary">
             Appointment Information
           </Typography>

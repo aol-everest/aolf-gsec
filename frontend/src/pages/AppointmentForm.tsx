@@ -21,9 +21,9 @@ const AppointmentForm: React.FC = () => {
               elevation={0}
               sx={{ 
                 p: 4,
-                borderRadius: 2,
-                backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+                // borderRadius: 2,
+                // backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                // boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
               }}
             >
               <AppointmentRequestForm />

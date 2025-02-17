@@ -201,7 +201,7 @@ const components = {
     styleOverrides: {
       root: {
         // borderRadius: '3px',
-        boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
         color: '#333',
       },
     },
@@ -219,7 +219,7 @@ const components = {
     styleOverrides: {
       root: {
         borderRadius: '12px',
-        boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
       },
     },
   },
