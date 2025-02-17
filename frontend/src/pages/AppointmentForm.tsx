@@ -11,7 +11,7 @@ const AppointmentForm: React.FC = () => {
           sx={{
             minHeight: '100vh',
             // background: 'linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%)',
-            py: 4,
+            // py: 4,
           }}
         >
           <Typography variant="h4" component="h1" gutterBottom>

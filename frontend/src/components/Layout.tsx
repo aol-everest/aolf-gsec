@@ -34,7 +34,10 @@ export default function Layout({ children }: LayoutProps) {
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
+          pt: { xs: 5, sm: 7 }, // Apply padding only in desktop mode
+          pl: { xs: 1.5, sm: 3 }, // Apply padding only in desktop mode
+          pr: { xs: 1.5, sm: 3 }, // Apply padding only in desktop mode
+          pb: { xs: 2, sm: 3 }, // Apply padding only in desktop mode
           width: isDrawerOpen ? 
             { sm: `calc(100% - ${drawerWidth}px)` } : 
             '100%',

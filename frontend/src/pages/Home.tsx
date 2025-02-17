@@ -25,7 +25,8 @@ const Home: React.FC = () => {
             // p: 3,
             width: { sm: `calc(100% - ${drawerWidth}px)` },
             // mt: 8,
-            py: 4,
+            // py: 4,
+            p: 0,
           }}
         >
           <Paper sx={{ p: 4, mb: 4 }}>

@@ -36,7 +36,9 @@ const Profile: React.FC = () => {
   return (
     <Layout>
       <Container maxWidth="md">
-        <Box sx={{ py: 4 }}>
+        <Box sx={{ 
+          // py: 4 
+        }}>
           <Paper sx={{ 
             p: 4, 
             // mt: 2, 

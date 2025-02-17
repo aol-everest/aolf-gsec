@@ -136,13 +136,20 @@ const AppointmentEdit: React.FC = () => {
           <Typography variant="h4" gutterBottom>
             Edit Appointment
           </Typography>
-          <Paper sx={{ p: 4, borderRadius: 2 }}>
+            <Paper sx={{ p: 4, borderRadius: 2 }}>
+              <Paper elevation={0} sx={{ p: 0, mb: 2, border: 'none', boxShadow: 'none', borderRadius: 0, bgcolor: 'transparent' }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="h5" gutterBottom color="primary">
+                  Request #: {appointment.id}
+                </Typography>
+              </Box>
+            </Paper>
             <form onSubmit={handleSubmit(onSubmit)}>
               <Grid container spacing={3}>
                 {/* Dignitary Information (Read-only) */}
-                <Grid item xs={12}>
+                <Grid item xs={12} sx={{ pb: 1 }}>
                   <Typography variant="h6" gutterBottom color="primary">
-                    Dignitary Information
+                    Dignitary
                   </Typography>
                   <Typography>
                     {appointment.dignitary.honorific_title} {appointment.dignitary.first_name} {appointment.dignitary.last_name}

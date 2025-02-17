@@ -14,6 +14,7 @@ import {
   Paper,
   SwipeableDrawer,
   MobileStepper,
+  Container,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
@@ -81,7 +82,7 @@ const AppointmentTiles: React.FC = () => {
         });
         if (!response.ok) throw new Error('Failed to fetch appointments');
         const data = await response.json();
-        console.log(data);
+        // console.log(data);
         setAppointments(data);
       } catch (error) {
         console.error('Error fetching appointments:', error);
@@ -117,11 +118,11 @@ const AppointmentTiles: React.FC = () => {
     <Card 
       elevation={3}
       sx={{ 
-        m: 2,
-        pl: 2,
-        pr: 2,
-        pt: 0,
-        pb: 1,
+        // m: 2,
+        pl: { xs: 0, sm: 2 },
+        pr: { xs: 0, sm: 2 },
+        pt: { xs: 0, sm: 0 },
+        pb: { xs: 1, sm: 1 },
         borderRadius: 2,
         position: 'relative',
         minHeight: isMobile ? 'auto' : '600px',
@@ -130,7 +131,6 @@ const AppointmentTiles: React.FC = () => {
     >
       <CardContent>
 
-        {/* Requester Information */}
         <Paper elevation={0} sx={{ p: 2, mb: 0, border: 'none', boxShadow: 'none', borderRadius: 0, bgcolor: 'transparent' }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="h5" gutterBottom color="primary">
@@ -156,7 +156,7 @@ const AppointmentTiles: React.FC = () => {
         {/* Point of Contact Information */}
         <Paper elevation={0} sx={{ p: 2, mb: 3, borderRadius: 1 }}>
           <Typography variant="h6" gutterBottom color="primary">
-            Point of Contact Information
+            Point of Contact
           </Typography>
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
@@ -181,7 +181,7 @@ const AppointmentTiles: React.FC = () => {
         {/* Dignitary Information */}
         <Paper elevation={0} sx={{ p: 2, mb: 3, borderRadius: 2 }}>
           <Typography variant="h6" gutterBottom color="primary">
-            Dignitary Information
+            Dignitary
           </Typography>
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
@@ -214,7 +214,7 @@ const AppointmentTiles: React.FC = () => {
         {/* Appointment Information */}
         <Paper elevation={0} sx={{ p: 2, borderRadius: 2 }}>
           <Typography variant="h6" gutterBottom color="primary">
-            Appointment Information
+            Appointment Details
           </Typography>
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
@@ -251,63 +251,65 @@ const AppointmentTiles: React.FC = () => {
 
   return (
     <Layout>
-      <Box sx={{ maxWidth: '100%', overflow: 'hidden' }}>
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          px: 3,
-          mb: 2
-        }}>
-          <Typography variant="h4">Appointment Details</Typography>
-        </Box>
+      <Container>
+        <Box sx={{ maxWidth: '100%', overflow: 'hidden' }}>
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            px: 3,
+            mb: 2
+          }}>
+            <Typography variant="h4">Appointment Details</Typography>
+          </Box>
 
-        <Box sx={{ 
-          maxWidth: '100%', 
-          flexGrow: 1,
-          position: 'relative',
-          touchAction: 'pan-y pinch-zoom',
-        }}>
-          {appointments.length > 0 && (
-            <>
-              <AppointmentTile appointment={appointments[activeStep]} />
-              <MobileStepper
-                variant="dots"
-                steps={appointments.length}
-                position="static"
-                activeStep={activeStep}
-                sx={{ 
-                  maxWidth: '100%', 
-                  flexGrow: 1,
-                  justifyContent: 'center',
-                  background: 'transparent',
-                  mt: 2
-                }}
-                nextButton={
-                  <Button
-                    size="small"
-                    onClick={handleNext}
-                    disabled={activeStep === appointments.length - 1}
-                  >
-                    Next
-                    <NavigateNextIcon />
-                  </Button>
-                }
-                backButton={
-                  <Button 
-                    size="small" 
-                    onClick={handleBack} 
-                    disabled={activeStep === 0}
-                  >
-                    <NavigateBeforeIcon />
-                    Back
-                  </Button>
-                }
-              />
-            </>
-          )}
+          <Box sx={{ 
+            maxWidth: '100%', 
+            flexGrow: 1,
+            position: 'relative',
+            touchAction: 'pan-y pinch-zoom',
+          }}>
+            {appointments.length > 0 && (
+              <>
+                <AppointmentTile appointment={appointments[activeStep]} />
+                <MobileStepper
+                  variant="dots"
+                  steps={appointments.length}
+                  position="static"
+                  activeStep={activeStep}
+                  sx={{ 
+                    maxWidth: '100%', 
+                    flexGrow: 1,
+                    justifyContent: 'center',
+                    background: 'transparent',
+                    mt: 2
+                  }}
+                  nextButton={
+                    <Button
+                      size="small"
+                      onClick={handleNext}
+                      disabled={activeStep === appointments.length - 1}
+                    >
+                      Next
+                      <NavigateNextIcon />
+                    </Button>
+                  }
+                  backButton={
+                    <Button 
+                      size="small" 
+                      onClick={handleBack} 
+                      disabled={activeStep === 0}
+                    >
+                      <NavigateBeforeIcon />
+                      Back
+                    </Button>
+                  }
+                />
+              </>
+            )}
+          </Box>
         </Box>
-      </Box>
+      </Container>
     </Layout>
   );
 };
