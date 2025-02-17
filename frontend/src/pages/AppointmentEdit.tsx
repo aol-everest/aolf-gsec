@@ -46,7 +46,10 @@ interface Appointment {
   duration: string;
   location: string;
   pre_meeting_notes: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'FOLLOW_UP';
+  status: string;
+  follow_up_actions: string;
+  meeting_notes: string;
+  secretariat_comments: string;
   created_at: string;
   updated_at: string;
 }
@@ -56,11 +59,12 @@ interface AppointmentFormData {
   appointment_time: string;
   duration: string;
   location: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'FOLLOW_UP';
+  status: string;
   pre_meeting_notes: string;
+  follow_up_actions: string;
+  meeting_notes: string;
+  secretariat_comments: string;
 }
-
-const STATUS_OPTIONS = ['PENDING', 'APPROVED', 'REJECTED', 'FOLLOW_UP'] as const;
 
 const AppointmentEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -177,8 +181,14 @@ const AppointmentEdit: React.FC = () => {
                     {appointment.dignitary.honorific_title} {appointment.dignitary.first_name} {appointment.dignitary.last_name}
                   </Typography>
                   <Typography color="text.secondary" sx={{ mt: 1 }}>
-                    {appointment.dignitary.organization} - {appointment.dignitary.title_in_organization}
+                    {appointment.dignitary.organization} - {appointment.dignitary.title_in_organization} | {appointment.dignitary.email} | {appointment.dignitary.phone}
                   </Typography>
+                  {appointment.pre_meeting_notes && (
+                    <Grid item xs={12} sx={{ mt: 1 }}>
+                      <Typography variant="subtitle2" color="text.secondary">Pre-meeting Notes</Typography>
+                      <Typography>{appointment.pre_meeting_notes}</Typography>
+                    </Grid>
+                  )}
                 </Grid>
 
                 {/* Appointment Date and Time */}
@@ -264,10 +274,9 @@ const AppointmentEdit: React.FC = () => {
                   />
                 </Grid>
 
-                {/* Notes */}
                 <Grid item xs={12}>
                   <Controller
-                    name="pre_meeting_notes"
+                    name="follow_up_actions"
                     control={control}
                     render={({ field }) => (
                       <TextField
@@ -275,7 +284,39 @@ const AppointmentEdit: React.FC = () => {
                         fullWidth
                         multiline
                         rows={4}
-                        label="Pre-meeting Notes"
+                        label="Follow-up Actions"
+                      />
+                    )}
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Controller
+                    name="meeting_notes"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        multiline
+                        rows={4}
+                        label="Meeting Notes"
+                      />  
+                    )}
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                    <Controller
+                    name="secretariat_comments"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field} 
+                        fullWidth
+                        multiline
+                        rows={4}
+                        label="Secretariat Comments"
                       />
                     )}
                   />

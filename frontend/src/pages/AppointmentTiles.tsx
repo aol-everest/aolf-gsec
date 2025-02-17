@@ -63,7 +63,7 @@ interface Appointment {
   status: string;
   created_at: string;
   updated_at: string;
-  secretariat_notes: string;
+  secretariat_comments: string;
   follow_up_actions: string;
   meeting_notes: string;
   approved_datetime: string;
@@ -299,7 +299,7 @@ const AppointmentTiles: React.FC = () => {
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
               <Typography variant="subtitle2" color="text.secondary">Notes</Typography>
-              <Typography>{appointment.secretariat_notes || 'N/A'}</Typography>
+              <Typography>{appointment.secretariat_comments || 'N/A'}</Typography>
             </Grid>
             <Grid item xs={12} sm={6}>
               <Typography variant="subtitle2" color="text.secondary">Follow-up Actions</Typography>
