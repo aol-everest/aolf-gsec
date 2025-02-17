@@ -140,6 +140,14 @@ export const AppointmentRequestForm: React.FC = () => {
         if (response.ok) {
           const data = await response.json();
           setDignitaries(data);
+          
+          // If there are dignitaries, default to selecting the first one
+          if (data.length > 0) {
+            dignitaryForm.setValue('isExistingDignitary', true);
+            dignitaryForm.setValue('selectedDignitaryId', data[0].id);
+            setSelectedDignitary(data[0]);
+            populateDignitaryForm(data[0]);
+          }
         }
       } catch (error) {
         console.error('Error fetching dignitaries:', error);
@@ -147,6 +155,23 @@ export const AppointmentRequestForm: React.FC = () => {
     };
     fetchDignitaries();
   }, []);
+
+  // Function to populate dignitary form fields
+  const populateDignitaryForm = (dignitary: any) => {
+    dignitaryForm.setValue('dignitaryHonorificTitle', dignitary.honorific_title);
+    dignitaryForm.setValue('dignitaryFirstName', dignitary.first_name);
+    dignitaryForm.setValue('dignitaryLastName', dignitary.last_name);
+    dignitaryForm.setValue('dignitaryEmail', dignitary.email);
+    dignitaryForm.setValue('dignitaryPhone', dignitary.phone || '');
+    dignitaryForm.setValue('dignitaryPrimaryDomain', dignitary.primary_domain);
+    dignitaryForm.setValue('dignitaryTitleInOrganization', dignitary.title_in_organization);
+    dignitaryForm.setValue('dignitaryOrganization', dignitary.organization);
+    dignitaryForm.setValue('dignitaryBioSummary', dignitary.bio_summary);
+    dignitaryForm.setValue('dignitaryLinkedInOrWebsite', dignitary.linked_in_or_website);
+    dignitaryForm.setValue('dignitaryCountry', dignitary.country);
+    dignitaryForm.setValue('dignitaryState', dignitary.state);
+    dignitaryForm.setValue('dignitaryCity', dignitary.city);
+  };
 
   // Update form values when userInfo changes
   useEffect(() => {
@@ -172,32 +197,53 @@ export const AppointmentRequestForm: React.FC = () => {
     } else if (activeStep === 1) {
       const dignitaryData = await dignitaryForm.handleSubmit(async (data) => {
         try {
+          let dignitaryId = data.selectedDignitaryId;
+          
           if (data.isExistingDignitary && data.selectedDignitaryId) {
-            // Update existing dignitary if changes were made
-            const response = await fetch(`http://localhost:8001/dignitaries/update/${data.selectedDignitaryId}`, {
-              method: 'PATCH',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-              },
-              body: JSON.stringify({
-                honorific_title: data.dignitaryHonorificTitle,
-                first_name: data.dignitaryFirstName,
-                last_name: data.dignitaryLastName,
-                email: data.dignitaryEmail,
-                phone: data.dignitaryPhone,
-                primary_domain: data.dignitaryPrimaryDomain,
-                title_in_organization: data.dignitaryTitleInOrganization,
-                organization: data.dignitaryOrganization,
-                bio_summary: data.dignitaryBioSummary,
-                linked_in_or_website: data.dignitaryLinkedInOrWebsite,
-                country: data.dignitaryCountry,
-                state: data.dignitaryState,
-                city: data.dignitaryCity,
-                poc_relationship_type: data.pocRelationshipType,
-              }),
-            });
-            if (!response.ok) throw new Error('Failed to update dignitary');
+            // Update existing dignitary if any field has changed
+            const selectedDignitary = dignitaries.find(d => d.id === data.selectedDignitaryId);
+            const hasChanges = selectedDignitary && (
+              selectedDignitary.honorific_title !== data.dignitaryHonorificTitle ||
+              selectedDignitary.first_name !== data.dignitaryFirstName ||
+              selectedDignitary.last_name !== data.dignitaryLastName ||
+              selectedDignitary.email !== data.dignitaryEmail ||
+              selectedDignitary.phone !== data.dignitaryPhone ||
+              selectedDignitary.primary_domain !== data.dignitaryPrimaryDomain ||
+              selectedDignitary.title_in_organization !== data.dignitaryTitleInOrganization ||
+              selectedDignitary.organization !== data.dignitaryOrganization ||
+              selectedDignitary.bio_summary !== data.dignitaryBioSummary ||
+              selectedDignitary.linked_in_or_website !== data.dignitaryLinkedInOrWebsite ||
+              selectedDignitary.country !== data.dignitaryCountry ||
+              selectedDignitary.state !== data.dignitaryState ||
+              selectedDignitary.city !== data.dignitaryCity
+            );
+
+            if (hasChanges) {
+              const response = await fetch(`http://localhost:8001/dignitaries/update/${data.selectedDignitaryId}`, {
+                method: 'PATCH',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+                },
+                body: JSON.stringify({
+                  honorific_title: data.dignitaryHonorificTitle,
+                  first_name: data.dignitaryFirstName,
+                  last_name: data.dignitaryLastName,
+                  email: data.dignitaryEmail,
+                  phone: data.dignitaryPhone,
+                  primary_domain: data.dignitaryPrimaryDomain,
+                  title_in_organization: data.dignitaryTitleInOrganization,
+                  organization: data.dignitaryOrganization,
+                  bio_summary: data.dignitaryBioSummary,
+                  linked_in_or_website: data.dignitaryLinkedInOrWebsite,
+                  country: data.dignitaryCountry,
+                  state: data.dignitaryState,
+                  city: data.dignitaryCity,
+                  poc_relationship_type: data.pocRelationshipType,
+                }),
+              });
+              if (!response.ok) throw new Error('Failed to update dignitary');
+            }
           } else {
             // Create new dignitary
             const response = await fetch('http://localhost:8001/dignitaries/new/', {
@@ -225,7 +271,8 @@ export const AppointmentRequestForm: React.FC = () => {
             });
             if (!response.ok) throw new Error('Failed to create dignitary');
             const newDignitary = await response.json();
-            dignitaryForm.setValue('selectedDignitaryId', newDignitary.id);
+            dignitaryId = newDignitary.id;
+            dignitaryForm.setValue('selectedDignitaryId', dignitaryId);
           }
           setActiveStep(2);
         } catch (error) {
@@ -339,12 +386,40 @@ export const AppointmentRequestForm: React.FC = () => {
                 <FormControl component="fieldset">
                   <RadioGroup
                     value={dignitaryForm.watch('isExistingDignitary').toString()}
-                    onChange={(e) => dignitaryForm.setValue('isExistingDignitary', e.target.value === 'true')}
+                    onChange={(e) => {
+                      const isExisting = e.target.value === 'true';
+                      dignitaryForm.setValue('isExistingDignitary', isExisting);
+                      if (!isExisting) {
+                        // Clear form when switching to new dignitary
+                        dignitaryForm.setValue('selectedDignitaryId', undefined);
+                        dignitaryForm.reset({
+                          ...dignitaryForm.getValues(),
+                          selectedDignitaryId: undefined,
+                          dignitaryHonorificTitle: HONORIFIC_TITLES[0],
+                          dignitaryFirstName: '',
+                          dignitaryLastName: '',
+                          dignitaryEmail: '',
+                          dignitaryPhone: '',
+                          dignitaryPrimaryDomain: PRIMARY_DOMAINS[0],
+                          dignitaryTitleInOrganization: '',
+                          dignitaryOrganization: '',
+                          dignitaryBioSummary: '',
+                          dignitaryLinkedInOrWebsite: '',
+                          dignitaryCountry: '',
+                          dignitaryState: '',
+                          dignitaryCity: '',
+                        });
+                      } else if (selectedDignitary) {
+                        // Restore selected dignitary data if switching back
+                        populateDignitaryForm(selectedDignitary);
+                      }
+                    }}
                   >
                     <FormControlLabel 
                       value="true" 
                       control={<Radio />} 
-                      label="Select an existing dignitary" 
+                      label="Select an existing dignitary"
+                      disabled={dignitaries.length === 0}
                     />
                     <FormControlLabel 
                       value="false" 
@@ -358,31 +433,19 @@ export const AppointmentRequestForm: React.FC = () => {
                 <Grid item xs={12}>
                   <FormControl fullWidth>
                     <InputLabel>Select Dignitary</InputLabel>
-                    <Controller<DignitaryFormData>
+                    <Controller
                       name="selectedDignitaryId"
                       control={dignitaryForm.control}
                       render={({ field }) => (
                         <Select
                           label="Select Dignitary"
-                          value={field.value || dignitaries[0]?.id} // Updated to select the first value by default and trigger onChange
+                          value={field.value || ''}
                           onChange={(e) => {
                             field.onChange(e.target.value);
-                            // Find the selected dignitary and populate form
                             const selectedDignitary = dignitaries.find(d => d.id === e.target.value);
                             if (selectedDignitary) {
-                              dignitaryForm.setValue('dignitaryHonorificTitle', selectedDignitary.honorific_title);
-                              dignitaryForm.setValue('dignitaryFirstName', selectedDignitary.first_name);
-                              dignitaryForm.setValue('dignitaryLastName', selectedDignitary.last_name);
-                              dignitaryForm.setValue('dignitaryEmail', selectedDignitary.email);
-                              dignitaryForm.setValue('dignitaryPhone', selectedDignitary.phone || '');
-                              dignitaryForm.setValue('dignitaryPrimaryDomain', selectedDignitary.primary_domain);
-                              dignitaryForm.setValue('dignitaryTitleInOrganization', selectedDignitary.title_in_organization);
-                              dignitaryForm.setValue('dignitaryOrganization', selectedDignitary.organization);
-                              dignitaryForm.setValue('dignitaryBioSummary', selectedDignitary.bio_summary);
-                              dignitaryForm.setValue('dignitaryLinkedInOrWebsite', selectedDignitary.linked_in_or_website);
-                              dignitaryForm.setValue('dignitaryCountry', selectedDignitary.country);
-                              dignitaryForm.setValue('dignitaryState', selectedDignitary.state);
-                              dignitaryForm.setValue('dignitaryCity', selectedDignitary.city);
+                              setSelectedDignitary(selectedDignitary);
+                              populateDignitaryForm(selectedDignitary);
                             }
                           }}
                         >
