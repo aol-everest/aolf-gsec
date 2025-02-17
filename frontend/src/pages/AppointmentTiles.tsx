@@ -67,10 +67,14 @@ interface Appointment {
 
 const AppointmentTiles: React.FC = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [filteredAppointments, setFilteredAppointments] = useState<Appointment[]>([]);
   const [activeStep, setActiveStep] = useState(0);
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
+
+  const STATUS_OPTIONS = ['PENDING', 'APPROVED', 'REJECTED', 'FOLLOW_UP'] as const;
 
   useEffect(() => {
     const fetchAppointments = async () => {
@@ -82,8 +86,8 @@ const AppointmentTiles: React.FC = () => {
         });
         if (!response.ok) throw new Error('Failed to fetch appointments');
         const data = await response.json();
-        // console.log(data);
         setAppointments(data);
+        setFilteredAppointments(data);
       } catch (error) {
         console.error('Error fetching appointments:', error);
       }
@@ -92,8 +96,18 @@ const AppointmentTiles: React.FC = () => {
     fetchAppointments();
   }, []);
 
+  useEffect(() => {
+    if (selectedStatus) {
+      const filtered = appointments.filter(appointment => appointment.status === selectedStatus);
+      setFilteredAppointments(filtered);
+      setActiveStep(0); // Reset to first appointment when filter changes
+    } else {
+      setFilteredAppointments(appointments);
+    }
+  }, [selectedStatus, appointments]);
+
   const handleNext = () => {
-    setActiveStep((prevStep) => Math.min(prevStep + 1, appointments.length - 1));
+    setActiveStep((prevStep) => Math.min(prevStep + 1, filteredAppointments.length - 1));
   };
 
   const handleBack = () => {
@@ -102,6 +116,10 @@ const AppointmentTiles: React.FC = () => {
 
   const handleEdit = (appointmentId: number) => {
     navigate(`/appointment-edit/${appointmentId}`);
+  };
+
+  const handleStatusFilter = (status: string | null) => {
+    setSelectedStatus(status === selectedStatus ? null : status);
   };
 
   const getStatusColor = (status: string) => {
@@ -255,12 +273,33 @@ const AppointmentTiles: React.FC = () => {
         <Box sx={{ maxWidth: '100%', overflow: 'hidden' }}>
           <Box sx={{ 
             display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center',
+            flexDirection: 'column',
+            gap: 2,
             px: 3,
             mb: 2
           }}>
             <Typography variant="h4">Appointment Details</Typography>
+            <Box sx={{ 
+              display: 'flex', 
+              gap: 1, 
+              flexWrap: 'wrap'
+            }}>
+              {STATUS_OPTIONS.map((status) => (
+                <Chip
+                  key={status}
+                  label={`${status} (${appointments.filter(a => a.status === status).length})`}
+                  color={getStatusColor(status) as any}
+                  onClick={() => handleStatusFilter(status)}
+                  variant={selectedStatus === status ? 'filled' : 'outlined'}
+                  sx={{ 
+                    cursor: 'pointer',
+                    '&:hover': {
+                      opacity: 0.8,
+                    },
+                  }}
+                />
+              ))}
+            </Box>
           </Box>
 
           <Box sx={{ 
@@ -269,12 +308,12 @@ const AppointmentTiles: React.FC = () => {
             position: 'relative',
             touchAction: 'pan-y pinch-zoom',
           }}>
-            {appointments.length > 0 && (
+            {filteredAppointments.length > 0 ? (
               <>
-                <AppointmentTile appointment={appointments[activeStep]} />
+                <AppointmentTile appointment={filteredAppointments[activeStep]} />
                 <MobileStepper
                   variant="dots"
-                  steps={appointments.length}
+                  steps={filteredAppointments.length}
                   position="static"
                   activeStep={activeStep}
                   sx={{ 
@@ -288,7 +327,7 @@ const AppointmentTiles: React.FC = () => {
                     <Button
                       size="small"
                       onClick={handleNext}
-                      disabled={activeStep === appointments.length - 1}
+                      disabled={activeStep === filteredAppointments.length - 1}
                     >
                       Next
                       <NavigateNextIcon />
@@ -306,6 +345,10 @@ const AppointmentTiles: React.FC = () => {
                   }
                 />
               </>
+            ) : (
+              <Paper sx={{ p: 3, textAlign: 'center' }}>
+                <Typography>No appointments found for the selected status.</Typography>
+              </Paper>
             )}
           </Box>
         </Box>

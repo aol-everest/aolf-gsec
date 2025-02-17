@@ -357,6 +357,7 @@ async def get_all_appointments(
     """Get all appointments"""
     appointments = (
         db.query(models.Appointment)
+        .order_by(models.Appointment.id.asc())
         .all()
     )
     print(f"Appointments: {appointments}")
