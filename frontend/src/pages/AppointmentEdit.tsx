@@ -103,7 +103,7 @@ const AppointmentEdit: React.FC = () => {
 
   const onSubmit = async (data: AppointmentFormData) => {
     try {
-      const response = await fetch(`http://localhost:8001/admin/appointments/${id}`, {
+      const response = await fetch(`http://localhost:8001/admin/appointments/update/${id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

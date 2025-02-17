@@ -71,6 +71,7 @@ const AppointmentTiles: React.FC = () => {
         });
         if (!response.ok) throw new Error('Failed to fetch appointments');
         const data = await response.json();
+        // console.log(data);
         setAppointments(data);
       } catch (error) {
         console.error('Error fetching appointments:', error);

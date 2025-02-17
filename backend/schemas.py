@@ -86,10 +86,6 @@ class DignitaryAdmin(DignitaryBase):
         orm_mode = True
 
 class AppointmentBase(BaseModel):
-    dignitary_id: int
-    purpose: str
-    preferred_date: date
-    preferred_time: Optional[str] = None
     duration: Optional[str] = None
     location: Optional[str] = None
     pre_meeting_notes: Optional[str] = None
@@ -97,40 +93,22 @@ class AppointmentBase(BaseModel):
     approved_datetime: Optional[datetime] = None
 
 class AppointmentCreate(AppointmentBase):
-    pass
+    dignitary_id: int
+    purpose: str
+    preferred_date: date
+    preferred_time: Optional[str] = None
 
 class Appointment(AppointmentBase):
     id: int
     requester_id: int
     dignitary_id: int
+    purpose: str
+    preferred_date: date
+    preferred_time: Optional[str] = None
     dignitary: Dignitary
     status: str
     created_at: datetime
     updated_at: datetime
-
-    class Config:
-        orm_mode = True
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-            date: lambda v: v.strftime("%Y-%m-%d")
-        }
-
-class AppointmentAdmin(AppointmentBase):
-    id: int
-    requester_id: int
-    dignitary_id: int
-    dignitary: DignitaryAdmin
-    status: str
-    appointment_date: Optional[date] = None
-    appointment_time: Optional[str] = None
-    created_at: datetime
-    updated_at: datetime
-    meeting_notes: Optional[str] = None
-    follow_up_actions: Optional[str] = None
-    secretariat_comments: Optional[str] = None
-    approved_datetime: Optional[datetime] = None
-    approved_by: Optional[int] = None
-    last_updated_by: Optional[int] = None
 
     class Config:
         orm_mode = True
@@ -170,4 +148,31 @@ class DignitaryPointOfContact(DignitaryPointOfContactBase):
 
     class Config:
         orm_mode = True
+
+class AppointmentAdmin(AppointmentBase):
+    id: int
+    requester_id: int
+    dignitary_id: int
+    purpose: str
+    preferred_date: date
+    preferred_time: Optional[str] = None
+    dignitary: DignitaryAdmin
+    status: str
+    appointment_date: Optional[date] = None
+    appointment_time: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    meeting_notes: Optional[str] = None
+    follow_up_actions: Optional[str] = None
+    secretariat_comments: Optional[str] = None
+    approved_datetime: Optional[datetime] = None
+    approved_by: Optional[int] = None
+    last_updated_by: Optional[int] = None
+
+    class Config:
+        orm_mode = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat(),
+            date: lambda v: v.strftime("%Y-%m-%d")
+        }
 
