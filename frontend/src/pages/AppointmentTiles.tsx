@@ -124,20 +124,29 @@ const AppointmentTiles: React.FC = () => {
       }}
     >
       <CardContent>
-        <Box sx={{ position: 'absolute', top: 16, right: 16 }}>
-          <Chip 
-            label={appointment.status} 
-            color={getStatusColor(appointment.status) as any}
-            sx={{ mb: 1 }}
-          />
-          <IconButton 
-            color="primary"
-            onClick={() => handleEdit(appointment.id)}
-            sx={{ ml: 1 }}
-          >
-            <EditIcon />
-          </IconButton>
-        </Box>
+
+        {/* Requester Information */}
+        <Paper elevation={0} sx={{ p: 2, mb: 3, border: null, boxShadow: null, borderRadius: 0 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h5" gutterBottom color="primary">
+              Request #: {appointment.id}
+            </Typography>
+          </Box>
+          <Box sx={{ position: 'absolute', top: 31, right: 31 }}>
+            <Chip 
+                label={appointment.status} 
+                color={getStatusColor(appointment.status) as any}
+                sx={{ mb: 1 }}
+            />
+            <IconButton 
+                color="primary"
+                onClick={() => handleEdit(appointment.id)}
+                sx={{ ml: 1 }}
+            >
+                <EditIcon />
+            </IconButton>
+          </Box>          
+        </Paper>
 
         {/* Point of Contact Information */}
         <Paper elevation={0} sx={{ p: 2, mb: 3, bgcolor: 'grey.50', borderRadius: 2 }}>
