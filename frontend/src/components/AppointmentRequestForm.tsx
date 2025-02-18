@@ -468,6 +468,13 @@ export const AppointmentRequestForm: React.FC = () => {
                       const isExisting = e.target.value === 'true';
                       dignitaryForm.setValue('isExistingDignitary', isExisting);
                       if (!isExisting) {
+                        // Store the current selectedDignitaryId in the selectedDignitary object
+                        if (selectedDignitary) {
+                          setSelectedDignitary({
+                            ...selectedDignitary,
+                            previousId: dignitaryForm.getValues().selectedDignitaryId
+                          });
+                        }
                         // Clear form when switching to new dignitary
                         dignitaryForm.setValue('selectedDignitaryId', undefined);
                         dignitaryForm.reset({
@@ -488,8 +495,9 @@ export const AppointmentRequestForm: React.FC = () => {
                           dignitaryCity: '',
                         });
                       } else if (selectedDignitary) {
-                        // Restore selected dignitary data if switching back
+                        // Restore selected dignitary data and ID if switching back
                         populateDignitaryForm(selectedDignitary);
+                        dignitaryForm.setValue('selectedDignitaryId', selectedDignitary.previousId || selectedDignitary.id);
                       }
                     }}
                   >
