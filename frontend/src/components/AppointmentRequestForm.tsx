@@ -86,7 +86,6 @@ export const AppointmentRequestForm: React.FC = () => {
   const [submittedAppointment, setSubmittedAppointment] = useState<any>(null);
   const [selectedDignitary, setSelectedDignitary] = useState<any>(null);
   const [showWarningDialog, setShowWarningDialog] = useState(false);
-  const [pendingDignitarySelection, setPendingDignitarySelection] = useState<any>(null);
   const navigate = useNavigate();
   const [statusOptions, setStatusOptions] = useState<string[]>([]);
 
@@ -232,7 +231,7 @@ export const AppointmentRequestForm: React.FC = () => {
     populateDignitaryForm(dignitary);
   };
 
-  const handleNext = async () => {
+  const handleNext = async (skipExistingCheck: boolean = false) => {
     if (activeStep === 0) {
       const pocData = await pocForm.handleSubmit(async (data) => {
         try {
@@ -245,13 +244,13 @@ export const AppointmentRequestForm: React.FC = () => {
     } else if (activeStep === 1) {
       const dignitaryData = await dignitaryForm.handleSubmit(async (data) => {
         try {
-          if (data.isExistingDignitary && data.selectedDignitaryId) {
+          if (data.isExistingDignitary && data.selectedDignitaryId && !skipExistingCheck) {
             // Check for existing appointments before proceeding
             const existingAppointments = await checkExistingAppointments(data.selectedDignitaryId);
             if (existingAppointments) {
-              setPendingDignitarySelection({
+              setSelectedDignitary({
                 ...selectedDignitary,
-                appointments: existingAppointments
+                appointments: existingAppointments,
               });
               setShowWarningDialog(true);
               return; // Stop here and wait for user confirmation
@@ -400,7 +399,7 @@ export const AppointmentRequestForm: React.FC = () => {
     switch (step) {
       case 0:
         return (
-          <Box component="form" onSubmit={pocForm.handleSubmit(handleNext)}>
+          <Box component="form" onSubmit={pocForm.handleSubmit(() => handleNext(false))}>
             <Grid container spacing={3}>
               <Grid item xs={12}>
                 <Typography variant="h6" gutterBottom>
@@ -452,7 +451,7 @@ export const AppointmentRequestForm: React.FC = () => {
 
       case 1:
         return (
-          <Box component="form" onSubmit={dignitaryForm.handleSubmit(handleNext)}>
+          <Box component="form" onSubmit={dignitaryForm.handleSubmit(() => handleNext(false))}>
             <Grid container spacing={3}>
               <Grid item xs={12}>
                 <Typography variant="h6" gutterBottom>
@@ -773,7 +772,7 @@ export const AppointmentRequestForm: React.FC = () => {
 
       case 2:
         return (
-          <Box component="form" onSubmit={appointmentForm.handleSubmit(handleNext)}>
+          <Box component="form" onSubmit={appointmentForm.handleSubmit(() => handleNext(false))}>
             <Grid container spacing={3}>
               <Grid item xs={12}>
                 <Typography variant="h6" gutterBottom>
@@ -958,7 +957,7 @@ export const AppointmentRequestForm: React.FC = () => {
 
   // Update the warning dialog to show appointment details
   const renderWarningDialog = () => {
-    if (!pendingDignitarySelection) return null;
+    if (!selectedDignitary) return null;
 
     return (
       <Dialog
@@ -971,11 +970,11 @@ export const AppointmentRequestForm: React.FC = () => {
         <DialogContent>
           <Typography gutterBottom>
             You have the following pending appointment requests for{' '}
-            {`${pendingDignitarySelection.honorific_title} ${pendingDignitarySelection.first_name} ${pendingDignitarySelection.last_name}`}:
+            {`${selectedDignitary.honorific_title} ${selectedDignitary.first_name} ${selectedDignitary.last_name}`}:
           </Typography>
           
           <Box sx={{ mt: 2 }}>
-            {pendingDignitarySelection.appointments?.map((appointment: any) => (
+            {selectedDignitary.appointments?.map((appointment: any) => (
               <Paper 
                 key={appointment.id} 
                 elevation={1} 
@@ -1021,12 +1020,10 @@ export const AppointmentRequestForm: React.FC = () => {
             Cancel
           </Button>
           <Button
-            onClick={() => {
+            onClick={async () => {
               setShowWarningDialog(false);
-              setSelectedDignitary(pendingDignitarySelection);
-              populateDignitaryForm(pendingDignitarySelection);
-              setPendingDignitarySelection(null);
-              setActiveStep(2);
+              // setActiveStep(2);
+              handleNext(true);
             }}
             color="primary"
             variant="contained"
@@ -1059,7 +1056,7 @@ export const AppointmentRequestForm: React.FC = () => {
           )}
           <Button
             variant="contained"
-            onClick={handleNext}
+            onClick={() => handleNext(false)}
             disabled={activeStep === steps.length}
           >
             {activeStep === steps.length - 1 ? 'Submit' : 'Next'}
