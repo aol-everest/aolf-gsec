@@ -37,6 +37,43 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
     }
   };
 
+  const addSidebarMenuItem = (text: string, icon: React.ReactNode, path: string) => {
+    return (
+      <ListItem 
+        button 
+        key={text} 
+        onClick={() => handleNavigation(path)}
+        sx={{
+          // backgroundColor: location.pathname === item.path ? 'rgba(0, 0, 0, 0.04)' : 'transparent',
+          // backgroundColor: location.pathname === item.path ? theme.palette.primary.light : 'transparent',
+          backgroundColor: location.pathname === path ? theme.palette.secondary.main : 'transparent',
+          '&:hover': {
+            backgroundColor: location.pathname === path ? theme.palette.secondary.light : theme.palette.secondary.light,
+          },
+          borderLeft: location.pathname === path ? '4px solid' : '4px solid transparent',
+          borderLeftColor: theme.palette.primary.main,
+        }}
+      >
+        <ListItemIcon 
+          sx={{ 
+            color: location.pathname === path ? theme.palette.primary.main : theme.palette.text.secondary
+          }}
+        >
+          {icon}
+        </ListItemIcon>
+        <ListItemText 
+          primary={text}
+          sx={{
+            '& .MuiTypography-root': {
+              color: location.pathname === path ? theme.palette.primary.main : theme.palette.text.secondary,
+              fontWeight: location.pathname === path ? 600 : 400,
+            },
+          }}
+        />
+      </ListItem>
+    );
+  };  
+
   const menuItems = [
     {
       text: 'Home',
@@ -86,6 +123,11 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
       icon: calendarViewDayIcon,
       path: '/appointment-tiles',
     },
+    {
+      text: 'Daily Schedule',
+      icon: calendarViewDayIcon,
+      path: '/appointment-day-view',
+    },
   ];
 
   const drawer = (
@@ -106,40 +148,7 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
         </Typography>
       </Toolbar>
       <List>
-        {menuItems.map((item) => (
-          <ListItem 
-            button 
-            key={item.text} 
-            onClick={() => handleNavigation(item.path)}
-            sx={{
-              // backgroundColor: location.pathname === item.path ? 'rgba(0, 0, 0, 0.04)' : 'transparent',
-              // backgroundColor: location.pathname === item.path ? theme.palette.primary.light : 'transparent',
-              backgroundColor: location.pathname === item.path ? theme.palette.secondary.main : 'transparent',
-              '&:hover': {
-                backgroundColor: location.pathname === item.path ? theme.palette.secondary.light : theme.palette.secondary.light,
-              },
-              borderLeft: location.pathname === item.path ? '4px solid' : '4px solid transparent',
-              borderLeftColor: theme.palette.primary.main,
-            }}
-          >
-            <ListItemIcon 
-              sx={{ 
-                color: location.pathname === item.path ? theme.palette.primary.main : 'inherit'
-              }}
-            >
-              {item.icon}
-            </ListItemIcon>
-            <ListItemText 
-              primary={item.text}
-              sx={{
-                '& .MuiTypography-root': {
-                  color: location.pathname === item.path ? theme.palette.primary.main : 'inherit',
-                  fontWeight: location.pathname === item.path ? 600 : 400,
-                },
-              }}
-            />
-          </ListItem>
-        ))}
+        {menuItems.map((item) => addSidebarMenuItem(item.text, item.icon, item.path))}
       </List>
       {localStorage.getItem('role') === 'SECRETARIAT' && (
         <>
@@ -154,38 +163,7 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
           </Typography>
           <Divider />
           <List>
-            {adminMenuItems.map((item) => (
-              <ListItem 
-                button 
-                key={item.text} 
-                onClick={() => handleNavigation(item.path)}
-                sx={{
-                  backgroundColor: location.pathname === item.path ? 'rgba(0, 0, 0, 0.04)' : 'transparent',
-                  '&:hover': {
-                    backgroundColor: location.pathname === item.path ? 'rgba(0, 0, 0, 0.08)' : 'rgba(0, 0, 0, 0.04)',
-                  },
-                  borderLeft: location.pathname === item.path ? '4px solid' : '4px solid transparent',
-                  borderLeftColor: theme.palette.primary.main,
-                }}
-              >
-                <ListItemIcon 
-                  sx={{ 
-                    color: location.pathname === item.path ? theme.palette.primary.main : 'inherit'
-                  }}
-                >
-                  {item.icon}
-                </ListItemIcon>
-                <ListItemText 
-                  primary={item.text}
-                  sx={{
-                    '& .MuiTypography-root': {
-                      color: location.pathname === item.path ? theme.palette.primary.main : 'inherit',
-                      fontWeight: location.pathname === item.path ? 600 : 400,
-                    },
-                  }}
-                />
-              </ListItem>
-            ))}
+            {adminMenuItems.map((item) => addSidebarMenuItem(item.text, item.icon, item.path))}
           </List>
         </>
       )}

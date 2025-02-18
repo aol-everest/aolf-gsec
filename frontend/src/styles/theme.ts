@@ -23,7 +23,7 @@ const colors = {
   },
   text: {
     primary: '#2c3e50',
-    secondary: '#7f8c8d',
+    secondary: '#637381',
   },
   success: {
     main: '#2ecc71',

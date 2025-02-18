@@ -18,6 +18,7 @@ import DignitaryListAll from './pages/DignitaryListAll';
 import AppointmentStatusAll from './pages/AppointmentStatusAll';
 import AppointmentTiles from './pages/AppointmentTiles';
 import AppointmentEdit from './pages/AppointmentEdit';
+import AppointmentDayView from './pages/AppointmentDayView';
 
 // Components
 import PrivateRoute from './components/PrivateRoute';
@@ -65,6 +66,14 @@ function App() {
                 element={
                   <PrivateRoute>
                     <AppointmentTiles />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/appointment-day-view"
+                element={
+                  <PrivateRoute>
+                    <AppointmentDayView />
                   </PrivateRoute>
                 }
               />
