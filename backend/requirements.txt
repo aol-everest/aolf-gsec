@@ -6,15 +6,15 @@
 fastapi==0.115.8
 uvicorn[standard]==0.27.1
 python-multipart>=0.0.18
-pydantic==2.6.1
-email-validator==2.1.0.post1
+pydantic==2.6.4
+email-validator==2.1.1
 starlette>=0.40.0,<0.46.0
 
 # Database
-SQLAlchemy==2.0.27
-alembic==1.13.1
-psycopg2-binary==2.9.9
-greenlet==3.0.3  # Required by SQLAlchemy
+SQLAlchemy==2.0.28
+alembic==1.13.2
+psycopg2-binary==2.9.10
+greenlet==3.0.4  # Required by SQLAlchemy
 
 # Authentication and security
 python-jose[cryptography]==3.3.0  # Includes cryptography dependency
@@ -26,7 +26,7 @@ ecdsa==0.18.0  # Required by python-jose
 rsa==4.9  # Required by google-auth
 
 # Email
-sendgrid==6.11.0
+sendgrid==6.11.1
 python-http-client==3.3.7  # Required by sendgrid
 starkbank-ecdsa==2.2.0  # Required by sendgrid
 
@@ -34,13 +34,13 @@ starkbank-ecdsa==2.2.0  # Required by sendgrid
 requests==2.31.0
 requests-oauthlib==1.3.1
 urllib3==2.2.0
-httpx==0.26.0  # Required by FastAPI
-httpcore==1.0.2  # Required by httpx
+httpx==0.27.0  # Required by FastAPI
+httpcore==1.0.4  # Required by httpx
 
 # Utility packages
 typing-extensions==4.9.0
 click==8.1.7
-anyio==4.2.0
+anyio==4.3.0
 idna==3.6
 sniffio==1.3.0
 certifi==2024.2.2
