@@ -16,6 +16,7 @@ import json
 from database import SessionLocal, engine
 import models
 import schemas
+from utils.email_notifications import notify_appointment_creation, notify_appointment_update
 
 # Load environment variables
 load_dotenv()
@@ -208,9 +209,9 @@ async def create_appointment(
         db_appointment = models.Appointment(
             requester_id=current_user.id,
             dignitary_id=appointment.dignitary_id,
-            status="pending",
+            status="PENDING",
             purpose=appointment.purpose,
-            preferred_date=appointment.preferred_date,  # No need to parse, it's already a date object
+            preferred_date=appointment.preferred_date,
             preferred_time=appointment.preferred_time,
             duration=appointment.duration,
             location=appointment.location,
@@ -219,7 +220,9 @@ async def create_appointment(
         db.add(db_appointment)
         db.commit()
         db.refresh(db_appointment)
-        print(f"Appointment created: {db_appointment}")
+        
+        # Send email notifications
+        notify_appointment_creation(db, db_appointment)
         
         return db_appointment
     except Exception as e:
@@ -420,18 +423,36 @@ async def update_appointment(
     )
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
+    
+    # Store old data for comparison
+    old_data = {
+        'status': appointment.status.value if hasattr(appointment.status, 'value') else appointment.status,
+        'appointment_date': appointment.appointment_date.isoformat() if appointment.appointment_date else None,
+        'appointment_time': appointment.appointment_time,
+        'duration': appointment.duration,
+        'location': appointment.location,
+        'meeting_notes': appointment.meeting_notes,
+        'follow_up_actions': appointment.follow_up_actions,
+        'secretariat_comments': appointment.secretariat_comments,
+    }
         
     if appointment.status != models.AppointmentStatus.APPROVED.value and appointment_update.status == models.AppointmentStatus.APPROVED.value:
         print("Appointment is approved")
         appointment.approved_datetime = datetime.utcnow()
         appointment.approved_by = current_user.id
 
-    for key, value in appointment_update.dict(exclude_unset=True).items():
+    # Update appointment with new data
+    update_data = appointment_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
         setattr(appointment, key, value)
     appointment.last_updated_by = current_user.id
+    
     db.commit()
     db.refresh(appointment)
-    print(f"Appointment updated: {json.dumps(appointment, default=str)}")
+    
+    # Send email notifications about the update
+    notify_appointment_update(db, appointment, old_data, update_data)
+    
     return appointment
 
 
