@@ -3,12 +3,12 @@
 # Using latest stable Python version for best compatibility and support
 
 # FastAPI and related dependencies
-fastapi==0.109.2
+fastapi==0.115.8
 uvicorn[standard]==0.27.1
-python-multipart==0.0.9
+python-multipart>=0.0.18
 pydantic==2.6.1
 email-validator==2.1.0.post1
-starlette==0.36.3  # Version compatible with FastAPI 0.109.2
+starlette>=0.40.0,<0.46.0
 
 # Database
 SQLAlchemy==2.0.27
