@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import Optional, Dict, Any
 from datetime import datetime, date
 
 class GoogleToken(BaseModel):
@@ -11,6 +11,7 @@ class UserBase(BaseModel):
     last_name: Optional[str] = None
     phone_number: Optional[str] = None
     picture: Optional[str] = None
+    notification_preferences: Optional[Dict[str, bool]] = None
 
 class UserCreate(UserBase):
     google_id: str
@@ -26,6 +27,8 @@ class User(UserBase):
 class UserUpdate(BaseModel):
     phone_number: Optional[str] = None
     picture: Optional[str] = None
+    notification_preferences: Optional[Dict[str, bool]] = None
+    
     class Config:
         orm_mode = True
 

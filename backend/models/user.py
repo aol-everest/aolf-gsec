@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, Integer, String, DateTime, JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -9,6 +9,13 @@ class UserRole(enum.Enum):
     SECRETARIAT = "SECRETARIAT"
     GENERAL = "GENERAL"
     USHER = "USHER"
+
+# Define default notification preferences
+DEFAULT_NOTIFICATION_PREFERENCES = {
+    "appointment_created": True,  # When user creates an appointment
+    "appointment_updated": True,  # When an appointment's status/details are updated
+    "new_appointment_request": False,  # For secretariat - when new appointments are created
+}
 
 class User(Base):
     __tablename__ = "users"
@@ -21,6 +28,7 @@ class User(Base):
     phone_number = Column(String)
     picture = Column(String)
     role = Column(Enum(UserRole), nullable=False)
+    notification_preferences = Column(JSON, nullable=False, default=lambda: DEFAULT_NOTIFICATION_PREFERENCES)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_login_at = Column(DateTime)

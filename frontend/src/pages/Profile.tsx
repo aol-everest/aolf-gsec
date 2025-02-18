@@ -1,24 +1,57 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Typography, Paper, Box, Button, Avatar, TextField, Snackbar, Alert } from '@mui/material';
+import { 
+  Container, 
+  Typography, 
+  Paper, 
+  Box, 
+  Button, 
+  Avatar, 
+  TextField, 
+  Snackbar, 
+  Alert,
+  FormGroup,
+  FormControlLabel,
+  Switch,
+  Divider
+} from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import Layout from '../components/Layout';
+
+interface NotificationPreferences {
+  appointment_created: boolean;
+  appointment_updated: boolean;
+  new_appointment_request: boolean;
+}
+
+const DEFAULT_PREFERENCES: NotificationPreferences = {
+  appointment_created: true,
+  appointment_updated: true,
+  new_appointment_request: false,
+};
 
 const Profile: React.FC = () => {
   const { userInfo, logout, updateUserInfo } = useAuth();
   const [phoneNumber, setPhoneNumber] = useState(userInfo?.phone_number || '');
   const [isEditing, setIsEditing] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>(
+    userInfo?.notification_preferences || DEFAULT_PREFERENCES
+  );
 
-  // Update phone number when userInfo changes
+  // Update values when userInfo changes
   useEffect(() => {
-    if (userInfo?.phone_number !== undefined) {
-      setPhoneNumber(userInfo.phone_number);
+    if (userInfo) {
+      setPhoneNumber(userInfo.phone_number || '');
+      setNotificationPreferences(userInfo.notification_preferences || DEFAULT_PREFERENCES);
     }
-  }, [userInfo?.phone_number]);
+  }, [userInfo]);
 
   const handleSave = async () => {
     try {
-      await updateUserInfo({ phone_number: phoneNumber });
+      await updateUserInfo({ 
+        phone_number: phoneNumber,
+        notification_preferences: notificationPreferences
+      });
       setMessage({ type: 'success', text: 'Profile updated successfully' });
       setIsEditing(false);
     } catch (error) {
@@ -30,20 +63,36 @@ const Profile: React.FC = () => {
   const handleCancel = () => {
     setIsEditing(false);
     setPhoneNumber(userInfo?.phone_number || '');
-    // console.log(userInfo);
+    setNotificationPreferences(userInfo?.notification_preferences || DEFAULT_PREFERENCES);
+  };
+
+  const handleNotificationChange = (key: keyof NotificationPreferences) => (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    setNotificationPreferences(prev => ({
+      ...prev,
+      [key]: event.target.checked
+    }));
+  };
+
+  const getNotificationLabel = (key: keyof NotificationPreferences): string => {
+    switch (key) {
+      case 'appointment_created':
+        return 'When I create a new appointment request';
+      case 'appointment_updated':
+        return 'When my appointment request is updated';
+      case 'new_appointment_request':
+        return 'When new appointment requests are created (Secretariat only)';
+      default:
+        return key;
+    }
   };
 
   return (
     <Layout>
       <Container maxWidth="md">
-        <Box sx={{ 
-          // py: 4 
-        }}>
-          <Paper sx={{ 
-            p: 4, 
-            // mt: 2, 
-            position: 'relative' 
-          }}>
+        <Box>
+          <Paper sx={{ p: 4, position: 'relative' }}>
             {/* Logout button in top right corner */}
             <Box sx={{ position: 'absolute', top: 30, right: 30 }}>
               <Button variant="outlined" color="error" onClick={logout}>
@@ -70,7 +119,7 @@ const Profile: React.FC = () => {
               </Box>
             </Box>
 
-            {/* Form section */}
+            {/* Contact Information section */}
             <Box sx={{ mt: 4 }}>
               <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
                 Contact Information
@@ -85,8 +134,38 @@ const Profile: React.FC = () => {
                   fullWidth
                 />
               </Box>
+            </Box>
 
-              {/* Add more fields here in the future */}
+            <Divider sx={{ my: 4 }} />
+
+            {/* Notification Preferences section */}
+            <Box sx={{ mt: 4 }}>
+              <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
+                Email Notification Preferences
+              </Typography>
+              
+              <FormGroup>
+                {Object.keys(notificationPreferences).map((key) => {
+                  // Only show new_appointment_request to secretariat users
+                  if (key === 'new_appointment_request' && userInfo?.role !== 'SECRETARIAT') {
+                    return null;
+                  }
+                  
+                  return (
+                    <FormControlLabel
+                      key={key}
+                      control={
+                        <Switch
+                          checked={notificationPreferences[key as keyof NotificationPreferences]}
+                          onChange={handleNotificationChange(key as keyof NotificationPreferences)}
+                          disabled={!isEditing}
+                        />
+                      }
+                      label={getNotificationLabel(key as keyof NotificationPreferences)}
+                    />
+                  );
+                })}
+              </FormGroup>
             </Box>
 
             {/* Action buttons at bottom */}
