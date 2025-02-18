@@ -38,3 +38,19 @@ export const personListIcon = (
 export const personIcon = (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M4.616 21q-.691 0-1.153-.462T3 19.385V16h1v3.385q0 .23.192.423t.423.192H8v1zM3 8V4.616q0-.691.463-1.153T4.615 3H8v1H4.616q-.231 0-.424.192T4 4.615V8zm13 13v-1h3.385q.23 0 .423-.192t.192-.424V16h1v3.385q0 .69-.462 1.152T19.385 21zm4-13V4.616q0-.231-.192-.424T19.385 4H16V3h3.385q.69 0 1.152.463T21 4.615V8zm-8 3.885q-1.044 0-1.772-.728T9.5 9.385q0-1.02.728-1.76T12 6.885q1.02 0 1.76.74t.74 1.76q0 1.044-.74 1.772t-1.76.728m-5.5 5.23v-1.4q0-.41.205-.756q.204-.347.558-.565q1.074-.636 2.278-.958q1.205-.32 2.459-.32t2.459.32t2.278.958q.354.217.558.565q.205.347.205.757v1.4z"/></svg>
 )
+
+export const outlineTableRowsIcon = (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2m0 2v3H5V5zm0 5v4H5v-4zM5 19v-3h14v3z"/></svg>
+)
+
+export const outlineTableChartIcon = (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M20 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h15c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2m0 2v3H5V5zm-5 14h-5v-9h5zM5 10h3v9H5zm12 9v-9h3v9z"/></svg>
+)
+
+export const roundViewColumnIcon = (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M14.67 6v12c0 .55-.45 1-1 1h-3.33c-.55 0-1-.45-1-1V6c0-.55.45-1 1-1h3.33c.55 0 1 .45 1 1m2 13H20c.55 0 1-.45 1-1V6c0-.55-.45-1-1-1h-3.33c-.55 0-1 .45-1 1v12c0 .55.44 1 1 1m-8.34-1V6c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v12c0 .55.45 1 1 1h3.33c.56 0 1-.45 1-1"/></svg>
+)
+
+export const roundPeopleIcon = (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3s1.34 3 3 3m-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5S5 6.34 5 8s1.34 3 3 3m0 2c-2.33 0-7 1.17-7 3.5V18c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-1.5c0-2.33-4.67-3.5-7-3.5m8 0c-.29 0-.62.02-.97.05c.02.01.03.03.04.04c1.14.83 1.93 1.94 1.93 3.41V18c0 .35-.07.69-.18 1H22c.55 0 1-.45 1-1v-1.5c0-2.33-4.67-3.5-7-3.5"/></svg>
+)

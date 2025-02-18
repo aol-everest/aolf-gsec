@@ -20,6 +20,7 @@ class User(UserBase):
     id: int
     created_at: datetime
     role: str
+    last_login_at: Optional[datetime] = None
 
     class Config:
         orm_mode = True

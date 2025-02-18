@@ -15,6 +15,7 @@ interface User {
   phone_number: string;
   role: string;
   created_at: string;
+  last_login_at: string;
 }
 
 const UsersAll: React.FC = () => {
@@ -58,6 +59,27 @@ const UsersAll: React.FC = () => {
         renderCell: (params) => {
             const date = new Date(params.value);
             return date.toLocaleDateString();
+        }
+    },
+    {
+        field: 'last_login_at',
+        headerName: 'Last Login',
+        width: 130,
+        renderCell: (params) => {
+          if (!params.value) {
+            return '';
+          }
+          let date = null;
+          try {
+            date = new Date(params.value);
+          } catch (error) {
+            console.error('Error rendering last login date:', error);
+          } finally {
+            if (date) {
+              return date.toLocaleDateString();
+            }
+            return '';
+          }
         }
     },
   ];

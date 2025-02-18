@@ -16,7 +16,21 @@ import Typography from '@mui/material/Typography';
 import Divider from '@mui/material/Divider';
 import AdminIcon from '@mui/icons-material/AdminPanelSettings';
 import { useTheme, useMediaQuery } from '@mui/material';
-import { addIcon, editCalendar, editIcon, homeIcon, calendarViewDayIcon, calendarAddIcon, listIcon, personListIcon, personIcon } from '../components/icons';
+import { 
+  addIcon, 
+  editCalendar, 
+  editIcon, 
+  homeIcon, 
+  calendarViewDayIcon, 
+  calendarAddIcon, 
+  listIcon, 
+  personListIcon, 
+  personIcon, 
+  outlineTableRowsIcon, 
+  outlineTableChartIcon, 
+  roundViewColumnIcon,
+  roundPeopleIcon,
+} from '../components/icons';
 
 interface SidebarProps {
   drawerWidth: number;
@@ -105,7 +119,7 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
   const adminMenuItems = [
     {
       text: 'Users',
-      icon: personListIcon,
+      icon: roundPeopleIcon,
       path: '/users-all',
     },
     {
@@ -115,12 +129,12 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
     },
     {
       text: 'Appointments List',
-      icon: calendarViewDayIcon,
+      icon: outlineTableRowsIcon,
       path: '/appointment-status-all',
     },
     {
       text: 'Appointments Tiles',
-      icon: calendarViewDayIcon,
+      icon: roundViewColumnIcon,
       path: '/appointment-tiles',
     },
     {
