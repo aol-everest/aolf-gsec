@@ -7,12 +7,18 @@ from sqlalchemy.orm import Session
 from models.user import User, UserRole
 from models.appointment import Appointment
 from schemas import AppointmentAdminUpdate
+from utils.utils import str_to_bool
 
 SENDGRID_API_KEY = os.getenv('SENDGRID_API_KEY')
 FROM_EMAIL = os.getenv('FROM_EMAIL', 'noreply@aolf-gsec.org')
+ENABLE_EMAIL = str_to_bool(os.getenv('ENABLE_EMAIL'))
 
 def send_email(to_email: str, subject: str, content: str):
     """Helper function to send an email using SendGrid."""
+    if not ENABLE_EMAIL:
+        print("Warning: Email notifications are disabled. Email not sent.")
+        return
+
     if not SENDGRID_API_KEY:
         print("Warning: SENDGRID_API_KEY not set. Email not sent.")
         return
