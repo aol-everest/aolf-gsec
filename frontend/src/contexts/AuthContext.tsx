@@ -14,6 +14,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   userInfo: UserInfo | null;
   accessToken: string | null;
+  isLoading: boolean;
   login: (response: any) => Promise<void>;
   logout: () => void;
   updateUserInfo: (updates: Partial<UserInfo>) => Promise<void>;
@@ -34,6 +35,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const navigate = useNavigate();
 
   const handleTokenExpiration = () => {
@@ -96,19 +98,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    // Check localStorage on mount
-    const storedAuth = localStorage.getItem('isAuthenticated') === 'true';
-    const storedUserInfo = localStorage.getItem('userInfo');
-    const storedToken = localStorage.getItem('accessToken');
+    const initializeAuth = async () => {
+      try {
+        // Check localStorage on mount
+        const storedAuth = localStorage.getItem('isAuthenticated') === 'true';
+        const storedUserInfo = localStorage.getItem('userInfo');
+        const storedToken = localStorage.getItem('accessToken');
 
-    setIsAuthenticated(storedAuth);
-    setUserInfo(storedUserInfo ? JSON.parse(storedUserInfo) : null);
-    setAccessToken(storedToken);
+        if (storedAuth && storedToken) {
+          setIsAuthenticated(true);
+          setUserInfo(storedUserInfo ? JSON.parse(storedUserInfo) : null);
+          setAccessToken(storedToken);
+          await refreshUserInfo();
+        }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+        // Clear any invalid state
+        setIsAuthenticated(false);
+        setUserInfo(null);
+        setAccessToken(null);
+        localStorage.removeItem('isAuthenticated');
+        localStorage.removeItem('userInfo');
+        localStorage.removeItem('accessToken');
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-    // If authenticated, refresh user info
-    if (storedAuth && storedToken) {
-      refreshUserInfo();
-    }
+    initializeAuth();
   }, []);
 
   const login = async (response: any) => {
@@ -178,7 +195,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('userInfo', JSON.stringify(mergedUserInfo));
       localStorage.setItem('accessToken', tokenData.access_token);
       localStorage.setItem('role', mergedUserInfo.role);
-      navigate('/appointment-form');
+
+      // Handle redirect
+      const redirectUrl = localStorage.getItem('redirectUrl');
+      if (redirectUrl) {
+        localStorage.removeItem('redirectUrl'); // Clear the stored URL
+        navigate(redirectUrl);
+      } else {
+        navigate('/home'); // Default to home page if no redirect URL
+      }
     } catch (error) {
       console.error('Error during login:', error);
       throw error;
@@ -195,6 +220,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('isAuthenticated');
     localStorage.removeItem('userInfo');
     localStorage.removeItem('accessToken');
+    localStorage.removeItem('redirectUrl'); // Also clear any stored redirect URL
     
     navigate('/');
   };
@@ -205,6 +231,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated,
         userInfo,
         accessToken,
+        isLoading,
         login,
         logout,
         updateUserInfo,
