@@ -339,7 +339,7 @@ const AppointmentTiles: React.FC = () => {
             display: 'flex', 
             flexDirection: 'column',
             gap: 2,
-            px: 3,
+            // px: 3,
             mb: 2
           }}>
             <Typography variant="h4">Appointment Details</Typography>

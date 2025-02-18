@@ -104,7 +104,9 @@ const AppointmentDayView: React.FC = () => {
   return (
     <Layout>
       <Container maxWidth="lg">
-        <Box sx={{ py: 3 }}>
+        <Box sx={{ 
+            // py: 3 
+        }}>
           <Box sx={{ 
             display: 'flex', 
             justifyContent: 'space-between', 
