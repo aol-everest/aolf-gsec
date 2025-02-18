@@ -345,6 +345,21 @@ async def get_my_appointments(
     print(f"Appointments: {appointments}")
     return appointments 
 
+@app.get("/appointments/my/{dignitary_id}", response_model=List[schemas.Appointment])
+async def get_my_appointments_for_dignitary(
+    dignitary_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all appointments requested by the current user for a specific dignitary"""
+    appointments = (
+        db.query(models.Appointment)
+        .filter(models.Appointment.requester_id == current_user.id, models.Appointment.dignitary_id == dignitary_id)
+        .all()
+    )
+    print(f"Appointments: {appointments}")
+    return appointments 
+
 @app.get("/admin/dignitaries/all", response_model=List[schemas.DignitaryAdmin])
 @requires_role(models.UserRole.SECRETARIAT)
 async def get_all_dignitaries(

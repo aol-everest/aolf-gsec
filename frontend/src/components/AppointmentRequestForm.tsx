@@ -23,6 +23,7 @@ import {
   DialogContent,
   DialogActions,
   Divider,
+  Chip,
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import LocationAutocomplete from './LocationAutocomplete';
@@ -84,6 +85,8 @@ export const AppointmentRequestForm: React.FC = () => {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [submittedAppointment, setSubmittedAppointment] = useState<any>(null);
   const [selectedDignitary, setSelectedDignitary] = useState<any>(null);
+  const [showWarningDialog, setShowWarningDialog] = useState(false);
+  const [pendingDignitarySelection, setPendingDignitarySelection] = useState<any>(null);
   const navigate = useNavigate();
   const [statusOptions, setStatusOptions] = useState<string[]>([]);
 
@@ -200,11 +203,39 @@ export const AppointmentRequestForm: React.FC = () => {
     }
   }, [userInfo, pocForm]);
 
+  // Modify the checkExistingAppointments function to return all appointments
+  const checkExistingAppointments = async (dignitaryId: number) => {
+    try {
+      const response = await fetch(`http://localhost:8001/appointments/my/${dignitaryId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+      if (response.ok) {
+        const appointments = await response.json();
+        const today = new Date();
+        const existingAppointments = appointments.filter(
+          (apt: any) => apt.dignitary_id === dignitaryId && 
+          new Date(apt.preferred_date) >= today
+        );
+        return existingAppointments.length > 0 ? existingAppointments : null;
+      }
+    } catch (error) {
+      console.error('Error checking existing appointments:', error);
+    }
+    return null;
+  };
+
+  // Modify the handleDignitarySelection function to not show warning
+  const handleDignitarySelection = async (dignitary: any) => {
+    setSelectedDignitary(dignitary);
+    populateDignitaryForm(dignitary);
+  };
+
   const handleNext = async () => {
     if (activeStep === 0) {
       const pocData = await pocForm.handleSubmit(async (data) => {
         try {
-          // Use updateUserInfo from AuthContext instead of direct API call
           await updateUserInfo({ phone_number: data.pocPhone });
           setActiveStep(1);
         } catch (error) {
@@ -214,7 +245,18 @@ export const AppointmentRequestForm: React.FC = () => {
     } else if (activeStep === 1) {
       const dignitaryData = await dignitaryForm.handleSubmit(async (data) => {
         try {
-          let dignitaryId = data.selectedDignitaryId;
+          if (data.isExistingDignitary && data.selectedDignitaryId) {
+            // Check for existing appointments before proceeding
+            const existingAppointments = await checkExistingAppointments(data.selectedDignitaryId);
+            if (existingAppointments) {
+              setPendingDignitarySelection({
+                ...selectedDignitary,
+                appointments: existingAppointments
+              });
+              setShowWarningDialog(true);
+              return; // Stop here and wait for user confirmation
+            }
+          }
           
           if (data.isExistingDignitary && data.selectedDignitaryId) {
             // Update existing dignitary if any field has changed
@@ -480,8 +522,7 @@ export const AppointmentRequestForm: React.FC = () => {
                             field.onChange(e.target.value);
                             const selectedDignitary = dignitaries.find(d => d.id === e.target.value);
                             if (selectedDignitary) {
-                              setSelectedDignitary(selectedDignitary);
-                              populateDignitaryForm(selectedDignitary);
+                              handleDignitarySelection(selectedDignitary);
                             }
                           }}
                         >
@@ -907,6 +948,88 @@ export const AppointmentRequestForm: React.FC = () => {
     );
   };
 
+  // Update the warning dialog to show appointment details
+  const renderWarningDialog = () => {
+    if (!pendingDignitarySelection) return null;
+
+    return (
+      <Dialog
+        open={showWarningDialog}
+        onClose={() => setShowWarningDialog(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Existing Appointment Requests</DialogTitle>
+        <DialogContent>
+          <Typography gutterBottom>
+            You have the following pending appointment requests for{' '}
+            {`${pendingDignitarySelection.honorific_title} ${pendingDignitarySelection.first_name} ${pendingDignitarySelection.last_name}`}:
+          </Typography>
+          
+          <Box sx={{ mt: 2 }}>
+            {pendingDignitarySelection.appointments?.map((appointment: any) => (
+              <Paper 
+                key={appointment.id} 
+                elevation={1} 
+                sx={{ 
+                  p: 2, 
+                  mb: 2,
+                  bgcolor: 'grey.50'
+                }}
+              >
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={4}>
+                    <Typography>
+                      Date & Time: {new Date(appointment.preferred_date).toLocaleDateString()} {appointment.preferred_time || 'Not specified'}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <Typography>
+                      Location: {appointment.location || 'Not specified'}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <Chip 
+                      label={appointment.status}
+                      color={
+                        appointment.status === 'APPROVED' ? 'success' :
+                        appointment.status === 'PENDING' ? 'warning' :
+                        appointment.status === 'FOLLOW_UP' ? 'info' : 'default'
+                      }
+                      size="small"
+                    />
+                  </Grid>
+                </Grid>
+              </Paper>
+            ))}
+          </Box>
+
+          <Typography sx={{ mt: 2 }}>
+            Would you like to create another appointment request?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowWarningDialog(false)} color="primary">
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              setShowWarningDialog(false);
+              setSelectedDignitary(pendingDignitarySelection);
+              populateDignitaryForm(pendingDignitarySelection);
+              setPendingDignitarySelection(null);
+              setActiveStep(2);
+            }}
+            color="primary"
+            variant="contained"
+          >
+            Create New Request
+          </Button>
+        </DialogActions>
+      </Dialog>
+    );
+  };
+
   return (
     <Box sx={{ width: '100%' }}>
       <Stepper activeStep={activeStep} sx={{ mb: 4 }} alternativeLabel>
@@ -937,6 +1060,7 @@ export const AppointmentRequestForm: React.FC = () => {
       </Paper>
 
       {renderConfirmationDialog()}
+      {renderWarningDialog()}
     </Box>
   );
 };
