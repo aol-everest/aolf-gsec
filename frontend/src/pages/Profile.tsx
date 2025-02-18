@@ -35,14 +35,14 @@ const Profile: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>(
-    userInfo?.notification_preferences || DEFAULT_PREFERENCES
+    userInfo?.email_notification_preferences || DEFAULT_PREFERENCES
   );
 
   // Update values when userInfo changes
   useEffect(() => {
     if (userInfo) {
       setPhoneNumber(userInfo.phone_number || '');
-      setNotificationPreferences(userInfo.notification_preferences || DEFAULT_PREFERENCES);
+      setNotificationPreferences(userInfo.email_notification_preferences || DEFAULT_PREFERENCES);
     }
   }, [userInfo]);
 
@@ -50,7 +50,7 @@ const Profile: React.FC = () => {
     try {
       await updateUserInfo({ 
         phone_number: phoneNumber,
-        notification_preferences: notificationPreferences
+        email_notification_preferences: notificationPreferences
       });
       setMessage({ type: 'success', text: 'Profile updated successfully' });
       setIsEditing(false);
@@ -63,7 +63,7 @@ const Profile: React.FC = () => {
   const handleCancel = () => {
     setIsEditing(false);
     setPhoneNumber(userInfo?.phone_number || '');
-    setNotificationPreferences(userInfo?.notification_preferences || DEFAULT_PREFERENCES);
+    setNotificationPreferences(userInfo?.email_notification_preferences || DEFAULT_PREFERENCES);
   };
 
   const handleNotificationChange = (key: keyof NotificationPreferences) => (

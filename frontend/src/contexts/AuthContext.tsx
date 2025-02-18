@@ -9,7 +9,7 @@ interface UserInfo {
   first_name?: string;
   last_name?: string;
   role?: string;
-  notification_preferences?: {
+  email_notification_preferences?: {
     appointment_created: boolean;
     appointment_updated: boolean;
     new_appointment_request: boolean;

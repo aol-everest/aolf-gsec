@@ -119,7 +119,7 @@ const AppointmentDayView: React.FC = () => {
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
               inputProps={{
-                min: getLocalDate(-365), // Allow viewing past year's appointments
+                min: getLocalDate(-1), // Allow viewing past 1 day appointments
                 max: getLocalDate(365),  // Allow viewing next year's appointments
               }}
               sx={{ width: 200 }}

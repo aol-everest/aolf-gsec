@@ -11,7 +11,7 @@ class UserBase(BaseModel):
     last_name: Optional[str] = None
     phone_number: Optional[str] = None
     picture: Optional[str] = None
-    notification_preferences: Optional[Dict[str, bool]] = None
+    email_notification_preferences: Optional[Dict[str, bool]] = None
 
 class UserCreate(UserBase):
     google_id: str
@@ -27,7 +27,7 @@ class User(UserBase):
 class UserUpdate(BaseModel):
     phone_number: Optional[str] = None
     picture: Optional[str] = None
-    notification_preferences: Optional[Dict[str, bool]] = None
+    email_notification_preferences: Optional[Dict[str, bool]] = None
     
     class Config:
         orm_mode = True
