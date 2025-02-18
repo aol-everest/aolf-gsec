@@ -502,7 +502,7 @@ export const AppointmentRequestForm: React.FC = () => {
                   <InputLabel>Relationship Type</InputLabel>
                   <Select
                     label="Relationship Type"
-                    defaultValue={RELATIONSHIP_TYPES[0]}
+                    value={dignitaryForm.watch('pocRelationshipType')}
                     {...dignitaryForm.register('pocRelationshipType')}
                   >
                     {RELATIONSHIP_TYPES.map((type) => (
@@ -523,7 +523,7 @@ export const AppointmentRequestForm: React.FC = () => {
                   <InputLabel>Honorific Title</InputLabel>
                   <Select
                     label="Honorific Title"
-                    defaultValue={HONORIFIC_TITLES[0]}
+                    value={dignitaryForm.watch('dignitaryHonorificTitle')}
                     {...dignitaryForm.register('dignitaryHonorificTitle')}
                   >
                     {HONORIFIC_TITLES.map((title) => (
@@ -585,7 +585,7 @@ export const AppointmentRequestForm: React.FC = () => {
                   <InputLabel>Primary Domain</InputLabel>
                   <Select
                     label="Primary Domain"
-                    defaultValue={PRIMARY_DOMAINS[0]}
+                    value={dignitaryForm.watch('dignitaryPrimaryDomain')}
                     {...dignitaryForm.register('dignitaryPrimaryDomain')}
                   >
                     {PRIMARY_DOMAINS.map((domain) => (
