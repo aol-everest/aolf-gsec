@@ -17,6 +17,7 @@ import parseISO from 'date-fns/parseISO';
 import startOfDay from 'date-fns/startOfDay';
 import Layout from '../components/Layout';
 import { getLocalDate } from '../utils/dateUtils';
+import { getStatusChipSx } from '../utils/formattingUtils';
 
 interface Dignitary {
   honorific_title: string;
@@ -47,7 +48,7 @@ const AppointmentDayView: React.FC = () => {
   useEffect(() => {
     const fetchAppointments = async () => {
       try {
-        const response = await fetch('http://localhost:8001/admin/appointments/all', {
+        const response = await fetch('http://localhost:8001/admin/appointments/all?status=Approved', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
           },
@@ -73,16 +74,6 @@ const AppointmentDayView: React.FC = () => {
 
     fetchAppointments();
   }, [selectedDate]);
-
-  const getStatusColor = (status: string) => {
-    const statusColors: Record<string, string> = {
-      'Pending': theme.palette.warning.main,
-      'Approved': theme.palette.success.main,
-      'Rejected': theme.palette.error.main,
-      'Follow Up': theme.palette.info.main,
-    };
-    return statusColors[status] || theme.palette.grey[500];
-  };
 
   const formatTime = (time: string) => {
     if (!time) return 'Time TBD';
@@ -166,11 +157,7 @@ const AppointmentDayView: React.FC = () => {
                       </Typography>
                       <Chip
                         label={appointment.status}
-                        sx={{
-                          bgcolor: alpha(getStatusColor(appointment.status), 0.1),
-                          color: getStatusColor(appointment.status),
-                          fontWeight: 500,
-                        }}
+                        sx={getStatusChipSx(appointment.status, theme)}
                       />
                     </Grid>
 

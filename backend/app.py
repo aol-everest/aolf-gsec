@@ -400,14 +400,16 @@ async def get_all_dignitaries(
 @requires_role(models.UserRole.SECRETARIAT)
 async def get_all_appointments(
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    status: Optional[str] = None
 ):
-    """Get all appointments"""
-    appointments = (
-        db.query(models.Appointment)
-        .order_by(models.Appointment.id.asc())
-        .all()
-    )
+    """Get all appointments with optional status filter"""
+    query = db.query(models.Appointment).order_by(models.Appointment.id.asc())
+    
+    if status:
+        query = query.filter(models.Appointment.status == status)
+    
+    appointments = query.all()
     print(f"Appointments: {appointments}")
     return appointments 
 

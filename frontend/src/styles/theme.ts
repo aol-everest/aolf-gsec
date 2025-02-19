@@ -31,7 +31,7 @@ const colors = {
     dark: '#27ae60',
   },
   warning: {
-    main: '#f1c40f',
+    main: '#CEA70B',
     light: '#F4D03F',
     dark: '#f39c12',
   },

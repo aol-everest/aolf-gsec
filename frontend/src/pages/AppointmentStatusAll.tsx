@@ -30,6 +30,8 @@ import DeleteIcon from '@mui/icons-material/DeleteOutlined';
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Close';
 import Layout from '../components/Layout';
+import { getStatusChipSx } from '../utils/formattingUtils';
+import { useTheme } from '@mui/material/styles';
 
 export interface Dignitary {
   honorific_title: string;
@@ -87,6 +89,7 @@ const AppointmentStatusAll: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [rowModesModel, setRowModesModel] = useState<GridRowModesModel>({});
   const [statusOptions, setStatusOptions] = useState<string[]>([]);
+  const theme = useTheme();
 
   useEffect(() => {
     const fetchStatusOptions = async () => {
@@ -206,19 +209,6 @@ const AppointmentStatusAll: React.FC = () => {
     setRowModesModel(newRowModesModel);
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'approved':
-        return 'success';
-      case 'rejected':
-        return 'error';
-      case 'follow_up':
-        return 'info';
-      default:
-        return 'warning';
-    }
-  };
-
   const columns: GridColDef<Appointment>[] = [
     {
       field: 'actions',
@@ -335,7 +325,7 @@ const AppointmentStatusAll: React.FC = () => {
       renderCell: (params: GridRenderCellParams<Appointment>) => (
         <Chip
           label={params.value}
-          color={getStatusColor(params.value as string) as any}
+          sx={getStatusChipSx(params.value as string, theme)}
           size="small"
         />
       ),

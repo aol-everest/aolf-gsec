@@ -21,6 +21,9 @@ import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import Layout from '../components/Layout';
 import { formatDate } from '../utils/dateUtils';
+import { getStatusChipSx, getStatusColor } from '../utils/formattingUtils';
+
+
 interface User {
   id: number;
   email: string;
@@ -149,16 +152,6 @@ const AppointmentTiles: React.FC = () => {
     setSelectedStatus(status === selectedStatus ? null : status);
   };
 
-  const getStatusColor = (status: string) => {
-    const statusColors: Record<string, string> = {
-      'PENDING': 'warning',
-      'APPROVED': 'success',
-      'REJECTED': 'error',
-      'FOLLOW_UP': 'info',
-    };
-    return statusColors[status] || 'default';
-  };
-
   const AppointmentTile = ({ appointment }: { appointment: Appointment }) => (
     <Card 
       elevation={3}
@@ -185,13 +178,12 @@ const AppointmentTiles: React.FC = () => {
           <Box sx={{ position: 'absolute', top: 25, right: 25 }}>
             <Chip 
                 label={appointment.status} 
-                color={getStatusColor(appointment.status) as any}
-                sx={{ mb: 1 }}
+                sx={getStatusChipSx(appointment.status, theme)}
             />
             <IconButton 
                 color="primary"
                 onClick={() => handleEdit(appointment.id)}
-                sx={{ ml: 1 }}
+                sx={{ ml: 1, mt: 1 }}
             >
                 <EditIcon />
             </IconButton>
@@ -352,7 +344,6 @@ const AppointmentTiles: React.FC = () => {
                 <Chip
                   key={status}
                   label={`${status} (${appointments.filter(a => a.status === status).length})`}
-                  color={getStatusColor(status) as any}
                   onClick={() => handleStatusFilter(status)}
                   variant={selectedStatus === status ? 'filled' : 'outlined'}
                   sx={{ 
@@ -360,6 +351,10 @@ const AppointmentTiles: React.FC = () => {
                     '&:hover': {
                       opacity: 0.8,
                     },
+                    bgcolor: 'white',
+                    color: getStatusColor(status, theme),
+                    border: `1px solid ${getStatusColor(status, theme)}`,
+                    borderRadius: '10px',
                   }}
                 />
               ))}

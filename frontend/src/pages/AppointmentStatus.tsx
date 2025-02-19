@@ -6,6 +6,8 @@ import {
   GridRenderCellParams,
 } from '@mui/x-data-grid';
 import Layout from '../components/Layout';
+import { getStatusChipSx } from '../utils/formattingUtils';
+import { useTheme } from '@mui/material/styles';
 
 interface Dignitary {
   honorific_title: string;
@@ -30,6 +32,7 @@ interface Appointment {
 const AppointmentStatus: React.FC = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const theme = useTheme();
 
   useEffect(() => {
     const fetchAppointments = async () => {
@@ -54,17 +57,6 @@ const AppointmentStatus: React.FC = () => {
 
     fetchAppointments();
   }, []);
-
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'approved':
-        return 'success';
-      case 'rejected':
-        return 'error';
-      default:
-        return 'warning';
-    }
-  };
 
   const columns: GridColDef[] = [
     {
@@ -113,8 +105,8 @@ const AppointmentStatus: React.FC = () => {
       renderCell: (params: GridRenderCellParams) => (
         <Chip
           label={params.value}
-          color={getStatusColor(params.value as string) as any}
           size="small"
+          sx={getStatusChipSx(params.value as string, theme)}
         />
       ),
     },
