@@ -5,7 +5,8 @@ from database import Base
 from sqlalchemy import Enum
 import enum
 
-class AppointmentStatus(enum.Enum):
+class AppointmentStatus(str, enum.Enum):
+    """Appointment status enum with proper case values"""
     PENDING = "Pending"
     NEED_MORE_INFO = "Need More Info"
     APPROVED = "Approved"

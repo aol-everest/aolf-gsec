@@ -1,6 +1,9 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional, Dict, Any
 from datetime import datetime, date
+from models.appointment import AppointmentStatus
+from models.dignitary import HonorificTitle, PrimaryDomain
+from models.dignitaryPointOfContact import RelationshipType
 
 class GoogleToken(BaseModel):
     token: str
@@ -40,12 +43,12 @@ class Token(BaseModel):
     user: User
 
 class DignitaryBase(BaseModel):
-    honorific_title: str
+    honorific_title: HonorificTitle
     first_name: str
     last_name: str
     email: EmailStr
     phone: Optional[str] = None
-    primary_domain: str
+    primary_domain: PrimaryDomain
     title_in_organization: str
     organization: str
     bio_summary: str
@@ -55,15 +58,15 @@ class DignitaryBase(BaseModel):
     city: str
 
 class DignitaryCreate(DignitaryBase):
-    poc_relationship_type: str
+    poc_relationship_type: RelationshipType
 
 class DignitaryUpdate(DignitaryBase):
-    honorific_title: Optional[str] = None
+    honorific_title: Optional[HonorificTitle] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
-    primary_domain: Optional[str] = None
+    primary_domain: Optional[PrimaryDomain] = None
     title_in_organization: Optional[str] = None
     organization: Optional[str] = None
     bio_summary: Optional[str] = None
@@ -71,7 +74,7 @@ class DignitaryUpdate(DignitaryBase):
     country: Optional[str] = None
     state: Optional[str] = None
     city: Optional[str] = None
-    poc_relationship_type: Optional[str] = None
+    poc_relationship_type: Optional[RelationshipType] = None
 
 class Dignitary(DignitaryBase):
     id: int
@@ -93,7 +96,7 @@ class AppointmentBase(BaseModel):
     duration: Optional[str] = None
     location: Optional[str] = None
     pre_meeting_notes: Optional[str] = None
-    status: Optional[str] = None
+    status: Optional[AppointmentStatus] = None
     approved_datetime: Optional[datetime] = None
 
 class AppointmentCreate(AppointmentBase):
@@ -110,7 +113,7 @@ class Appointment(AppointmentBase):
     preferred_date: date
     preferred_time: Optional[str] = None
     dignitary: Dignitary
-    status: str
+    status: AppointmentStatus
     created_at: datetime
     updated_at: datetime
 
@@ -126,7 +129,7 @@ class AppointmentAdminUpdate(AppointmentBase):
     appointment_time: Optional[str] = None
     duration: Optional[str] = None
     location: Optional[str] = None
-    status: Optional[str] = None
+    status: Optional[AppointmentStatus] = None
     meeting_notes: Optional[str] = None
     follow_up_actions: Optional[str] = None
     secretariat_comments: Optional[str] = None
@@ -137,7 +140,7 @@ class AppointmentAdminUpdate(AppointmentBase):
 class DignitaryPointOfContactBase(BaseModel):
     dignitary_id: int
     poc_id: int
-    relationship_type: str
+    relationship_type: RelationshipType
 
 class DignitaryPointOfContactCreate(DignitaryPointOfContactBase):
     pass
@@ -146,7 +149,7 @@ class DignitaryPointOfContact(DignitaryPointOfContactBase):
     id: int
     dignitary_id: int
     poc_id: int
-    relationship_type: str
+    relationship_type: RelationshipType
     created_by: int
     created_at: datetime
 
@@ -162,7 +165,7 @@ class AppointmentAdmin(AppointmentBase):
     preferred_time: Optional[str] = None
     dignitary: DignitaryAdmin
     requester: User
-    status: str
+    status: AppointmentStatus
     appointment_date: Optional[date] = None
     appointment_time: Optional[str] = None
     created_at: datetime

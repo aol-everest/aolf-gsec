@@ -76,10 +76,10 @@ const AppointmentDayView: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     const statusColors: Record<string, string> = {
-      'PENDING': theme.palette.warning.main,
-      'APPROVED': theme.palette.success.main,
-      'REJECTED': theme.palette.error.main,
-      'FOLLOW_UP': theme.palette.info.main,
+      'Pending': theme.palette.warning.main,
+      'Approved': theme.palette.success.main,
+      'Rejected': theme.palette.error.main,
+      'Follow Up': theme.palette.info.main,
     };
     return statusColors[status] || theme.palette.grey[500];
   };

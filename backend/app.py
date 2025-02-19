@@ -29,7 +29,29 @@ GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 # Create database tables
 models.Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="AOLF GSEC API")
+app = FastAPI(
+    title="AOLF GSEC API",
+    description="API for AOLF GSEC Application",
+    version="1.0.0",
+    openapi_tags=[
+        {
+            "name": "auth",
+            "description": "Authentication operations"
+        },
+        {
+            "name": "appointments",
+            "description": "Appointment management operations"
+        },
+        {
+            "name": "dignitaries",
+            "description": "Dignitary management operations"
+        },
+        {
+            "name": "users",
+            "description": "User management operations"
+        }
+    ]
+)
 
 # OAuth2 scheme for JWT
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -426,7 +448,7 @@ async def update_appointment(
     
     # Store old data for comparison
     old_data = {
-        'status': appointment.status.value if hasattr(appointment.status, 'value') else appointment.status,
+        'status': appointment.status.value,
         'appointment_date': appointment.appointment_date.isoformat() if appointment.appointment_date else None,
         'appointment_time': appointment.appointment_time,
         'duration': appointment.duration,
@@ -436,7 +458,7 @@ async def update_appointment(
         'secretariat_comments': appointment.secretariat_comments,
     }
         
-    if appointment.status != models.AppointmentStatus.APPROVED.value and appointment_update.status == models.AppointmentStatus.APPROVED.value:
+    if appointment.status != models.AppointmentStatus.APPROVED and appointment_update.status == models.AppointmentStatus.APPROVED:
         print("Appointment is approved")
         appointment.approved_datetime = datetime.utcnow()
         appointment.approved_by = current_user.id
@@ -470,3 +492,18 @@ async def get_all_users(
 async def get_appointment_status_options():
     """Get all possible appointment status options"""
     return [status.value for status in models.AppointmentStatus]
+
+@app.get("/dignitaries/relationship-type-options", response_model=List[str])
+async def get_relationship_type_options():
+    """Get all possible relationship type options"""
+    return [rel_type.value for rel_type in models.RelationshipType]
+
+@app.get("/dignitaries/honorific-title-options", response_model=List[str])
+async def get_honorific_title_options():
+    """Get all possible honorific title options"""
+    return [title.value for title in models.HonorificTitle]
+
+@app.get("/dignitaries/primary-domain-options", response_model=List[str])
+async def get_primary_domain_options():
+    """Get all possible primary domain options"""
+    return [domain.value for domain in models.PrimaryDomain]

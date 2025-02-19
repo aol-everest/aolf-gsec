@@ -1,11 +1,12 @@
-from sqlalchemy import Column, Integer, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
 from sqlalchemy import Enum
 import enum
 
-class RelationshipType(enum.Enum):
+class RelationshipType(str, enum.Enum):
+    """Relationship type enum with proper case values"""
     DIRECT = "Direct"
     INDIRECT = "Indirect"
 
