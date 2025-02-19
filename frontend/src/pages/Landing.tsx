@@ -1,10 +1,11 @@
 import React from 'react';
-import { Container, Typography, Button, Box } from '@mui/material';
+import { Container, Typography, Button, Box, useTheme, Paper } from '@mui/material';
 import { useGoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../contexts/AuthContext';
 
 const Landing: React.FC = () => {
   const { login } = useAuth();
+  const theme = useTheme();
 
   const handleGoogleLogin = useGoogleLogin({
     onSuccess: login,
@@ -28,7 +29,9 @@ const Landing: React.FC = () => {
         },
       }}
     >
-      <Container maxWidth="md">
+      <Container 
+        maxWidth={false}
+      >
         <Box
           sx={{
             minHeight: '100vh',
@@ -41,7 +44,9 @@ const Landing: React.FC = () => {
         >
           <Box
             sx={{
-              backgroundColor: 'rgba(255, 255, 255, 0.9)',
+              backgroundImage: `url(${'/desktop-bg-1.png'})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
               borderRadius: 4,
               padding: 8,
               boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
@@ -60,27 +65,44 @@ const Landing: React.FC = () => {
               component="h1" 
               gutterBottom
               sx={{
-                fontWeight: 700,
                 background: 'linear-gradient(45deg, #1a237e, #534bae)',
                 backgroundClip: 'text',
                 WebkitBackgroundClip: 'text',
-                color: 'transparent',
+                color: theme.palette.text.primary,
                 marginBottom: 3,
+                fontFamily: 'Lato',
+                fontWeight: 400,
+                fontStyle: 'italic',
               }}
             >
-              Welcome to AOLF GSEC
+              Welcome to Art of Living GSEC
             </Typography>
             <Typography 
               variant="h5" 
               component="h2" 
               gutterBottom
               sx={{
-                color: 'text.secondary',
+                color: theme.palette.text.secondary,
                 marginBottom: 4,
+                lineHeight: 1.5,
+                fontFamily: 'Lato',
                 fontWeight: 500,
               }}
             >
-              Schedule appointments with Gurudev Sri Sri Ravi Shankar
+              Schedule appointments with <br />
+              <Paper elevation={0} sx={{ 
+                display: 'inline-block', 
+                backgroundColor: 'rgba(206, 167, 11, 0.81)', 
+                boxShadow: 'none', 
+                width: '100%', 
+                margin: '0 auto',  
+                borderRadius: '23px',
+                p: 1,
+                mt: 2,
+                mb: 0,
+              }}>
+                <img src="/gurudev-logo-centered.png" alt="Gurudev" style={{ height: '56px', width: 'auto', marginTop: 13, marginBottom: 8, marginLeft: 13, marginRight: 13 }} />
+              </Paper>
             </Typography>
             <Button 
               variant="contained" 
