@@ -6,10 +6,13 @@ from sqlalchemy import Enum
 import enum
 
 class AppointmentStatus(enum.Enum):
-    PENDING = "PENDING"
-    APPROVED = "APPROVED"
-    REJECTED = "REJECTED"
-    FOLLOW_UP = "FOLLOW_UP"
+    PENDING = "Pending"
+    NEED_MORE_INFO = "Need More Info"
+    APPROVED = "Approved"
+    REJECTED = "Rejected"
+    COMPLETED = "Completed"
+    FOLLOW_UP = "Follow Up"
+    CANCELLED = "Cancelled"
 
 class Appointment(Base):
     __tablename__ = "appointments"
