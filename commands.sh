@@ -39,6 +39,7 @@ source .venv/bin/activate && pip install --no-cache-dir "fastapi" "uvicorn" "sql
 uvicorn app:app --reload
 
 python3 -m uvicorn app:app --reload --port 8001
+python3.12 -m uvicorn app:app --reload --port 8001
 
 
 # PostgreSQL ------------------------------------------------------------------------------------
