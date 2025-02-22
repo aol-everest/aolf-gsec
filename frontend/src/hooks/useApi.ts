@@ -1,18 +1,32 @@
 import axios from 'axios';
-import { useAuth } from '../contexts/AuthContext';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
-
-export const useApi = () => {
-  const { accessToken } = useAuth();
-
+export function useApi() {
   const api = axios.create({
-    baseURL: API_BASE_URL,
+    baseURL: process.env.REACT_APP_API_BASE_URL || 'http://localhost:8001',
     headers: {
       'Content-Type': 'application/json',
-      ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
     },
   });
 
+  api.interceptors.request.use((config) => {
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+      config.headers = config.headers || {};
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  });
+
+  api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      if (error.response?.status === 401) {
+        localStorage.removeItem('accessToken');
+        window.location.href = '/';
+      }
+      return Promise.reject(error);
+    }
+  );
+
   return api;
-}; 
+} 

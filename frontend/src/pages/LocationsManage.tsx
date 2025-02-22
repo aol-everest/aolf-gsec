@@ -17,11 +17,13 @@ import {
   TableRow,
   IconButton,
   Grid,
+  Container,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
 import { useSnackbar } from 'notistack';
 import { useApi } from '../hooks/useApi';
+import Layout from '../components/Layout';
 
 interface Location {
   id: number;
@@ -72,8 +74,8 @@ export default function LocationsManage() {
 
   const fetchLocations = async () => {
     try {
-      const response = await api.get<Location[]>('/admin/locations/all');
-      setLocations(response.data);
+      const { data } = await api.get<Location[]>('/admin/locations/all');
+      setLocations(data);
     } catch (error) {
       enqueueSnackbar('Failed to fetch locations', { variant: 'error' });
     }
@@ -132,155 +134,161 @@ export default function LocationsManage() {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h4">Manage Locations</Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => handleOpen()}
-        >
-          Add Location
-        </Button>
-      </Box>
+    <Layout>
+      <Container maxWidth="xl">
+        <Box sx={{ 
+            // p: 3 
+        }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+                <Typography variant="h4">Manage Locations</Typography>
+                <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => handleOpen()}
+                >
+                Add Location
+                </Button>
+            </Box>
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>Address</TableCell>
-              <TableCell>City</TableCell>
-              <TableCell>State</TableCell>
-              <TableCell>Country</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {locations.map((location) => (
-              <TableRow key={location.id}>
-                <TableCell>{location.name}</TableCell>
-                <TableCell>{location.street_address}</TableCell>
-                <TableCell>{location.city}</TableCell>
-                <TableCell>{location.state}</TableCell>
-                <TableCell>{location.country}</TableCell>
-                <TableCell>
-                  <IconButton onClick={() => handleOpen(location)}>
-                    <EditIcon />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            <TableContainer component={Paper}>
+                <Table>
+                <TableHead>
+                    <TableRow>
+                    <TableCell>Name</TableCell>
+                    <TableCell>Address</TableCell>
+                    <TableCell>City</TableCell>
+                    <TableCell>State</TableCell>
+                    <TableCell>Country</TableCell>
+                    <TableCell>Actions</TableCell>
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    {locations.map((location) => (
+                    <TableRow key={location.id}>
+                        <TableCell>{location.name}</TableCell>
+                        <TableCell>{location.street_address}</TableCell>
+                        <TableCell>{location.city}</TableCell>
+                        <TableCell>{location.state}</TableCell>
+                        <TableCell>{location.country}</TableCell>
+                        <TableCell>
+                        <IconButton onClick={() => handleOpen(location)}>
+                            <EditIcon />
+                        </IconButton>
+                        </TableCell>
+                    </TableRow>
+                    ))}
+                </TableBody>
+                </Table>
+            </TableContainer>
 
-      <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-        <DialogTitle>{editingId ? 'Edit Location' : 'Add New Location'}</DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                required
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Street Address"
-                name="street_address"
-                value={formData.street_address}
-                onChange={handleChange}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="City"
-                name="city"
-                value={formData.city}
-                onChange={handleChange}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="State"
-                name="state"
-                value={formData.state}
-                onChange={handleChange}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Country"
-                name="country"
-                value={formData.country}
-                onChange={handleChange}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="ZIP Code"
-                name="zip_code"
-                value={formData.zip_code}
-                onChange={handleChange}
-                required
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Driving Directions"
-                name="driving_directions"
-                value={formData.driving_directions}
-                onChange={handleChange}
-                multiline
-                rows={3}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Parking Information"
-                name="parking_info"
-                value={formData.parking_info}
-                onChange={handleChange}
-                multiline
-                rows={3}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Internal Notes"
-                name="secretariat_internal_notes"
-                value={formData.secretariat_internal_notes}
-                onChange={handleChange}
-                multiline
-                rows={3}
-              />
-            </Grid>
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClose}>Cancel</Button>
-          <Button onClick={handleSubmit} variant="contained">
-            {editingId ? 'Update' : 'Create'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+            <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
+                <DialogTitle>{editingId ? 'Edit Location' : 'Add New Location'}</DialogTitle>
+                <DialogContent>
+                <Grid container spacing={2} sx={{ mt: 1 }}>
+                    <Grid item xs={12}>
+                    <TextField
+                        fullWidth
+                        label="Name"
+                        name="name"
+                        value={formData.name}
+                        onChange={handleChange}
+                        required
+                    />
+                    </Grid>
+                    <Grid item xs={12}>
+                    <TextField
+                        fullWidth
+                        label="Street Address"
+                        name="street_address"
+                        value={formData.street_address}
+                        onChange={handleChange}
+                        required
+                    />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                    <TextField
+                        fullWidth
+                        label="City"
+                        name="city"
+                        value={formData.city}
+                        onChange={handleChange}
+                        required
+                    />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                    <TextField
+                        fullWidth
+                        label="State"
+                        name="state"
+                        value={formData.state}
+                        onChange={handleChange}
+                        required
+                    />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                    <TextField
+                        fullWidth
+                        label="Country"
+                        name="country"
+                        value={formData.country}
+                        onChange={handleChange}
+                        required
+                    />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                    <TextField
+                        fullWidth
+                        label="ZIP Code"
+                        name="zip_code"
+                        value={formData.zip_code}
+                        onChange={handleChange}
+                        required
+                    />
+                    </Grid>
+                    <Grid item xs={12}>
+                    <TextField
+                        fullWidth
+                        label="Driving Directions"
+                        name="driving_directions"
+                        value={formData.driving_directions}
+                        onChange={handleChange}
+                        multiline
+                        rows={3}
+                    />
+                    </Grid>
+                    <Grid item xs={12}>
+                    <TextField
+                        fullWidth
+                        label="Parking Information"
+                        name="parking_info"
+                        value={formData.parking_info}
+                        onChange={handleChange}
+                        multiline
+                        rows={3}
+                    />
+                    </Grid>
+                    <Grid item xs={12}>
+                    <TextField
+                        fullWidth
+                        label="Internal Notes"
+                        name="secretariat_internal_notes"
+                        value={formData.secretariat_internal_notes}
+                        onChange={handleChange}
+                        multiline
+                        rows={3}
+                    />
+                    </Grid>
+                </Grid>
+                </DialogContent>
+                <DialogActions>
+                <Button onClick={handleClose}>Cancel</Button>
+                <Button onClick={handleSubmit} variant="contained">
+                    {editingId ? 'Update' : 'Create'}
+                </Button>
+                </DialogActions>
+            </Dialog>
+        </Box>
+      </Container>
+    </Layout>
   );
 } 
