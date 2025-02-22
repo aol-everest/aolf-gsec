@@ -22,7 +22,7 @@ import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import Layout from '../components/Layout';
 import { formatDate } from '../utils/dateUtils';
 import { getStatusChipSx, getStatusColor } from '../utils/formattingUtils';
-import { emailIcon, contactPhoneIcon, emailIconSmall, contactPhoneIconSmall, workIcon } from '../components/icons';
+import { EmailIcon, ContactPhoneIcon, EmailIconSmall, ContactPhoneIconSmall, WorkIcon } from '../components/icons';
 
 interface User {
   id: number;
@@ -197,7 +197,7 @@ const AppointmentTiles: React.FC = () => {
             Point of Contact: <b>{appointment.requester.first_name} {appointment.requester.last_name}</b>
           </Typography>
           <Typography sx={{ color: 'text.secondary', my: 0.5, }}>
-            {emailIconSmall}{' '}
+            <EmailIconSmall />{' '}
             <Typography 
                 component="a" 
                 href={`mailto:${appointment.requester.email}`} 
@@ -206,7 +206,7 @@ const AppointmentTiles: React.FC = () => {
                 {appointment.requester.email}
             </Typography>
             <Box sx={{ color: 'text.secondary', display: 'inline-block', mx: 1 }}>|</Box>
-            {contactPhoneIconSmall}{' '}
+            <ContactPhoneIconSmall />{' '}
             <Typography 
               component="a" 
               href={`tel:${appointment.requester.phone_number}`} 
@@ -223,7 +223,7 @@ const AppointmentTiles: React.FC = () => {
             Dignitary: <b>{appointment.dignitary.honorific_title} {appointment.dignitary.first_name} {appointment.dignitary.last_name}</b>
           </Typography>
           <Typography sx={{ color: 'text.secondary', my: 0.5, }}>
-            {emailIconSmall}{' '}
+            <EmailIconSmall />{' '}
             <Typography 
               component="a" 
               href={`mailto:${appointment.dignitary.email}`} 
@@ -232,7 +232,7 @@ const AppointmentTiles: React.FC = () => {
               {appointment.dignitary.email}
             </Typography>
             <Box sx={{ color: 'text.secondary', display: 'inline-block', mx: 1 }}>|</Box>
-            {contactPhoneIconSmall}{' '}
+            <ContactPhoneIconSmall />{' '}
             <Typography 
               component="a" 
               href={`tel:${appointment.dignitary.phone}`} 
@@ -242,7 +242,7 @@ const AppointmentTiles: React.FC = () => {
             </Typography>
           </Typography>
           <Typography sx={{ color: 'text.secondary', my: 0.5, }}>
-            {workIcon} {appointment.dignitary.title_in_organization}
+            <WorkIcon /> {appointment.dignitary.title_in_organization}
             <Box sx={{ color: 'text.secondary', display: 'inline-block', mx: 1 }}>|</Box>
             {appointment.dignitary.organization}
           </Typography>

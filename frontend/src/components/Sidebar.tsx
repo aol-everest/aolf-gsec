@@ -7,31 +7,12 @@ import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
-import HomeIcon from '@mui/icons-material/Home';
-import AddIcon from '@mui/icons-material/Add';
-import CalendarIcon from '@mui/icons-material/CalendarToday';
-import ListIcon from '@mui/icons-material/ListAlt';
-import PersonIcon from '@mui/icons-material/Person';
 import Typography from '@mui/material/Typography';
 import Divider from '@mui/material/Divider';
 import AdminIcon from '@mui/icons-material/AdminPanelSettings';
 import { useTheme, useMediaQuery } from '@mui/material';
-import { 
-  addIcon, 
-  editCalendar, 
-  editIcon, 
-  homeIcon, 
-  calendarViewDayIcon, 
-  calendarAddIcon, 
-  listIcon, 
-  personListIcon, 
-  personIcon, 
-  outlineTableRowsIcon, 
-  outlineTableChartIcon, 
-  roundViewColumnIcon,
-  roundPeopleIcon,
-} from '../components/icons';
-import LocationOnIcon from '@mui/icons-material/LocationOn';
+import { getSidebarItems, SECRETARIAT_ROLE } from '../config/routes';
+import { SvgIconComponent } from '@mui/icons-material';
 
 interface SidebarProps {
   drawerWidth: number;
@@ -44,6 +25,8 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const userRole = localStorage.getItem('role');
+  const sidebarItems = getSidebarItems(userRole);
 
   const handleNavigation = (path: string) => {
     navigate(path);
@@ -52,103 +35,62 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
     }
   };
 
-  const addSidebarMenuItem = (text: string, icon: React.ReactNode, path: string) => {
-    return (
-      <ListItem 
-        button 
-        key={text} 
-        onClick={() => handleNavigation(path)}
-        sx={{
-          // backgroundColor: location.pathname === item.path ? 'rgba(0, 0, 0, 0.04)' : 'transparent',
-          // backgroundColor: location.pathname === item.path ? theme.palette.primary.light : 'transparent',
-          backgroundColor: location.pathname === path ? theme.palette.secondary.main : 'transparent',
-          '&:hover': {
-            backgroundColor: location.pathname === path ? theme.palette.secondary.light : theme.palette.secondary.light,
-          },
-          borderLeft: location.pathname === path ? '4px solid' : '4px solid transparent',
-          borderLeftColor: theme.palette.primary.main,
-        }}
-      >
-        <ListItemIcon 
-          sx={{ 
-            color: location.pathname === path ? theme.palette.primary.main : theme.palette.text.secondary
-          }}
-        >
-          {icon}
-        </ListItemIcon>
-        <ListItemText 
-          primary={text}
-          sx={{
-            '& .MuiTypography-root': {
-              color: location.pathname === path ? theme.palette.primary.main : theme.palette.text.secondary,
-              fontWeight: location.pathname === path ? 600 : 400,
-            },
-          }}
-        />
-      </ListItem>
-    );
-  };  
-
-  const menuItems = [
-    {
-      text: 'Home',
-      icon: homeIcon,
-      path: '/home',
-    },
-    {
-      text: 'Request Appointment',
-      icon: calendarAddIcon,
-      path: '/appointment-form',
-    },
-    {
-      text: 'Appointment Status',
-      icon: listIcon,
-      path: '/appointment-status',
-    },
-    {
-      text: 'Dignitaries',
-      icon: personListIcon,
-      path: '/dignitary-list',
-    },
-    {
-      text: 'My Profile',
-      icon: personIcon,
-      path: '/profile',
-    },
-  ];
-
-  const adminMenuItems = [
-    {
-      text: 'Users',
-      icon: roundPeopleIcon,
-      path: '/users-all',
-    },
-    {
-      text: 'Dignitaries',
-      icon: personListIcon,
-      path: '/dignitary-list-all',
-    },
-    {
-      text: 'Locations',
-      icon: <LocationOnIcon />,
-      path: '/locations-manage',
-    },
-    {
-      text: 'Appointments List',
-      icon: outlineTableRowsIcon,
-      path: '/appointment-status-all',
-    },
-    {
-      text: 'Appointments Tiles',
-      icon: roundViewColumnIcon,
-      path: '/appointment-tiles',
-    },
-    {
-      text: 'Daily Schedule',
-      icon: calendarViewDayIcon,
-      path: '/appointment-day-view',
-    },
-  ];
+  const addSidebarMenuItem = (text: string, Icon: SvgIconComponent, path?: string) => {
+    if (!path || path === '') {
+      return (
+        <>
+          <Divider />
+          <Typography variant="subtitle2" gutterBottom style={{ marginTop: '3px', marginBottom: '3px' }}>
+            <ListItem 
+                key={text} 
+              >
+                <ListItemIcon >
+                  <Icon />
+                </ListItemIcon>
+                <ListItemText 
+                  primary={text}
+                />
+            </ListItem>
+          </Typography>
+          <Divider />
+        </>
+      );
+    }
+    else {
+        return (
+          <ListItem 
+            button 
+            key={text} 
+            onClick={() => handleNavigation(path)}
+            sx={{
+              backgroundColor: location.pathname === path ? theme.palette.secondary.main : 'transparent',
+              '&:hover': {
+                backgroundColor: location.pathname === path ? theme.palette.secondary.light : theme.palette.secondary.light,
+              },
+              borderLeft: location.pathname === path ? '4px solid' : '4px solid transparent',
+              borderLeftColor: theme.palette.primary.main,
+            }}
+          >
+            <ListItemIcon 
+              sx={{ 
+                color: location.pathname === path ? theme.palette.primary.main : theme.palette.text.secondary
+              }}
+            >
+              <Icon />
+            </ListItemIcon>
+            <ListItemText 
+              primary={text}
+              sx={{
+                '& .MuiTypography-root': {
+                  color: location.pathname === path ? theme.palette.primary.main : theme.palette.text.secondary,
+                  fontWeight: location.pathname === path ? 600 : 400,
+                },
+              }}
+            />
+          </ListItem>
+      );
+    }
+  };
 
   const drawer = (
     <Box>
@@ -168,25 +110,13 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
         </Typography>
       </Toolbar>
       <List>
-        {menuItems.map((item) => addSidebarMenuItem(item.text, item.icon, item.path))}
+        {sidebarItems.map((item) => {
+          if (item.roles && !item.roles.includes(userRole || '')) {
+            return null;
+          }
+          return addSidebarMenuItem(item.label, item.icon, item.path);
+        })}
       </List>
-      {localStorage.getItem('role') === 'SECRETARIAT' && (
-        <>
-          <Divider />
-          <Typography variant="subtitle2" gutterBottom style={{ marginTop: '3px', marginBottom: '3px' }}>
-            <ListItem>
-              <ListItemIcon>
-                <AdminIcon />
-              </ListItemIcon>
-              <ListItemText primary="ADMIN" />
-            </ListItem>
-          </Typography>
-          <Divider />
-          <List>
-            {adminMenuItems.map((item) => addSidebarMenuItem(item.text, item.icon, item.path))}
-          </List>
-        </>
-      )}
     </Box>
   );
 
@@ -208,7 +138,7 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
         open={isOpen}
         onClose={handleDrawerToggle}
         ModalProps={{
-          keepMounted: true, // Better open performance on mobile.
+          keepMounted: true,
         }}
         sx={{
           '& .MuiDrawer-paper': {

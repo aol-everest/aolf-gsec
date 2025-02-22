@@ -26,8 +26,24 @@ import LocationsManage from './pages/LocationsManage';
 import PrivateRoute from './components/PrivateRoute';
 import RoleBasedRoute from './components/RoleBasedRoute';
 
-// Constants
-const SECRETARIAT_ROLE = 'SECRETARIAT';
+// Route Configuration
+import { userRoutes, adminRoutes, SECRETARIAT_ROLE } from './config/routes';
+
+// Component mapping
+const pageComponents = {
+  '/home': Home,
+  '/appointment-form': AppointmentForm,
+  '/appointment-status': AppointmentStatus,
+  '/dignitary-list': DignitaryList,
+  '/profile': Profile,
+  '/admin/users': UsersAll,
+  '/admin/dignitaries': DignitaryListAll,
+  '/admin/locations': LocationsManage,
+  '/admin/appointments/list': AppointmentStatusAll,
+  '/admin/appointments/tiles': AppointmentTiles,
+  '/admin/appointments/calendar': AppointmentDayView,
+  '/admin/appointments/edit/:id': AppointmentEdit,
+};
 
 // Wrapper component to handle auth redirect
 const AuthRedirect = () => {
@@ -46,118 +62,38 @@ function App() {
                 <Route path="/" element={<AuthRedirect />} />
                 
                 {/* Regular authenticated routes */}
-                <Route
-                  path="/home"
-                  element={
-                    <PrivateRoute>
-                      <Home />
-                    </PrivateRoute>
-                  }
-                />
-                <Route
-                  path="/appointment-form"
-                  element={
-                    <PrivateRoute>
-                      <AppointmentForm />
-                    </PrivateRoute>
-                  }
-                />
-                <Route
-                  path="/appointment-status"
-                  element={
-                    <PrivateRoute>
-                      <AppointmentStatus />
-                    </PrivateRoute>
-                  }
-                />
-                <Route
-                  path="/dignitary-list"
-                  element={
-                    <PrivateRoute>
-                      <DignitaryList />
-                    </PrivateRoute>
-                  }
-                />
-                <Route
-                  path="/profile"
-                  element={
-                    <PrivateRoute>
-                      <Profile />
-                    </PrivateRoute>
-                  }
-                />
+                {userRoutes.map((route) => {
+                  const Component = pageComponents[route.path];
+                  return (
+                    <Route
+                      key={route.path}
+                      path={route.path}
+                      element={
+                        <PrivateRoute>
+                          <Component />
+                        </PrivateRoute>
+                      }
+                    />
+                  );
+                })}
 
-                {/* Secretariat-only routes */}
-                <Route
-                  path="/users-all"
-                  element={
-                    <PrivateRoute>
-                      <RoleBasedRoute allowedRoles={[SECRETARIAT_ROLE]}>
-                        <UsersAll />
-                      </RoleBasedRoute>
-                    </PrivateRoute>
-                  }
-                />
-                <Route
-                  path="/dignitary-list-all"
-                  element={
-                    <PrivateRoute>
-                      <RoleBasedRoute allowedRoles={[SECRETARIAT_ROLE]}>
-                        <DignitaryListAll />
-                      </RoleBasedRoute>
-                    </PrivateRoute>
-                  }
-                />
-                <Route
-                  path="/appointment-status-all"
-                  element={
-                    <PrivateRoute>
-                      <RoleBasedRoute allowedRoles={[SECRETARIAT_ROLE]}>
-                        <AppointmentStatusAll />
-                      </RoleBasedRoute>
-                    </PrivateRoute>
-                  }
-                />
-                <Route
-                  path="/appointment-tiles"
-                  element={
-                    <PrivateRoute>
-                      <RoleBasedRoute allowedRoles={[SECRETARIAT_ROLE]}>
-                        <AppointmentTiles />
-                      </RoleBasedRoute>
-                    </PrivateRoute>
-                  }
-                />
-                <Route
-                  path="/appointment-day-view"
-                  element={
-                    <PrivateRoute>
-                      <RoleBasedRoute allowedRoles={[SECRETARIAT_ROLE]}>
-                        <AppointmentDayView />
-                      </RoleBasedRoute>
-                    </PrivateRoute>
-                  }
-                />
-                <Route
-                  path="/appointment-edit/:id"
-                  element={
-                    <PrivateRoute>
-                      <RoleBasedRoute allowedRoles={[SECRETARIAT_ROLE]}>
-                        <AppointmentEdit />
-                      </RoleBasedRoute>
-                    </PrivateRoute>
-                  }
-                />
-                <Route
-                  path="/locations-manage"
-                  element={
-                    <PrivateRoute>
-                      <RoleBasedRoute allowedRoles={[SECRETARIAT_ROLE]}>
-                        <LocationsManage />
-                      </RoleBasedRoute>
-                    </PrivateRoute>
-                  }
-                />
+                {/* Admin routes */}
+                {adminRoutes.map((route) => {
+                  const Component = pageComponents[route.path];
+                  return (
+                    <Route
+                      key={route.path}
+                      path={route.path}
+                      element={
+                        <PrivateRoute>
+                          <RoleBasedRoute allowedRoles={[SECRETARIAT_ROLE]}>
+                            <Component />
+                          </RoleBasedRoute>
+                        </PrivateRoute>
+                      }
+                    />
+                  );
+                })}
               </Routes>
             </AuthProvider>
           </Router>
