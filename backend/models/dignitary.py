@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -81,6 +81,7 @@ class Dignitary(Base):
     country = Column(String, nullable=False)
     state = Column(String, nullable=False)
     city = Column(String, nullable=False)
+    has_dignitary_met_gurudev = Column(Boolean, nullable=True, default=False)
   
     # Foreign keys
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False)

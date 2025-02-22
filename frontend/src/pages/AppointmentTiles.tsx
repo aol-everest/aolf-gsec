@@ -48,6 +48,8 @@ interface Dignitary {
   poc_last_name: string;
   poc_email: string;
   poc_phone: string;
+  linked_in_or_website: string;
+  has_dignitary_met_gurudev: boolean;
 }
 
 interface Appointment {
@@ -246,6 +248,12 @@ const AppointmentTiles: React.FC = () => {
           </Typography>
           <Typography sx={{ color: 'text.secondary', my: 0.5, }}>
             {appointment.dignitary.bio_summary}
+          </Typography>
+          <Typography sx={{ color: 'text.secondary', my: 0.5, }}>
+            {appointment.dignitary.linked_in_or_website}
+          </Typography>
+          <Typography sx={{ color: 'text.secondary', my: 0.5, }}>
+            Has Dignitary Met Gurudev? {appointment.dignitary.has_dignitary_met_gurudev ? 'Yes' : 'No'}
           </Typography>
         </Paper>
 

@@ -24,6 +24,7 @@ import {
   DialogActions,
   Divider,
   Chip,
+  Checkbox,
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import LocationAutocomplete from './LocationAutocomplete';
@@ -63,6 +64,7 @@ interface DignitaryFormData {
   dignitaryCountry: string;
   dignitaryState: string;
   dignitaryCity: string;
+  dignitaryHasMetGurudev: boolean;
   pocRelationshipType: RelationshipType;
 }
 
@@ -132,6 +134,7 @@ export const AppointmentRequestForm: React.FC = () => {
       dignitaryCountry: '',
       dignitaryState: '',
       dignitaryCity: '',
+      dignitaryHasMetGurudev: false,
       pocRelationshipType: RELATIONSHIP_TYPES[0],
     }
   });
@@ -190,6 +193,7 @@ export const AppointmentRequestForm: React.FC = () => {
     dignitaryForm.setValue('dignitaryCountry', dignitary.country);
     dignitaryForm.setValue('dignitaryState', dignitary.state);
     dignitaryForm.setValue('dignitaryCity', dignitary.city);
+    dignitaryForm.setValue('dignitaryHasMetGurudev', dignitary.has_dignitary_met_gurudev);
   };
 
   // Update form values when userInfo changes
@@ -273,7 +277,8 @@ export const AppointmentRequestForm: React.FC = () => {
               selectedDignitary.linked_in_or_website !== data.dignitaryLinkedInOrWebsite ||
               selectedDignitary.country !== data.dignitaryCountry ||
               selectedDignitary.state !== data.dignitaryState ||
-              selectedDignitary.city !== data.dignitaryCity
+              selectedDignitary.city !== data.dignitaryCity ||
+              selectedDignitary.has_dignitary_met_gurudev !== data.dignitaryHasMetGurudev
             );
 
             if (hasChanges) {
@@ -292,6 +297,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 country: data.dignitaryCountry,
                 state: data.dignitaryState,
                 city: data.dignitaryCity,
+                has_dignitary_met_gurudev: data.dignitaryHasMetGurudev,
               };
 
               const response = await fetch(`http://localhost:8001/dignitaries/update/${data.selectedDignitaryId}`, {
@@ -323,6 +329,7 @@ export const AppointmentRequestForm: React.FC = () => {
               state: data.dignitaryState,
               city: data.dignitaryCity,
               poc_relationship_type: data.pocRelationshipType,
+              has_dignitary_met_gurudev: data.dignitaryHasMetGurudev,
             };
 
             console.log('Creating dignitary with data:', dignitaryCreateData);
@@ -491,6 +498,7 @@ export const AppointmentRequestForm: React.FC = () => {
                           dignitaryCountry: '',
                           dignitaryState: '',
                           dignitaryCity: '',
+                          dignitaryHasMetGurudev: false,
                         });
                       } else if (selectedDignitary) {
                         // Restore selected dignitary data and ID if switching back
@@ -565,7 +573,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 <Divider sx={{ my: 1 }} />
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={4}>
                 <FormControl fullWidth>
                   <InputLabel>Honorific Title</InputLabel>
                   <Select
@@ -582,7 +590,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 </FormControl>
               </Grid>
               
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
                   label="First Name"
@@ -593,7 +601,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 />
               </Grid>
               
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
                   label="Last Name"
@@ -604,7 +612,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 />
               </Grid>
               
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
                   label="Email"
@@ -616,7 +624,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 />
               </Grid>
               
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
                   label="Phone Number"
@@ -627,7 +635,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 />
               </Grid>
               
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={4}>
                 <FormControl fullWidth>
                   <InputLabel>Primary Domain</InputLabel>
                   <Select
@@ -644,7 +652,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 </FormControl>
               </Grid>
               
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
                   label="Title in Organization"
@@ -655,7 +663,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 />
               </Grid>
               
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
                   label="Organization"
@@ -663,6 +671,13 @@ export const AppointmentRequestForm: React.FC = () => {
                   {...dignitaryForm.register('dignitaryOrganization', { required: 'Organization is required' })}
                   error={!!dignitaryForm.formState.errors.dignitaryOrganization}
                   helperText={dignitaryForm.formState.errors.dignitaryOrganization?.message}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={4}>
+                <FormControlLabel
+                  control={<Checkbox checked={dignitaryForm.watch('dignitaryHasMetGurudev')} onChange={(e) => dignitaryForm.setValue('dignitaryHasMetGurudev', e.target.checked)} />}
+                  label="Has Dignitary Met Gurudev?"
                 />
               </Grid>
               

@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Container, Typography, Paper, Box } from '@mui/material';
+import { Container, Typography, Paper, Box, Checkbox } from '@mui/material';
 import {
   DataGrid,
   GridColDef,
+  GridRenderCellParams,
 } from '@mui/x-data-grid';
 import Layout from '../components/Layout';
 
@@ -19,6 +20,7 @@ interface Dignitary {
   country: string;
   state: string;
   city: string;
+  has_dignitary_met_gurudev: boolean;
 }
 
 const DignitaryList: React.FC = () => {
@@ -61,6 +63,14 @@ const DignitaryList: React.FC = () => {
     { field: 'country', headerName: 'Country', width: 130 },
     { field: 'state', headerName: 'State', width: 130 },
     { field: 'city', headerName: 'City', width: 130 },
+    { 
+      field: 'has_dignitary_met_gurudev', 
+      headerName: 'Met Gurudev?', 
+      width: 130,
+      renderCell: (params: GridRenderCellParams) => (
+        <Checkbox checked={params.row.has_dignitary_met_gurudev} />
+      ),
+    },
   ];
 
   return (

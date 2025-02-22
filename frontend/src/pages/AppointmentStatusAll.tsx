@@ -8,6 +8,7 @@ import {
   Select,
   MenuItem,
   SelectChangeEvent,
+  Checkbox,
 } from '@mui/material';
 import {
   DataGrid,
@@ -37,6 +38,14 @@ export interface Dignitary {
   honorific_title: string;
   first_name: string;
   last_name: string;
+  email: string;
+  phone: string;
+  primary_domain: string;
+  title_in_organization: string;
+  organization: string;
+  bio_summary: string;
+  linked_in_or_website: string;
+  has_dignitary_met_gurudev: boolean;
 }
 
 export interface Appointment {
@@ -304,16 +313,19 @@ const AppointmentStatusAll: React.FC = () => {
       editable: true,
     },
     {
-      field: 'duration',
-      headerName: 'Duration',
-      width: 100,
-      editable: true,
-    },
-    {
       field: 'location',
       headerName: 'Location',
       width: 150,
       editable: true,
+    },
+    {
+      field: 'has_dignitary_met_gurudev',
+      headerName: 'Met Gurudev?',
+      width: 130,
+      editable: true,
+      renderCell: (params: GridRenderCellParams<Appointment>) => (
+        <Checkbox checked={params.row.dignitary.has_dignitary_met_gurudev} />
+      ),
     },
     {
       field: 'status',

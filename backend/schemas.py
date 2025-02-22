@@ -56,6 +56,7 @@ class DignitaryBase(BaseModel):
     country: str
     state: str
     city: str
+    has_dignitary_met_gurudev: Optional[bool] = False
 
 class DignitaryCreate(DignitaryBase):
     poc_relationship_type: RelationshipType
