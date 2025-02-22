@@ -1056,7 +1056,7 @@ export const AppointmentRequestForm: React.FC = () => {
                   </Grid>
                   <Grid item xs={12} sm={4}>
                     <Typography>
-                      Location: {appointment.location || 'Not specified'}
+                      Location: {appointment.location.name || 'Not specified'}
                     </Typography>
                   </Grid>
                   <Grid item xs={12} sm={4}>

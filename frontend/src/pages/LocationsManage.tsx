@@ -97,15 +97,60 @@ const initialFormData: LocationFormData = {
   parking_info: '',
 };
 
+// Move Google Maps script loading to a custom hook
+const useGoogleMapsScript = () => {
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (window.google?.maps?.places) {
+      setIsLoaded(true);
+      return;
+    }
+
+    const scriptId = 'google-places-script';
+    const existingScript = document.getElementById(scriptId);
+
+    if (existingScript) {
+      existingScript.remove();
+    }
+
+    const script = document.createElement('script');
+    script.id = scriptId;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}&libraries=places`;
+    script.async = true;
+    script.defer = true;
+
+    const handleScriptLoad = () => setIsLoaded(true);
+    const handleScriptError = () => {
+      setError('Failed to load Google Maps script');
+      script.remove();
+    };
+
+    script.addEventListener('load', handleScriptLoad);
+    script.addEventListener('error', handleScriptError);
+
+    document.head.appendChild(script);
+
+    return () => {
+      script.removeEventListener('load', handleScriptLoad);
+      script.removeEventListener('error', handleScriptError);
+    };
+  }, []);
+
+  return { isLoaded, error };
+};
+
 export default function LocationsManage() {
   const [formOpen, setFormOpen] = useState(false);
   const [formData, setFormData] = useState<LocationFormData>(initialFormData);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [scriptLoaded, setScriptLoaded] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
   const api = useApi();
   const queryClient = useQueryClient();
-  const autocompleteRef = useRef<any>(null);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const { isLoaded: mapsLoaded, error: mapsError } = useGoogleMapsScript();
 
   // Query for fetching locations
   const { data: locations = [], isLoading } = useQuery({
@@ -142,131 +187,98 @@ export default function LocationsManage() {
     }
   });
 
+  // Initialize autocomplete
   const initializeAutocomplete = useCallback(() => {
-    const input = document.getElementById('google-places-autocomplete') as HTMLInputElement;
-    if (input && (window as any).google?.maps?.places?.Autocomplete) {
-      // Clear any existing instance
+    if (!mapsLoaded || !inputRef.current) return;
+
+    try {
+      // Clean up existing instance
       if (autocompleteRef.current) {
-        const google = (window as any).google;
         google.maps.event.clearInstanceListeners(autocompleteRef.current);
+        autocompleteRef.current = null;
       }
 
-      try {
-        const autocompleteInstance = new (window as any).google.maps.places.Autocomplete(input, {
-          types: ['establishment', 'geocode'],
-          fields: ['name', 'geometry', 'address_components', 'formatted_address'],
-        });
+      const autocomplete = new google.maps.places.Autocomplete(inputRef.current, {
+        types: ['establishment', 'geocode'],
+        fields: ['name', 'geometry', 'formatted_address', 'address_components'],
+      });
+
+      autocomplete.addListener('place_changed', () => {
+        const place = autocomplete.getPlace();
         
-        autocompleteRef.current = autocompleteInstance;
-
-        autocompleteInstance.addListener('place_changed', () => {
-          const place = autocompleteInstance.getPlace();
-          if (!place.geometry) {
-            enqueueSnackbar('No details available for this place', { variant: 'warning' });
-            return;
-          }
-
-          // Extract address components
-          let streetNumber = '';
-          let route = '';
-          let city = '';
-          let state = '';
-          let country = '';
-          let postalCode = '';
-
-          place.address_components?.forEach((component: AddressComponent) => {
-            const types = component.types;
-            if (types.includes('street_number')) {
-              streetNumber = component.long_name;
-            } else if (types.includes('route')) {
-              route = component.long_name;
-            } else if (types.includes('locality')) {
-              city = component.long_name;
-            } else if (types.includes('administrative_area_level_1')) {
-              state = component.long_name;
-            } else if (types.includes('country')) {
-              country = component.long_name;
-            } else if (types.includes('postal_code')) {
-              postalCode = component.long_name;
-            }
-          });
-
-          // Create Google Maps directions URL
-          const formattedAddress = place.formatted_address || `${streetNumber} ${route}, ${city}, ${state} ${postalCode}, ${country}`;
-          const encodedAddress = encodeURIComponent(formattedAddress);
-          const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodedAddress}`;
-
-          // Append directions URL to existing driving directions if not already present
-          const existingDirections = formData.driving_directions || '';
-          const updatedDirections = existingDirections.includes(directionsUrl)
-            ? existingDirections
-            : existingDirections
-              ? `${existingDirections}\n\nGoogle Maps Directions: ${directionsUrl}`
-              : `Google Maps Directions: ${directionsUrl}`;
-
-          setFormData(prev => ({
-            ...prev,
-            name: place.name || '',
-            street_address: `${streetNumber} ${route}`.trim(),
-            city,
-            state,
-            country,
-            zip_code: postalCode,
-            driving_directions: updatedDirections,
-          }));
-
-          // Clear the search input after selection
-          input.value = '';
-        });
-      } catch (error) {
-        console.error('Error initializing Google Places Autocomplete:', error);
-        enqueueSnackbar('Error initializing location search', { variant: 'error' });
-      }
-    }
-  }, [enqueueSnackbar, formData.driving_directions]);
-
-  // Load Google Places API script
-  useEffect(() => {
-    const loadGooglePlacesScript = () => {
-      if (!window.google && !document.getElementById('google-places-script')) {
-        const googlePlacesScript = document.createElement('script');
-        googlePlacesScript.id = 'google-places-script';
-        googlePlacesScript.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}&libraries=places`;
-        googlePlacesScript.async = true;
-        googlePlacesScript.defer = true;
-        googlePlacesScript.onload = () => {
-          setScriptLoaded(true);
-        };
-        document.head.appendChild(googlePlacesScript);
-      } else if (window.google) {
-        setScriptLoaded(true);
-      }
-    };
-
-    loadGooglePlacesScript();
-
-    return () => {
-      // Cleanup autocomplete instance on unmount
-      if (autocompleteRef.current) {
-        const google = (window as any).google;
-        if (google?.maps?.event) {
-          google.maps.event.clearInstanceListeners(autocompleteRef.current);
+        if (!place.geometry) {
+          enqueueSnackbar('Please select a location from the dropdown', { variant: 'warning' });
+          return;
         }
+
+        let streetNumber = '';
+        let route = '';
+        let city = '';
+        let state = '';
+        let country = '';
+        let postalCode = '';
+
+        place.address_components?.forEach((component) => {
+          const types = component.types;
+          if (types.includes('street_number')) {
+            streetNumber = component.long_name;
+          } else if (types.includes('route')) {
+            route = component.long_name;
+          } else if (types.includes('locality')) {
+            city = component.long_name;
+          } else if (types.includes('administrative_area_level_1')) {
+            state = component.long_name;
+          } else if (types.includes('country')) {
+            country = component.long_name;
+          } else if (types.includes('postal_code')) {
+            postalCode = component.long_name;
+          }
+        });
+
+        const formattedAddress = place.formatted_address || `${streetNumber} ${route}, ${city}, ${state} ${postalCode}, ${country}`;
+        const encodedAddress = encodeURIComponent(formattedAddress);
+        const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodedAddress}`;
+
+        setFormData(prev => ({
+          ...prev,
+          name: place.name || '',
+          street_address: `${streetNumber} ${route}`.trim(),
+          city,
+          state,
+          country,
+          zip_code: postalCode,
+          driving_directions: directionsUrl,
+        }));
+
+        // Clear the input after selection
+        if (inputRef.current) {
+          inputRef.current.value = '';
+        }
+      });
+
+      autocompleteRef.current = autocomplete;
+    } catch (error) {
+      console.error('Error initializing Google Places Autocomplete:', error);
+      enqueueSnackbar('Error initializing location search', { variant: 'error' });
+    }
+  }, [mapsLoaded, enqueueSnackbar]);
+
+  // Initialize autocomplete when form opens
+  useEffect(() => {
+    if (formOpen && !editingId && mapsLoaded) {
+      initializeAutocomplete();
+    }
+  }, [formOpen, editingId, mapsLoaded, initializeAutocomplete]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (autocompleteRef.current) {
+        google.maps.event.clearInstanceListeners(autocompleteRef.current);
         autocompleteRef.current = null;
       }
     };
   }, []);
-
-  // Initialize autocomplete when form opens
-  useEffect(() => {
-    if (formOpen && scriptLoaded && !editingId) {
-      // Small delay to ensure the input is mounted
-      const timer = setTimeout(() => {
-        initializeAutocomplete();
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [formOpen, scriptLoaded, editingId, initializeAutocomplete]);
 
   const handleOpen = (location?: Location) => {
     if (location) {
@@ -337,10 +349,13 @@ export default function LocationsManage() {
                   {!editingId && (
                     <Grid item xs={12}>
                       <TextField
-                        id="google-places-autocomplete"
+                        inputRef={inputRef}
                         fullWidth
                         label="Search for a location"
                         placeholder="Start typing to search..."
+                        disabled={!mapsLoaded}
+                        helperText={mapsError || (!mapsLoaded && 'Loading Google Maps...')}
+                        error={!!mapsError}
                         InputProps={{
                           autoComplete: 'off',
                         }}
