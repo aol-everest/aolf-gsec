@@ -15,6 +15,18 @@ interface Dignitary {
   last_name: string;
 }
 
+interface Location {
+  id: number;
+  name: string;
+  street_address: string;
+  state: string;
+  city: string;
+  country: string;
+  zip_code: string;
+  driving_directions?: string;
+  parking_info?: string;
+}
+
 interface Appointment {
   id: number;
   dignitary: Dignitary;
@@ -24,7 +36,8 @@ interface Appointment {
   appointment_date: string;
   appointment_time: string;
   duration: string;
-  location: string;
+  location_id: number;
+  location: Location;
   requester_notes_to_secretariat: string;
   status: string;
   created_at: string;
@@ -100,7 +113,15 @@ const AppointmentStatus: React.FC = () => {
       },
     },
     { field: 'duration', headerName: 'Duration', width: 100 },
-    { field: 'location', headerName: 'Location', width: 150 },
+    {
+      field: 'location',
+      headerName: 'Location',
+      width: 150,
+      renderCell: (params: GridRenderCellParams) => {
+        const location = params.row.location;
+        return location ? `${location.name} - ${location.city}, ${location.state}` : 'N/A';
+      },
+    },
     {
       field: 'status',
       headerName: 'Status',

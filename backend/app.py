@@ -234,10 +234,9 @@ async def create_appointment(
             status="PENDING",
             purpose=appointment.purpose,
             preferred_date=appointment.preferred_date,
-            preferred_time=appointment.preferred_time,
-            duration=appointment.duration,
+            preferred_time_of_day=appointment.preferred_time_of_day,
+            requester_notes_to_secretariat=appointment.requester_notes_to_secretariat,
             location_id=appointment.location_id,
-            pre_meeting_notes=appointment.pre_meeting_notes
         )
         db.add(db_appointment)
         db.commit()
@@ -453,11 +452,10 @@ async def update_appointment(
         'status': appointment.status.value,
         'appointment_date': appointment.appointment_date.isoformat() if appointment.appointment_date else None,
         'appointment_time': appointment.appointment_time,
-        'duration': appointment.duration,
         'location_id': appointment.location_id,
-        'meeting_notes': appointment.meeting_notes,
-        'follow_up_actions': appointment.follow_up_actions,
-        'secretariat_comments': appointment.secretariat_comments,
+        'secretariat_meeting_notes': appointment.secretariat_meeting_notes,
+        'secretariat_follow_up_actions': appointment.secretariat_follow_up_actions,
+        'secretariat_notes_to_requester': appointment.secretariat_notes_to_requester,
     }
         
     if appointment.status != models.AppointmentStatus.APPROVED and appointment_update.status == models.AppointmentStatus.APPROVED:

@@ -133,21 +133,25 @@ class LocationAdmin(LocationBase):
 
 
 class AppointmentBase(BaseModel):
+    location_id: Optional[int] = None
+    status: Optional[AppointmentStatus] = None
+
+class AppointmentCreate(AppointmentBase):
     requester_id: int
     dignitary_id: int
     purpose: str
     preferred_date: date
     preferred_time_of_day: Optional[AppointmentTimeOfDay] = None
-    location_id: Optional[int] = None
     requester_notes_to_secretariat: Optional[str] = None
-    status: Optional[AppointmentStatus] = None
-    approved_datetime: Optional[datetime] = None
-
-class AppointmentCreate(AppointmentBase):
-    pass
 
 class Appointment(AppointmentBase):
     id: int
+    requester_id: int
+    dignitary_id: int
+    purpose: str
+    preferred_date: date
+    preferred_time_of_day: Optional[AppointmentTimeOfDay] = None
+    requester_notes_to_secretariat: Optional[str] = None
     dignitary: Dignitary
     status: AppointmentStatus
     created_at: datetime
@@ -155,6 +159,7 @@ class Appointment(AppointmentBase):
     appointment_date: Optional[date] = None
     appointment_time: Optional[str] = None
     secretariat_notes_to_requester: Optional[str] = None
+    approved_datetime: Optional[datetime] = None
 
     class Config:
         orm_mode = True
@@ -177,6 +182,12 @@ class AppointmentAdminUpdate(AppointmentBase):
 
 class AppointmentAdmin(AppointmentBase):
     id: int
+    requester_id: int
+    dignitary_id: int
+    purpose: str
+    preferred_date: date
+    preferred_time_of_day: Optional[AppointmentTimeOfDay] = None
+    requester_notes_to_secretariat: Optional[str] = None
     dignitary: DignitaryAdmin
     requester: User
     status: AppointmentStatus

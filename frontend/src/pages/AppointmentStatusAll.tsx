@@ -48,6 +48,18 @@ export interface Dignitary {
   has_dignitary_met_gurudev: boolean;
 }
 
+export interface Location {
+  id: number;
+  name: string;
+  street_address: string;
+  state: string;
+  city: string;
+  country: string;
+  zip_code: string;
+  driving_directions?: string;
+  parking_info?: string;
+}
+
 export interface Appointment {
   id: number;
   dignitary_id: number;
@@ -58,7 +70,8 @@ export interface Appointment {
   appointment_date: string;
   appointment_time: string;
   duration: string;
-  location: string;
+  location_id: number | null;
+  location?: Location;
   requester_notes_to_secretariat: string;
   status: string;
   created_at: string;
@@ -98,6 +111,7 @@ const AppointmentStatusAll: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [rowModesModel, setRowModesModel] = useState<GridRowModesModel>({});
   const [statusOptions, setStatusOptions] = useState<string[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
   const theme = useTheme();
 
   useEffect(() => {
@@ -118,6 +132,7 @@ const AppointmentStatusAll: React.FC = () => {
 
     fetchStatusOptions();
     fetchAppointments();
+    fetchLocations();
   }, []);
 
   const fetchAppointments = async () => {
@@ -137,6 +152,22 @@ const AppointmentStatusAll: React.FC = () => {
       console.error('Error fetching appointments:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchLocations = async () => {
+    try {
+      const response = await fetch('http://localhost:8001/locations/all', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setLocations(data);
+      }
+    } catch (error) {
+      console.error('Error fetching locations:', error);
     }
   };
 
@@ -181,7 +212,6 @@ const AppointmentStatusAll: React.FC = () => {
 
   const processRowUpdate = async (newRow: Appointment, oldRow: Appointment) => {
     try {
-      // Convert the date to the format expected by the backend (YYYY-MM-DD)
       const response = await fetch(`http://localhost:8001/admin/appointments/update/${newRow.id}`, {
         method: 'PATCH',
         headers: {
@@ -192,12 +222,13 @@ const AppointmentStatusAll: React.FC = () => {
           dignitary_id: newRow.dignitary_id,
           purpose: newRow.purpose,
           preferred_date: newRow.preferred_date,
+          preferred_time_of_day: newRow.preferred_time_of_day,
           appointment_date: newRow.appointment_date ? new Date(newRow.appointment_date).toISOString().split('T')[0] : null,
           appointment_time: newRow.appointment_time,
           duration: newRow.duration,
-          location: newRow.location,
+          location_id: newRow.location_id,
           status: newRow.status,
-          // last_updated_by: null, // This will be set by the backend
+          requester_notes_to_secretariat: newRow.requester_notes_to_secretariat,
         }),
       });
       if (response.ok) {
@@ -317,6 +348,17 @@ const AppointmentStatusAll: React.FC = () => {
       headerName: 'Location',
       width: 150,
       editable: true,
+      type: 'singleSelect',
+      valueOptions: locations.map(loc => ({ value: loc.id, label: `${loc.name} - ${loc.city}, ${loc.state}` })),
+      valueGetter: (value, row, column, apiRef) => row.location_id,
+      valueSetter: (value, row) => {
+        // const value = typeof params.value === 'number' ? params.value : null;
+        return { ...row, location_id: value };
+      },
+      renderCell: (params: GridRenderCellParams<Appointment>) => {
+        const location = params.row.location;
+        return location ? `${location.name} - ${location.city}, ${location.state}` : 'N/A';
+      },
     },
     {
       field: 'has_dignitary_met_gurudev',

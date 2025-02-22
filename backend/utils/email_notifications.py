@@ -45,9 +45,8 @@ def get_appointment_summary(appointment: Appointment) -> str:
         <p><strong>Dignitary:</strong> {appointment.dignitary.honorific_title} {appointment.dignitary.first_name} {appointment.dignitary.last_name}</p>
         <p><strong>Purpose:</strong> {appointment.purpose}</p>
         <p><strong>Preferred Date:</strong> {appointment.preferred_date}</p>
-        <p><strong>Preferred Time:</strong> {appointment.preferred_time or 'Not specified'}</p>
-        <p><strong>Duration:</strong> {appointment.duration or 'Not specified'}</p>
-        <p><strong>Location:</strong> {appointment.location or 'Not specified'}</p>
+        <p><strong>Preferred Time:</strong> {appointment.preferred_time_of_day or 'Not specified'}</p>
+        <p><strong>Location:</strong> {appointment.location.name} - {appointment.location.city}, {appointment.location.state}</p>
         <p><strong>Status:</strong> {appointment.status}</p>
     """
 
@@ -58,11 +57,10 @@ def get_appointment_changes_summary(old_data: Dict[str, Any], new_data: Dict[str
         ('status', 'Status'),
         ('appointment_date', 'Appointment Date'),
         ('appointment_time', 'Appointment Time'),
-        ('duration', 'Duration'),
         ('location', 'Location'),
-        ('meeting_notes', 'Meeting Notes'),
-        ('follow_up_actions', 'Follow-up Actions'),
-        ('secretariat_comments', 'Secretariat Comments')
+        ('secretariat_meeting_notes', 'Meeting Notes'),
+        ('secretariat_follow_up_actions', 'Follow-up Actions'),
+        ('secretariat_notes_to_requester', 'Secretariat Comments')
     ]
 
     for field, display_name in fields_to_check:
