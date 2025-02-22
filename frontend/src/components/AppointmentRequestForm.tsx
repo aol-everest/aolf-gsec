@@ -564,7 +564,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 </FormControl>
               </Grid>
               {dignitaryForm.watch('isExistingDignitary') ? (
-                <Grid item xs={12}>
+                <Grid item xs={12} md={6}>
                   <FormControl fullWidth>
                     <InputLabel>Select Dignitary</InputLabel>
                     <Controller
@@ -615,7 +615,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 <Divider sx={{ my: 1 }} />
               </Grid>
 
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} md={6} lg={4}>
                 <FormControl fullWidth>
                   <InputLabel>Honorific Title</InputLabel>
                   <Select
@@ -632,7 +632,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 </FormControl>
               </Grid>
               
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} md={6} lg={4}>
                 <TextField
                   fullWidth
                   label="First Name"
@@ -643,7 +643,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 />
               </Grid>
               
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} md={6} lg={4}>
                 <TextField
                   fullWidth
                   label="Last Name"
@@ -654,7 +654,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 />
               </Grid>
               
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} md={6} lg={4}>
                 <TextField
                   fullWidth
                   label="Email"
@@ -666,7 +666,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 />
               </Grid>
               
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} md={6} lg={4}>
                 <TextField
                   fullWidth
                   label="Phone Number"
@@ -677,7 +677,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 />
               </Grid>
               
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} md={6} lg={4}>
                 <FormControl fullWidth>
                   <InputLabel>Primary Domain</InputLabel>
                   <Select
@@ -694,7 +694,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 </FormControl>
               </Grid>
               
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} md={6} lg={4}>
                 <TextField
                   fullWidth
                   label="Title in Organization"
@@ -705,7 +705,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 />
               </Grid>
               
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} md={6} lg={4}>
                 <TextField
                   fullWidth
                   label="Organization"
@@ -716,7 +716,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} md={6} lg={4}>
                 <FormControlLabel
                   control={<Checkbox checked={dignitaryForm.watch('dignitaryHasMetGurudev')} onChange={(e) => dignitaryForm.setValue('dignitaryHasMetGurudev', e.target.checked)} />}
                   label="Has Dignitary Met Gurudev?"
@@ -848,7 +848,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} md={6} lg={4}>
                 <TextField
                   fullWidth
                   type="date"
@@ -864,7 +864,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} md={6} lg={4}>
                 <FormControl fullWidth>
                   <InputLabel>Preferred Time of Day</InputLabel>
                   <Controller
@@ -887,7 +887,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} md={6} lg={4}>
                 <FormControl fullWidth>
                   <InputLabel>Location</InputLabel>
                   <Controller
