@@ -231,7 +231,7 @@ async def create_appointment(
         db_appointment = models.Appointment(
             requester_id=current_user.id,
             dignitary_id=appointment.dignitary_id,
-            status="PENDING",
+            status=models.AppointmentStatus.PENDING,
             purpose=appointment.purpose,
             preferred_date=appointment.preferred_date,
             preferred_time_of_day=appointment.preferred_time_of_day,

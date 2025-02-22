@@ -48,6 +48,7 @@ def get_appointment_summary(appointment: Appointment) -> str:
         <p><strong>Preferred Time:</strong> {appointment.preferred_time_of_day or 'Not specified'}</p>
         <p><strong>Location:</strong> {appointment.location.name} - {appointment.location.city}, {appointment.location.state}</p>
         <p><strong>Status:</strong> {appointment.status}</p>
+        <p><strong>Requester Notes:</strong> {appointment.requester_notes_to_secretariat}</p>
     """
 
 def get_appointment_changes_summary(old_data: Dict[str, Any], new_data: Dict[str, Any]) -> str:

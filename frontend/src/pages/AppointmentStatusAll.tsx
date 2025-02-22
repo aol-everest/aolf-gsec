@@ -356,7 +356,7 @@ const AppointmentStatusAll: React.FC = () => {
         return { ...row, location_id: value };
       },
       renderCell: (params: GridRenderCellParams<Appointment>) => {
-        const location = params.row.location;
+        const location = params.row.location ? params.row.location : locations.find(loc => loc.id === params.row.location_id);
         return location ? `${location.name} - ${location.city}, ${location.state}` : 'N/A';
       },
     },
