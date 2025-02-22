@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Container,
   Typography,
@@ -10,6 +10,7 @@ import {
   Grid,
   useTheme,
   alpha,
+  CircularProgress,
 } from '@mui/material';
 import format from 'date-fns/format';
 import isToday from 'date-fns/isToday';
@@ -18,6 +19,9 @@ import startOfDay from 'date-fns/startOfDay';
 import Layout from '../components/Layout';
 import { getLocalDate } from '../utils/dateUtils';
 import { getStatusChipSx } from '../utils/formattingUtils';
+import { useApi } from '../hooks/useApi';
+import { useSnackbar } from 'notistack';
+import { useQuery } from '@tanstack/react-query';
 
 interface Location {
   id: number;
@@ -56,39 +60,35 @@ interface Appointment {
 
 const AppointmentDayView: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState(getLocalDate(0));
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(true);
   const theme = useTheme();
+  const api = useApi();
+  const { enqueueSnackbar } = useSnackbar();
 
-  useEffect(() => {
-    const fetchAppointments = async () => {
+  const { data: appointments = [], isLoading } = useQuery({
+    queryKey: ['appointments', selectedDate],
+    queryFn: async () => {
       try {
-        const response = await fetch('http://localhost:8001/admin/appointments/all?status=Approved', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-          },
+        const { data } = await api.get<Appointment[]>('/admin/appointments/all', {
+          params: {
+            status: 'Approved'
+          }
         });
-        if (response.ok) {
-          const data = await response.json();
-          // Filter appointments for the selected date and sort by time
-          const filteredData = data
-            .filter((apt: Appointment) => apt.appointment_date === selectedDate)
-            .sort((a: Appointment, b: Appointment) => {
-              if (!a.appointment_time) return 1;
-              if (!b.appointment_time) return -1;
-              return a.appointment_time.localeCompare(b.appointment_time);
-            });
-          setAppointments(filteredData);
-        }
+        
+        // Filter appointments for the selected date and sort by time
+        return data
+          .filter((apt) => apt.appointment_date === selectedDate)
+          .sort((a, b) => {
+            if (!a.appointment_time) return 1;
+            if (!b.appointment_time) return -1;
+            return a.appointment_time.localeCompare(b.appointment_time);
+          });
       } catch (error) {
         console.error('Error fetching appointments:', error);
-      } finally {
-        setLoading(false);
+        enqueueSnackbar('Failed to fetch appointments', { variant: 'error' });
+        throw error;
       }
-    };
-
-    fetchAppointments();
-  }, [selectedDate]);
+    }
+  });
 
   const formatTime = (time: string) => {
     if (!time) return 'Time TBD';
@@ -127,14 +127,18 @@ const AppointmentDayView: React.FC = () => {
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
               inputProps={{
-                min: getLocalDate(-1), // Allow viewing past 1 day appointments
-                max: getLocalDate(365),  // Allow viewing next year's appointments
+                min: getLocalDate(-1),
+                max: getLocalDate(365),
               }}
               sx={{ width: 200 }}
             />
           </Box>
 
-          {appointments.length === 0 ? (
+          {isLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : appointments.length === 0 ? (
             <Paper 
               sx={{ 
                 p: 4, 
@@ -149,7 +153,7 @@ const AppointmentDayView: React.FC = () => {
             </Paper>
           ) : (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {appointments.map((appointment, index) => (
+              {appointments.map((appointment: Appointment) => (
                 <Paper
                   key={appointment.id}
                   elevation={1}

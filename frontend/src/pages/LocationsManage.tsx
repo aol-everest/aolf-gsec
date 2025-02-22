@@ -18,11 +18,13 @@ import {
   CardContent,
   CardActions,
   Collapse,
+  CircularProgress,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
 import { useSnackbar } from 'notistack';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../hooks/useApi';
 import Layout from '../components/Layout';
 
@@ -96,14 +98,49 @@ const initialFormData: LocationFormData = {
 };
 
 export default function LocationsManage() {
-  const [locations, setLocations] = useState<Location[]>([]);
   const [formOpen, setFormOpen] = useState(false);
   const [formData, setFormData] = useState<LocationFormData>(initialFormData);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
   const api = useApi();
+  const queryClient = useQueryClient();
   const autocompleteRef = useRef<any>(null);
+
+  // Query for fetching locations
+  const { data: locations = [], isLoading } = useQuery({
+    queryKey: ['locations'],
+    queryFn: async () => {
+      try {
+        const { data } = await api.get<Location[]>('/admin/locations/all');
+        return data;
+      } catch (error) {
+        enqueueSnackbar('Failed to fetch locations', { variant: 'error' });
+        throw error;
+      }
+    }
+  });
+
+  // Mutation for creating/updating locations
+  const locationMutation = useMutation({
+    mutationFn: async (variables: { id?: number; data: LocationFormData }) => {
+      if (variables.id) {
+        const { data } = await api.patch<Location>(`/admin/locations/update/${variables.id}`, variables.data);
+        return data;
+      } else {
+        const { data } = await api.post<Location>('/admin/locations/new', variables.data);
+        return data;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['locations'] });
+      enqueueSnackbar(editingId ? 'Location updated successfully' : 'Location created successfully', { variant: 'success' });
+      handleClose();
+    },
+    onError: () => {
+      enqueueSnackbar('Failed to save location', { variant: 'error' });
+    }
+  });
 
   const initializeAutocomplete = useCallback(() => {
     const input = document.getElementById('google-places-autocomplete') as HTMLInputElement;
@@ -231,19 +268,6 @@ export default function LocationsManage() {
     }
   }, [formOpen, scriptLoaded, editingId, initializeAutocomplete]);
 
-  const fetchLocations = async () => {
-    try {
-      const { data } = await api.get<Location[]>('/admin/locations/all');
-      setLocations(data);
-    } catch (error) {
-      enqueueSnackbar('Failed to fetch locations', { variant: 'error' });
-    }
-  };
-
-  useEffect(() => {
-    fetchLocations();
-  }, []);
-
   const handleOpen = (location?: Location) => {
     if (location) {
       setFormData({
@@ -271,20 +295,11 @@ export default function LocationsManage() {
     setEditingId(null);
   };
 
-  const handleSubmit = async () => {
-    try {
-      if (editingId) {
-        await api.patch(`/admin/locations/update/${editingId}`, formData);
-        enqueueSnackbar('Location updated successfully', { variant: 'success' });
-      } else {
-        await api.post('/admin/locations/new', formData);
-        enqueueSnackbar('Location created successfully', { variant: 'success' });
-      }
-      handleClose();
-      fetchLocations();
-    } catch (error) {
-      enqueueSnackbar('Failed to save location', { variant: 'error' });
-    }
+  const handleSubmit = () => {
+    locationMutation.mutate({
+      id: editingId || undefined,
+      data: formData
+    });
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -428,44 +443,56 @@ export default function LocationsManage() {
                 </Grid>
               </CardContent>
               <CardActions sx={{ justifyContent: 'flex-end', p: 2 }}>
-                <Button onClick={handleClose}>Cancel</Button>
-                <Button onClick={handleSubmit} variant="contained">
-                  {editingId ? 'Update' : 'Create'}
+                <Button onClick={handleClose} disabled={locationMutation.isPending}>Cancel</Button>
+                <Button 
+                  onClick={handleSubmit} 
+                  variant="contained"
+                  disabled={locationMutation.isPending}
+                >
+                  {locationMutation.isPending ? (
+                    <CircularProgress size={24} />
+                  ) : editingId ? 'Update' : 'Create'}
                 </Button>
               </CardActions>
             </Card>
           </Collapse>
 
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Address</TableCell>
-                  <TableCell>City</TableCell>
-                  <TableCell>State</TableCell>
-                  <TableCell>Country</TableCell>
-                  <TableCell>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {locations.map((location) => (
-                  <TableRow key={location.id}>
-                    <TableCell>{location.name}</TableCell>
-                    <TableCell>{location.street_address}</TableCell>
-                    <TableCell>{location.city}</TableCell>
-                    <TableCell>{location.state}</TableCell>
-                    <TableCell>{location.country}</TableCell>
-                    <TableCell>
-                      <IconButton onClick={() => handleOpen(location)}>
-                        <EditIcon />
-                      </IconButton>
-                    </TableCell>
+          {isLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Name</TableCell>
+                    <TableCell>Address</TableCell>
+                    <TableCell>City</TableCell>
+                    <TableCell>State</TableCell>
+                    <TableCell>Country</TableCell>
+                    <TableCell>Actions</TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                </TableHead>
+                <TableBody>
+                  {locations.map((location: Location) => (
+                    <TableRow key={location.id}>
+                      <TableCell>{location.name}</TableCell>
+                      <TableCell>{location.street_address}</TableCell>
+                      <TableCell>{location.city}</TableCell>
+                      <TableCell>{location.state}</TableCell>
+                      <TableCell>{location.country}</TableCell>
+                      <TableCell>
+                        <IconButton onClick={() => handleOpen(location)}>
+                          <EditIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
         </Box>
       </Container>
     </Layout>
