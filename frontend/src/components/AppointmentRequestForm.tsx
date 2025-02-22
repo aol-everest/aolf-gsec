@@ -39,6 +39,27 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { getStatusChipSx } from '../utils/formattingUtils';
 import { useTheme } from '@mui/material/styles';
+
+// Add Location interface
+interface Location {
+  id: number;
+  name: string;
+  street_address: string;
+  state: string;
+  city: string;
+  country: string;
+  zip_code: string;
+  driving_directions?: string;
+  parking_info?: string;
+}
+
+// Add AppointmentTimeOfDay enum
+enum AppointmentTimeOfDay {
+  MORNING = "Morning",
+  AFTERNOON = "Afternoon",
+  EVENING = "Evening"
+}
+
 // Step 1: POC Information
 interface PocFormData {
   pocFirstName: string;
@@ -72,8 +93,8 @@ interface DignitaryFormData {
 interface AppointmentFormData {
   purpose: string;
   preferredDate: string;
-  preferredTimeOfDay: string;
-  location: string;
+  preferredTimeOfDay: AppointmentTimeOfDay;
+  location_id: number;
   requesterNotesToSecretariat: string;
 }
 
@@ -88,6 +109,7 @@ export const AppointmentRequestForm: React.FC = () => {
   const [submittedAppointment, setSubmittedAppointment] = useState<any>(null);
   const [selectedDignitary, setSelectedDignitary] = useState<any>(null);
   const [showWarningDialog, setShowWarningDialog] = useState(false);
+  const [locations, setLocations] = useState<Location[]>([]);
   const navigate = useNavigate();
   const [statusOptions, setStatusOptions] = useState<string[]>([]);
   const theme = useTheme();
@@ -143,8 +165,8 @@ export const AppointmentRequestForm: React.FC = () => {
     defaultValues: {
       purpose: '',
       preferredDate: '',
-      preferredTimeOfDay: '',
-      location: '',
+      preferredTimeOfDay: AppointmentTimeOfDay.MORNING,
+      location_id: 0,
       requesterNotesToSecretariat: '',
     }
   });
@@ -234,6 +256,26 @@ export const AppointmentRequestForm: React.FC = () => {
     setSelectedDignitary(dignitary);
     populateDignitaryForm(dignitary);
   };
+
+  // Add useEffect to fetch locations
+  useEffect(() => {
+    const fetchLocations = async () => {
+      try {
+        const response = await fetch('http://localhost:8001/locations/all', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setLocations(data);
+        }
+      } catch (error) {
+        console.error('Error fetching locations:', error);
+      }
+    };
+    fetchLocations();
+  }, []);
 
   const handleNext = async (skipExistingCheck: boolean = false) => {
     if (activeStep === 0) {
@@ -377,7 +419,7 @@ export const AppointmentRequestForm: React.FC = () => {
               purpose: data.purpose,
               preferred_date: data.preferredDate,
               preferred_time_of_day: data.preferredTimeOfDay,
-              location: data.location,
+              location_id: data.location_id,
               requester_notes_to_secretariat: data.requesterNotesToSecretariat,
               status: statusOptions[0],
             }),
@@ -806,7 +848,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
                   type="date"
@@ -822,27 +864,52 @@ export const AppointmentRequestForm: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  type="time"
-                  label="Preferred Time"
-                  InputLabelProps={{ shrink: true }}
-                  {...appointmentForm.register('preferredTimeOfDay')}
-                  error={!!appointmentForm.formState.errors.preferredTimeOfDay}
-                  helperText={appointmentForm.formState.errors.preferredTimeOfDay?.message}
-                />
+              <Grid item xs={12} md={4}>
+                <FormControl fullWidth>
+                  <InputLabel>Preferred Time of Day</InputLabel>
+                  <Controller
+                    name="preferredTimeOfDay"
+                    control={appointmentForm.control}
+                    render={({ field }) => (
+                      <Select
+                        label="Preferred Time of Day"
+                        value={field.value}
+                        onChange={field.onChange}
+                      >
+                        {Object.values(AppointmentTimeOfDay).map((timeOfDay) => (
+                          <MenuItem key={timeOfDay} value={timeOfDay}>
+                            {timeOfDay}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    )}
+                  />
+                </FormControl>
               </Grid>
 
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Location"
-                  placeholder="e.g., Boone, Los Angeles, etc."
-                  {...appointmentForm.register('location')}
-                  error={!!appointmentForm.formState.errors.location}
-                  helperText={appointmentForm.formState.errors.location?.message}
-                />
+              <Grid item xs={12} md={4}>
+                <FormControl fullWidth>
+                  <InputLabel>Location</InputLabel>
+                  <Controller
+                    name="location_id"
+                    control={appointmentForm.control}
+                    rules={{ required: 'Location is required' }}
+                    render={({ field }) => (
+                      <Select
+                        label="Location"
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                        error={!!appointmentForm.formState.errors.location_id}
+                      >
+                        {locations.map((location) => (
+                          <MenuItem key={location.id} value={location.id}>
+                            {`${location.name} - ${location.city}, ${location.state}, ${location.country}`}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    )}
+                  />
+                </FormControl>
               </Grid>
 
               <Grid item xs={12}>
@@ -865,11 +932,12 @@ export const AppointmentRequestForm: React.FC = () => {
     }
   };
 
-  // Add confirmation dialog
+  // Update the confirmation dialog to show location name
   const renderConfirmationDialog = () => {
     if (!submittedAppointment) return null;
 
     const dignitary = dignitaries.find(d => d.id === submittedAppointment.dignitary_id);
+    const location = locations.find(l => l.id === submittedAppointment.location_id);
     const dignitaryName = dignitary ? 
       `${dignitary.honorific_title} ${dignitary.first_name} ${dignitary.last_name}` : 
       'Selected Dignitary';
@@ -915,10 +983,10 @@ export const AppointmentRequestForm: React.FC = () => {
                 </Typography>
               </Grid>
             )}
-            {submittedAppointment.location && (
+            {location && (
               <Grid item xs={12}>
                 <Typography variant="body1">
-                  <strong>Location:</strong> {submittedAppointment.location}
+                  <strong>Location:</strong> {`${location.name} - ${location.city}, ${location.state}, ${location.country}`}
                 </Typography>
               </Grid>
             )}
