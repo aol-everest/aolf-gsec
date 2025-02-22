@@ -36,7 +36,10 @@ interface Appointment {
   duration: string;
   location: string;
   status: string;
-  pre_meeting_notes?: string;
+  requester_notes_to_secretariat?: string;
+  secretariat_follow_up_actions?: string;
+  secretariat_meeting_notes?: string;
+  secretariat_notes_to_requester?: string;
 }
 
 const AppointmentDayView: React.FC = () => {
@@ -183,9 +186,9 @@ const AppointmentDayView: React.FC = () => {
                             <strong>Location:</strong> {appointment.location}
                           </Typography>
                         )}
-                        {appointment.pre_meeting_notes && (
+                        {appointment.requester_notes_to_secretariat && (
                           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                            <strong>Notes:</strong> {appointment.pre_meeting_notes}
+                            <strong>Notes:</strong> {appointment.requester_notes_to_secretariat}
                           </Typography>
                         )}
                       </Box>

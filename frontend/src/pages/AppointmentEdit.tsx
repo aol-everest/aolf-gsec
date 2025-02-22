@@ -40,16 +40,16 @@ interface Appointment {
   dignitary: Dignitary;
   purpose: string;
   preferred_date: string;
-  preferred_time: string;
+  preferred_time_of_day: string;
   appointment_date: string;
   appointment_time: string;
   duration: string;
   location: string;
-  pre_meeting_notes: string;
+  requester_notes_to_secretariat: string;
   status: string;
-  follow_up_actions: string;
-  meeting_notes: string;
-  secretariat_comments: string;
+  secretariat_follow_up_actions: string;
+  secretariat_meeting_notes: string;
+  secretariat_notes_to_requester: string;
   created_at: string;
   updated_at: string;
 }
@@ -60,10 +60,10 @@ interface AppointmentFormData {
   duration: string;
   location: string;
   status: string;
-  pre_meeting_notes: string;
-  follow_up_actions: string;
-  meeting_notes: string;
-  secretariat_comments: string;
+  requester_notes_to_secretariat: string;
+  secretariat_follow_up_actions: string;
+  secretariat_meeting_notes: string;
+  secretariat_notes_to_requester: string;
 }
 
 const AppointmentEdit: React.FC = () => {
@@ -107,11 +107,14 @@ const AppointmentEdit: React.FC = () => {
         setAppointment(data);
         reset({
           appointment_date: data.appointment_date || data.preferred_date,
-          appointment_time: data.appointment_time || data.preferred_time,
+          appointment_time: data.appointment_time || data.preferred_time_of_day,
           duration: data.duration,
           location: data.location,
           status: data.status,
-          pre_meeting_notes: data.pre_meeting_notes,
+          requester_notes_to_secretariat: data.requester_notes_to_secretariat,
+          secretariat_follow_up_actions: data.secretariat_follow_up_actions,
+          secretariat_meeting_notes: data.secretariat_meeting_notes,
+          secretariat_notes_to_requester: data.secretariat_notes_to_requester,
         });
       } catch (error) {
         console.error('Error fetching appointment:', error);
@@ -183,10 +186,10 @@ const AppointmentEdit: React.FC = () => {
                   <Typography color="text.secondary" sx={{ mt: 1 }}>
                     {appointment.dignitary.organization} - {appointment.dignitary.title_in_organization} | {appointment.dignitary.email} | {appointment.dignitary.phone}
                   </Typography>
-                  {appointment.pre_meeting_notes && (
+                  {appointment.requester_notes_to_secretariat && (
                     <Grid item xs={12} sx={{ mt: 1 }}>
                       <Typography variant="subtitle2" color="text.secondary">Pre-meeting Notes</Typography>
-                      <Typography>{appointment.pre_meeting_notes}</Typography>
+                      <Typography>{appointment.requester_notes_to_secretariat}</Typography>
                     </Grid>
                   )}
                 </Grid>
@@ -276,7 +279,7 @@ const AppointmentEdit: React.FC = () => {
 
                 <Grid item xs={12}>
                   <Controller
-                    name="follow_up_actions"
+                    name="secretariat_follow_up_actions"
                     control={control}
                     render={({ field }) => (
                       <TextField
@@ -284,7 +287,7 @@ const AppointmentEdit: React.FC = () => {
                         fullWidth
                         multiline
                         rows={4}
-                        label="Follow-up Actions"
+                        label="Follow-up Actions (Secretariat Internal)"
                       />
                     )}
                   />
@@ -292,7 +295,7 @@ const AppointmentEdit: React.FC = () => {
 
                 <Grid item xs={12}>
                   <Controller
-                    name="meeting_notes"
+                    name="secretariat_meeting_notes"
                     control={control}
                     render={({ field }) => (
                       <TextField
@@ -300,7 +303,7 @@ const AppointmentEdit: React.FC = () => {
                         fullWidth
                         multiline
                         rows={4}
-                        label="Meeting Notes"
+                        label="Meeting Notes (Secretariat Internal)"
                       />  
                     )}
                   />
@@ -308,7 +311,7 @@ const AppointmentEdit: React.FC = () => {
 
                 <Grid item xs={12}>
                     <Controller
-                    name="secretariat_comments"
+                    name="secretariat_notes_to_requester"
                     control={control}
                     render={({ field }) => (
                       <TextField
@@ -316,7 +319,7 @@ const AppointmentEdit: React.FC = () => {
                         fullWidth
                         multiline
                         rows={4}
-                        label="Secretariat Comments"
+                        label="Notes to Point of Contact"
                       />
                     )}
                   />

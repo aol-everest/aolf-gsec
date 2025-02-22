@@ -57,12 +57,11 @@ interface Appointment {
   requester: User;
   purpose: string;
   preferred_date: string;
-  preferred_time: string;
+  preferred_time_of_day: string;
   appointment_date: string;
   appointment_time: string;
-  duration: string;
   location: string;
-  pre_meeting_notes: string;
+  requester_notes_to_secretariat: string;
   status: string;
   created_at: string;
   updated_at: string;
@@ -262,11 +261,7 @@ const AppointmentTiles: React.FC = () => {
             </Grid>
             <Grid item xs={12} sm={6}>
               <Typography variant="subtitle2" color="text.secondary">Preferred Time</Typography>
-              <Typography>{appointment.preferred_time || 'N/A'}</Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="subtitle2" color="text.secondary">Duration</Typography>
-              <Typography>{appointment.duration || 'N/A'}</Typography>
+              <Typography>{appointment.preferred_time_of_day || 'N/A'}</Typography>
             </Grid>
             <Grid item xs={12} sm={6}>
               <Typography variant="subtitle2" color="text.secondary">Location</Typography>
@@ -276,10 +271,10 @@ const AppointmentTiles: React.FC = () => {
               <Typography variant="subtitle2" color="text.secondary">Purpose</Typography>
               <Typography>{appointment.purpose}</Typography>
             </Grid>
-            {appointment.pre_meeting_notes && (
+            {appointment.requester_notes_to_secretariat && (
               <Grid item xs={12}>
-                <Typography variant="subtitle2" color="text.secondary">Pre-meeting Notes</Typography>
-                <Typography>{appointment.pre_meeting_notes}</Typography>
+                <Typography variant="subtitle2" color="text.secondary">Notes from Point of Contact</Typography>
+                <Typography>{appointment.requester_notes_to_secretariat}</Typography>
               </Grid>
             )}
           </Grid>

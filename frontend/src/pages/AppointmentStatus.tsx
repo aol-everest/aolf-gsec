@@ -20,13 +20,16 @@ interface Appointment {
   dignitary: Dignitary;
   purpose: string;
   preferred_date: string;
-  preferred_time: string;
+  preferred_time_of_day: string;
+  appointment_date: string;
+  appointment_time: string;
   duration: string;
   location: string;
-  pre_meeting_notes: string;
+  requester_notes_to_secretariat: string;
   status: string;
   created_at: string;
   updated_at: string;
+  secretariat_notes_to_requester: string;
 }
 
 const AppointmentStatus: React.FC = () => {
@@ -85,19 +88,19 @@ const AppointmentStatus: React.FC = () => {
       width: 180,
       editable: false,
       renderCell: (params: GridRenderCellParams) => {
-        let date = new Date(params.row.preferred_date + 'T' + params.row.preferred_time);
-        let dateDisplay = "";
+        let date = new Date(params.row.preferred_date);
+        let dateDisplay = date.toLocaleString() + ' ' + params.row.preferred_time_of_day;
+        let suffix = <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.7' }}><span className="small-font">(requested)</span></div>;
         if (params.row.appointment_date && params.row.appointment_time) {
           date = new Date(params.row.appointment_date + 'T' + params.row.appointment_time);
           dateDisplay = date.toLocaleString();
-        } else {
-          return <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.7' }}>{date.toLocaleString()}<br /><span className="small-font">(requested)</span></div>;
+          suffix = <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.7' }}><span className="small-font">(confirmed)</span></div>;
         }
+        return <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.7' }}>{dateDisplay}<br />{suffix}</div>;
       },
     },
     { field: 'duration', headerName: 'Duration', width: 100 },
     { field: 'location', headerName: 'Location', width: 150 },
-    // { field: 'pre_meeting_notes', headerName: 'Notes', width: 200 },
     {
       field: 'status',
       headerName: 'Status',
@@ -123,6 +126,12 @@ const AppointmentStatus: React.FC = () => {
       width: 180,
       renderCell: (params: GridRenderCellParams) => 
         new Date(params.value as string).toLocaleString(),
+    },
+    {
+      field: 'secretariat_notes_to_requester',
+      headerName: 'Notes from Secretariat',
+      width: 200,
+      editable: false,
     },
   ];
 

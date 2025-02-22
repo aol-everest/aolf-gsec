@@ -45,12 +45,12 @@ export interface Appointment {
   dignitary: Dignitary;
   purpose: string;
   preferred_date: string;
-  preferred_time: string;
+  preferred_time_of_day: string;
   appointment_date: string;
   appointment_time: string;
   duration: string;
   location: string;
-  pre_meeting_notes: string;
+  requester_notes_to_secretariat: string;
   status: string;
   created_at: string;
   updated_at: string;
@@ -282,8 +282,8 @@ const AppointmentStatusAll: React.FC = () => {
       width: 180,
       editable: false,
       valueGetter: (value, row, column, apiRef) => {
-        const date = new Date(row.preferred_date + 'T' + row.preferred_time);
-        return date.toLocaleString();
+        const date = new Date(row.preferred_date);
+        return date.toLocaleString() + ' ' + row.preferred_time_of_day;
       },
     },
     {

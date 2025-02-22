@@ -36,7 +36,8 @@ import {
   RelationshipType,
 } from '../constants/formConstants';
 import { useNavigate } from 'react-router-dom';
-
+import { getStatusChipSx } from '../utils/formattingUtils';
+import { useTheme } from '@mui/material/styles';
 // Step 1: POC Information
 interface PocFormData {
   pocFirstName: string;
@@ -69,10 +70,9 @@ interface DignitaryFormData {
 interface AppointmentFormData {
   purpose: string;
   preferredDate: string;
-  preferredTime: string;
-  duration: string;
+  preferredTimeOfDay: string;
   location: string;
-  preMeetingNotes: string;
+  requesterNotesToSecretariat: string;
 }
 
 const steps = ['Point of Contact Information', 'Dignitary Information', 'Appointment Details'];
@@ -88,6 +88,7 @@ export const AppointmentRequestForm: React.FC = () => {
   const [showWarningDialog, setShowWarningDialog] = useState(false);
   const navigate = useNavigate();
   const [statusOptions, setStatusOptions] = useState<string[]>([]);
+  const theme = useTheme();
 
   useEffect(() => {
     const fetchStatusOptions = async () => {
@@ -139,10 +140,9 @@ export const AppointmentRequestForm: React.FC = () => {
     defaultValues: {
       purpose: '',
       preferredDate: '',
-      preferredTime: '',
-      duration: '',
+      preferredTimeOfDay: '',
       location: '',
-      preMeetingNotes: '',
+      requesterNotesToSecretariat: '',
     }
   });
 
@@ -369,10 +369,9 @@ export const AppointmentRequestForm: React.FC = () => {
               dignitary_id: dignitaryForm.getValues().selectedDignitaryId,
               purpose: data.purpose,
               preferred_date: data.preferredDate,
-              preferred_time: data.preferredTime,
-              duration: data.duration,
+              preferred_time_of_day: data.preferredTimeOfDay,
               location: data.location,
-              pre_meeting_notes: data.preMeetingNotes,
+              requester_notes_to_secretariat: data.requesterNotesToSecretariat,
               status: statusOptions[0],
             }),
           });
@@ -814,20 +813,9 @@ export const AppointmentRequestForm: React.FC = () => {
                   type="time"
                   label="Preferred Time"
                   InputLabelProps={{ shrink: true }}
-                  {...appointmentForm.register('preferredTime')}
-                  error={!!appointmentForm.formState.errors.preferredTime}
-                  helperText={appointmentForm.formState.errors.preferredTime?.message}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Requested Duration"
-                  placeholder="e.g., 10 minutes, 30 minutes, 1 hour"
-                  {...appointmentForm.register('duration')}
-                  error={!!appointmentForm.formState.errors.duration}
-                  helperText={appointmentForm.formState.errors.duration?.message}
+                  {...appointmentForm.register('preferredTimeOfDay')}
+                  error={!!appointmentForm.formState.errors.preferredTimeOfDay}
+                  helperText={appointmentForm.formState.errors.preferredTimeOfDay?.message}
                 />
               </Grid>
 
@@ -847,10 +835,10 @@ export const AppointmentRequestForm: React.FC = () => {
                   fullWidth
                   multiline
                   rows={4}
-                  label="Pre-Meeting Notes"
-                  {...appointmentForm.register('preMeetingNotes')}
-                  error={!!appointmentForm.formState.errors.preMeetingNotes}
-                  helperText={appointmentForm.formState.errors.preMeetingNotes?.message}
+                  label="Notes to Secretariat"
+                  {...appointmentForm.register('requesterNotesToSecretariat')}
+                  error={!!appointmentForm.formState.errors.requesterNotesToSecretariat}
+                  helperText={appointmentForm.formState.errors.requesterNotesToSecretariat?.message}
                 />
               </Grid>
             </Grid>
@@ -905,17 +893,10 @@ export const AppointmentRequestForm: React.FC = () => {
                 <strong>Preferred Date:</strong> {submittedAppointment.preferred_date}
               </Typography>
             </Grid>
-            {submittedAppointment.preferred_time && (
+            {submittedAppointment.preferred_time_of_day && (
               <Grid item xs={12}>
                 <Typography variant="body1">
-                  <strong>Preferred Time:</strong> {submittedAppointment.preferred_time}
-                </Typography>
-              </Grid>
-            )}
-            {submittedAppointment.duration && (
-              <Grid item xs={12}>
-                <Typography variant="body1">
-                  <strong>Duration:</strong> {submittedAppointment.duration}
+                  <strong>Preferred Time:</strong> {submittedAppointment.preferred_time_of_day}
                 </Typography>
               </Grid>
             )}
@@ -931,10 +912,10 @@ export const AppointmentRequestForm: React.FC = () => {
                 <strong>Purpose:</strong> {submittedAppointment.purpose}
               </Typography>
             </Grid>
-            {submittedAppointment.pre_meeting_notes && (
+            {submittedAppointment.requester_notes_to_secretariat && (
               <Grid item xs={12}>
                 <Typography variant="body1">
-                  <strong>Pre-meeting Notes:</strong> {submittedAppointment.pre_meeting_notes}
+                  <strong>Notes to Secretariat:</strong> {submittedAppointment.requester_notes_to_secretariat}
                 </Typography>
               </Grid>
             )}
@@ -966,7 +947,7 @@ export const AppointmentRequestForm: React.FC = () => {
         maxWidth="md"
         fullWidth
       >
-        <DialogTitle>Existing Appointment Requests</DialogTitle>
+        <DialogTitle>Existing Appointment Requests Found</DialogTitle>
         <DialogContent>
           <Typography gutterBottom>
             You have the following pending appointment requests for{' '}
@@ -987,7 +968,7 @@ export const AppointmentRequestForm: React.FC = () => {
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={4}>
                     <Typography>
-                      Date & Time: {new Date(appointment.preferred_date).toLocaleDateString()} {appointment.preferred_time || 'Not specified'}
+                      Date & Time: {(new Date(appointment.appointment_date).toLocaleDateString() + ' ' + appointment.appointment_time + ' (confirmed)') || (new Date(appointment.preferred_date).toLocaleDateString() + ' ' + appointment.preferred_time_of_day + ' (requested)')}
                     </Typography>
                   </Grid>
                   <Grid item xs={12} sm={4}>
@@ -998,12 +979,8 @@ export const AppointmentRequestForm: React.FC = () => {
                   <Grid item xs={12} sm={4}>
                     <Chip 
                       label={appointment.status}
-                      color={
-                        appointment.status === 'APPROVED' ? 'success' :
-                        appointment.status === 'PENDING' ? 'warning' :
-                        appointment.status === 'FOLLOW_UP' ? 'info' : 'default'
-                      }
                       size="small"
+                      sx={getStatusChipSx(appointment.status, theme)}
                     />
                   </Grid>
                 </Grid>
