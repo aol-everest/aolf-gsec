@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
-import { getLocalDate } from '../utils/dateUtils';
+import { formatDate, getLocalDate } from '../utils/dateUtils';
 import {
   Box,
   Button,
@@ -1082,12 +1082,15 @@ export const AppointmentRequestForm: React.FC = () => {
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={4}>
                     <Typography>
-                      Date & Time: {(new Date(appointment.appointment_date).toLocaleDateString() + ' ' + appointment.appointment_time + ' (confirmed)') || (new Date(appointment.preferred_date).toLocaleDateString() + ' ' + appointment.preferred_time_of_day + ' (requested)')}
+                      Date & Time: {
+                        formatDate(appointment.appointment_date, false) + ' ' + appointment.appointment_time + ' (confirmed)' || 
+                        formatDate(appointment.preferred_date, false) + ' ' + appointment.preferred_time_of_day + ' (requested)'
+                      }
                     </Typography>
                   </Grid>
                   <Grid item xs={12} sm={4}>
                     <Typography>
-                      Location: {appointment.location.name || 'Not specified'}
+                      Location: {appointment.location?.name || 'Not specified'}
                     </Typography>
                   </Grid>
                   <Grid item xs={12} sm={4}>

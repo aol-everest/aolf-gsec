@@ -11,6 +11,7 @@ import { useTheme } from '@mui/material/styles';
 import { useQuery } from '@tanstack/react-query';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
+import { formatDate } from '../utils/dateUtils';
 
 interface Dignitary {
   honorific_title: string;
@@ -77,7 +78,7 @@ const AppointmentStatus: React.FC = () => {
     },
     {
       field: 'dignitary',
-      headerName: 'Dignitary',
+      headerName: 'Dignitary Name',
       width: 200,
       renderCell: (params: GridRenderCellParams) => {
         const dignitary = params.row.dignitary as Dignitary;
@@ -91,16 +92,14 @@ const AppointmentStatus: React.FC = () => {
     // { field: 'purpose', headerName: 'Purpose', width: 200 },
     {
       field: 'appointment_date_and_time',
-      headerName: 'Appointment Date & Time',
+      headerName: 'Date & Time',
       width: 180,
       editable: false,
       renderCell: (params: GridRenderCellParams) => {
-        let date = new Date(params.row.preferred_date);
-        let dateDisplay = date.toLocaleString() + ' ' + params.row.preferred_time_of_day;
+        let dateDisplay = formatDate(params.row.preferred_date, false) + ' ' + params.row.preferred_time_of_day;
         let suffix = <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.7' }}><span className="small-font">(requested)</span></div>;
         if (params.row.appointment_date && params.row.appointment_time) {
-          date = new Date(params.row.appointment_date + 'T' + params.row.appointment_time);
-          dateDisplay = date.toLocaleString();
+          dateDisplay = formatDate(params.row.appointment_date, false) + ' ' + params.row.appointment_time;
           suffix = <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.7' }}><span className="small-font">(confirmed)</span></div>;
         }
         return <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.7' }}>{dateDisplay}<br />{suffix}</div>;
@@ -130,16 +129,16 @@ const AppointmentStatus: React.FC = () => {
     {
       field: 'created_at',
       headerName: 'Created',
-      width: 180,
+      width: 110,
       renderCell: (params: GridRenderCellParams) => 
-        new Date(params.value as string).toLocaleString(),
+        formatDate(params.value as string, false),
     },
     {
       field: 'updated_at',
       headerName: 'Last Updated',
-      width: 180,
+      width: 110,
       renderCell: (params: GridRenderCellParams) => 
-        new Date(params.value as string).toLocaleString(),
+        formatDate(params.value as string, false),
     },
     {
       field: 'secretariat_notes_to_requester',
