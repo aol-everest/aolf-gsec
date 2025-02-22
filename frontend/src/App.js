@@ -24,6 +24,10 @@ import LocationsManage from './pages/LocationsManage';
 
 // Components
 import PrivateRoute from './components/PrivateRoute';
+import RoleBasedRoute from './components/RoleBasedRoute';
+
+// Constants
+const SECRETARIAT_ROLE = 'SECRETARIAT';
 
 // Wrapper component to handle auth redirect
 const AuthRedirect = () => {
@@ -40,6 +44,8 @@ function App() {
             <AuthProvider>
               <Routes>
                 <Route path="/" element={<AuthRedirect />} />
+                
+                {/* Regular authenticated routes */}
                 <Route
                   path="/home"
                   element={
@@ -65,30 +71,6 @@ function App() {
                   }
                 />
                 <Route
-                  path="/appointment-tiles"
-                  element={
-                    <PrivateRoute>
-                      <AppointmentTiles />
-                    </PrivateRoute>
-                  }
-                />
-                <Route
-                  path="/appointment-day-view"
-                  element={
-                    <PrivateRoute>
-                      <AppointmentDayView />
-                    </PrivateRoute>
-                  }
-                />
-                <Route
-                  path="/appointment-edit/:id"
-                  element={
-                    <PrivateRoute>
-                      <AppointmentEdit />
-                    </PrivateRoute>
-                  }
-                />
-                <Route
                   path="/dignitary-list"
                   element={
                     <PrivateRoute>
@@ -104,11 +86,15 @@ function App() {
                     </PrivateRoute>
                   }
                 />
+
+                {/* Secretariat-only routes */}
                 <Route
                   path="/users-all"
                   element={
                     <PrivateRoute>
-                      <UsersAll />
+                      <RoleBasedRoute allowedRoles={[SECRETARIAT_ROLE]}>
+                        <UsersAll />
+                      </RoleBasedRoute>
                     </PrivateRoute>
                   }
                 />
@@ -116,15 +102,49 @@ function App() {
                   path="/dignitary-list-all"
                   element={
                     <PrivateRoute>
-                      <DignitaryListAll />  
+                      <RoleBasedRoute allowedRoles={[SECRETARIAT_ROLE]}>
+                        <DignitaryListAll />
+                      </RoleBasedRoute>
                     </PrivateRoute>
                   }
                 />
                 <Route
                   path="/appointment-status-all"
-                  element={ 
+                  element={
                     <PrivateRoute>
-                      <AppointmentStatusAll />
+                      <RoleBasedRoute allowedRoles={[SECRETARIAT_ROLE]}>
+                        <AppointmentStatusAll />
+                      </RoleBasedRoute>
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/appointment-tiles"
+                  element={
+                    <PrivateRoute>
+                      <RoleBasedRoute allowedRoles={[SECRETARIAT_ROLE]}>
+                        <AppointmentTiles />
+                      </RoleBasedRoute>
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/appointment-day-view"
+                  element={
+                    <PrivateRoute>
+                      <RoleBasedRoute allowedRoles={[SECRETARIAT_ROLE]}>
+                        <AppointmentDayView />
+                      </RoleBasedRoute>
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/appointment-edit/:id"
+                  element={
+                    <PrivateRoute>
+                      <RoleBasedRoute allowedRoles={[SECRETARIAT_ROLE]}>
+                        <AppointmentEdit />
+                      </RoleBasedRoute>
                     </PrivateRoute>
                   }
                 />
@@ -132,7 +152,9 @@ function App() {
                   path="/locations-manage"
                   element={
                     <PrivateRoute>
-                      <LocationsManage />
+                      <RoleBasedRoute allowedRoles={[SECRETARIAT_ROLE]}>
+                        <LocationsManage />
+                      </RoleBasedRoute>
                     </PrivateRoute>
                   }
                 />

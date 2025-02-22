@@ -43,7 +43,6 @@ interface Appointment {
   preferred_time_of_day: string;
   appointment_date: string;
   appointment_time: string;
-  duration: string;
   location: string;
   requester_notes_to_secretariat: string;
   status: string;
@@ -57,7 +56,6 @@ interface Appointment {
 interface AppointmentFormData {
   appointment_date: string;
   appointment_time: string;
-  duration: string;
   location: string;
   status: string;
   requester_notes_to_secretariat: string;
@@ -108,7 +106,6 @@ const AppointmentEdit: React.FC = () => {
         reset({
           appointment_date: data.appointment_date || data.preferred_date,
           appointment_time: data.appointment_time || data.preferred_time_of_day,
-          duration: data.duration,
           location: data.location,
           status: data.status,
           requester_notes_to_secretariat: data.requester_notes_to_secretariat,
@@ -222,22 +219,6 @@ const AppointmentEdit: React.FC = () => {
                         label="Appointment Time"
                         type="time"
                         InputLabelProps={{ shrink: true }}
-                      />
-                    )}
-                  />
-                </Grid>
-
-                {/* Duration and Location */}
-                <Grid item xs={12} md={6}>
-                  <Controller
-                    name="duration"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        fullWidth
-                        label="Duration"
-                        placeholder="e.g., 30 minutes, 1 hour"
                       />
                     )}
                   />
