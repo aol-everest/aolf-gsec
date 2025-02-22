@@ -134,6 +134,7 @@ class LocationAdmin(LocationBase):
 
 class AppointmentBase(BaseModel):
     location_id: Optional[int] = None
+    location: Optional[Location] = None
     status: Optional[AppointmentStatus] = None
 
 class AppointmentCreate(AppointmentBase):

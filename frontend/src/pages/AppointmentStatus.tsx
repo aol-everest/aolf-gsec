@@ -35,7 +35,6 @@ interface Appointment {
   preferred_time_of_day: string;
   appointment_date: string;
   appointment_time: string;
-  duration: string;
   location_id: number;
   location: Location;
   requester_notes_to_secretariat: string;
@@ -112,7 +111,6 @@ const AppointmentStatus: React.FC = () => {
         return <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.7' }}>{dateDisplay}<br />{suffix}</div>;
       },
     },
-    { field: 'duration', headerName: 'Duration', width: 100 },
     {
       field: 'location',
       headerName: 'Location',

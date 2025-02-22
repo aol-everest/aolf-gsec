@@ -19,6 +19,18 @@ import Layout from '../components/Layout';
 import { getLocalDate } from '../utils/dateUtils';
 import { getStatusChipSx } from '../utils/formattingUtils';
 
+interface Location {
+  id: number;
+  name: string;
+  street_address: string;
+  state: string;
+  city: string;
+  country: string;
+  zip_code: string;
+  driving_directions?: string;
+  parking_info?: string;
+}
+
 interface Dignitary {
   honorific_title: string;
   first_name: string;
@@ -34,7 +46,7 @@ interface Appointment {
   appointment_date: string;
   appointment_time: string;
   duration: string;
-  location: string;
+  location: Location;
   status: string;
   requester_notes_to_secretariat?: string;
   secretariat_follow_up_actions?: string;
@@ -183,7 +195,7 @@ const AppointmentDayView: React.FC = () => {
                         )}
                         {appointment.location && (
                           <Typography variant="body2" color="text.secondary">
-                            <strong>Location:</strong> {appointment.location}
+                            <strong>Location:</strong> {appointment.location.name} - {appointment.location.city}, {appointment.location.state}
                           </Typography>
                         )}
                         {appointment.requester_notes_to_secretariat && (

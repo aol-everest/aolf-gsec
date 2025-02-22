@@ -24,6 +24,18 @@ import { formatDate } from '../utils/dateUtils';
 import { getStatusChipSx, getStatusColor } from '../utils/formattingUtils';
 import { EmailIcon, ContactPhoneIcon, EmailIconSmall, ContactPhoneIconSmall, WorkIcon } from '../components/icons';
 
+interface Location {
+  id: number;
+  name: string;
+  street_address: string;
+  state: string;
+  city: string;
+  country: string;
+  zip_code: string;
+  driving_directions?: string;
+  parking_info?: string;
+}
+
 interface User {
   id: number;
   email: string;
@@ -62,7 +74,7 @@ interface Appointment {
   preferred_time_of_day: string;
   appointment_date: string;
   appointment_time: string;
-  location: string;
+  location: Location;
   requester_notes_to_secretariat: string;
   status: string;
   created_at: string;
@@ -273,7 +285,7 @@ const AppointmentTiles: React.FC = () => {
             </Grid>
             <Grid item xs={12} sm={6}>
               <Typography variant="subtitle2" color="text.secondary">Location</Typography>
-              <Typography>{appointment.location || 'N/A'}</Typography>
+              <Typography>{appointment.location.name} - {appointment.location.city}, {appointment.location.state}</Typography>
             </Grid>
             <Grid item xs={12}>
               <Typography variant="subtitle2" color="text.secondary">Purpose</Typography>
