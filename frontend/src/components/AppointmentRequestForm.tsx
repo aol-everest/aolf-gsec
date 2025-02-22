@@ -25,20 +25,24 @@ import {
   Divider,
   Chip,
   Checkbox,
+  CircularProgress,
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import LocationAutocomplete from './LocationAutocomplete';
-import { 
-  PRIMARY_DOMAINS, 
-  HONORIFIC_TITLES, 
-  PrimaryDomain, 
-  HonorificTitle,
-  RELATIONSHIP_TYPES,
-  RelationshipType,
-} from '../constants/formConstants';
+// import { 
+//   PRIMARY_DOMAINS, 
+//   HONORIFIC_TITLES, 
+//   PrimaryDomain, 
+//   HonorificTitle,
+//   RELATIONSHIP_TYPES,
+//   RelationshipType,
+// } from '../constants/formConstants';
 import { useNavigate } from 'react-router-dom';
 import { getStatusChipSx } from '../utils/formattingUtils';
 import { useTheme } from '@mui/material/styles';
+import { useQuery } from '@tanstack/react-query';
+import { useApi } from '../hooks/useApi';
+import { useSnackbar } from 'notistack';
 
 // Add Location interface
 interface Location {
@@ -72,12 +76,12 @@ interface PocFormData {
 interface DignitaryFormData {
   isExistingDignitary: boolean;
   selectedDignitaryId?: number;
-  dignitaryHonorificTitle: HonorificTitle;
+  dignitaryHonorificTitle: string;
   dignitaryFirstName: string;
   dignitaryLastName: string;
   dignitaryEmail: string;
   dignitaryPhone: string;
-  dignitaryPrimaryDomain: PrimaryDomain;
+  dignitaryPrimaryDomain: string;
   dignitaryTitleInOrganization: string;
   dignitaryOrganization: string;
   dignitaryBioSummary: string;
@@ -86,7 +90,7 @@ interface DignitaryFormData {
   dignitaryState: string;
   dignitaryCity: string;
   dignitaryHasMetGurudev: boolean;
-  pocRelationshipType: RelationshipType;
+  pocRelationshipType: string;
 }
 
 // Step 3: Appointment Information
@@ -113,6 +117,33 @@ export const AppointmentRequestForm: React.FC = () => {
   const navigate = useNavigate();
   const [statusOptions, setStatusOptions] = useState<string[]>([]);
   const theme = useTheme();
+  const api = useApi();
+  const { enqueueSnackbar } = useSnackbar();
+
+  // Fetch options from API
+  const { data: primaryDomains = [], isLoading: isLoadingDomains } = useQuery<string[]>({
+    queryKey: ['primary-domains'],
+    queryFn: async () => {
+      const { data } = await api.get<string[]>('/dignitaries/primary-domain-options');
+      return data;
+    },
+  });
+
+  const { data: honorificTitles = [], isLoading: isLoadingTitles } = useQuery<string[]>({
+    queryKey: ['honorific-titles'],
+    queryFn: async () => {
+      const { data } = await api.get<string[]>('/dignitaries/honorific-title-options');
+      return data;
+    },
+  });
+
+  const { data: relationshipTypes = [], isLoading: isLoadingRelationships } = useQuery<string[]>({
+    queryKey: ['relationship-types'],
+    queryFn: async () => {
+      const { data } = await api.get<string[]>('/dignitaries/relationship-type-options');
+      return data;
+    },
+  });
 
   useEffect(() => {
     const fetchStatusOptions = async () => {
@@ -143,12 +174,12 @@ export const AppointmentRequestForm: React.FC = () => {
     defaultValues: {
       isExistingDignitary: false,
       selectedDignitaryId: undefined,
-      dignitaryHonorificTitle: HONORIFIC_TITLES[0],
+      dignitaryHonorificTitle: honorificTitles[0],
       dignitaryFirstName: '',
       dignitaryLastName: '',
       dignitaryEmail: '',
       dignitaryPhone: '',
-      dignitaryPrimaryDomain: PRIMARY_DOMAINS[0],
+      dignitaryPrimaryDomain: primaryDomains[0],
       dignitaryTitleInOrganization: '',
       dignitaryOrganization: '',
       dignitaryBioSummary: '',
@@ -157,7 +188,7 @@ export const AppointmentRequestForm: React.FC = () => {
       dignitaryState: '',
       dignitaryCity: '',
       dignitaryHasMetGurudev: false,
-      pocRelationshipType: RELATIONSHIP_TYPES[0],
+      pocRelationshipType: relationshipTypes[0],
     }
   });
 
@@ -527,12 +558,12 @@ export const AppointmentRequestForm: React.FC = () => {
                         dignitaryForm.reset({
                           ...dignitaryForm.getValues(),
                           selectedDignitaryId: undefined,
-                          dignitaryHonorificTitle: HONORIFIC_TITLES[0],
+                          dignitaryHonorificTitle: honorificTitles[0],
                           dignitaryFirstName: '',
                           dignitaryLastName: '',
                           dignitaryEmail: '',
                           dignitaryPhone: '',
-                          dignitaryPrimaryDomain: PRIMARY_DOMAINS[0],
+                          dignitaryPrimaryDomain: primaryDomains[0],
                           dignitaryTitleInOrganization: '',
                           dignitaryOrganization: '',
                           dignitaryBioSummary: '',
@@ -602,7 +633,7 @@ export const AppointmentRequestForm: React.FC = () => {
                     value={dignitaryForm.watch('pocRelationshipType')}
                     {...dignitaryForm.register('pocRelationshipType')}
                   >
-                    {RELATIONSHIP_TYPES.map((type) => (
+                    {relationshipTypes.map((type) => (
                       <MenuItem key={type} value={type}>
                         {type}
                       </MenuItem>
@@ -623,7 +654,7 @@ export const AppointmentRequestForm: React.FC = () => {
                     value={dignitaryForm.watch('dignitaryHonorificTitle')}
                     {...dignitaryForm.register('dignitaryHonorificTitle')}
                   >
-                    {HONORIFIC_TITLES.map((title) => (
+                    {honorificTitles.map((title) => (
                       <MenuItem key={title} value={title}>
                         {title}
                       </MenuItem>
@@ -685,7 +716,7 @@ export const AppointmentRequestForm: React.FC = () => {
                     value={dignitaryForm.watch('dignitaryPrimaryDomain')}
                     {...dignitaryForm.register('dignitaryPrimaryDomain')}
                   >
-                    {PRIMARY_DOMAINS.map((domain) => (
+                    {primaryDomains.map((domain) => (
                       <MenuItem key={domain} value={domain}>
                         {domain}
                       </MenuItem>
