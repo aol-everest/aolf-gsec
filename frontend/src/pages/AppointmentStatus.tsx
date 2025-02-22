@@ -136,7 +136,10 @@ const AppointmentStatus: React.FC = () => {
             Appointment Status
           </Typography>
           <Paper sx={{ width: '100%', overflow: 'hidden' }}>
-            <Box sx={{ height: 600, width: '100%' }}>
+            <Box sx={{ 
+              // height: 600, 
+              width: '100%',
+            }}>
               <DataGrid
                 rows={appointments}
                 columns={columns}

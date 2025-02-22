@@ -800,7 +800,7 @@ export const AppointmentRequestForm: React.FC = () => {
                   InputLabelProps={{ shrink: true }}
                   inputProps={{ 
                     min: getLocalDate(0),
-                    max: getLocalDate(30),
+                    max: getLocalDate(60),
                   }}
                   {...appointmentForm.register('preferredDate', { required: 'Preferred date is required' })}
                   error={!!appointmentForm.formState.errors.preferredDate}

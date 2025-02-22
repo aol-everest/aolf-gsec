@@ -22,7 +22,7 @@ import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import Layout from '../components/Layout';
 import { formatDate } from '../utils/dateUtils';
 import { getStatusChipSx, getStatusColor } from '../utils/formattingUtils';
-
+import { emailIcon, contactPhoneIcon, emailIconSmall, contactPhoneIconSmall, workIcon } from '../components/icons';
 
 interface User {
   id: number;
@@ -193,65 +193,67 @@ const AppointmentTiles: React.FC = () => {
         {/* Point of Contact Information */}
         <Paper elevation={0} sx={{ p: 2, mb: 3, borderRadius: 1 }}>
           <Typography variant="h6" gutterBottom color="primary">
-            Point of Contact
+            Point of Contact: <b>{appointment.requester.first_name} {appointment.requester.last_name}</b>
           </Typography>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="subtitle2" color="text.secondary">Name</Typography>
-              <Typography>{appointment.requester.first_name} {appointment.requester.last_name}</Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="subtitle2" color="text.secondary">Email</Typography>
-              <Typography>{appointment.requester.email}</Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="subtitle2" color="text.secondary">Phone</Typography>
-              <Typography>{appointment.requester.phone_number || 'N/A'}</Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="subtitle2" color="text.secondary">Role</Typography>
-              <Typography>{appointment.requester.role}</Typography>
-            </Grid>
-          </Grid>
+          <Typography sx={{ color: 'text.secondary', my: 0.5, }}>
+            {emailIconSmall}{' '}
+            <Typography 
+                component="a" 
+                href={`mailto:${appointment.requester.email}`} 
+                sx={{ textDecoration: 'none', color: 'inherit' }}
+            >
+                {appointment.requester.email}
+            </Typography>
+            <Box sx={{ color: 'text.secondary', display: 'inline-block', mx: 1 }}>|</Box>
+            {contactPhoneIconSmall}{' '}
+            <Typography 
+              component="a" 
+              href={`tel:${appointment.requester.phone_number}`} 
+              sx={{ textDecoration: 'none', color: 'inherit' }}
+            >
+              {appointment.requester.phone_number || 'N/A'}
+            </Typography>
+          </Typography>
         </Paper>
 
         {/* Dignitary Information */}
         <Paper elevation={0} sx={{ p: 2, mb: 3, borderRadius: 2 }}>
           <Typography variant="h6" gutterBottom color="primary">
-            Dignitary
+            Dignitary: <b>{appointment.dignitary.honorific_title} {appointment.dignitary.first_name} {appointment.dignitary.last_name}</b>
           </Typography>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="subtitle2" color="text.secondary">Name</Typography>
-              <Typography>{appointment.dignitary.honorific_title} {appointment.dignitary.first_name} {appointment.dignitary.last_name}</Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="subtitle2" color="text.secondary">Email</Typography>
-              <Typography>{appointment.dignitary.email}</Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="subtitle2" color="text.secondary">Phone</Typography>
-              <Typography>{appointment.dignitary.phone || 'N/A'}</Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="subtitle2" color="text.secondary">Organization</Typography>
-              <Typography>{appointment.dignitary.organization}</Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="subtitle2" color="text.secondary">Title</Typography>
-              <Typography>{appointment.dignitary.title_in_organization}</Typography>
-            </Grid>
-            <Grid item xs={12}>
-              <Typography variant="subtitle2" color="text.secondary">Bio Summary</Typography>
-              <Typography>{appointment.dignitary.bio_summary}</Typography>
-            </Grid>
-          </Grid>
+          <Typography sx={{ color: 'text.secondary', my: 0.5, }}>
+            {emailIconSmall}{' '}
+            <Typography 
+              component="a" 
+              href={`mailto:${appointment.dignitary.email}`} 
+              sx={{ textDecoration: 'none', color: 'inherit' }}
+            >
+              {appointment.dignitary.email}
+            </Typography>
+            <Box sx={{ color: 'text.secondary', display: 'inline-block', mx: 1 }}>|</Box>
+            {contactPhoneIconSmall}{' '}
+            <Typography 
+              component="a" 
+              href={`tel:${appointment.dignitary.phone}`} 
+              sx={{ textDecoration: 'none', color: 'inherit' }}
+            >
+              {appointment.dignitary.phone || 'N/A'}
+            </Typography>
+          </Typography>
+          <Typography sx={{ color: 'text.secondary', my: 0.5, }}>
+            {workIcon} {appointment.dignitary.title_in_organization}
+            <Box sx={{ color: 'text.secondary', display: 'inline-block', mx: 1 }}>|</Box>
+            {appointment.dignitary.organization}
+          </Typography>
+          <Typography sx={{ color: 'text.secondary', my: 0.5, }}>
+            {appointment.dignitary.bio_summary}
+          </Typography>
         </Paper>
 
         {/* Appointment Information */}
         <Paper elevation={0} sx={{ p: 2, mb: 3, borderRadius: 2 }}>
           <Typography variant="h6" gutterBottom color="primary">
-            Appointment Details
+            Requested Appointment Details
           </Typography>
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>

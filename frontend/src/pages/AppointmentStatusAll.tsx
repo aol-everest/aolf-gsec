@@ -370,7 +370,7 @@ const AppointmentStatusAll: React.FC = () => {
           <Paper sx={{ width: '100%', overflow: 'hidden' }}>
             <Box
               sx={{
-                height: 500,
+                // height: 500,
                 width: '100%',
                 '& .actions': { color: 'text.secondary' },
                 '& .textPrimary': { color: 'text.primary' },
