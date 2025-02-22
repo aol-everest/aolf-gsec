@@ -146,7 +146,7 @@ const AppointmentTiles: React.FC = () => {
   };
 
   const handleEdit = (appointmentId: number) => {
-    navigate(`/appointment-edit/${appointmentId}`);
+    navigate(`/admin/appointments/edit/${appointmentId}`);
   };
 
   const handleStatusFilter = (status: string | null) => {

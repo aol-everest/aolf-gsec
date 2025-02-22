@@ -34,6 +34,18 @@ interface Dignitary {
   poc_phone: string;
 }
 
+interface Location {
+  id: number;
+  name: string;
+  street_address: string;
+  state: string;
+  city: string;
+  country: string;
+  zip_code: string;
+  driving_directions?: string;
+  parking_info?: string;
+}
+
 interface Appointment {
   id: number;
   dignitary_id: number;
@@ -43,7 +55,8 @@ interface Appointment {
   preferred_time_of_day: string;
   appointment_date: string;
   appointment_time: string;
-  location: string;
+  location_id: number;
+  location?: Location;
   requester_notes_to_secretariat: string;
   status: string;
   secretariat_follow_up_actions: string;
@@ -56,7 +69,7 @@ interface Appointment {
 interface AppointmentFormData {
   appointment_date: string;
   appointment_time: string;
-  location: string;
+  location_id: number | null;
   status: string;
   requester_notes_to_secretariat: string;
   secretariat_follow_up_actions: string;
@@ -70,6 +83,7 @@ const AppointmentEdit: React.FC = () => {
   const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [loading, setLoading] = useState(true);
   const [statusOptions, setStatusOptions] = useState<string[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
 
   const { control, handleSubmit, reset } = useForm<AppointmentFormData>();
 
@@ -93,6 +107,25 @@ const AppointmentEdit: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    const fetchLocations = async () => {
+      try {
+        const response = await fetch('http://localhost:8001/locations/all', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setLocations(data);
+        }
+      } catch (error) {
+        console.error('Error fetching locations:', error);
+      }
+    };
+    fetchLocations();
+  }, []);
+
+  useEffect(() => {
     const fetchAppointment = async () => {
       try {
         const response = await fetch(`http://localhost:8001/admin/appointments/${id}`, {
@@ -106,7 +139,7 @@ const AppointmentEdit: React.FC = () => {
         reset({
           appointment_date: data.appointment_date || data.preferred_date,
           appointment_time: data.appointment_time || data.preferred_time_of_day,
-          location: data.location,
+          location_id: data.location_id || null,
           status: data.status,
           requester_notes_to_secretariat: data.requester_notes_to_secretariat,
           secretariat_follow_up_actions: data.secretariat_follow_up_actions,
@@ -137,7 +170,7 @@ const AppointmentEdit: React.FC = () => {
       });
 
       if (!response.ok) throw new Error('Failed to update appointment');
-      navigate('/appointment-tiles');
+      navigate('/admin/appointments/tiles');
     } catch (error) {
       console.error('Error updating appointment:', error);
     }
@@ -156,14 +189,12 @@ const AppointmentEdit: React.FC = () => {
   return (
     <Layout>
       <Container>
-        <Box sx={{ 
-          // py: 4 
-        }}>
+        <Box>
           <Typography variant="h4" gutterBottom>
             Edit Appointment
           </Typography>
-            <Paper sx={{ p: 4, borderRadius: 2 }}>
-              <Paper elevation={0} sx={{ p: 0, mb: 2, border: 'none', boxShadow: 'none', borderRadius: 0, bgcolor: 'transparent' }}>
+          <Paper sx={{ p: 4, borderRadius: 2 }}>
+            <Paper elevation={0} sx={{ p: 0, mb: 2, border: 'none', boxShadow: 'none', borderRadius: 0, bgcolor: 'transparent' }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography variant="h5" gutterBottom color="primary">
                   Request #: {appointment.id}
@@ -192,7 +223,7 @@ const AppointmentEdit: React.FC = () => {
                 </Grid>
 
                 {/* Appointment Date and Time */}
-                <Grid item xs={12} md={6}>
+                <Grid item xs={12} md={6} lg={4}>
                   <Controller
                     name="appointment_date"
                     control={control}
@@ -208,7 +239,7 @@ const AppointmentEdit: React.FC = () => {
                   />
                 </Grid>
 
-                <Grid item xs={12} md={6}>
+                <Grid item xs={12} md={6} lg={4}>
                   <Controller
                     name="appointment_time"
                     control={control}
@@ -224,22 +255,35 @@ const AppointmentEdit: React.FC = () => {
                   />
                 </Grid>
 
-                <Grid item xs={12} md={6}>
+                <Grid item xs={12} md={6} lg={4}>
                   <Controller
-                    name="location"
+                    name="location_id"
                     control={control}
+                    defaultValue={null}
                     render={({ field }) => (
-                      <TextField
-                        {...field}
-                        fullWidth
-                        label="Location"
-                      />
+                      <FormControl fullWidth>
+                        <InputLabel>Location</InputLabel>
+                        <Select
+                          {...field}
+                          value={field.value || ''}
+                          label="Location"
+                        >
+                          <MenuItem value="">
+                            <em>None</em>
+                          </MenuItem>
+                          {locations.map((location) => (
+                            <MenuItem key={location.id} value={location.id}>
+                              {`${location.name} - ${location.city}, ${location.state}, ${location.country}`}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
                     )}
                   />
                 </Grid>
 
                 {/* Status */}
-                <Grid item xs={12} md={6}>
+                <Grid item xs={12} md={6} lg={4}>
                   <Controller
                     name="status"
                     control={control}
@@ -291,7 +335,7 @@ const AppointmentEdit: React.FC = () => {
                 </Grid>
 
                 <Grid item xs={12}>
-                    <Controller
+                  <Controller
                     name="secretariat_notes_to_requester"
                     control={control}
                     render={({ field }) => (
@@ -311,7 +355,7 @@ const AppointmentEdit: React.FC = () => {
                   <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
                     <Button
                       variant="outlined"
-                      onClick={() => navigate('/appointment-tiles')}
+                      onClick={() => navigate('/admin/appointments/tiles')}
                     >
                       Cancel
                     </Button>
