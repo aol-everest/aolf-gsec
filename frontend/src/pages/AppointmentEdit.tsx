@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -12,10 +12,13 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Chip,
+  CircularProgress,
 } from '@mui/material';
 import Layout from '../components/Layout';
 import { useForm, Controller } from 'react-hook-form';
+import { useApi } from '../hooks/useApi';
+import { useSnackbar } from 'notistack';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface Dignitary {
   id: number;
@@ -80,107 +83,78 @@ interface AppointmentFormData {
 const AppointmentEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [appointment, setAppointment] = useState<Appointment | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [statusOptions, setStatusOptions] = useState<string[]>([]);
-  const [locations, setLocations] = useState<Location[]>([]);
+  const api = useApi();
+  const { enqueueSnackbar } = useSnackbar();
+  const queryClient = useQueryClient();
 
   const { control, handleSubmit, reset } = useForm<AppointmentFormData>();
 
-  useEffect(() => {
-    const fetchStatusOptions = async () => {
-      try {
-        const response = await fetch('http://localhost:8001/appointments/status-options', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-          },
-        });
-        if (!response.ok) throw new Error('Failed to fetch status options');
-        const data = await response.json();
-        setStatusOptions(data);
-      } catch (error) {
-        console.error('Error fetching status options:', error);
-      }
-    };
+  // Fetch status options
+  const { data: statusOptions = [] } = useQuery<string[]>({
+    queryKey: ['status-options'],
+    queryFn: async () => {
+      const { data } = await api.get<string[]>('/appointments/status-options');
+      return data;
+    },
+  });
 
-    fetchStatusOptions();
-  }, []);
+  // Fetch locations
+  const { data: locations = [] } = useQuery<Location[]>({
+    queryKey: ['locations'],
+    queryFn: async () => {
+      const { data } = await api.get<Location[]>('/locations/all');
+      return data;
+    },
+  });
 
-  useEffect(() => {
-    const fetchLocations = async () => {
-      try {
-        const response = await fetch('http://localhost:8001/locations/all', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-          },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setLocations(data);
-        }
-      } catch (error) {
-        console.error('Error fetching locations:', error);
-      }
-    };
-    fetchLocations();
-  }, []);
-
-  useEffect(() => {
-    const fetchAppointment = async () => {
-      try {
-        const response = await fetch(`http://localhost:8001/admin/appointments/${id}`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-          },
-        });
-        if (!response.ok) throw new Error('Failed to fetch appointment');
-        const data = await response.json();
-        setAppointment(data);
-        reset({
-          appointment_date: data.appointment_date || data.preferred_date,
-          appointment_time: data.appointment_time || data.preferred_time_of_day,
-          location_id: data.location_id || null,
-          status: data.status,
-          requester_notes_to_secretariat: data.requester_notes_to_secretariat,
-          secretariat_follow_up_actions: data.secretariat_follow_up_actions,
-          secretariat_meeting_notes: data.secretariat_meeting_notes,
-          secretariat_notes_to_requester: data.secretariat_notes_to_requester,
-        });
-      } catch (error) {
-        console.error('Error fetching appointment:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (id) {
-      fetchAppointment();
-    }
-  }, [id, reset]);
-
-  const onSubmit = async (data: AppointmentFormData) => {
-    try {
-      const response = await fetch(`http://localhost:8001/admin/appointments/update/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-        },
-        body: JSON.stringify(data),
+  // Fetch appointment
+  const { data: appointment, isLoading } = useQuery({
+    queryKey: ['appointment', id],
+    queryFn: async () => {
+      const { data } = await api.get<Appointment>(`/admin/appointments/${id}`);
+      reset({
+        appointment_date: data.appointment_date || data.preferred_date,
+        appointment_time: data.appointment_time || data.preferred_time_of_day,
+        location_id: data.location_id || null,
+        status: data.status,
+        requester_notes_to_secretariat: data.requester_notes_to_secretariat,
+        secretariat_follow_up_actions: data.secretariat_follow_up_actions,
+        secretariat_meeting_notes: data.secretariat_meeting_notes,
+        secretariat_notes_to_requester: data.secretariat_notes_to_requester,
       });
+      return data;
+    },
+    enabled: !!id,
+  });
 
-      if (!response.ok) throw new Error('Failed to update appointment');
+  // Update appointment mutation
+  const updateAppointmentMutation = useMutation({
+    mutationFn: async (data: AppointmentFormData) => {
+      const { data: response } = await api.patch(`/admin/appointments/update/${id}`, data);
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['appointment', id] });
+      enqueueSnackbar('Appointment updated successfully', { variant: 'success' });
       navigate('/admin/appointments/tiles');
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error('Error updating appointment:', error);
-    }
+      enqueueSnackbar('Failed to update appointment', { variant: 'error' });
+    },
+  });
+
+  const onSubmit = (data: AppointmentFormData) => {
+    updateAppointmentMutation.mutate(data);
   };
 
-  if (loading || !appointment) {
+  if (isLoading || !appointment) {
     return (
       <Layout>
         <Container>
-          <Typography>Loading...</Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+            <CircularProgress />
+          </Box>
         </Container>
       </Layout>
     );

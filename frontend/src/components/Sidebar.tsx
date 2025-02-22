@@ -9,9 +9,8 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Typography from '@mui/material/Typography';
 import Divider from '@mui/material/Divider';
-import AdminIcon from '@mui/icons-material/AdminPanelSettings';
 import { useTheme, useMediaQuery } from '@mui/material';
-import { getSidebarItems, SECRETARIAT_ROLE } from '../config/routes';
+import { getSidebarItems } from '../config/routes';
 import { SvgIconComponent } from '@mui/icons-material';
 
 interface SidebarProps {

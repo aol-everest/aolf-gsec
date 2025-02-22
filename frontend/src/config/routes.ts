@@ -54,21 +54,21 @@ export const userRoutes: RouteConfig[] = [
     component: Home
   },
   {
-    path: '/appointment-form',
+    path: '/appointment/request',
     label: 'Request Appointment',
     icon: CalendarAddIcon,
     showInSidebar: true,
     component: AppointmentForm
   },
   {
-    path: '/appointment-status',
-    label: 'Appointment Status',
+    path: '/appointments',
+    label: 'Appointments',
     icon: ListIcon,
     showInSidebar: true,
     component: AppointmentStatus
   },
   {
-    path: '/dignitary-list',
+    path: '/dignitaries',
     label: 'Dignitaries',
     icon: PersonListIcon,
     showInSidebar: true,
@@ -93,7 +93,7 @@ export const adminRoutes: RouteConfig[] = [
   },
   {
     path: '/admin/users',
-    label: 'Users',
+    label: 'All Users',
     icon: PersonListIcon,
     roles: [SECRETARIAT_ROLE],
     showInSidebar: true,
@@ -101,7 +101,7 @@ export const adminRoutes: RouteConfig[] = [
   },
   {
     path: '/admin/dignitaries',
-    label: 'Dignitaries',
+    label: 'All Dignitaries',
     icon: PersonListIcon,
     roles: [SECRETARIAT_ROLE],
     showInSidebar: true,
@@ -116,16 +116,16 @@ export const adminRoutes: RouteConfig[] = [
     component: LocationsManage
   },
   {
-    path: '/admin/appointments/list',
-    label: 'Appointments List',
+    path: '/admin/appointments',
+    label: 'All Appointments',
     icon: TableRowsIcon,
     roles: [SECRETARIAT_ROLE],
     showInSidebar: true,
     component: AppointmentStatusAll
   },
   {
-    path: '/admin/appointments/tiles',
-    label: 'Appointments Tiles',
+    path: '/admin/appointments/review',
+    label: 'Review Appointments',
     icon: ViewColumnIcon,
     roles: [SECRETARIAT_ROLE],
     showInSidebar: true,
