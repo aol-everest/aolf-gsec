@@ -93,13 +93,52 @@ class DignitaryAdmin(DignitaryBase):
     class Config:
         orm_mode = True
 
+class LocationBase(BaseModel):
+    name: str
+    street_address: str
+    state: str
+    city: str
+    country: str
+    zip_code: str
+    driving_directions: Optional[str] = None
+    parking_info: Optional[str] = None
+
+class Location(LocationBase):
+    id: int
+
+    class Config:
+        orm_mode = True
+
+class LocationAdminCreate(LocationBase):
+    secretariat_internal_notes: Optional[str] = None
+
+class LocationAdminUpdate(LocationBase):
+    name: Optional[str] = None
+    street_address: Optional[str] = None
+    state: Optional[str] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
+    zip_code: Optional[str] = None
+    driving_directions: Optional[str] = None
+    parking_info: Optional[str] = None
+    secretariat_internal_notes: Optional[str] = None
+
+class LocationAdmin(LocationBase):
+    id: int
+    created_by: int
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    updated_by: Optional[int] = None
+    secretariat_internal_notes: Optional[str] = None
+
+
 class AppointmentBase(BaseModel):
     requester_id: int
     dignitary_id: int
     purpose: str
     preferred_date: date
     preferred_time_of_day: Optional[AppointmentTimeOfDay] = None
-    location: Optional[str] = None
+    location_id: Optional[int] = None
     requester_notes_to_secretariat: Optional[str] = None
     status: Optional[AppointmentStatus] = None
     approved_datetime: Optional[datetime] = None

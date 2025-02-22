@@ -1,11 +1,11 @@
-from sqlalchemy import Column, Integer, String, DateTime, JSON
+from sqlalchemy import Column, Integer, String, DateTime, JSON, Enum
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
-from sqlalchemy import Enum
 import enum
 
-class UserRole(enum.Enum):
+class UserRole(str, enum.Enum):
+    """User role enum with proper case values"""
     SECRETARIAT = "SECRETARIAT"
     GENERAL = "GENERAL"
     USHER = "USHER"
@@ -27,13 +27,13 @@ class User(Base):
     last_name = Column(String)
     phone_number = Column(String)
     picture = Column(String)
-    role = Column(Enum(UserRole), nullable=False)
+    role = Column(Enum(UserRole), nullable=False, default=UserRole.GENERAL)
     email_notification_preferences = Column(JSON, nullable=False, default=lambda: DEFAULT_EMAIL_NOTIFICATION_PREFERENCES)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_login_at = Column(DateTime)
 
-    # Relationships with explicit foreign keys
+    # Relationships
     appointments = relationship(
         "Appointment",
         back_populates="requester",
@@ -53,4 +53,14 @@ class User(Base):
         "DignitaryPointOfContact",
         back_populates="poc",
         foreign_keys="[DignitaryPointOfContact.poc_id]"
+    )
+    created_locations = relationship(
+        "Location",
+        back_populates="created_by_user",
+        foreign_keys="[Location.created_by]"
+    )
+    updated_locations = relationship(
+        "Location",
+        back_populates="updated_by_user",
+        foreign_keys="[Location.updated_by]"
     )

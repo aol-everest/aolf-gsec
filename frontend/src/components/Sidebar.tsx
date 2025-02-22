@@ -31,6 +31,7 @@ import {
   roundViewColumnIcon,
   roundPeopleIcon,
 } from '../components/icons';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
 
 interface SidebarProps {
   drawerWidth: number;
@@ -126,6 +127,11 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
       text: 'Dignitaries',
       icon: personListIcon,
       path: '/dignitary-list-all',
+    },
+    {
+      text: 'Locations',
+      icon: <LocationOnIcon />,
+      path: '/locations-manage',
     },
     {
       text: 'Appointments List',

@@ -4,6 +4,7 @@ from datetime import datetime
 from database import Base
 from sqlalchemy import Enum
 import enum
+from .location import Location
 
 class AppointmentStatus(str, enum.Enum):
     """Appointment status enum with proper case values"""
@@ -32,7 +33,7 @@ class Appointment(Base):
     preferred_time_of_day = Column(Enum(AppointmentTimeOfDay), nullable=False)
     appointment_date = Column(Date)
     appointment_time = Column(String)
-    location = Column(String)
+    location_id = Column(Integer, ForeignKey("locations.id"))
     requester_notes_to_secretariat = Column(Text)
     status = Column(Enum(AppointmentStatus), nullable=False, default=AppointmentStatus.PENDING)
     secretariat_meeting_notes = Column(Text)
@@ -53,6 +54,7 @@ class Appointment(Base):
         foreign_keys=[requester_id]
     )
     dignitary = relationship("Dignitary", back_populates="appointments")
+    location = relationship("Location", back_populates="appointments")
     approved_by_user = relationship(
         "User",
         back_populates="approved_appointments",

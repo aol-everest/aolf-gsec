@@ -236,7 +236,7 @@ async def create_appointment(
             preferred_date=appointment.preferred_date,
             preferred_time=appointment.preferred_time,
             duration=appointment.duration,
-            location=appointment.location,
+            location_id=appointment.location_id,
             pre_meeting_notes=appointment.pre_meeting_notes
         )
         db.add(db_appointment)
@@ -414,7 +414,7 @@ async def get_all_appointments(
     return appointments 
 
 @app.get("/admin/appointments/{appointment_id}", response_model=schemas.AppointmentAdmin)
-@requires_role(models.UserRole.SECRETARIAT)
+@requires_role(models.UserRole.SECRETARIAT) 
 async def get_appointment(
     appointment_id: int,
     current_user: models.User = Depends(get_current_user),
@@ -454,7 +454,7 @@ async def update_appointment(
         'appointment_date': appointment.appointment_date.isoformat() if appointment.appointment_date else None,
         'appointment_time': appointment.appointment_time,
         'duration': appointment.duration,
-        'location': appointment.location,
+        'location_id': appointment.location_id,
         'meeting_notes': appointment.meeting_notes,
         'follow_up_actions': appointment.follow_up_actions,
         'secretariat_comments': appointment.secretariat_comments,
@@ -509,3 +509,86 @@ async def get_honorific_title_options():
 async def get_primary_domain_options():
     """Get all possible primary domain options"""
     return [domain.value for domain in models.PrimaryDomain]
+
+@app.post("/admin/locations/new", response_model=schemas.LocationAdmin)
+@requires_role(models.UserRole.SECRETARIAT)
+async def create_location(
+    location: schemas.LocationAdminCreate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Create a new location"""
+    new_location = models.Location(
+        **location.dict(),
+        created_by=current_user.id
+    )
+    db.add(new_location)
+    db.commit()
+    db.refresh(new_location)
+    return new_location
+
+@app.get("/admin/locations/all", response_model=List[schemas.LocationAdmin])
+@requires_role(models.UserRole.SECRETARIAT)
+async def get_all_locations(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all locations"""
+    locations = db.query(models.Location).all()
+    return locations
+
+@app.get("/admin/locations/{location_id}", response_model=schemas.LocationAdmin)
+@requires_role(models.UserRole.SECRETARIAT)
+async def get_location(
+    location_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get a specific location"""
+    location = db.query(models.Location).filter(models.Location.id == location_id).first()
+    if not location:
+        raise HTTPException(status_code=404, detail="Location not found")
+    return location
+
+@app.patch("/admin/locations/update/{location_id}", response_model=schemas.LocationAdmin)
+@requires_role(models.UserRole.SECRETARIAT)
+async def update_location(
+    location_id: int,
+    location_update: schemas.LocationAdminUpdate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update a location"""
+    location = db.query(models.Location).filter(models.Location.id == location_id).first()
+    if not location:
+        raise HTTPException(status_code=404, detail="Location not found")
+    
+    update_data = location_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(location, key, value)
+    location.updated_by = current_user.id
+    
+    db.commit()
+    db.refresh(location)
+    return location
+
+@app.get("/locations/all", response_model=List[schemas.Location])
+async def get_locations_for_users(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all locations - accessible by all users"""
+    locations = db.query(models.Location).all()
+    return locations
+
+@app.get("/locations/{location_id}", response_model=schemas.Location)
+async def get_location_for_user(
+    location_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get a specific location - accessible by all users"""
+    location = db.query(models.Location).filter(models.Location.id == location_id).first()
+    if not location:
+        raise HTTPException(status_code=404, detail="Location not found")
+    return location
