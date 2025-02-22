@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Container, Typography, Paper, Box, Checkbox } from '@mui/material';
 import {
   DataGrid,
@@ -6,6 +6,9 @@ import {
   GridRenderCellParams,
 } from '@mui/x-data-grid';
 import Layout from '../components/Layout';
+import { useApi } from '../hooks/useApi';
+import { useSnackbar } from 'notistack';
+import { useQuery } from '@tanstack/react-query';
 
 interface Dignitary {
   id: number;
@@ -24,39 +27,29 @@ interface Dignitary {
 }
 
 const DignitaryListAll: React.FC = () => {
-  const [dignitaries, setDignitaries] = useState<Dignitary[]>([]);
-  const [loading, setLoading] = useState(true);
+  const api = useApi();
+  const { enqueueSnackbar } = useSnackbar();
 
-  useEffect(() => {
-    const fetchDignitaries = async () => {
+  const { data: dignitaries = [], isLoading } = useQuery({
+    queryKey: ['dignitaries'],
+    queryFn: async () => {
       try {
-        const response = await fetch('http://localhost:8001/admin/dignitaries/all', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-          },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setDignitaries(data);
-        } else {
-          console.error('Failed to fetch dignitaries');
-        }
+        const { data } = await api.get<Dignitary[]>('/admin/dignitaries/all');
+        return data;
       } catch (error) {
         console.error('Error fetching dignitaries:', error);
-      } finally {
-        setLoading(false);
+        enqueueSnackbar('Failed to fetch dignitaries', { variant: 'error' });
+        throw error;
       }
-    };
-
-    fetchDignitaries();
-  }, []);
+    },
+  });
 
   const columns: GridColDef[] = [
     { 
-        field: 'Name', 
-        headerName: 'Name', 
-        width: 150,
-        renderCell: (params) => `${params.row.honorific_title} ${params.row.first_name} ${params.row.last_name}`
+      field: 'Name', 
+      headerName: 'Name', 
+      width: 200,
+      renderCell: (params) => `${params.row.honorific_title} ${params.row.first_name} ${params.row.last_name}`
     },
     { field: 'email', headerName: 'Email', width: 200 },
     { field: 'phone', headerName: 'Phone', width: 130 },
@@ -71,7 +64,10 @@ const DignitaryListAll: React.FC = () => {
       headerName: 'Met Gurudev?', 
       width: 130,
       renderCell: (params: GridRenderCellParams) => (
-        <Checkbox checked={params.row.has_dignitary_met_gurudev} />
+        <Checkbox 
+          checked={params.row.has_dignitary_met_gurudev} 
+          disabled
+        />
       ),
     },
   ];
@@ -79,13 +75,8 @@ const DignitaryListAll: React.FC = () => {
   return (
     <Layout>
       <Container maxWidth="xl">
-        <Box sx={{ 
-          // py: 4 
-        }}>
+        <Box>
           <Typography variant="h4" component="h1" gutterBottom>
-            All Dignitaries
-          </Typography>
-          <Typography variant="h6" component="h2" gutterBottom>
             All Dignitaries
           </Typography>
           <Paper sx={{ width: '100%', overflow: 'hidden' }}>
@@ -104,7 +95,7 @@ const DignitaryListAll: React.FC = () => {
                 }}
                 pageSizeOptions={[10]}
                 disableRowSelectionOnClick
-                loading={loading}
+                loading={isLoading}
                 paginationMode="client"
               />
             </Box>
