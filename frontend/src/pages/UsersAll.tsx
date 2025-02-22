@@ -1,10 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Container, Typography, Paper, Box } from '@mui/material';
 import {
   DataGrid,
   GridColDef,
 } from '@mui/x-data-grid';
 import Layout from '../components/Layout';
+import { useApi } from '../hooks/useApi';
+import { useSnackbar } from 'notistack';
+import { useQuery } from '@tanstack/react-query';
+import { formatDate } from '../utils/dateUtils';
 
 interface User {
   id: number;
@@ -19,81 +23,52 @@ interface User {
 }
 
 const UsersAll: React.FC = () => {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+  const api = useApi();
+  const { enqueueSnackbar } = useSnackbar();
 
-  useEffect(() => {
-    const fetchUsers = async () => {
+  const { data: users = [], isLoading } = useQuery({
+    queryKey: ['users'],
+    queryFn: async () => {
       try {
-        const response = await fetch('http://localhost:8001/admin/users/all', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-          },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setUsers(data);
-        } else {
-          console.error('Failed to fetch users');
-        }
+        const { data } = await api.get<User[]>('/admin/users/all');
+        return data;
       } catch (error) {
         console.error('Error fetching users:', error);
-      } finally {
-        setLoading(false);
+        enqueueSnackbar('Failed to fetch users', { variant: 'error' });
+        throw error;
       }
-    };
-
-    fetchUsers();
-  }, []);
+    },
+  });
 
   const columns: GridColDef[] = [
-    { field: 'first_name', headerName: 'First Name', width: 130 },
-    { field: 'last_name', headerName: 'Last Name', width: 130 },
-    { field: 'email', headerName: 'Email', width: 250 },
+    { 
+        field: 'Name', 
+        headerName: 'Name', 
+        width: 130,
+        renderCell: (params) => `${params.row.first_name} ${params.row.last_name}`
+    },
+    { field: 'email', headerName: 'Email', width: 200 },
     { field: 'phone_number', headerName: 'Phone Number', width: 130 },
     { field: 'role', headerName: 'Role', width: 130 },
     { 
-        field: 'created_at', 
-        headerName: 'Created On', 
-        width: 130,
-        renderCell: (params) => {
-            const date = new Date(params.value);
-            return date.toLocaleDateString();
-        }
+      field: 'created_at', 
+      headerName: 'Created On', 
+      width: 110,
+      renderCell: (params) => formatDate(params.row.created_at, false)
     },
     {
-        field: 'last_login_at',
-        headerName: 'Last Login',
-        width: 130,
-        renderCell: (params) => {
-          if (!params.value) {
-            return '';
-          }
-          let date = null;
-          try {
-            date = new Date(params.value);
-          } catch (error) {
-            console.error('Error rendering last login date:', error);
-          } finally {
-            if (date) {
-              return date.toLocaleDateString();
-            }
-            return '';
-          }
-        }
+      field: 'last_login_at',
+      headerName: 'Last Login',
+      width: 170,
+      renderCell: (params) => formatDate(params.row.last_login_at, true)
     },
   ];
 
   return (
     <Layout>
       <Container maxWidth="xl">
-        <Box sx={{ 
-          // py: 4 
-        }}>
+        <Box>
           <Typography variant="h4" component="h1" gutterBottom>
-            All Users
-          </Typography>
-          <Typography variant="h6" component="h2" gutterBottom>
             All Users
           </Typography>
           <Paper sx={{ width: '100%', overflow: 'hidden' }}>
@@ -112,7 +87,7 @@ const UsersAll: React.FC = () => {
                 }}
                 pageSizeOptions={[10]}
                 disableRowSelectionOnClick
-                loading={loading}
+                loading={isLoading}
                 paginationMode="client"
               />
             </Box>

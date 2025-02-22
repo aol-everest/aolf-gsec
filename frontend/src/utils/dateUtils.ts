@@ -14,9 +14,15 @@ export const parseUTCDate = (dateStr: string): Date => {
   return new Date(dateStr);
 };
 
-export const formatDate = (dateStr: string): string => {
-  const date = parseUTCDate(dateStr);
-  return date.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+export const formatDate = (dateStr: string | null, showTime = true): string => {
+  if (!dateStr) return '';
+  try {
+    const date = parseUTCDate(dateStr);
+    return date.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: showTime ? 'short' : undefined });
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return '';
+  }
 };
 
 export const formatDateWithTimezone = (dateStr: string, timezone: string): string => {

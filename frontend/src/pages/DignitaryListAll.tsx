@@ -52,13 +52,16 @@ const DignitaryListAll: React.FC = () => {
   }, []);
 
   const columns: GridColDef[] = [
-    { field: 'honorific_title', headerName: 'Title', width: 100 },
-    { field: 'first_name', headerName: 'First Name', width: 130 },
-    { field: 'last_name', headerName: 'Last Name', width: 130 },
+    { 
+        field: 'Name', 
+        headerName: 'Name', 
+        width: 150,
+        renderCell: (params) => `${params.row.honorific_title} ${params.row.first_name} ${params.row.last_name}`
+    },
     { field: 'email', headerName: 'Email', width: 200 },
     { field: 'phone', headerName: 'Phone', width: 130 },
     { field: 'primary_domain', headerName: 'Domain', width: 130 },
-    { field: 'title_in_organization', headerName: 'Position', width: 150 },
+    { field: 'title_in_organization', headerName: 'Position', width: 130 },
     { field: 'organization', headerName: 'Organization', width: 200 },
     { field: 'country', headerName: 'Country', width: 130 },
     { field: 'state', headerName: 'State', width: 130 },
