@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Container,
   Typography,
@@ -33,6 +33,10 @@ import CancelIcon from '@mui/icons-material/Close';
 import Layout from '../components/Layout';
 import { getStatusChipSx } from '../utils/formattingUtils';
 import { useTheme } from '@mui/material/styles';
+import { useApi } from '../hooks/useApi';
+import { useSnackbar } from 'notistack';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { formatDate } from '../utils/dateUtils';
 
 export interface Dignitary {
   honorific_title: string;
@@ -107,69 +111,68 @@ const StatusEditCell = (props: StatusEditCellProps) => {
 };
 
 const AppointmentStatusAll: React.FC = () => {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(true);
   const [rowModesModel, setRowModesModel] = useState<GridRowModesModel>({});
-  const [statusOptions, setStatusOptions] = useState<string[]>([]);
-  const [locations, setLocations] = useState<Location[]>([]);
   const theme = useTheme();
+  const api = useApi();
+  const { enqueueSnackbar } = useSnackbar();
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const fetchStatusOptions = async () => {
-      try {
-        const response = await fetch('http://localhost:8001/appointments/status-options', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-          },
-        });
-        if (!response.ok) throw new Error('Failed to fetch status options');
-        const data = await response.json();
-        setStatusOptions(data);
-      } catch (error) {
-        console.error('Error fetching status options:', error);
-      }
-    };
+  // Fetch status options
+  const { data: statusOptions = [] } = useQuery({
+    queryKey: ['status-options'],
+    queryFn: async () => {
+      const { data } = await api.get<string[]>('/appointments/status-options');
+      return data;
+    },
+  });
 
-    fetchStatusOptions();
-    fetchAppointments();
-    fetchLocations();
-  }, []);
+  // Fetch locations
+  const { data: locations = [] } = useQuery({
+    queryKey: ['locations'],
+    queryFn: async () => {
+      const { data } = await api.get<Location[]>('/locations/all');
+      return data;
+    },
+  });
 
-  const fetchAppointments = async () => {
-    try {
-      const response = await fetch('http://localhost:8001/admin/appointments/all', {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setAppointments(data);
-      } else {
-        console.error('Failed to fetch appointments');
-      }
-    } catch (error) {
-      console.error('Error fetching appointments:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Fetch appointments
+  const { data: appointments = [], isLoading } = useQuery({
+    queryKey: ['appointments-all'],
+    queryFn: async () => {
+      const { data } = await api.get<Appointment[]>('/admin/appointments/all');
+      return data;
+    },
+  });
 
-  const fetchLocations = async () => {
-    try {
-      const response = await fetch('http://localhost:8001/locations/all', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setLocations(data);
-      }
-    } catch (error) {
-      console.error('Error fetching locations:', error);
-    }
-  };
+  // Update appointment mutation
+  const updateAppointmentMutation = useMutation({
+    mutationFn: async (newRow: Appointment) => {
+      const updateData = {
+        dignitary_id: newRow.dignitary_id,
+        purpose: newRow.purpose,
+        preferred_date: newRow.preferred_date,
+        preferred_time_of_day: newRow.preferred_time_of_day,
+        appointment_date: newRow.appointment_date ? new Date(newRow.appointment_date).toISOString().split('T')[0] : null,
+        appointment_time: newRow.appointment_time,
+        duration: newRow.duration,
+        location_id: newRow.location_id,
+        status: newRow.status,
+        requester_notes_to_secretariat: newRow.requester_notes_to_secretariat,
+      };
+      
+      const { data } = await api.patch(`/admin/appointments/update/${newRow.id}`, updateData);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['appointments-all'] });
+      enqueueSnackbar('Appointment updated successfully', { variant: 'success' });
+    },
+    onError: (error) => {
+      console.error('Error updating appointment:', error);
+      enqueueSnackbar('Failed to update appointment', { variant: 'error' });
+      throw error;
+    },
+  });
 
   const handleRowEditStop: GridEventListener<'rowEditStop'> = (params, event) => {
     if (params.reason === GridRowEditStopReasons.rowFocusOut) {
@@ -181,27 +184,9 @@ const AppointmentStatusAll: React.FC = () => {
     setRowModesModel({ ...rowModesModel, [id]: { mode: GridRowModes.Edit } });
   };
 
-  const handleSaveClick = (id: GridRowId) => async () => {
+  const handleSaveClick = (id: GridRowId) => () => {
     setRowModesModel({ ...rowModesModel, [id]: { mode: GridRowModes.View } });
   };
-
-  // const handleDeleteClick = (id: GridRowId) => async () => {
-  //   try {
-  //     const response = await fetch(`http://localhost:8001/admin/appointments/${id}`, {
-  //       method: 'DELETE',
-  //       headers: {
-  //         Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-  //       },
-  //     });
-  //     if (response.ok) {
-  //       setAppointments((prev) => prev.filter((appointment) => appointment.id !== id));
-  //     } else {
-  //       console.error('Failed to delete appointment');
-  //     }
-  //   } catch (error) {
-  //     console.error('Error deleting appointment:', error);
-  //   }
-  // };
 
   const handleCancelClick = (id: GridRowId) => () => {
     setRowModesModel({
@@ -212,35 +197,9 @@ const AppointmentStatusAll: React.FC = () => {
 
   const processRowUpdate = async (newRow: Appointment, oldRow: Appointment) => {
     try {
-      const response = await fetch(`http://localhost:8001/admin/appointments/update/${newRow.id}`, {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          dignitary_id: newRow.dignitary_id,
-          purpose: newRow.purpose,
-          preferred_date: newRow.preferred_date,
-          preferred_time_of_day: newRow.preferred_time_of_day,
-          appointment_date: newRow.appointment_date ? new Date(newRow.appointment_date).toISOString().split('T')[0] : null,
-          appointment_time: newRow.appointment_time,
-          duration: newRow.duration,
-          location_id: newRow.location_id,
-          status: newRow.status,
-          requester_notes_to_secretariat: newRow.requester_notes_to_secretariat,
-        }),
-      });
-      if (response.ok) {
-        await fetchAppointments();
-        return newRow;
-      } else {
-        const errorData = await response.json();
-        console.error('Failed to update appointment:', errorData);
-        throw new Error(errorData.detail || 'Failed to update appointment');
-      }
+      await updateAppointmentMutation.mutateAsync(newRow);
+      return newRow;
     } catch (error) {
-      console.error('Error updating appointment:', error);
       throw error;
     }
   };
@@ -286,13 +245,6 @@ const AppointmentStatusAll: React.FC = () => {
             onClick={handleEditClick(id)}
             color="inherit"
           />,
-          // <GridActionsCellItem
-          //   key="delete"
-          //   icon={<DeleteIcon />}
-          //   label="Delete"
-          //   onClick={handleDeleteClick(id)}
-          //   color="inherit"
-          // />,
         ];
       },
     },
@@ -322,8 +274,7 @@ const AppointmentStatusAll: React.FC = () => {
       width: 180,
       editable: false,
       valueGetter: (value, row, column, apiRef) => {
-        const date = new Date(row.preferred_date);
-        return date.toLocaleString() + ' ' + row.preferred_time_of_day;
+        return formatDate(row.preferred_date, false) + ' ' + row.preferred_time_of_day;
       },
     },
     {
@@ -415,16 +366,13 @@ const AppointmentStatusAll: React.FC = () => {
   return (
     <Layout>
       <Container maxWidth="xl">
-        <Box sx={{ 
-          // py: 4 
-        }}>
+        <Box>
           <Typography variant="h4" component="h1" gutterBottom>
             All Appointments
           </Typography>
           <Paper sx={{ width: '100%', overflow: 'hidden' }}>
             <Box
               sx={{
-                // height: 500,
                 width: '100%',
                 '& .actions': { color: 'text.secondary' },
                 '& .textPrimary': { color: 'text.primary' },
@@ -438,10 +386,13 @@ const AppointmentStatusAll: React.FC = () => {
                 onRowModesModelChange={handleRowModesModelChange}
                 onRowEditStop={handleRowEditStop}
                 processRowUpdate={processRowUpdate}
-                // pageSize={10}
-                // rowsPerPageOptions={[10]}
-                loading={loading}
-                // experimentalFeatures={{ newEditingApi: true }}
+                loading={isLoading}
+                initialState={{
+                  pagination: {
+                    paginationModel: { pageSize: 10, page: 0 },
+                  },
+                }}
+                pageSizeOptions={[10]}
               />
             </Box>
           </Paper>
