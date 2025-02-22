@@ -31,7 +31,7 @@ export default function RoleBasedRoute({ children, allowedRoles }: RoleBasedRout
             }}
           >
             <Typography variant="h4" color="error" gutterBottom>
-              Unauthorized Access
+              Unauthorized
             </Typography>
             <Typography variant="body1">
               You do not have permission to access this page. Please contact the administrator if you believe this is an error.
