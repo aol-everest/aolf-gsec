@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Container, Typography, Paper, Box, Chip } from '@mui/material';
 import {
   DataGrid,
@@ -8,6 +8,9 @@ import {
 import Layout from '../components/Layout';
 import { getStatusChipSx } from '../utils/formattingUtils';
 import { useTheme } from '@mui/material/styles';
+import { useQuery } from '@tanstack/react-query';
+import { useApi } from '../hooks/useApi';
+import { useSnackbar } from 'notistack';
 
 interface Dignitary {
   honorific_title: string;
@@ -45,33 +48,25 @@ interface Appointment {
 }
 
 const AppointmentStatus: React.FC = () => {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(true);
   const theme = useTheme();
+  const api = useApi();
+  const { enqueueSnackbar } = useSnackbar();
 
-  useEffect(() => {
-    const fetchAppointments = async () => {
+  const { data: appointments = [], isLoading } = useQuery<Appointment[]>({
+    queryKey: ['my-appointments'],
+    queryFn: async () => {
       try {
-        const response = await fetch('http://localhost:8001/appointments/my', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-          },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setAppointments(data);
-        } else {
-          console.error('Failed to fetch appointments');
-        }
+        const { data } = await api.get<Appointment[]>('/appointments/my');
+        return data;
       } catch (error) {
         console.error('Error fetching appointments:', error);
-      } finally {
-        setLoading(false);
+        enqueueSnackbar('Failed to fetch appointments', { variant: 'error' });
+        throw error;
       }
-    };
-
-    fetchAppointments();
-  }, []);
+    },
+    staleTime: 1000 * 60 * 1, // Data is considered fresh for 1 minute
+    refetchInterval: 1000 * 60 * 5, // Refetch every 5 minutes
+  });
 
   const columns: GridColDef[] = [
     {
@@ -157,21 +152,15 @@ const AppointmentStatus: React.FC = () => {
   return (
     <Layout>
       <Container maxWidth="xl">
-        <Box sx={{ 
-          // py: 4 
-        }}>
+        <Box>
           <Typography variant="h4" component="h1" gutterBottom>
             Appointment Status
           </Typography>
           <Paper sx={{ width: '100%', overflow: 'hidden' }}>
-            <Box sx={{ 
-              // height: 600, 
-              width: '100%',
-            }}>
+            <Box sx={{ width: '100%' }}>
               <DataGrid
                 rows={appointments}
                 columns={columns}
-                // rowCount={appointments.length}
                 initialState={{
                   pagination: {
                     paginationModel: {
@@ -182,7 +171,7 @@ const AppointmentStatus: React.FC = () => {
                 }}
                 pageSizeOptions={[10]}
                 disableRowSelectionOnClick
-                loading={loading}
+                loading={isLoading}
                 paginationMode="client"
               />
             </Box>
