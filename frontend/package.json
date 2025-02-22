@@ -62,6 +62,7 @@
   },
   "devDependencies": {
     "@types/axios": "^0.9.36",
+    "@types/google.maps": "^3.58.1",
     "openapi-typescript-codegen": "^0.29.0"
   }
 }
