@@ -41,6 +41,7 @@ interface PlaceResult {
       lng: () => number;
     };
   };
+  formatted_address?: string;
   address_components?: AddressComponent[];
 }
 
@@ -108,7 +109,7 @@ export default function LocationsManage() {
     if (input && (window as any).google?.maps?.places?.Autocomplete) {
       const autocompleteInstance = new (window as any).google.maps.places.Autocomplete(input, {
         types: ['establishment', 'geocode'],
-        fields: ['name', 'geometry', 'address_components'],
+        fields: ['name', 'geometry', 'address_components', 'formatted_address'],
       }) as GoogleMapsAutocomplete;
       
       autocompleteInstance.addListener('place_changed', () => {
@@ -143,6 +144,19 @@ export default function LocationsManage() {
           }
         });
 
+        // Create Google Maps directions URL
+        const formattedAddress = place.formatted_address || `${streetNumber} ${route}, ${city}, ${state} ${postalCode}, ${country}`;
+        const encodedAddress = encodeURIComponent(formattedAddress);
+        const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodedAddress}`;
+
+        // Append directions URL to existing driving directions if not already present
+        const existingDirections = formData.driving_directions || '';
+        const updatedDirections = existingDirections.includes(directionsUrl)
+          ? existingDirections
+          : existingDirections
+            ? `${existingDirections}\n\nGoogle Maps Directions: ${directionsUrl}`
+            : `Google Maps Directions: ${directionsUrl}`;
+
         setFormData(prev => ({
           ...prev,
           name: place.name || '',
@@ -151,10 +165,11 @@ export default function LocationsManage() {
           state,
           country,
           zip_code: postalCode,
+          driving_directions: updatedDirections,
         }));
       });
     }
-  }, [enqueueSnackbar]);
+  }, [enqueueSnackbar, formData.driving_directions]);
 
   // Load Google Places API script
   useEffect(() => {
