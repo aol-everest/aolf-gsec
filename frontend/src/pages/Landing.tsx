@@ -2,6 +2,7 @@ import React from 'react';
 import { Container, Typography, Button, Box, useTheme, Paper } from '@mui/material';
 import { useGoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../contexts/AuthContext';
+import GurudevLogo from '../components/Images';
 
 const Landing: React.FC = () => {
   const { login } = useAuth();
@@ -101,7 +102,18 @@ const Landing: React.FC = () => {
                 mt: 2,
                 mb: 0,
               }}>
-                <img src="/gurudev-logo-centered.png" alt="Gurudev" style={{ height: '56px', width: 'auto', marginTop: 13, marginBottom: 8, marginLeft: 13, marginRight: 13 }} />
+                <GurudevLogo 
+                  sx={{ 
+                    height: '100%', 
+                    maxHeight: '56px', 
+                    width: 'auto', 
+                    maxWidth: '70%',
+                    mt: 13, 
+                    mb: 8, 
+                    ml: 13, 
+                    mr: 13, 
+                  }}
+                />
               </Paper>
             </Typography>
             <Button 
