@@ -19,6 +19,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { AdminAppointmentsReviewRoute } from '../config/routes';
 
 interface Dignitary {
   id: number;
@@ -136,7 +137,7 @@ const AppointmentEdit: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointment', id] });
       enqueueSnackbar('Appointment updated successfully', { variant: 'success' });
-      navigate('/admin/appointments/tiles');
+      navigate(AdminAppointmentsReviewRoute.path || '');
     },
     onError: (error) => {
       console.error('Error updating appointment:', error);
@@ -329,7 +330,7 @@ const AppointmentEdit: React.FC = () => {
                   <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
                     <Button
                       variant="outlined"
-                      onClick={() => navigate('/admin/appointments/tiles')}
+                      onClick={() => navigate(AdminAppointmentsReviewRoute.path || '')}
                     >
                       Cancel
                     </Button>

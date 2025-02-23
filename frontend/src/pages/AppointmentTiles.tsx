@@ -24,70 +24,9 @@ import { formatDate } from '../utils/dateUtils';
 import { getStatusChipSx, getStatusColor } from '../utils/formattingUtils';
 import { EmailIcon, ContactPhoneIcon, EmailIconSmall, ContactPhoneIconSmall, WorkIcon } from '../components/icons';
 
-interface Location {
-  id: number;
-  name: string;
-  street_address: string;
-  state: string;
-  city: string;
-  country: string;
-  zip_code: string;
-  driving_directions?: string;
-  parking_info?: string;
-}
+import { Appointment } from '../models/types';
 
-interface User {
-  id: number;
-  email: string;
-  first_name: string;
-  last_name: string;
-  phone_number: string;
-  role: string;
-}
-
-interface Dignitary {
-  id: number;
-  honorific_title: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string;
-  primary_domain: string;
-  title_in_organization: string;
-  organization: string;
-  bio_summary: string;
-  poc_first_name: string;
-  poc_last_name: string;
-  poc_email: string;
-  poc_phone: string;
-  linked_in_or_website: string;
-  has_dignitary_met_gurudev: boolean;
-}
-
-interface Appointment {
-  id: number;
-  dignitary_id: number;
-  dignitary: Dignitary;
-  requester: User;
-  purpose: string;
-  preferred_date: string;
-  preferred_time_of_day: string;
-  appointment_date: string;
-  appointment_time: string;
-  location: Location;
-  requester_notes_to_secretariat: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-  secretariat_comments: string;
-  follow_up_actions: string;
-  meeting_notes: string;
-  approved_datetime: string;
-  approved_by: number;
-  approved_by_user: User;
-  last_updated_by: number;
-  last_updated_by_user: User;
-}
+import { AppointmentCard } from '../components/AppointmentCard';
 
 const AppointmentTiles: React.FC = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -157,10 +96,6 @@ const AppointmentTiles: React.FC = () => {
     setActiveStep((prevStep) => Math.max(prevStep - 1, 0));
   };
 
-  const handleEdit = (appointmentId: number) => {
-    navigate(`/admin/appointments/edit/${appointmentId}`);
-  };
-
   const handleStatusFilter = (status: string | null) => {
     setSelectedStatus(status === selectedStatus ? null : status);
   };
@@ -182,159 +117,7 @@ const AppointmentTiles: React.FC = () => {
     >
       <CardContent>
 
-        <Paper elevation={0} sx={{ p: 2, mb: 0, border: 'none', boxShadow: 'none', borderRadius: 0, bgcolor: 'transparent' }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h5" gutterBottom color="primary">
-              Request #: {appointment.id}
-            </Typography>
-          </Box>
-          <Box sx={{ position: 'absolute', top: 25, right: 25 }}>
-            <Chip 
-                label={appointment.status} 
-                sx={getStatusChipSx(appointment.status, theme)}
-            />
-            <IconButton 
-                color="primary"
-                onClick={() => handleEdit(appointment.id)}
-                sx={{ ml: 1, mt: 1 }}
-            >
-                <EditIcon />
-            </IconButton>
-          </Box>          
-        </Paper>
-
-        {/* Point of Contact Information */}
-        <Paper elevation={0} sx={{ p: 2, mb: 3, borderRadius: 1 }}>
-          <Typography variant="h6" gutterBottom color="primary">
-            Point of Contact: <b>{appointment.requester.first_name} {appointment.requester.last_name}</b>
-          </Typography>
-          <Typography sx={{ color: 'text.secondary', my: 0.5, }}>
-            <EmailIconSmall />{' '}
-            <Typography 
-                component="a" 
-                href={`mailto:${appointment.requester.email}`} 
-                sx={{ textDecoration: 'none', color: 'inherit' }}
-            >
-                {appointment.requester.email}
-            </Typography>
-            <Box sx={{ color: 'text.secondary', display: 'inline-block', mx: 1 }}>|</Box>
-            <ContactPhoneIconSmall />{' '}
-            <Typography 
-              component="a" 
-              href={`tel:${appointment.requester.phone_number}`} 
-              sx={{ textDecoration: 'none', color: 'inherit' }}
-            >
-              {appointment.requester.phone_number || 'N/A'}
-            </Typography>
-          </Typography>
-        </Paper>
-
-        {/* Dignitary Information */}
-        <Paper elevation={0} sx={{ p: 2, mb: 3, borderRadius: 2 }}>
-          <Typography variant="h6" gutterBottom color="primary">
-            Dignitary: <b>{appointment.dignitary.honorific_title} {appointment.dignitary.first_name} {appointment.dignitary.last_name}</b>
-          </Typography>
-          <Typography sx={{ color: 'text.secondary', my: 0.5, }}>
-            <EmailIconSmall />{' '}
-            <Typography 
-              component="a" 
-              href={`mailto:${appointment.dignitary.email}`} 
-              sx={{ textDecoration: 'none', color: 'inherit' }}
-            >
-              {appointment.dignitary.email}
-            </Typography>
-            <Box sx={{ color: 'text.secondary', display: 'inline-block', mx: 1 }}>|</Box>
-            <ContactPhoneIconSmall />{' '}
-            <Typography 
-              component="a" 
-              href={`tel:${appointment.dignitary.phone}`} 
-              sx={{ textDecoration: 'none', color: 'inherit' }}
-            >
-              {appointment.dignitary.phone || 'N/A'}
-            </Typography>
-          </Typography>
-          <Typography sx={{ color: 'text.secondary', my: 0.5, }}>
-            <WorkIcon /> {appointment.dignitary.title_in_organization}
-            <Box sx={{ color: 'text.secondary', display: 'inline-block', mx: 1 }}>|</Box>
-            {appointment.dignitary.organization}
-          </Typography>
-          <Typography sx={{ color: 'text.secondary', my: 0.5, }}>
-            {appointment.dignitary.bio_summary}
-          </Typography>
-          <Typography sx={{ color: 'text.secondary', my: 0.5, }}>
-            {appointment.dignitary.linked_in_or_website}
-          </Typography>
-          <Typography sx={{ color: 'text.secondary', my: 0.5, }}>
-            Has Dignitary Met Gurudev? {appointment.dignitary.has_dignitary_met_gurudev ? 'Yes' : 'No'}
-          </Typography>
-        </Paper>
-
-        {/* Appointment Information */}
-        <Paper elevation={0} sx={{ p: 2, mb: 3, borderRadius: 2 }}>
-          <Typography variant="h6" gutterBottom color="primary">
-            Requested Appointment Details
-          </Typography>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="subtitle2" color="text.secondary">Preferred Date</Typography>
-              <Typography>{new Date(appointment.preferred_date).toLocaleDateString()}</Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="subtitle2" color="text.secondary">Preferred Time</Typography>
-              <Typography>{appointment.preferred_time_of_day || 'N/A'}</Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="subtitle2" color="text.secondary">Location</Typography>
-              <Typography>{appointment.location.name} - {appointment.location.city}, {appointment.location.state}</Typography>
-            </Grid>
-            <Grid item xs={12}>
-              <Typography variant="subtitle2" color="text.secondary">Purpose</Typography>
-              <Typography>{appointment.purpose}</Typography>
-            </Grid>
-            {appointment.requester_notes_to_secretariat && (
-              <Grid item xs={12}>
-                <Typography variant="subtitle2" color="text.secondary">Notes from Point of Contact</Typography>
-                <Typography>{appointment.requester_notes_to_secretariat}</Typography>
-              </Grid>
-            )}
-          </Grid>
-        </Paper>
-
-        {/* Secretariat Notes */}
-        <Paper elevation={0} sx={{ p: 2, borderRadius: 2 }}>
-          <Typography variant="h6" gutterBottom color="primary">
-            Secretariat Notes
-          </Typography>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="subtitle2" color="text.secondary">Notes</Typography>
-              <Typography>{appointment.secretariat_comments || 'N/A'}</Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="subtitle2" color="text.secondary">Follow-up Actions</Typography>
-              <Typography>{appointment.follow_up_actions || 'N/A'}</Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="subtitle2" color="text.secondary">Meeting Notes</Typography>
-              <Typography>{appointment.meeting_notes || 'N/A'}</Typography>
-            </Grid>
-          </Grid>
-        </Paper>
-
-        <Paper elevation={0} sx={{ p: 2, mb: 0, border: 'none', boxShadow: 'none', borderRadius: 0, bgcolor: 'transparent' }}>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
-              {appointment.last_updated_by_user && (
-                <Typography> Last Updated by: {appointment.last_updated_by_user?.first_name} {appointment.last_updated_by_user?.last_name} at {formatDate(appointment.updated_at)}</Typography>
-              )}
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              {appointment.approved_by_user && (
-                <Typography> Approved by: {appointment.approved_by_user?.first_name} {appointment.approved_by_user?.last_name} at {formatDate(appointment.approved_datetime)}</Typography>
-              )}
-            </Grid>
-          </Grid>
-        </Paper>
+        <AppointmentCard appointment={appointment} theme={theme} />
 
       </CardContent>
     </Card>
