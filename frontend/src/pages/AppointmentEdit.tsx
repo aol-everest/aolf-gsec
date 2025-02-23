@@ -20,55 +20,7 @@ import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AdminAppointmentsReviewRoute } from '../config/routes';
-
-interface Dignitary {
-  id: number;
-  honorific_title: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string;
-  primary_domain: string;
-  title_in_organization: string;
-  organization: string;
-  bio_summary: string;
-  poc_first_name: string;
-  poc_last_name: string;
-  poc_email: string;
-  poc_phone: string;
-}
-
-interface Location {
-  id: number;
-  name: string;
-  street_address: string;
-  state: string;
-  city: string;
-  country: string;
-  zip_code: string;
-  driving_directions?: string;
-  parking_info?: string;
-}
-
-interface Appointment {
-  id: number;
-  dignitary_id: number;
-  dignitary: Dignitary;
-  purpose: string;
-  preferred_date: string;
-  preferred_time_of_day: string;
-  appointment_date: string;
-  appointment_time: string;
-  location_id: number;
-  location?: Location;
-  requester_notes_to_secretariat: string;
-  status: string;
-  secretariat_follow_up_actions: string;
-  secretariat_meeting_notes: string;
-  secretariat_notes_to_requester: string;
-  created_at: string;
-  updated_at: string;
-}
+import { Appointment, Location } from '../models/types';
 
 interface AppointmentFormData {
   appointment_date: string;
@@ -279,38 +231,6 @@ const AppointmentEdit: React.FC = () => {
 
                 <Grid item xs={12}>
                   <Controller
-                    name="secretariat_follow_up_actions"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        fullWidth
-                        multiline
-                        rows={4}
-                        label="Follow-up Actions (Secretariat Internal)"
-                      />
-                    )}
-                  />
-                </Grid>
-
-                <Grid item xs={12}>
-                  <Controller
-                    name="secretariat_meeting_notes"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        fullWidth
-                        multiline
-                        rows={4}
-                        label="Meeting Notes (Secretariat Internal)"
-                      />  
-                    )}
-                  />
-                </Grid>
-
-                <Grid item xs={12}>
-                  <Controller
                     name="secretariat_notes_to_requester"
                     control={control}
                     render={({ field }) => (
@@ -319,11 +239,47 @@ const AppointmentEdit: React.FC = () => {
                         fullWidth
                         multiline
                         rows={4}
-                        label="Notes to Point of Contact"
+                        label="Notes to Point of Contact (shared with Point of Contact)"
                       />
                     )}
                   />
                 </Grid>
+
+                {appointment.status === 'Approved' && appointment.appointment_date && new Date(appointment.appointment_date) >= new Date() && (
+                  <Grid item xs={12}>
+                    <Controller
+                      name="secretariat_follow_up_actions"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          fullWidth
+                          multiline
+                          rows={4}
+                          label="Follow-up Actions (Secretariat Internal)"
+                        />
+                      )}
+                    />
+                  </Grid>
+                )}
+
+                {appointment.status === 'Approved' && appointment.appointment_date && new Date(appointment.appointment_date) >= new Date() && (
+                  <Grid item xs={12}>
+                    <Controller
+                      name="secretariat_meeting_notes"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          fullWidth
+                          multiline
+                          rows={4}
+                          label="Meeting Notes (Secretariat Internal)"
+                        />  
+                      )}
+                    />
+                  </Grid>
+                )}
 
                 {/* Buttons */}
                 <Grid item xs={12} sx={{ mt: 2 }}>

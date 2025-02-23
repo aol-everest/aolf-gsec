@@ -35,7 +35,6 @@ const AppointmentTiles: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [statusOptions, setStatusOptions] = useState<string[]>([]);
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -101,26 +100,7 @@ const AppointmentTiles: React.FC = () => {
   };
 
   const AppointmentTile = ({ appointment }: { appointment: Appointment }) => (
-    <Card 
-      elevation={3}
-      sx={{ 
-        // m: 2,
-        pl: { xs: 0, sm: 2 },
-        pr: { xs: 0, sm: 2 },
-        pt: { xs: 0, sm: 0 },
-        pb: { xs: 1, sm: 1 },
-        borderRadius: 2,
-        position: 'relative',
-        minHeight: isMobile ? 'auto' : '600px',
-        bgcolor: 'grey.50', 
-      }}
-    >
-      <CardContent>
-
-        <AppointmentCard appointment={appointment} theme={theme} />
-
-      </CardContent>
-    </Card>
+    <AppointmentCard appointment={appointment} theme={theme} />
   );
 
   return (

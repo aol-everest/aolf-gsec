@@ -7,7 +7,7 @@ const colors = {
     main: '#F9B818',
     // light: '#42a5f5',
     light: '#E0C685',
-    dark: '#DC8C70',
+    dark: '#BA8B18',
     contrastText: '#fff',
   },
   secondary: {
@@ -22,8 +22,8 @@ const colors = {
     paper: '#ffffff',
   },
   text: {
-    primary: '#2c3e50',
-    secondary: '#637381',
+    primary: '#333',
+    secondary: '#777',
   },
   success: {
     main: '#2ecc71',
