@@ -118,7 +118,7 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                             Bio: <Typography component="span" sx={{ color: theme.palette.text.primary }}>{appointment.dignitary.bio_summary}</Typography>
                         </Grid>
                         <Grid item xs={12} sm={6}>
-                            Has Dignitary Met Gurudev? <Typography component="span" sx={{ color: theme.palette.text.primary }}>{appointment.dignitary.has_dignitary_met_gurudev ? 'Yes' : 'No'}</Typography>
+                            Has Dignitary Met Gurudev? <Typography component="span" sx={{ fontWeight: 'bold', color: appointment.dignitary.has_dignitary_met_gurudev ? theme.palette.success.main : theme.palette.error.main }}>{appointment.dignitary.has_dignitary_met_gurudev ? 'Yes' : 'No'}</Typography>
                         </Grid>
                     </Grid>
                 </Paper>

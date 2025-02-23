@@ -10,10 +10,10 @@ class AppointmentStatus(str, enum.Enum):
     """Appointment status enum with proper case values"""
     PENDING = "Pending"
     NEED_MORE_INFO = "Need More Info"
-    APPROVED = "Approved"
+    APPROVED = "Scheduled"
     REJECTED = "Rejected"
     COMPLETED = "Completed"
-    FOLLOW_UP = "Follow Up"
+    FOLLOW_UP = "To Be Rescheduled"
     CANCELLED = "Cancelled"
 
 class AppointmentTimeOfDay(str, enum.Enum):
