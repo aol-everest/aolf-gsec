@@ -13,41 +13,7 @@ import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { formatDate } from '../utils/dateUtils';
 import CommonDataGrid from '../components/GenericDataGrid';
-
-interface Dignitary {
-  honorific_title: string;
-  first_name: string;
-  last_name: string;
-}
-
-interface Location {
-  id: number;
-  name: string;
-  street_address: string;
-  state: string;
-  city: string;
-  country: string;
-  zip_code: string;
-  driving_directions?: string;
-  parking_info?: string;
-}
-
-interface Appointment {
-  id: number;
-  dignitary: Dignitary;
-  purpose: string;
-  preferred_date: string;
-  preferred_time_of_day: string;
-  appointment_date: string;
-  appointment_time: string;
-  location_id: number;
-  location: Location;
-  requester_notes_to_secretariat: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-  secretariat_notes_to_requester: string;
-}
+import { Appointment, Dignitary } from '../models/types';
 
 const AppointmentStatus: React.FC = () => {
   const theme = useTheme();
@@ -81,6 +47,7 @@ const AppointmentStatus: React.FC = () => {
       field: 'dignitary',
       headerName: 'Dignitary Name',
       width: 200,
+      flex: 1,
       renderCell: (params: GridRenderCellParams) => {
         const dignitary = params.row.dignitary as Dignitary;
         if (dignitary) {
@@ -94,7 +61,8 @@ const AppointmentStatus: React.FC = () => {
     {
       field: 'appointment_date_and_time',
       headerName: 'Date & Time',
-      width: 180,
+      width: 130,
+      flex: 1,
       editable: false,
       renderCell: (params: GridRenderCellParams) => {
         let dateDisplay = formatDate(params.row.preferred_date, false) + ' ' + params.row.preferred_time_of_day;
@@ -110,6 +78,7 @@ const AppointmentStatus: React.FC = () => {
       field: 'location',
       headerName: 'Location',
       width: 150,
+      flex: 1.1,
       renderCell: (params: GridRenderCellParams) => {
         const location = params.row.location;
         return location ? `${location.name} - ${location.city}, ${location.state}` : 'N/A';
@@ -132,19 +101,20 @@ const AppointmentStatus: React.FC = () => {
       headerName: 'Created',
       width: 110,
       renderCell: (params: GridRenderCellParams) => 
-        formatDate(params.value as string, false),
+        formatDate(params.value as string, true),
     },
     {
       field: 'updated_at',
       headerName: 'Last Updated',
       width: 110,
       renderCell: (params: GridRenderCellParams) => 
-        formatDate(params.value as string, false),
+        formatDate(params.value as string, true),
     },
     {
       field: 'secretariat_notes_to_requester',
       headerName: 'Notes from Secretariat',
       width: 200,
+      flex: 2,
       editable: false,
     },
   ];

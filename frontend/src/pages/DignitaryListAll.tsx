@@ -50,20 +50,22 @@ const DignitaryListAll: React.FC = () => {
       field: 'Name', 
       headerName: 'Name', 
       width: 200,
+      flex: 1.5,
       renderCell: (params) => `${params.row.honorific_title} ${params.row.first_name} ${params.row.last_name}`
     },
-    { field: 'email', headerName: 'Email', width: 200 },
-    { field: 'phone', headerName: 'Phone', width: 130 },
-    { field: 'primary_domain', headerName: 'Domain', width: 130 },
-    { field: 'title_in_organization', headerName: 'Position', width: 130 },
-    { field: 'organization', headerName: 'Organization', width: 200 },
-    { field: 'country', headerName: 'Country', width: 130 },
-    { field: 'state', headerName: 'State', width: 130 },
-    { field: 'city', headerName: 'City', width: 130 },
+    { field: 'email', headerName: 'Email', width: 200, flex: 1 },
+    { field: 'phone', headerName: 'Phone', width: 130, flex: 1 },
+    { field: 'primary_domain', headerName: 'Domain', width: 130, flex: 0.81 },
+    { field: 'title_in_organization', headerName: 'Position', width: 130, flex: 1 },
+    { field: 'organization', headerName: 'Organization', width: 200, flex: 1 },
+    { field: 'country', headerName: 'Country', width: 100, flex: 0.81 },
+    { field: 'state', headerName: 'State', width: 100, flex: 0.81 },
+    { field: 'city', headerName: 'City', width: 100, flex: 0.81 },
     { 
       field: 'has_dignitary_met_gurudev', 
       headerName: 'Met Gurudev?', 
-      width: 130,
+      width: 81,
+      flex: 0.5,
       renderCell: (params: GridRenderCellParams) => (
         <Checkbox 
           checked={params.row.has_dignitary_met_gurudev} 

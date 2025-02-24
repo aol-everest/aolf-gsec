@@ -46,21 +46,24 @@ const UsersAll: React.FC = () => {
         field: 'name', 
         headerName: 'Name', 
         width: 130,
+        flex: 1.3,
         renderCell: (params) => `${params.row.first_name} ${params.row.last_name}`
     },
-    { field: 'email', headerName: 'Email', width: 200 },
-    { field: 'phone_number', headerName: 'Phone Number', width: 130 },
-    { field: 'role', headerName: 'Role', width: 130 },
+    { field: 'email', headerName: 'Email', width: 200, flex: 1 },
+    { field: 'phone_number', headerName: 'Phone Number', width: 130, flex: 1 },
+    { field: 'role', headerName: 'Role', width: 130, flex: 0.81 },
     { 
       field: 'created_at', 
       headerName: 'Created On', 
       width: 110,
+      flex: 0.5,
       renderCell: (params) => formatDate(params.row.created_at, false)
     },
     {
       field: 'last_login_at',
       headerName: 'Last Login',
       width: 170,
+      flex: 0.81,
       renderCell: (params) => formatDate(params.row.last_login_at, true)
     },
   ];

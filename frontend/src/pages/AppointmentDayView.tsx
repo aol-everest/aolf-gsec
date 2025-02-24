@@ -22,41 +22,7 @@ import { getStatusChipSx } from '../utils/formattingUtils';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { useQuery } from '@tanstack/react-query';
-
-interface Location {
-  id: number;
-  name: string;
-  street_address: string;
-  state: string;
-  city: string;
-  country: string;
-  zip_code: string;
-  driving_directions?: string;
-  parking_info?: string;
-}
-
-interface Dignitary {
-  honorific_title: string;
-  first_name: string;
-  last_name: string;
-  organization: string;
-  title_in_organization: string;
-}
-
-interface Appointment {
-  id: number;
-  dignitary: Dignitary;
-  purpose: string;
-  appointment_date: string;
-  appointment_time: string;
-  duration: string;
-  location: Location;
-  status: string;
-  requester_notes_to_secretariat?: string;
-  secretariat_follow_up_actions?: string;
-  secretariat_meeting_notes?: string;
-  secretariat_notes_to_requester?: string;
-}
+import { Appointment } from '../models/types';
 
 const AppointmentDayView: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState(getLocalDate(0));

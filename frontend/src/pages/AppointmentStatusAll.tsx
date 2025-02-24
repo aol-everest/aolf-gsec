@@ -37,50 +37,8 @@ import { useSnackbar } from 'notistack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDate } from '../utils/dateUtils';
 import GenericDataGrid from '../components/GenericDataGrid';
-
-export interface Dignitary {
-  honorific_title: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string;
-  primary_domain: string;
-  title_in_organization: string;
-  organization: string;
-  bio_summary: string;
-  linked_in_or_website: string;
-  has_dignitary_met_gurudev: boolean;
-}
-
-export interface Location {
-  id: number;
-  name: string;
-  street_address: string;
-  state: string;
-  city: string;
-  country: string;
-  zip_code: string;
-  driving_directions?: string;
-  parking_info?: string;
-}
-
-export interface Appointment {
-  id: number;
-  dignitary_id: number;
-  dignitary: Dignitary;
-  purpose: string;
-  preferred_date: string;
-  preferred_time_of_day: string;
-  appointment_date: string;
-  appointment_time: string;
-  duration: string;
-  location_id: number | null;
-  location?: Location;
-  requester_notes_to_secretariat: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-}
+import { Appointment } from '../models/types';
+import { Location } from '../models/types';
 
 interface StatusEditCellProps extends GridRenderEditCellParams<Appointment> {
   statusOptions: string[];
@@ -154,7 +112,6 @@ const AppointmentStatusAll: React.FC = () => {
         preferred_time_of_day: newRow.preferred_time_of_day,
         appointment_date: newRow.appointment_date ? new Date(newRow.appointment_date).toISOString().split('T')[0] : null,
         appointment_time: newRow.appointment_time,
-        duration: newRow.duration,
         location_id: newRow.location_id,
         status: newRow.status,
         requester_notes_to_secretariat: newRow.requester_notes_to_secretariat,
@@ -251,13 +208,14 @@ const AppointmentStatusAll: React.FC = () => {
     {
       field: 'id',
       headerName: 'ID',
-      width: 50,
+      width: 56,
       editable: false,
     },
     {
       field: 'dignitary',
       headerName: 'Dignitary',
       width: 130,
+      flex: 1,
       editable: false,
       renderCell: (params: GridRenderCellParams<Appointment>) => {
         {
@@ -272,6 +230,7 @@ const AppointmentStatusAll: React.FC = () => {
       field: 'preferred_date_and_time',
       headerName: 'Requested Date & Time',
       width: 110,
+      flex: 0.5,
       editable: false,
       valueGetter: (value, row, column, apiRef) => {
         return formatDate(row.preferred_date, false) + ' ' + row.preferred_time_of_day;
@@ -280,7 +239,8 @@ const AppointmentStatusAll: React.FC = () => {
     {
       field: 'appointment_date',
       headerName: 'Appointment Date',
-      width: 130,
+      width: 110,
+      flex: 0.5,
       editable: true,
       type: 'date',
       valueGetter: (value: string) => {
@@ -291,13 +251,15 @@ const AppointmentStatusAll: React.FC = () => {
     {
       field: 'appointment_time',
       headerName: 'Appointment Time',
-      width: 100,
+      width: 110,
+      flex: 0.5,
       editable: true,
     },
     {
       field: 'location',
       headerName: 'Location',
       width: 150,
+      flex: 1,
       editable: true,
       type: 'singleSelect',
       valueOptions: locations.map(loc => ({ value: loc.id, label: `${loc.name} - ${loc.city}, ${loc.state}` })),
@@ -324,6 +286,7 @@ const AppointmentStatusAll: React.FC = () => {
       field: 'status',
       headerName: 'Status',
       width: 130,
+      flex: 0.81,
       editable: true,
       type: 'singleSelect',
       valueOptions: statusOptions,
