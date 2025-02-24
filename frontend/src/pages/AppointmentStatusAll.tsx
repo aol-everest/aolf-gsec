@@ -250,7 +250,7 @@ const AppointmentStatusAll: React.FC = () => {
     },
     {
       field: 'id',
-      headerName: 'Request ID',
+      headerName: 'ID',
       width: 50,
       editable: false,
     },
@@ -270,7 +270,7 @@ const AppointmentStatusAll: React.FC = () => {
     },
     {
       field: 'preferred_date_and_time',
-      headerName: 'Requested Date & Time',
+      headerName: 'Requested\nDate & Time',
       width: 110,
       editable: false,
       valueGetter: (value, row, column, apiRef) => {
@@ -279,7 +279,7 @@ const AppointmentStatusAll: React.FC = () => {
     },
     {
       field: 'appointment_date',
-      headerName: 'Appointment Date',
+      headerName: 'Appointment\nDate',
       width: 130,
       editable: true,
       type: 'date',
@@ -290,7 +290,7 @@ const AppointmentStatusAll: React.FC = () => {
     },
     {
       field: 'appointment_time',
-      headerName: 'Appointment Time',
+      headerName: 'Appointment\nTime',
       width: 100,
       editable: true,
     },
@@ -314,7 +314,7 @@ const AppointmentStatusAll: React.FC = () => {
     {
       field: 'has_dignitary_met_gurudev',
       headerName: 'Met Gurudev?',
-      width: 130,
+      width: 81,
       editable: true,
       renderCell: (params: GridRenderCellParams<Appointment>) => (
         <Checkbox checked={params.row.dignitary.has_dignitary_met_gurudev} />
@@ -386,6 +386,7 @@ const AppointmentStatusAll: React.FC = () => {
                 processRowUpdate={processRowUpdate}
                 loading={isLoading}
                 getRowHeight={() => 'auto'}
+                autoHeight
                 sx={{
                   '& .MuiDataGrid-cell': {
                     whiteSpace: 'normal',
@@ -395,6 +396,12 @@ const AppointmentStatusAll: React.FC = () => {
                   '& .MuiDataGrid-row': {
                     alignItems: 'flex-start',
                   },
+                  '& .MuiDataGrid-columnHeader .MuiDataGrid-columnHeaderTitle': {
+                    overflow: 'visible',
+                    lineHeight: '1.43rem',
+                    whiteSpace: 'normal',
+                    display: 'block'
+                  }
                 }}
                 initialState={{
                   pagination: {
