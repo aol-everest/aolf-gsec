@@ -73,8 +73,8 @@ const AppointmentStatus: React.FC = () => {
   const columns: GridColDef[] = [
     {
       field: 'id',
-      headerName: 'Request ID',
-      width: 100,
+      headerName: 'ID',
+      width: 56,
       renderCell: (params: GridRenderCellParams) => params.value,
     },
     {
@@ -160,6 +160,7 @@ const AppointmentStatus: React.FC = () => {
             rows={appointments}
             columns={columns}
             loading={isLoading}
+            defaultVisibleColumns={['id', 'dignitary', 'appointment_date_and_time', 'location', 'status', 'secretariat_notes_to_requester']}
           />
         </Box>
       </Container>

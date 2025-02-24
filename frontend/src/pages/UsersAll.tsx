@@ -43,7 +43,7 @@ const UsersAll: React.FC = () => {
 
   const columns: GridColDef[] = [
     { 
-        field: 'Name', 
+        field: 'name', 
         headerName: 'Name', 
         width: 130,
         renderCell: (params) => `${params.row.first_name} ${params.row.last_name}`
@@ -76,6 +76,7 @@ const UsersAll: React.FC = () => {
             rows={users}
             columns={columns}
             loading={isLoading}
+            defaultVisibleColumns={['name', 'email', 'role']}
           />
         </Box>
       </Container>

@@ -6,6 +6,7 @@ import {
   GridDensity,
   GridToolbarDensitySelector,
   GridToolbarContainer,
+  GridToolbarColumnsButton,
 } from '@mui/x-data-grid';
 import { Box, Paper } from '@mui/material';
 
@@ -15,6 +16,7 @@ export interface GenericDataGridProps extends Omit<DataGridProps, 'rows' | 'colu
   loading?: boolean;
   containerHeight?: number | string;
   defaultDensity?: GridDensity;
+  defaultVisibleColumns?: string[];
 }
 
 const GenericDataGridStyles = {
@@ -60,6 +62,7 @@ const DEFAULT_PAGE_SIZE = 10;
 function CustomToolbar() {
   return (
     <GridToolbarContainer>
+      <GridToolbarColumnsButton />
       <GridToolbarDensitySelector />
     </GridToolbarContainer>
   );
@@ -72,6 +75,7 @@ const GenericDataGrid: React.FC<GenericDataGridProps> = ({
   containerHeight = 800,
   initialState,
   defaultDensity = 'comfortable',
+  defaultVisibleColumns,
   slots,
   slotProps,
   ...props
@@ -84,6 +88,15 @@ const GenericDataGrid: React.FC<GenericDataGridProps> = ({
       },
     },
     density: defaultDensity,
+    columns: {
+      columnVisibilityModel: defaultVisibleColumns?.reduce((acc, field) => ({
+        ...acc,
+        [field]: true,
+      }), columns.reduce((acc, col) => ({
+        ...acc,
+        [col.field]: false,
+      }), {})),
+    },
     ...initialState,
   };
 

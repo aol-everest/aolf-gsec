@@ -87,6 +87,7 @@ const DignitaryList: React.FC = () => {
             rows={dignitaries}
             columns={columns}
             loading={isLoading}
+            defaultVisibleColumns={['Name', 'title_in_organization', 'organization', 'has_dignitary_met_gurudev']}
           />
         </Box>
       </Container>

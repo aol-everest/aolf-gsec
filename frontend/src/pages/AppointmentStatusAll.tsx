@@ -377,6 +377,7 @@ const AppointmentStatusAll: React.FC = () => {
           >
             <GenericDataGrid
               rows={appointments}
+              // getRowHeight={() => 'auto'}
               columns={columns}
               loading={isLoading}
               editMode="row"
@@ -384,6 +385,7 @@ const AppointmentStatusAll: React.FC = () => {
               onRowModesModelChange={handleRowModesModelChange}
               onRowEditStop={handleRowEditStop}
               processRowUpdate={processRowUpdate}
+              defaultVisibleColumns={['id', 'dignitary', 'preferred_date_and_time', 'appointment_date', 'appointment_time', 'location', 'status', 'has_dignitary_met_gurudev']}
               initialState={{
                 pagination: {
                   paginationModel: {
