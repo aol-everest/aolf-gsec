@@ -3,6 +3,9 @@ import {
   DataGrid,
   GridColDef,
   DataGridProps,
+  GridDensity,
+  GridToolbarDensitySelector,
+  GridToolbarContainer,
 } from '@mui/x-data-grid';
 import { Box, Paper } from '@mui/material';
 
@@ -11,6 +14,7 @@ export interface GenericDataGridProps extends Omit<DataGridProps, 'rows' | 'colu
   columns: GridColDef[];
   loading?: boolean;
   containerHeight?: number | string;
+  defaultDensity?: GridDensity;
 }
 
 const GenericDataGridStyles = {
@@ -21,7 +25,6 @@ const GenericDataGridStyles = {
   },
   '& .MuiDataGrid-row': {
     alignItems: 'flex-start',
-    minHeight: '52px !important',
   },
   '& .MuiDataGrid-columnHeader .MuiDataGrid-columnHeaderTitle': {
     overflow: 'visible',
@@ -45,10 +48,22 @@ const GenericDataGridStyles = {
   },
   '& .textPrimary': { 
     color: 'text.primary' 
+  },
+  '& .MuiDataGrid-toolbarContainer': {
+    padding: '8px',
+    gap: '8px',
   }
 };
 
 const DEFAULT_PAGE_SIZE = 10;
+
+function CustomToolbar() {
+  return (
+    <GridToolbarContainer>
+      <GridToolbarDensitySelector />
+    </GridToolbarContainer>
+  );
+}
 
 const GenericDataGrid: React.FC<GenericDataGridProps> = ({
   rows,
@@ -56,6 +71,9 @@ const GenericDataGrid: React.FC<GenericDataGridProps> = ({
   loading = false,
   containerHeight = 800,
   initialState,
+  defaultDensity = 'comfortable',
+  slots,
+  slotProps,
   ...props
 }) => {
   const mergedInitialState = {
@@ -65,6 +83,7 @@ const GenericDataGrid: React.FC<GenericDataGridProps> = ({
         page: 0,
       },
     },
+    density: defaultDensity,
     ...initialState,
   };
 
@@ -84,9 +103,11 @@ const GenericDataGrid: React.FC<GenericDataGridProps> = ({
           paginationMode="client"
           pageSizeOptions={[5, 10, 25, 50, 100]}
           rowSelection={false}
-          density="comfortable"
-          getRowHeight={() => 'auto'}
           initialState={mergedInitialState}
+          slots={{
+            toolbar: CustomToolbar,
+            ...slots,
+          }}
           sx={{
             ...GenericDataGridStyles,
             ...(props.sx || {}),
