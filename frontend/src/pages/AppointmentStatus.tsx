@@ -156,7 +156,7 @@ const AppointmentStatus: React.FC = () => {
             Appointment Status
           </Typography>
           <Paper sx={{ width: '100%', overflow: 'hidden' }}>
-            <Box sx={{ width: '100%' }}>
+            <Box sx={{ height: 600, width: '100%' }}>
               <DataGrid
                 rows={appointments}
                 columns={columns}
@@ -172,6 +172,23 @@ const AppointmentStatus: React.FC = () => {
                 disableRowSelectionOnClick
                 loading={isLoading}
                 paginationMode="client"
+                getRowHeight={() => 'auto'}
+                sx={{
+                  '& .MuiDataGrid-cell': {
+                    whiteSpace: 'normal',
+                    lineHeight: 'normal',
+                    padding: '8px',
+                  },
+                  '& .MuiDataGrid-row': {
+                    alignItems: 'flex-start',
+                  },
+                  '& .MuiDataGrid-columnHeader .MuiDataGrid-columnHeaderTitle': {
+                    overflow: 'visible',
+                    lineHeight: '1.43rem',
+                    whiteSpace: 'normal',
+                    display: 'block'
+                  }
+                }}
               />
             </Box>
           </Paper>

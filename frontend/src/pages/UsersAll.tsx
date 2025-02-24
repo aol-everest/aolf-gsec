@@ -89,6 +89,23 @@ const UsersAll: React.FC = () => {
                 disableRowSelectionOnClick
                 loading={isLoading}
                 paginationMode="client"
+                getRowHeight={() => 'auto'}
+                sx={{
+                  '& .MuiDataGrid-cell': {
+                    whiteSpace: 'normal',
+                    lineHeight: 'normal',
+                    padding: '8px',
+                  },
+                  '& .MuiDataGrid-row': {
+                    alignItems: 'flex-start',
+                  },
+                  '& .MuiDataGrid-columnHeader .MuiDataGrid-columnHeaderTitle': {
+                    overflow: 'visible',
+                    lineHeight: '1.43rem',
+                    whiteSpace: 'normal',
+                    display: 'block'
+                  }
+                }}
               />
             </Box>
           </Paper>
