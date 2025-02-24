@@ -4,13 +4,6 @@ import {
   Button,
   TextField,
   Typography,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   IconButton,
   Grid,
   Container,
@@ -27,6 +20,8 @@ import { useSnackbar } from 'notistack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../hooks/useApi';
 import Layout from '../components/Layout';
+import GenericDataGrid from '../components/GenericDataGrid';
+import { GridColDef, GridActionsCellItem } from '@mui/x-data-grid';
 
 // Google Maps types
 interface AddressComponent {
@@ -319,6 +314,52 @@ export default function LocationsManage() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const columns: GridColDef[] = [
+    { 
+      field: 'name',
+      headerName: 'Name',
+      width: 150,
+      flex: 1,
+    },
+    { 
+      field: 'street_address',
+      headerName: 'Address',
+      width: 200,
+      flex: 1,
+    },
+    { 
+      field: 'city',
+      headerName: 'City',
+      width: 120,
+      flex: 1,
+    },
+    { 
+      field: 'state',
+      headerName: 'State',
+      width: 120,
+      flex: 1,
+    },
+    { 
+      field: 'country',
+      headerName: 'Country',
+      width: 120,
+      flex: 1,
+    },
+    {
+      field: 'actions',
+      type: 'actions',
+      headerName: 'Actions',
+      width: 80,
+      getActions: (params) => [
+        <GridActionsCellItem
+          icon={<EditIcon />}
+          label="Edit"
+          onClick={() => handleOpen(params.row)}
+        />,
+      ],
+    },
+  ];
+
   return (
     <Layout>
       <Container maxWidth="xl">
@@ -477,36 +518,11 @@ export default function LocationsManage() {
               <CircularProgress />
             </Box>
           ) : (
-            <TableContainer component={Paper}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Address</TableCell>
-                    <TableCell>City</TableCell>
-                    <TableCell>State</TableCell>
-                    <TableCell>Country</TableCell>
-                    <TableCell>Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {locations.map((location: Location) => (
-                    <TableRow key={location.id}>
-                      <TableCell>{location.name}</TableCell>
-                      <TableCell>{location.street_address}</TableCell>
-                      <TableCell>{location.city}</TableCell>
-                      <TableCell>{location.state}</TableCell>
-                      <TableCell>{location.country}</TableCell>
-                      <TableCell>
-                        <IconButton onClick={() => handleOpen(location)}>
-                          <EditIcon />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <GenericDataGrid
+              rows={locations}
+              columns={columns}
+              loading={isLoading}
+            />
           )}
         </Box>
       </Container>

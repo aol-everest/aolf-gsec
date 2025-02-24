@@ -9,6 +9,7 @@ import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { useQuery } from '@tanstack/react-query';
 import { formatDate } from '../utils/dateUtils';
+import CommonDataGrid from '../components/GenericDataGrid';
 
 interface User {
   id: number;
@@ -71,44 +72,11 @@ const UsersAll: React.FC = () => {
           <Typography variant="h4" component="h1" gutterBottom>
             All Users
           </Typography>
-          <Paper sx={{ width: '100%', overflow: 'hidden' }}>
-            <Box sx={{ height: 600, width: '100%' }}>
-              <DataGrid
-                rows={users}
-                columns={columns}
-                rowCount={users.length}
-                initialState={{
-                  pagination: {
-                    paginationModel: {
-                      pageSize: 10,
-                      page: 0,
-                    },
-                  },
-                }}
-                pageSizeOptions={[10]}
-                disableRowSelectionOnClick
-                loading={isLoading}
-                paginationMode="client"
-                getRowHeight={() => 'auto'}
-                sx={{
-                  '& .MuiDataGrid-cell': {
-                    whiteSpace: 'normal',
-                    lineHeight: 'normal',
-                    padding: '8px',
-                  },
-                  '& .MuiDataGrid-row': {
-                    alignItems: 'flex-start',
-                  },
-                  '& .MuiDataGrid-columnHeader .MuiDataGrid-columnHeaderTitle': {
-                    overflow: 'visible',
-                    lineHeight: '1.43rem',
-                    whiteSpace: 'normal',
-                    display: 'block'
-                  }
-                }}
-              />
-            </Box>
-          </Paper>
+          <CommonDataGrid
+            rows={users}
+            columns={columns}
+            loading={isLoading}
+          />
         </Box>
       </Container>
     </Layout>

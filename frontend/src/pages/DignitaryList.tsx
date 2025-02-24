@@ -9,6 +9,7 @@ import Layout from '../components/Layout';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { useQuery } from '@tanstack/react-query';
+import CommonDataGrid from '../components/GenericDataGrid';
 
 interface Dignitary {
   id: number;
@@ -82,44 +83,11 @@ const DignitaryList: React.FC = () => {
           <Typography variant="h6" component="h2" gutterBottom>
             Dignitaries assigned to you
           </Typography>
-          <Paper sx={{ width: '100%', overflow: 'hidden' }}>
-            <Box sx={{ height: 600, width: '100%' }}>
-              <DataGrid
-                rows={dignitaries}
-                columns={columns}
-                rowCount={dignitaries.length}
-                initialState={{
-                  pagination: {
-                    paginationModel: {
-                      pageSize: 10,
-                      page: 0,
-                    },
-                  },
-                }}
-                pageSizeOptions={[10]}
-                disableRowSelectionOnClick
-                loading={isLoading}
-                paginationMode="client"
-                getRowHeight={() => 'auto'}
-                sx={{
-                  '& .MuiDataGrid-cell': {
-                    whiteSpace: 'normal',
-                    lineHeight: 'normal',
-                    padding: '8px',
-                  },
-                  '& .MuiDataGrid-row': {
-                    alignItems: 'flex-start',
-                  },
-                  '& .MuiDataGrid-columnHeader .MuiDataGrid-columnHeaderTitle': {
-                    overflow: 'visible',
-                    lineHeight: '1.43rem',
-                    whiteSpace: 'normal',
-                    display: 'block'
-                  }
-                }}
-              />
-            </Box>
-          </Paper>
+          <CommonDataGrid
+            rows={dignitaries}
+            columns={columns}
+            loading={isLoading}
+          />
         </Box>
       </Container>
     </Layout>
