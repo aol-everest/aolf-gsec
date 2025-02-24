@@ -70,7 +70,7 @@ const AppointmentDayView: React.FC = () => {
       try {
         const { data } = await api.get<Appointment[]>('/admin/appointments/all', {
           params: {
-            status: 'Approved'
+            status: 'APPROVED'
           }
         });
         

@@ -11,7 +11,6 @@ import {
   Checkbox,
 } from '@mui/material';
 import {
-  DataGrid,
   GridColDef,
   GridActionsCellItem,
   GridRowModesModel,
@@ -37,6 +36,7 @@ import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDate } from '../utils/dateUtils';
+import GenericDataGrid from '../components/GenericDataGrid';
 
 export interface Dignitary {
   honorific_title: string;
@@ -368,50 +368,32 @@ const AppointmentStatusAll: React.FC = () => {
           <Typography variant="h4" component="h1" gutterBottom>
             All Appointments
           </Typography>
-          <Paper sx={{ width: '100%', overflow: 'hidden' }}>
-            <Box
-              sx={{
-                width: '100%',
-                '& .actions': { color: 'text.secondary' },
-                '& .textPrimary': { color: 'text.primary' },
+          <Box
+            sx={{
+              width: '100%',
+              '& .actions': { color: 'text.secondary' },
+              '& .textPrimary': { color: 'text.primary' },
+            }}
+          >
+            <GenericDataGrid
+              rows={appointments}
+              columns={columns}
+              loading={isLoading}
+              editMode="row"
+              rowModesModel={rowModesModel}
+              onRowModesModelChange={handleRowModesModelChange}
+              onRowEditStop={handleRowEditStop}
+              processRowUpdate={processRowUpdate}
+              initialState={{
+                pagination: {
+                  paginationModel: {
+                    pageSize: 10,
+                    page: 0,
+                  },
+                },
               }}
-            >
-              <DataGrid<Appointment>
-                rows={appointments}
-                columns={columns}
-                editMode="row"
-                rowModesModel={rowModesModel}
-                onRowModesModelChange={handleRowModesModelChange}
-                onRowEditStop={handleRowEditStop}
-                processRowUpdate={processRowUpdate}
-                loading={isLoading}
-                getRowHeight={() => 'auto'}
-                autoHeight
-                sx={{
-                  '& .MuiDataGrid-cell': {
-                    whiteSpace: 'normal',
-                    lineHeight: 'normal',
-                    padding: '8px',
-                  },
-                  '& .MuiDataGrid-row': {
-                    alignItems: 'flex-start',
-                  },
-                  '& .MuiDataGrid-columnHeader .MuiDataGrid-columnHeaderTitle': {
-                    overflow: 'visible',
-                    lineHeight: '1.43rem',
-                    whiteSpace: 'normal',
-                    display: 'block'
-                  }
-                }}
-                initialState={{
-                  pagination: {
-                    paginationModel: { pageSize: 10, page: 0 },
-                  },
-                }}
-                pageSizeOptions={[10]}
-              />
-            </Box>
-          </Paper>
+            />
+          </Box>
         </Box>
       </Container>
     </Layout>

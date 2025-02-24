@@ -38,6 +38,12 @@ const GenericDataGridStyles = {
   },
   '& .MuiDataGrid-footerContainer': {
     minHeight: '52px',
+  },
+  '& .actions': { 
+    color: 'text.secondary' 
+  },
+  '& .textPrimary': { 
+    color: 'text.primary' 
   }
 };
 
@@ -63,7 +69,7 @@ const GenericDataGrid: React.FC<GenericDataGridProps> = ({
           autoHeight
           disableRowSelectionOnClick
           paginationMode="client"
-          pageSizeOptions={[10]}
+          pageSizeOptions={[5, 10, 25, 50, 100]}
           rowSelection={false}
           density="comfortable"
           initialState={{
