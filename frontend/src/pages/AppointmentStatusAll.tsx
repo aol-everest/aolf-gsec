@@ -251,13 +251,13 @@ const AppointmentStatusAll: React.FC = () => {
     {
       field: 'id',
       headerName: 'Request ID',
-      width: 100,
+      width: 50,
       editable: false,
     },
     {
       field: 'dignitary',
       headerName: 'Dignitary',
-      width: 200,
+      width: 130,
       editable: false,
       renderCell: (params: GridRenderCellParams<Appointment>) => {
         {
@@ -271,7 +271,7 @@ const AppointmentStatusAll: React.FC = () => {
     {
       field: 'preferred_date_and_time',
       headerName: 'Requested Date & Time',
-      width: 180,
+      width: 110,
       editable: false,
       valueGetter: (value, row, column, apiRef) => {
         return formatDate(row.preferred_date, false) + ' ' + row.preferred_time_of_day;
@@ -343,22 +343,20 @@ const AppointmentStatusAll: React.FC = () => {
     },
     {
       field: 'created_at',
-      headerName: 'Requested',
-      width: 180,
+      headerName: 'Requested On',
+      width: 110,
       editable: false,
       valueGetter: (value, row, column, apiRef) => {
-        const date = new Date(row.created_at);
-        return date.toLocaleString();
+        return formatDate(row.created_at, true);
       },
     },
     {
       field: 'updated_at',
       headerName: 'Last Updated',
-      width: 180,
+      width: 110,
       editable: false,
       valueGetter: (value, row, column, apiRef) => {
-        const date = new Date(row.updated_at);
-        return date.toLocaleString();
+        return formatDate(row.updated_at, true);
       },
     },
   ];
@@ -387,6 +385,17 @@ const AppointmentStatusAll: React.FC = () => {
                 onRowEditStop={handleRowEditStop}
                 processRowUpdate={processRowUpdate}
                 loading={isLoading}
+                getRowHeight={() => 'auto'}
+                sx={{
+                  '& .MuiDataGrid-cell': {
+                    whiteSpace: 'normal',
+                    lineHeight: 'normal',
+                    padding: '8px',
+                  },
+                  '& .MuiDataGrid-row': {
+                    alignItems: 'flex-start',
+                  },
+                }}
                 initialState={{
                   pagination: {
                     paginationModel: { pageSize: 10, page: 0 },
