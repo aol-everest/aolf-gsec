@@ -38,6 +38,7 @@ const GenericDataGridStyles = {
   },
   '& .MuiDataGrid-footerContainer': {
     minHeight: '52px',
+    borderTop: '1px solid rgba(224, 224, 224, 1)',
   },
   '& .actions': { 
     color: 'text.secondary' 
@@ -47,13 +48,26 @@ const GenericDataGridStyles = {
   }
 };
 
+const DEFAULT_PAGE_SIZE = 10;
+
 const GenericDataGrid: React.FC<GenericDataGridProps> = ({
   rows,
   columns,
   loading = false,
-  containerHeight = 400,
+  containerHeight = 800,
+  initialState,
   ...props
 }) => {
+  const mergedInitialState = {
+    pagination: {
+      paginationModel: {
+        pageSize: DEFAULT_PAGE_SIZE,
+        page: 0,
+      },
+    },
+    ...initialState,
+  };
+
   return (
     <Paper sx={{ width: '100%', overflow: 'hidden' }}>
       <Box 
@@ -66,20 +80,13 @@ const GenericDataGrid: React.FC<GenericDataGridProps> = ({
           rows={rows}
           columns={columns}
           loading={loading}
-          autoHeight
           disableRowSelectionOnClick
           paginationMode="client"
           pageSizeOptions={[5, 10, 25, 50, 100]}
           rowSelection={false}
           density="comfortable"
-          initialState={{
-            pagination: {
-              paginationModel: {
-                pageSize: 10,
-                page: 0,
-              },
-            },
-          }}
+          getRowHeight={() => 'auto'}
+          initialState={mergedInitialState}
           sx={{
             ...GenericDataGridStyles,
             ...(props.sx || {}),
