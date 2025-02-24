@@ -270,7 +270,7 @@ const AppointmentStatusAll: React.FC = () => {
     },
     {
       field: 'preferred_date_and_time',
-      headerName: 'Requested\nDate & Time',
+      headerName: 'Requested Date & Time',
       width: 110,
       editable: false,
       valueGetter: (value, row, column, apiRef) => {
@@ -279,7 +279,7 @@ const AppointmentStatusAll: React.FC = () => {
     },
     {
       field: 'appointment_date',
-      headerName: 'Appointment\nDate',
+      headerName: 'Appointment Date',
       width: 130,
       editable: true,
       type: 'date',
@@ -290,7 +290,7 @@ const AppointmentStatusAll: React.FC = () => {
     },
     {
       field: 'appointment_time',
-      headerName: 'Appointment\nTime',
+      headerName: 'Appointment Time',
       width: 100,
       editable: true,
     },
