@@ -17,7 +17,7 @@ import isToday from 'date-fns/isToday';
 import parseISO from 'date-fns/parseISO';
 import startOfDay from 'date-fns/startOfDay';
 import Layout from '../components/Layout';
-import { getLocalDate } from '../utils/dateUtils';
+import { getLocalDate, formatTime } from '../utils/dateUtils';
 import { getStatusChipSx } from '../utils/formattingUtils';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
@@ -55,23 +55,6 @@ const AppointmentDayView: React.FC = () => {
       }
     }
   });
-
-  const formatTime = (time: string) => {
-    if (!time) return 'Time TBD';
-    try {
-      const [hours, minutes] = time.split(':');
-      const date = new Date();
-      date.setHours(parseInt(hours, 10));
-      date.setMinutes(parseInt(minutes, 10));
-      return date.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      });
-    } catch (error) {
-      return time;
-    }
-  };
 
   return (
     <Layout>
@@ -152,17 +135,12 @@ const AppointmentDayView: React.FC = () => {
                         {appointment.dignitary.honorific_title} {appointment.dignitary.first_name} {appointment.dignitary.last_name}
                       </Typography>
                       <Typography color="text.secondary" gutterBottom>
-                        {appointment.dignitary.title_in_organization}, {appointment.dignitary.organization}
+                        Title: {appointment.dignitary.title_in_organization}, Organization: {appointment.dignitary.organization}
                       </Typography>
                       <Box sx={{ mt: 2 }}>
                         <Typography variant="body1">
                           <strong>Purpose:</strong> {appointment.purpose}
                         </Typography>
-                        {appointment.duration && (
-                          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                            <strong>Duration:</strong> {appointment.duration}
-                          </Typography>
-                        )}
                         {appointment.location && (
                           <Typography variant="body2" color="text.secondary">
                             <strong>Location:</strong> {appointment.location.name} - {appointment.location.city}, {appointment.location.state}
@@ -170,7 +148,7 @@ const AppointmentDayView: React.FC = () => {
                         )}
                         {appointment.requester_notes_to_secretariat && (
                           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                            <strong>Notes:</strong> {appointment.requester_notes_to_secretariat}
+                            <strong>Notes from Point of Contact:</strong> {appointment.requester_notes_to_secretariat}
                           </Typography>
                         )}
                       </Box>

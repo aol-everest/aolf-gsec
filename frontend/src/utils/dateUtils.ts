@@ -29,3 +29,20 @@ export const formatDateWithTimezone = (dateStr: string, timezone: string): strin
   const date = parseUTCDate(dateStr);
   return date.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short', timeZone: timezone });
 };
+
+export const formatTime = (time: string) => {
+  if (!time) return 'Time TBD';
+  try {
+    const [hours, minutes] = time.split(':');
+    const date = new Date();
+    date.setHours(parseInt(hours, 10));
+    date.setMinutes(parseInt(minutes, 10));
+    return date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  } catch (error) {
+    return time;
+  }
+};
