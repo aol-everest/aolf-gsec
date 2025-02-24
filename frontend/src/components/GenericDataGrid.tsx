@@ -21,12 +21,23 @@ const GenericDataGridStyles = {
   },
   '& .MuiDataGrid-row': {
     alignItems: 'flex-start',
+    minHeight: '52px !important',
   },
   '& .MuiDataGrid-columnHeader .MuiDataGrid-columnHeaderTitle': {
     overflow: 'visible',
     lineHeight: '1.43rem',
     whiteSpace: 'normal',
     display: 'block'
+  },
+  '& .MuiDataGrid-columnHeaders': {
+    minHeight: '54px !important',
+  },
+  '& .MuiDataGrid-virtualScroller': {
+    overflow: 'auto',
+    minHeight: '300px',
+  },
+  '& .MuiDataGrid-footerContainer': {
+    minHeight: '52px',
   }
 };
 
@@ -34,20 +45,27 @@ const GenericDataGrid: React.FC<GenericDataGridProps> = ({
   rows,
   columns,
   loading = false,
-  containerHeight = 600,
+  containerHeight = 400,
   ...props
 }) => {
   return (
     <Paper sx={{ width: '100%', overflow: 'hidden' }}>
-      <Box sx={{ height: containerHeight, width: '100%' }}>
+      <Box 
+        sx={{ 
+          width: '100%',
+          height: containerHeight,
+        }}
+      >
         <DataGrid
           rows={rows}
           columns={columns}
           loading={loading}
-          getRowHeight={() => 'auto'}
+          autoHeight
           disableRowSelectionOnClick
           paginationMode="client"
           pageSizeOptions={[10]}
+          rowSelection={false}
+          density="comfortable"
           initialState={{
             pagination: {
               paginationModel: {
@@ -58,7 +76,7 @@ const GenericDataGrid: React.FC<GenericDataGridProps> = ({
           }}
           sx={{
             ...GenericDataGridStyles,
-            ...(props.sx || {})
+            ...(props.sx || {}),
           }}
           {...props}
         />
