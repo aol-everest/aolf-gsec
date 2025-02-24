@@ -57,6 +57,9 @@ class DignitaryBase(BaseModel):
     state: str
     city: str
     has_dignitary_met_gurudev: Optional[bool] = False
+    gurudev_meeting_date: Optional[date] = None
+    gurudev_meeting_location: Optional[str] = None
+    gurudev_meeting_notes: Optional[str] = None
 
 class DignitaryCreate(DignitaryBase):
     poc_relationship_type: RelationshipType
@@ -138,7 +141,6 @@ class AppointmentBase(BaseModel):
     status: Optional[AppointmentStatus] = None
 
 class AppointmentCreate(AppointmentBase):
-    requester_id: int
     dignitary_id: int
     purpose: str
     preferred_date: date

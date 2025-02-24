@@ -73,6 +73,24 @@ const DignitaryListAll: React.FC = () => {
         />
       ),
     },
+    {
+      field: 'gurudev_meeting_date',
+      headerName: 'Meeting Date',
+      width: 110,
+      flex: 0.5,
+    },
+    {
+      field: 'gurudev_meeting_location',
+      headerName: 'Meeting Location',
+      width: 130,
+      flex: 0.5,
+    },
+    {
+      field: 'gurudev_meeting_notes',
+      headerName: 'Meeting Notes',
+      width: 130,
+      flex: 1.3,
+    },
   ];
 
   return (

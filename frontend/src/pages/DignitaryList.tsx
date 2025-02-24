@@ -64,7 +64,7 @@ const DignitaryList: React.FC = () => {
     { 
       field: 'has_dignitary_met_gurudev', 
       headerName: 'Met Gurudev?', 
-      width: 130,
+      width: 81,
       flex: 0.5,
       renderCell: (params: GridRenderCellParams) => (
         <Checkbox 
@@ -72,6 +72,24 @@ const DignitaryList: React.FC = () => {
           disabled
         />
       ),
+    },
+    {
+      field: 'gurudev_meeting_date',
+      headerName: 'Meeting Date',
+      width: 110,
+      flex: 0.5,
+    },
+    {
+      field: 'gurudev_meeting_location',
+      headerName: 'Meeting Location',
+      width: 130,
+      flex: 0.5,
+    },
+    {
+      field: 'gurudev_meeting_notes',
+      headerName: 'Meeting Notes',
+      width: 130,
+      flex: 1.3,
     },
   ];
 

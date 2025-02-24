@@ -117,8 +117,17 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                         <Grid item xs={12} sm={12}>
                             Bio: <Typography component="span" sx={{ color: theme.palette.text.primary }}>{appointment.dignitary.bio_summary}</Typography>
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid item xs={12} sm={4}>
                             Has Dignitary Met Gurudev? <Typography component="span" sx={{ fontWeight: 'bold', color: appointment.dignitary.has_dignitary_met_gurudev ? theme.palette.success.main : theme.palette.error.main }}>{appointment.dignitary.has_dignitary_met_gurudev ? 'Yes' : 'No'}</Typography>
+                        </Grid>
+                        <Grid item xs={12} sm={4}>
+                            Gurudev Meeting Date: <Typography component="span" sx={{ color: theme.palette.text.primary }}>{appointment.dignitary.gurudev_meeting_date ? formatDate(appointment.dignitary.gurudev_meeting_date, false) : 'N/A'}</Typography>
+                        </Grid>
+                        <Grid item xs={12} sm={4}>
+                            Gurudev Meeting Location: <Typography component="span" sx={{ color: theme.palette.text.primary }}>{appointment.dignitary.gurudev_meeting_location || 'N/A'}</Typography>
+                        </Grid>
+                        <Grid item xs={12} sm={12}>
+                            Gurudev Meeting Notes: <Typography component="span" sx={{ color: theme.palette.text.primary }}>{appointment.dignitary.gurudev_meeting_notes || 'N/A'}</Typography>
                         </Grid>
                     </Grid>
                 </Paper>

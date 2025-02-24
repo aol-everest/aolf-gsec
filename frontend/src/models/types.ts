@@ -38,6 +38,9 @@ interface Dignitary {
   poc_phone: string;
   linked_in_or_website: string;
   has_dignitary_met_gurudev: boolean;
+  gurudev_meeting_date?: string;
+  gurudev_meeting_location?: string;
+  gurudev_meeting_notes?: string;
 }
 
 interface Appointment {

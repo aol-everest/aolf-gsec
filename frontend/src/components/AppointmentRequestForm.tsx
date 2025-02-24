@@ -91,6 +91,9 @@ interface DignitaryFormData {
   dignitaryCity: string;
   dignitaryHasMetGurudev: boolean;
   pocRelationshipType: string;
+  dignitaryGurudevMeetingDate?: string;
+  dignitaryGurudevMeetingLocation?: string;
+  dignitaryGurudevMeetingNotes?: string;
 }
 
 // Step 3: Appointment Information
@@ -189,6 +192,9 @@ export const AppointmentRequestForm: React.FC = () => {
       dignitaryCity: '',
       dignitaryHasMetGurudev: false,
       pocRelationshipType: relationshipTypes[0],
+      dignitaryGurudevMeetingDate: '',
+      dignitaryGurudevMeetingLocation: '',
+      dignitaryGurudevMeetingNotes: '',
     }
   });
 
@@ -247,6 +253,9 @@ export const AppointmentRequestForm: React.FC = () => {
     dignitaryForm.setValue('dignitaryState', dignitary.state);
     dignitaryForm.setValue('dignitaryCity', dignitary.city);
     dignitaryForm.setValue('dignitaryHasMetGurudev', dignitary.has_dignitary_met_gurudev);
+    dignitaryForm.setValue('dignitaryGurudevMeetingDate', dignitary.gurudev_meeting_date || '');
+    dignitaryForm.setValue('dignitaryGurudevMeetingLocation', dignitary.gurudev_meeting_location || '');
+    dignitaryForm.setValue('dignitaryGurudevMeetingNotes', dignitary.gurudev_meeting_notes || '');
   };
 
   // Update form values when userInfo changes
@@ -351,7 +360,10 @@ export const AppointmentRequestForm: React.FC = () => {
               selectedDignitary.country !== data.dignitaryCountry ||
               selectedDignitary.state !== data.dignitaryState ||
               selectedDignitary.city !== data.dignitaryCity ||
-              selectedDignitary.has_dignitary_met_gurudev !== data.dignitaryHasMetGurudev
+              selectedDignitary.has_dignitary_met_gurudev !== data.dignitaryHasMetGurudev ||
+              selectedDignitary.gurudev_meeting_date !== data.dignitaryGurudevMeetingDate ||
+              selectedDignitary.gurudev_meeting_location !== data.dignitaryGurudevMeetingLocation ||
+              selectedDignitary.gurudev_meeting_notes !== data.dignitaryGurudevMeetingNotes
             );
 
             if (hasChanges) {
@@ -371,6 +383,9 @@ export const AppointmentRequestForm: React.FC = () => {
                 state: data.dignitaryState,
                 city: data.dignitaryCity,
                 has_dignitary_met_gurudev: data.dignitaryHasMetGurudev,
+                gurudev_meeting_date: data.dignitaryGurudevMeetingDate,
+                gurudev_meeting_location: data.dignitaryGurudevMeetingLocation,
+                gurudev_meeting_notes: data.dignitaryGurudevMeetingNotes,
               };
 
               const response = await fetch(`http://localhost:8001/dignitaries/update/${data.selectedDignitaryId}`, {
@@ -403,6 +418,9 @@ export const AppointmentRequestForm: React.FC = () => {
               city: data.dignitaryCity,
               poc_relationship_type: data.pocRelationshipType,
               has_dignitary_met_gurudev: data.dignitaryHasMetGurudev,
+              gurudev_meeting_date: data.dignitaryGurudevMeetingDate,
+              gurudev_meeting_location: data.dignitaryGurudevMeetingLocation,
+              gurudev_meeting_notes: data.dignitaryGurudevMeetingNotes,
             };
 
             console.log('Creating dignitary with data:', dignitaryCreateData);
@@ -747,13 +765,6 @@ export const AppointmentRequestForm: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} md={6} lg={4}>
-                <FormControlLabel
-                  control={<Checkbox checked={dignitaryForm.watch('dignitaryHasMetGurudev')} onChange={(e) => dignitaryForm.setValue('dignitaryHasMetGurudev', e.target.checked)} />}
-                  label="Has Dignitary Met Gurudev?"
-                />
-              </Grid>
-              
               <Grid item xs={12}>
                 <TextField
                   fullWidth
@@ -853,8 +864,50 @@ export const AppointmentRequestForm: React.FC = () => {
                   )}
                 />
               </Grid>                  
+
+              <Grid item xs={12} md={6} lg={4}>
+                <FormControlLabel
+                  control={<Checkbox checked={dignitaryForm.watch('dignitaryHasMetGurudev')} onChange={(e) => dignitaryForm.setValue('dignitaryHasMetGurudev', e.target.checked)} />}
+                  label="Has Dignitary Met Gurudev?"
+                />
+              </Grid>
+
+              {dignitaryForm.watch('dignitaryHasMetGurudev') && (
+                <>
+                  <Grid item xs={12} md={6} lg={4}>
+                    <TextField
+                      fullWidth
+                      type="date"
+                      label="When did they meet Gurudev?"
+                      InputLabelProps={{ shrink: true }}
+                      {...dignitaryForm.register('dignitaryGurudevMeetingDate')}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6} lg={4}>
+                    <TextField
+                      fullWidth
+                      label="Where did they meet Gurudev?"
+                      InputLabelProps={{ shrink: true }}
+                      {...dignitaryForm.register('dignitaryGurudevMeetingLocation')}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      multiline
+                      rows={4}
+                      label="Additional notes from the meeting with Gurudev"
+                      InputLabelProps={{ shrink: true }}
+                      {...dignitaryForm.register('dignitaryGurudevMeetingNotes')}
+                    />
+                  </Grid>
+                </>
+              )}
+
+
             </Grid>
           </Box>
+
         );
 
       case 2:
