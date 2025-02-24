@@ -57,6 +57,8 @@ interface Appointment {
   location?: Location;
   requester_notes_to_secretariat: string;
   status: string;
+  sub_status: string;
+  appointment_type: string;
   created_at: string;
   updated_at: string;
   secretariat_notes_to_requester: string;

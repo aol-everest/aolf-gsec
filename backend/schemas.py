@@ -1,7 +1,7 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional, Dict, Any
 from datetime import datetime, date
-from models.appointment import AppointmentStatus, AppointmentTimeOfDay
+from models.appointment import AppointmentStatus, AppointmentTimeOfDay, AppointmentSubStatus, AppointmentType
 from models.dignitary import HonorificTitle, PrimaryDomain
 from models.dignitaryPointOfContact import RelationshipType
 
@@ -157,6 +157,8 @@ class Appointment(AppointmentBase):
     requester_notes_to_secretariat: Optional[str] = None
     dignitary: Dignitary
     status: AppointmentStatus
+    sub_status: AppointmentSubStatus
+    appointment_type: Optional[AppointmentType] = None
     created_at: datetime
     updated_at: datetime
     appointment_date: Optional[date] = None
@@ -176,6 +178,8 @@ class AppointmentAdminUpdate(AppointmentBase):
     appointment_time: Optional[str] = None
     location: Optional[str] = None
     status: Optional[AppointmentStatus] = None
+    sub_status: Optional[AppointmentSubStatus] = None
+    appointment_type: Optional[AppointmentType] = None
     secretariat_meeting_notes: Optional[str] = None
     secretariat_follow_up_actions: Optional[str] = None
     secretariat_notes_to_requester: Optional[str] = None
@@ -194,6 +198,8 @@ class AppointmentAdmin(AppointmentBase):
     dignitary: DignitaryAdmin
     requester: User
     status: AppointmentStatus
+    sub_status: Optional[AppointmentSubStatus] = None
+    appointment_type: Optional[AppointmentType] = None
     appointment_date: Optional[date] = None
     appointment_time: Optional[str] = None
     created_at: datetime

@@ -1,6 +1,6 @@
 import { Paper, Typography, Box, Chip, IconButton, Grid, Theme, CardContent, Card, useMediaQuery } from "@mui/material"
 import { formatDate } from "../utils/dateUtils"
-import { getStatusChipSx } from "../utils/formattingUtils"
+import { getStatusChipSx, getSubStatusChipSx } from "../utils/formattingUtils"
 import { EmailIconSmall, ContactPhoneIconSmall, WorkIcon } from "./icons"
 import EditIcon from "@mui/icons-material/Edit"
 import { Appointment } from "../models/types"
@@ -40,17 +40,21 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                     </Typography>
                     </Box>
                     <Box sx={{ position: 'absolute', top: 25, right: 25 }}>
-                    <Chip 
-                        label={appointment.status} 
-                        sx={getStatusChipSx(appointment.status, theme)}
-                    />
-                    <IconButton 
-                        color="primary"
-                        onClick={() => handleEdit(appointment.id)}
-                        sx={{ ml: 1, mt: 1 }}
-                    >
-                        <EditIcon />
-                    </IconButton>
+                        <Chip 
+                            label={appointment.status} 
+                            sx={getStatusChipSx(appointment.status, theme)}
+                        />
+                        <Chip 
+                            label={appointment.sub_status}
+                            sx={{ ml: 1, ...getSubStatusChipSx(appointment.sub_status, theme) }}
+                        />
+                        <IconButton 
+                            color="primary"
+                            onClick={() => handleEdit(appointment.id)}
+                            sx={{ ml: 1, mt: 1 }}
+                        >
+                            <EditIcon />
+                        </IconButton>
                     </Box>          
                 </Paper>
 

@@ -46,7 +46,7 @@ def get_appointment_summary(appointment: Appointment) -> str:
         <p><strong>Purpose:</strong> {appointment.purpose}</p>
         <p><strong>Preferred Date:</strong> {appointment.preferred_date}</p>
         <p><strong>Preferred Time:</strong> {appointment.preferred_time_of_day or 'Not specified'}</p>
-        <p><strong>Location:</strong> {appointment.location.name} - {appointment.location.city}, {appointment.location.state}</p>
+        <p><strong>Location:</strong> {appointment.location.name + ' - ' + appointment.location.city + ', ' + appointment.location.state if appointment.location else 'Not specified'}</p>
         <p><strong>Status:</strong> {appointment.status}</p>
         <p><strong>Requester Notes:</strong> {appointment.requester_notes_to_secretariat}</p>
     """

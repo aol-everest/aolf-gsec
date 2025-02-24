@@ -27,6 +27,8 @@ interface AppointmentFormData {
   appointment_time: string;
   location_id: number | null;
   status: string;
+  sub_status: string;
+  appointment_type: string;
   requester_notes_to_secretariat: string;
   secretariat_follow_up_actions: string;
   secretariat_meeting_notes: string;
@@ -51,6 +53,24 @@ const AppointmentEdit: React.FC = () => {
     },
   });
 
+  // Fetch sub-status options
+  const { data: subStatusOptions = [] } = useQuery<string[]>({
+    queryKey: ['sub-status-options'],
+    queryFn: async () => {
+      const { data } = await api.get<string[]>('/appointments/sub-status-options');
+      return data;
+    },
+  });
+
+  // Fetch appointment type options
+  const { data: appointmentTypeOptions = [] } = useQuery<string[]>({
+    queryKey: ['type-options'],
+    queryFn: async () => {
+      const { data } = await api.get<string[]>('/appointments/type-options');
+      return data;
+    },
+  });
+
   // Fetch locations
   const { data: locations = [] } = useQuery<Location[]>({
     queryKey: ['locations'],
@@ -70,6 +90,8 @@ const AppointmentEdit: React.FC = () => {
         appointment_time: data.appointment_time || data.preferred_time_of_day,
         location_id: data.location_id || null,
         status: data.status,
+        sub_status: data.sub_status,
+        appointment_type: data.appointment_type,
         requester_notes_to_secretariat: data.requester_notes_to_secretariat,
         secretariat_follow_up_actions: data.secretariat_follow_up_actions,
         secretariat_meeting_notes: data.secretariat_meeting_notes,
@@ -221,6 +243,49 @@ const AppointmentEdit: React.FC = () => {
                           {statusOptions.map((status) => (
                             <MenuItem key={status} value={status}>
                               {status}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    )}
+                  />
+                </Grid>
+
+                {/* Sub-Status */}
+                <Grid item xs={12} md={6} lg={4}>
+                  <Controller
+                    name="sub_status"
+                    control={control}
+                    render={({ field }) => (
+                      <FormControl fullWidth>
+                        <InputLabel>Sub-Status</InputLabel>
+                        <Select {...field} label="Sub-Status">
+                          {subStatusOptions.map((subStatus) => (
+                            <MenuItem key={subStatus} value={subStatus}>
+                              {subStatus}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    )}
+                  />
+                </Grid>
+
+                {/* Appointment Type */}
+                <Grid item xs={12} md={6} lg={4}>
+                  <Controller
+                    name="appointment_type"
+                    control={control}
+                    render={({ field }) => (
+                      <FormControl fullWidth>
+                        <InputLabel>Appointment Type</InputLabel>
+                        <Select {...field} label="Appointment Type">
+                          <MenuItem value="">
+                            <em>None</em>
+                          </MenuItem>
+                          {appointmentTypeOptions.map((type) => (
+                            <MenuItem key={type} value={type}>
+                              {type}
                             </MenuItem>
                           ))}
                         </Select>

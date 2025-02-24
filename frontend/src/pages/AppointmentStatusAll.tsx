@@ -30,7 +30,7 @@ import DeleteIcon from '@mui/icons-material/DeleteOutlined';
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Close';
 import Layout from '../components/Layout';
-import { getStatusChipSx } from '../utils/formattingUtils';
+import { getStatusChipSx, getSubStatusChipSx } from '../utils/formattingUtils';
 import { useTheme } from '@mui/material/styles';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
@@ -80,6 +80,24 @@ const AppointmentStatusAll: React.FC = () => {
     queryKey: ['status-options'],
     queryFn: async () => {
       const { data } = await api.get<string[]>('/appointments/status-options');
+      return data;
+    },
+  });
+
+  // Fetch sub-status options
+  const { data: subStatusOptions = [] } = useQuery({
+    queryKey: ['sub-status-options'],
+    queryFn: async () => {
+      const { data } = await api.get<string[]>('/appointments/sub-status-options');
+      return data;
+    },
+  });
+
+  // Fetch appointment type options
+  const { data: appointmentTypeOptions = [] } = useQuery({
+    queryKey: ['appointment-type-options'],
+    queryFn: async () => {
+      const { data } = await api.get<string[]>('/appointments/type-options');
       return data;
     },
   });
@@ -305,9 +323,52 @@ const AppointmentStatusAll: React.FC = () => {
       ),
     },
     {
+      field: 'sub_status',
+      headerName: 'Sub-Status',
+      width: 130,
+      flex: 0.81,
+      editable: true,
+      type: 'singleSelect',
+      valueOptions: subStatusOptions,
+      renderCell: (params: GridRenderCellParams<Appointment>) => (
+        <Chip
+          label={params.value}
+          sx={getSubStatusChipSx(params.value as string, theme)}
+          size="small"
+        />
+      ),
+      renderEditCell: (params: GridRenderEditCellParams<Appointment>) => (
+        <StatusEditCell
+          {...params}
+          statusOptions={subStatusOptions}
+        />
+      ),
+    },
+    {
+      field: 'appointment_type',
+      headerName: 'Type',
+      width: 130,
+      flex: 0.81,
+      editable: true,
+      type: 'singleSelect',
+      valueOptions: appointmentTypeOptions,
+      renderCell: (params: GridRenderCellParams<Appointment>) => (
+        <Chip
+          label={params.value}
+        />
+      ),
+      renderEditCell: (params: GridRenderEditCellParams<Appointment>) => (
+        <StatusEditCell
+          {...params}
+          statusOptions={appointmentTypeOptions}
+        />
+      ),
+    },
+    {
       field: 'created_at',
       headerName: 'Requested On',
       width: 110,
+      flex: 0.5,
       editable: false,
       valueGetter: (value, row, column, apiRef) => {
         return formatDate(row.created_at, true);
@@ -317,6 +378,7 @@ const AppointmentStatusAll: React.FC = () => {
       field: 'updated_at',
       headerName: 'Last Updated',
       width: 110,
+      flex: 0.5,
       editable: false,
       valueGetter: (value, row, column, apiRef) => {
         return formatDate(row.updated_at, true);
@@ -348,7 +410,7 @@ const AppointmentStatusAll: React.FC = () => {
               onRowModesModelChange={handleRowModesModelChange}
               onRowEditStop={handleRowEditStop}
               processRowUpdate={processRowUpdate}
-              defaultVisibleColumns={['id', 'dignitary', 'preferred_date_and_time', 'appointment_date', 'appointment_time', 'location', 'status', 'has_dignitary_met_gurudev']}
+              defaultVisibleColumns={['id', 'dignitary', 'has_dignitary_met_gurudev', 'preferred_date_and_time', 'appointment_date', 'appointment_time', 'status', 'sub_status']}
               initialState={{
                 pagination: {
                   paginationModel: {

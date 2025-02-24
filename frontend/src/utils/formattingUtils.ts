@@ -33,3 +33,13 @@ export const getStatusChipSx = (status: string, theme: Theme) => {
         fontSize: 'inherit',
     };
 };
+
+export const getSubStatusChipSx = (subStatus: string, theme: Theme) => {
+    return {
+        bgcolor: alpha(getStatusColor(subStatus, theme), 0.081),
+        color: getStatusColor(subStatus, theme),
+        fontWeight: 500,
+        borderRadius: '10px',
+        fontSize: 'inherit',
+    };
+};

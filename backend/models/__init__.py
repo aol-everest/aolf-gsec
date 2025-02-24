@@ -2,7 +2,7 @@ from .user import User, UserRole
 from .dignitary import Dignitary, HonorificTitle, PrimaryDomain
 from .dignitaryPointOfContact import DignitaryPointOfContact, RelationshipType
 from .location import Location
-from .appointment import Appointment, AppointmentStatus, AppointmentTimeOfDay
+from .appointment import Appointment, AppointmentStatus, AppointmentTimeOfDay, AppointmentSubStatus, AppointmentType
 from database import Base
 
 __all__ = [
@@ -17,4 +17,6 @@ __all__ = [
     'Appointment',
     'AppointmentStatus',
     'AppointmentTimeOfDay',
+    'AppointmentSubStatus',
+    'AppointmentType',
 ] 

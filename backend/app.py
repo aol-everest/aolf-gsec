@@ -493,6 +493,16 @@ async def get_appointment_status_options():
     """Get all possible appointment status options"""
     return [status.value for status in models.AppointmentStatus]
 
+@app.get("/appointments/sub-status-options", response_model=List[str])
+async def get_appointment_sub_status_options():
+    """Get all possible appointment sub-status options"""
+    return [sub_status.value for sub_status in models.AppointmentSubStatus]
+
+@app.get("/appointments/type-options", response_model=List[str])
+async def get_appointment_type_options():
+    """Get all possible appointment type options"""
+    return [app_type.value for app_type in models.AppointmentType]
+
 @app.get("/dignitaries/relationship-type-options", response_model=List[str])
 async def get_relationship_type_options():
     """Get all possible relationship type options"""

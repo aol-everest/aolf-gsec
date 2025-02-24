@@ -16,6 +16,27 @@ class AppointmentStatus(str, enum.Enum):
     FOLLOW_UP = "To Be Rescheduled"
     CANCELLED = "Cancelled"
 
+class AppointmentSubStatus(str, enum.Enum):
+    """Appointment sub-status enum with proper case values"""
+    CANCELLED = "Cancelled"
+    DARSHAN_LINE = "Darshan line / public event"
+    FOLLOW_UP_REQUIRED = "Follow-up required"
+    LOW_PRIORITY = "Low priority"
+    MET_GURUDEV = "Met Gurudev already"
+    NEED_MORE_INFO = "Need more info"
+    NEED_RESCHEDULE = "Need to reschedule"
+    NO_FURTHER_ACTION = "No further action"
+    NOT_REVIEWED = "Not yet reviewed"
+    SHORTLISTED = "Shortlisted"
+    UNDER_CONSIDERATION = "Under consideration"
+    UNSCHEDULED = "Unscheduled"
+    SCHEDULED = "Scheduled"
+
+class AppointmentType(str, enum.Enum):
+    """Appointment type enum with proper case values"""
+    PRIVATE = "Private"
+    SMALL_GROUP = "Small group"
+
 class AppointmentTimeOfDay(str, enum.Enum):
     """Appointment time enum with proper case values"""
     MORNING = "Morning"
@@ -36,6 +57,8 @@ class Appointment(Base):
     location_id = Column(Integer, ForeignKey("locations.id"))
     requester_notes_to_secretariat = Column(Text)
     status = Column(Enum(AppointmentStatus), nullable=False, default=AppointmentStatus.PENDING)
+    sub_status = Column(Enum(AppointmentSubStatus), nullable=True, default=AppointmentSubStatus.NOT_REVIEWED)
+    appointment_type = Column(Enum(AppointmentType), nullable=True)
     secretariat_meeting_notes = Column(Text)
     secretariat_follow_up_actions = Column(Text)
     secretariat_notes_to_requester = Column(Text)
