@@ -161,6 +161,21 @@ const GenericDataGrid: React.FC<GenericDataGridProps> = ({
 
   const densitySettings = getDensitySettings(currentDensity);
 
+  const getRowHeight = (params: GridRowHeightParams) => {
+    const densityRowHeights = {
+      compact: 56,
+      standard: 100,
+      comfortable: 130,
+    };
+
+    // console.log(params);
+    // console.log(currentDensity);
+    // console.log(densityRowHeights[currentDensity]);
+  
+    // return Math.min((params.densityFactor || 1) * 100, params.model.size || 100);
+    return Math.min(densityRowHeights[currentDensity] || 100, params.model.size || 100);
+  };
+
   return (
     <Paper sx={{ width: '100%', overflow: 'hidden' }}>
       <Box 
@@ -170,7 +185,8 @@ const GenericDataGrid: React.FC<GenericDataGridProps> = ({
         }}
       >
         <DataGrid
-          getRowHeight={() => 'auto'}
+          // getRowHeight={() => 'auto'}
+          getRowHeight={getRowHeight}
           rows={rows}
           columns={columns}
           loading={loading}
