@@ -239,3 +239,20 @@ class DignitaryPointOfContact(DignitaryPointOfContactBase):
     class Config:
         orm_mode = True
 
+class AppointmentAttachmentBase(BaseModel):
+    file_name: str
+    file_type: str
+
+class AppointmentAttachmentCreate(AppointmentAttachmentBase):
+    appointment_id: int
+
+class AppointmentAttachment(AppointmentAttachmentBase):
+    id: int
+    appointment_id: int
+    file_path: str
+    uploaded_by: int
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
+

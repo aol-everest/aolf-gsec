@@ -1,7 +1,7 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Security, Request
+from fastapi import FastAPI, Depends, HTTPException, status, Security, Request, File, UploadFile
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from typing import Optional, List, Callable
 from datetime import datetime, timedelta
@@ -17,6 +17,8 @@ from database import SessionLocal, engine
 import models
 import schemas
 from utils.email_notifications import notify_appointment_creation, notify_appointment_update
+from utils.s3 import upload_file, get_file
+import io
 
 # Load environment variables
 load_dotenv()
@@ -600,3 +602,101 @@ async def get_location_for_user(
     if not location:
         raise HTTPException(status_code=404, detail="Location not found")
     return location
+
+@app.post("/appointments/{appointment_id}/attachments", response_model=schemas.AppointmentAttachment)
+async def upload_appointment_attachment(
+    appointment_id: int,
+    file: UploadFile = File(...),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Upload an attachment for an appointment"""
+    # Check if appointment exists and user has access
+    appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    
+    if current_user.role != models.UserRole.SECRETARIAT and appointment.requester_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to upload attachments for this appointment")
+
+    # Upload file to S3
+    file_content = await file.read()
+    s3_path = upload_file(
+        file_content,
+        f"{appointment_id}/{file.filename}",
+        file.content_type
+    )
+
+    # Create attachment record
+    attachment = models.AppointmentAttachment(
+        appointment_id=appointment_id,
+        file_name=file.filename,
+        file_path=s3_path,
+        file_type=file.content_type,
+        uploaded_by=current_user.id
+    )
+    db.add(attachment)
+    db.commit()
+    db.refresh(attachment)
+
+    return attachment
+
+@app.get("/appointments/{appointment_id}/attachments", response_model=List[schemas.AppointmentAttachment])
+async def get_appointment_attachments(
+    appointment_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all attachments for an appointment"""
+    appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    
+    if current_user.role != models.UserRole.SECRETARIAT and appointment.requester_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to view attachments for this appointment")
+
+    # Base query
+    query = db.query(models.AppointmentAttachment).filter(
+        models.AppointmentAttachment.appointment_id == appointment_id
+    )
+    
+    # Add uploaded_by filter only for non-SECRETARIAT users
+    if current_user.role != models.UserRole.SECRETARIAT:
+        query = query.filter(models.AppointmentAttachment.uploaded_by == current_user.id)
+    
+    attachments = query.all()
+    return attachments
+
+@app.get("/appointments/attachments/{attachment_id}")
+async def get_attachment_file(
+    attachment_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get a specific attachment file"""
+    # Base query
+    query = db.query(models.AppointmentAttachment).filter(
+        models.AppointmentAttachment.id == attachment_id
+    )
+    
+    # Add uploaded_by filter only for non-SECRETARIAT users
+    if current_user.role != models.UserRole.SECRETARIAT:
+        query = query.filter(models.AppointmentAttachment.uploaded_by == current_user.id)
+        
+    attachment = query.first()
+    if not attachment:
+        raise HTTPException(status_code=404, detail="Attachment not found")
+
+    appointment = db.query(models.Appointment).filter(
+        models.Appointment.id == attachment.appointment_id
+    ).first()
+    
+    if current_user.role != models.UserRole.SECRETARIAT and appointment.requester_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this attachment")
+
+    file_data = get_file(attachment.file_path)
+    return StreamingResponse(
+        io.BytesIO(file_data['file_data']),
+        media_type=file_data['content_type'],
+        headers={"Content-Disposition": f"attachment; filename={attachment.file_name}"}
+    )
