@@ -30,5 +30,6 @@ export const getStatusChipSx = (status: string, theme: Theme) => {
         color: getStatusColor(status, theme),
         fontWeight: 500,
         borderRadius: '10px',
+        fontSize: 'inherit',
     };
 };

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   DataGrid,
   GridColDef,
@@ -7,6 +7,7 @@ import {
   GridToolbarDensitySelector,
   GridToolbarContainer,
   GridToolbarColumnsButton,
+  GridRowHeightParams,
 } from '@mui/x-data-grid';
 import { Box, Paper } from '@mui/material';
 
@@ -21,12 +22,7 @@ export interface GenericDataGridProps extends Omit<DataGridProps, 'rows' | 'colu
 
 const GenericDataGridStyles = {
   '& .MuiDataGrid-cell': {
-    whiteSpace: 'normal',
-    lineHeight: 'normal',
     padding: '8px',
-  },
-  '& .MuiDataGrid-row': {
-    alignItems: 'flex-start',
   },
   '& .MuiDataGrid-columnHeader .MuiDataGrid-columnHeaderTitle': {
     overflow: 'visible',
@@ -34,8 +30,8 @@ const GenericDataGridStyles = {
     whiteSpace: 'normal',
     display: 'block'
   },
-  '& .MuiDataGrid-columnHeaders': {
-    minHeight: '54px !important',
+  '& .MuiDataGrid-columnHeader': {
+    minHeight: '56px !important',
   },
   '& .MuiDataGrid-virtualScroller': {
     overflow: 'auto',
@@ -74,12 +70,75 @@ const GenericDataGrid: React.FC<GenericDataGridProps> = ({
   loading = false,
   containerHeight = 800,
   initialState,
-  defaultDensity = 'comfortable',
+  defaultDensity = 'standard',
   defaultVisibleColumns,
   slots,
   slotProps,
   ...props
 }) => {
+  const [currentDensity, setCurrentDensity] = useState<GridDensity>(defaultDensity);
+
+  const getDensitySettings = (density: GridDensity) => {
+    switch (density) {
+      case 'comfortable':
+        return {
+          sx: {
+            '& .MuiDataGrid-cell': {
+              whiteSpace: 'normal !important',
+              overflow: 'hidden',
+              textOverflow: 'wrap',
+              fontSize: '1rem',
+              lineHeight: '1.5',
+              padding: '12px 8px',
+              display: 'flex',
+              alignItems: 'center',
+            },
+            '& .MuiDataGrid-row': {              
+              maxHeight: '130px !important',
+            },
+          },
+        };
+      case 'standard':
+        return {
+          sx: {
+            '& .MuiDataGrid-cell': {
+              whiteSpace: 'normal !important',
+              overflow: 'hidden',
+              textOverflow: 'wrap',
+              fontSize: '0.875rem',
+              lineHeight: '1.43',
+              padding: '8px',
+              display: 'flex',
+              alignItems: 'center',
+            },
+            '& .MuiDataGrid-row': {
+              maxHeight: '100px !important',
+            },
+          },
+        };
+      case 'compact':
+        return {
+          sx: {
+            '& .MuiDataGrid-cell': {
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              fontSize: '0.81rem',
+              lineHeight: '1.33',
+              padding: '6px',
+              display: 'flex',
+              alignItems: 'center',
+            },
+            '& .MuiDataGrid-row': {
+              maxHeight: '56px !important',
+            },
+          },
+        };
+      default:
+        return {};
+    }
+  };
+
   const mergedInitialState = {
     pagination: {
       paginationModel: {
@@ -100,6 +159,8 @@ const GenericDataGrid: React.FC<GenericDataGridProps> = ({
     ...initialState,
   };
 
+  const densitySettings = getDensitySettings(currentDensity);
+
   return (
     <Paper sx={{ width: '100%', overflow: 'hidden' }}>
       <Box 
@@ -109,6 +170,7 @@ const GenericDataGrid: React.FC<GenericDataGridProps> = ({
         }}
       >
         <DataGrid
+          getRowHeight={() => 'auto'}
           rows={rows}
           columns={columns}
           loading={loading}
@@ -121,8 +183,11 @@ const GenericDataGrid: React.FC<GenericDataGridProps> = ({
             toolbar: CustomToolbar,
             ...slots,
           }}
+          onDensityChange={(newDensity) => setCurrentDensity(newDensity)}
+          {...densitySettings}
           sx={{
             ...GenericDataGridStyles,
+            ...densitySettings.sx,
             ...(props.sx || {}),
           }}
           {...props}
