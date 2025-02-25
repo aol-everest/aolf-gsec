@@ -622,7 +622,7 @@ async def upload_appointment_attachment(
 
     # Upload file to S3
     file_content = await file.read()
-    s3_path = upload_file(
+    upload_result = upload_file(
         file_content,
         f"{appointment_id}/{file.filename}",
         file.content_type,
@@ -633,7 +633,7 @@ async def upload_appointment_attachment(
     attachment = models.AppointmentAttachment(
         appointment_id=appointment_id,
         file_name=file.filename,
-        file_path=s3_path,
+        file_path=upload_result['s3_path'],
         file_type=file.content_type,
         uploaded_by=current_user.id
     )
@@ -697,6 +697,8 @@ async def get_attachment_file(
         raise HTTPException(status_code=403, detail="Not authorized to access this attachment")
 
     file_data = get_file(attachment.file_path)
+    
+    # Use the original filename from the database for the Content-Disposition header
     return StreamingResponse(
         io.BytesIO(file_data['file_data']),
         media_type=file_data['content_type'],

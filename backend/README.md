@@ -86,17 +86,30 @@ The application supports uploading and retrieving attachments for appointments. 
 - `GET /appointments/{appointment_id}/attachments`: Get all attachments for an appointment
 - `GET /appointments/attachments/{attachment_id}`: Get a specific attachment file
 
-Attachments are stored in S3 with the path format: `{environment}/attachments/{entity_type}/{entity_id}/{filename}`
+### File Storage Strategy
 
-Where:
-- `environment`: The deployment environment (dev, uat, prod)
-- `entity_type`: The type of entity (appointments, dignitaries)
-- `entity_id`: The ID of the entity (appointment_id, dignitary_id)
-- `filename`: The original filename of the attachment
+Attachments are stored in S3 with the following characteristics:
 
-For example:
-- `uat/attachments/appointments/123/document.pdf`
-- `prod/attachments/dignitaries/456/profile.jpg`
+1. **Unique Filenames**: Each uploaded file is assigned a unique filename using a combination of UUID and timestamp to prevent collisions, even if multiple files with the same name are uploaded.
+
+2. **Original Filename Preservation**: The original filename is preserved in both the database and as metadata in S3, ensuring that when users download the file, they receive it with the original filename.
+
+3. **Path Structure**: Files are stored with the path format: `{environment}/attachments/{entity_type}/{entity_id}/{unique_filename}`
+
+   Where:
+   - `environment`: The deployment environment (dev, uat, prod)
+   - `entity_type`: The type of entity (appointments, dignitaries)
+   - `entity_id`: The ID of the entity (appointment_id, dignitary_id)
+   - `unique_filename`: A generated unique filename that includes a UUID and timestamp
+
+   For example:
+   - `uat/attachments/appointments/123/abc123def456_1612345678.pdf`
+   - `prod/attachments/dignitaries/456/def789abc012_1612345679.jpg`
+
+This approach ensures that:
+- Files never overwrite each other, even if they have the same original name
+- Users always download files with their original, human-readable filenames
+- The system maintains a clear organizational structure in S3
 
 ## Database Migrations
 
