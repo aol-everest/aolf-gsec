@@ -26,6 +26,7 @@ import {
   Chip,
   Checkbox,
   CircularProgress,
+  LinearProgress,
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import LocationAutocomplete from './LocationAutocomplete';
@@ -122,6 +123,11 @@ export const AppointmentRequestForm: React.FC = () => {
   const theme = useTheme();
   const api = useApi();
   const { enqueueSnackbar } = useSnackbar();
+  // Add state for file attachments
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Fetch options from API
   const { data: primaryDomains = [], isLoading: isLoadingDomains } = useQuery<string[]>({
@@ -479,10 +485,20 @@ export const AppointmentRequestForm: React.FC = () => {
             throw new Error('Failed to create appointment');
           }
           const appointmentResponse = await response.json();
+          
+          // Upload attachments if any
+          if (selectedFiles.length > 0) {
+            setIsUploading(true);
+            await uploadAttachments(appointmentResponse.id);
+          }
+          
           setSubmittedAppointment(appointmentResponse);
           setShowConfirmation(true);
+          setIsUploading(false);
         } catch (error) {
           console.error('Error creating appointment:', error);
+          setIsUploading(false);
+          enqueueSnackbar('Failed to create appointment. Please try again.', { variant: 'error' });
         }
       })();
     }
@@ -490,6 +506,49 @@ export const AppointmentRequestForm: React.FC = () => {
 
   const handleBack = () => {
     setActiveStep((prevStep) => prevStep - 1);
+  };
+
+  // Add function to handle file selection
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) {
+      const filesArray = Array.from(event.target.files);
+      setSelectedFiles(prev => [...prev, ...filesArray]);
+    }
+  };
+
+  // Add function to remove a file from the selected files
+  const handleRemoveFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Add function to upload attachments
+  const uploadAttachments = async (appointmentId: number) => {
+    try {
+      let completed = 0;
+      
+      for (const file of selectedFiles) {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        // Upload without progress tracking to avoid type issues
+        await api.post(`/appointments/${appointmentId}/attachments`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          }
+        });
+        
+        completed++;
+        // Update progress based on completed files
+        setUploadProgress((completed / selectedFiles.length) * 100);
+      }
+      
+      enqueueSnackbar(`Successfully uploaded ${selectedFiles.length} attachment(s)`, { variant: 'success' });
+      return true;
+    } catch (error) {
+      console.error('Error uploading attachments:', error);
+      enqueueSnackbar('Failed to upload some attachments', { variant: 'error' });
+      return false;
+    }
   };
 
   const renderStepContent = (step: number) => {
@@ -1007,7 +1066,92 @@ export const AppointmentRequestForm: React.FC = () => {
                   helperText={appointmentForm.formState.errors.requesterNotesToSecretariat?.message}
                 />
               </Grid>
+              
+              {/* Add attachment section */}
+              <Grid item xs={12}>
+                <Divider sx={{ my: 2 }} />
+                <Typography variant="h6" gutterBottom>
+                  Attachments
+                </Typography>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  Upload relevant documents or images for this appointment request.
+                </Typography>
+                
+                <Box sx={{ mt: 2 }}>
+                  <input
+                    type="file"
+                    multiple
+                    onChange={handleFileSelect}
+                    style={{ display: 'none' }}
+                    ref={fileInputRef}
+                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+                  />
+                  <Button
+                    variant="outlined"
+                    onClick={() => fileInputRef.current?.click()}
+                    startIcon={<Box component="span" sx={{ fontSize: '1.25rem' }}>📎</Box>}
+                  >
+                    Select Files
+                  </Button>
+                </Box>
+                
+                {selectedFiles.length > 0 && (
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Selected Files ({selectedFiles.length})
+                    </Typography>
+                    <Paper variant="outlined" sx={{ p: 2 }}>
+                      {selectedFiles.map((file, index) => (
+                        <Box 
+                          key={index} 
+                          sx={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center',
+                            py: 1,
+                            borderBottom: index < selectedFiles.length - 1 ? '1px solid #eee' : 'none'
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <Box component="span" sx={{ mr: 1, fontSize: '1.25rem' }}>
+                              {file.type.includes('image') ? '🖼️' : 
+                               file.type.includes('pdf') ? '📄' : 
+                               file.type.includes('word') ? '📝' : 
+                               file.type.includes('excel') ? '📊' : 
+                               file.type.includes('presentation') ? '📽️' : '📁'}
+                            </Box>
+                            <Box>
+                              <Typography variant="body2" noWrap sx={{ maxWidth: '300px' }}>
+                                {file.name}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {(file.size / 1024).toFixed(1)} KB
+                              </Typography>
+                            </Box>
+                          </Box>
+                          <Button 
+                            size="small" 
+                            color="error" 
+                            onClick={() => handleRemoveFile(index)}
+                          >
+                            Remove
+                          </Button>
+                        </Box>
+                      ))}
+                    </Paper>
+                  </Box>
+                )}
+              </Grid>
             </Grid>
+            
+            {isUploading && (
+              <Box sx={{ width: '100%', mt: 2 }}>
+                <Typography variant="body2" gutterBottom>
+                  Uploading attachments... {uploadProgress.toFixed(0)}%
+                </Typography>
+                <LinearProgress variant="determinate" value={uploadProgress} />
+              </Box>
+            )}
           </Box>
         );
 
@@ -1083,6 +1227,13 @@ export const AppointmentRequestForm: React.FC = () => {
               <Grid item xs={12}>
                 <Typography variant="body1">
                   <strong>Notes to Secretariat:</strong> {submittedAppointment.requester_notes_to_secretariat}
+                </Typography>
+              </Grid>
+            )}
+            {selectedFiles.length > 0 && (
+              <Grid item xs={12}>
+                <Typography variant="body1">
+                  <strong>Attachments:</strong> {selectedFiles.length} file(s) uploaded
                 </Typography>
               </Grid>
             )}
