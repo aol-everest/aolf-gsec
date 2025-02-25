@@ -78,7 +78,7 @@ def generate_thumbnail(image_data: bytes, content_type: str) -> bytes:
     - content_type: The MIME type of the image
     
     Returns:
-    - The binary content of the thumbnail
+    - The binary content of the thumbnail or None if generation fails
     """
     try:
         # Open the image using PIL
@@ -108,8 +108,11 @@ def generate_thumbnail(image_data: bytes, content_type: str) -> bytes:
         thumb_buffer.seek(0)
         return thumb_buffer.getvalue()
     except Exception as e:
-        # If thumbnail generation fails, return None
+        # Log detailed error information but don't fail the upload
         print(f"Error generating thumbnail: {str(e)}")
+        print(f"Content type: {content_type}")
+        print(f"Image data size: {len(image_data)} bytes")
+        # Return None to indicate thumbnail generation failed
         return None
 
 def upload_file(file_data: bytes, file_name: str, content_type: str, entity_type: str = "appointments") -> dict:
@@ -154,24 +157,29 @@ def upload_file(file_data: bytes, file_name: str, content_type: str, entity_type
         
         # If the file is an image, generate and upload a thumbnail
         if is_image_file(content_type):
-            thumbnail_data = generate_thumbnail(file_data, content_type)
-            if thumbnail_data:
-                # Create a thumbnail path
-                thumbnail_filename = f"thumb_{unique_filename}"
-                thumbnail_path = f"{ENV}/attachments/{entity_type}/{base_path}/thumbnails/{thumbnail_filename}"
-                
-                # Upload the thumbnail
-                s3_client.put_object(
-                    Bucket=BUCKET_NAME,
-                    Key=thumbnail_path,
-                    Body=thumbnail_data,
-                    ContentType=content_type,
-                    Metadata={
-                        'original_filename': f"thumb_{original_filename}"
-                    }
-                )
-                
-                result['thumbnail_path'] = thumbnail_path
+            try:
+                thumbnail_data = generate_thumbnail(file_data, content_type)
+                if thumbnail_data:
+                    # Create a thumbnail path
+                    thumbnail_filename = f"thumb_{unique_filename}"
+                    thumbnail_path = f"{ENV}/attachments/{entity_type}/{base_path}/thumbnails/{thumbnail_filename}"
+                    
+                    # Upload the thumbnail
+                    s3_client.put_object(
+                        Bucket=BUCKET_NAME,
+                        Key=thumbnail_path,
+                        Body=thumbnail_data,
+                        ContentType=content_type,
+                        Metadata={
+                            'original_filename': f"thumb_{original_filename}"
+                        }
+                    )
+                    
+                    result['thumbnail_path'] = thumbnail_path
+            except Exception as e:
+                # Log the error but continue with the upload process
+                print(f"Error uploading thumbnail: {str(e)}")
+                # The main file was already uploaded successfully
         
         return result
     except ClientError as e:

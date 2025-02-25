@@ -14,21 +14,27 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
     const navigate = useNavigate();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [loading, setLoading] = useState(false);
+    const [attachments, setAttachments] = useState<AppointmentAttachment[]>(appointment.attachments || []);
     const api = useApi();
 
     // Fetch attachments if they're not already included in the appointment data
     useEffect(() => {
         const fetchAttachments = async () => {
-            if (!appointment.attachments) {
+            if (!appointment.attachments || appointment.attachments.length === 0) {
                 setLoading(true);
                 try {
                     const response = await api.get<AppointmentAttachment[]>(`/appointments/${appointment.id}/attachments`);
+                    setAttachments(response.data);
+                    // Also update the appointment object for consistency
                     appointment.attachments = response.data;
                 } catch (error) {
                     console.error("Error fetching attachments:", error);
                 } finally {
                     setLoading(false);
                 }
+            } else {
+                // If attachments are already in the appointment, use those
+                setAttachments(appointment.attachments);
             }
         };
         
@@ -209,8 +215,8 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                 </Paper>
 
                 {/* Attachments Section */}
-                {appointment.attachments && appointment.attachments.length > 0 && (
-                    <AttachmentSection attachments={appointment.attachments} />
+                {attachments && attachments.length > 0 && (
+                    <AttachmentSection attachments={attachments} />
                 )}
 
                 <Paper elevation={0} sx={{ p: 2, mb: 0, border: 'none', boxShadow: 'none', borderRadius: 0, bgcolor: 'transparent' }}>
