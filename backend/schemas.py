@@ -242,6 +242,7 @@ class DignitaryPointOfContact(DignitaryPointOfContactBase):
 class AppointmentAttachmentBase(BaseModel):
     file_name: str
     file_type: str
+    is_image: bool = False
 
 class AppointmentAttachmentCreate(AppointmentAttachmentBase):
     appointment_id: int
@@ -250,6 +251,7 @@ class AppointmentAttachment(AppointmentAttachmentBase):
     id: int
     appointment_id: int
     file_path: str
+    thumbnail_path: Optional[str] = None
     uploaded_by: int
     created_at: datetime
 

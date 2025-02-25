@@ -635,6 +635,8 @@ async def upload_appointment_attachment(
         file_name=file.filename,
         file_path=upload_result['s3_path'],
         file_type=file.content_type,
+        is_image=upload_result.get('is_image', False),
+        thumbnail_path=upload_result.get('thumbnail_path'),
         uploaded_by=current_user.id
     )
     db.add(attachment)
@@ -703,4 +705,45 @@ async def get_attachment_file(
         io.BytesIO(file_data['file_data']),
         media_type=file_data['content_type'],
         headers={"Content-Disposition": f"attachment; filename={attachment.file_name}"}
+    )
+
+@app.get("/appointments/attachments/{attachment_id}/thumbnail")
+async def get_attachment_thumbnail(
+    attachment_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get a thumbnail for an image attachment"""
+    # Base query
+    query = db.query(models.AppointmentAttachment).filter(
+        models.AppointmentAttachment.id == attachment_id
+    )
+    
+    # Add uploaded_by filter only for non-SECRETARIAT users
+    if current_user.role != models.UserRole.SECRETARIAT:
+        query = query.filter(models.AppointmentAttachment.uploaded_by == current_user.id)
+        
+    attachment = query.first()
+    if not attachment:
+        raise HTTPException(status_code=404, detail="Attachment not found")
+
+    if not attachment.is_image:
+        raise HTTPException(status_code=400, detail="Attachment is not an image")
+        
+    if not attachment.thumbnail_path:
+        raise HTTPException(status_code=404, detail="Thumbnail not available")
+
+    appointment = db.query(models.Appointment).filter(
+        models.Appointment.id == attachment.appointment_id
+    ).first()
+    
+    if current_user.role != models.UserRole.SECRETARIAT and appointment.requester_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this attachment")
+
+    file_data = get_file(attachment.thumbnail_path)
+    
+    # Return the thumbnail without Content-Disposition header to display inline
+    return StreamingResponse(
+        io.BytesIO(file_data['file_data']),
+        media_type=file_data['content_type']
     )

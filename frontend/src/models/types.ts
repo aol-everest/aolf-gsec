@@ -43,6 +43,18 @@ interface Dignitary {
   gurudev_meeting_notes?: string;
 }
 
+interface AppointmentAttachment {
+  id: number;
+  appointment_id: number;
+  file_name: string;
+  file_path: string;
+  file_type: string;
+  is_image: boolean;
+  thumbnail_path?: string;
+  uploaded_by: number;
+  created_at: string;
+}
+
 interface Appointment {
   id: number;
   dignitary_id: number;
@@ -69,6 +81,7 @@ interface Appointment {
   approved_by_user: User;
   last_updated_by: number;
   last_updated_by_user: User;
+  attachments?: AppointmentAttachment[];
 }
 
-export type { Location, User, Dignitary, Appointment };
+export type { Location, User, Dignitary, Appointment, AppointmentAttachment };

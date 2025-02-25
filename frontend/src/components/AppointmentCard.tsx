@@ -3,13 +3,37 @@ import { formatDate } from "../utils/dateUtils"
 import { getStatusChipSx, getSubStatusChipSx } from "../utils/formattingUtils"
 import { EmailIconSmall, ContactPhoneIconSmall, WorkIcon } from "./icons"
 import EditIcon from "@mui/icons-material/Edit"
-import { Appointment } from "../models/types"
+import { Appointment, AppointmentAttachment } from "../models/types"
 import { useNavigate } from "react-router-dom";
 import { AdminAppointmentsEditRoute } from "../config/routes";
+import { useEffect, useState } from "react";
+import AttachmentSection from "./AttachmentSection";
+import { useApi } from "../hooks/useApi";
 
 export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme }> = ({ appointment, theme }) => {
     const navigate = useNavigate();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const [loading, setLoading] = useState(false);
+    const api = useApi();
+
+    // Fetch attachments if they're not already included in the appointment data
+    useEffect(() => {
+        const fetchAttachments = async () => {
+            if (!appointment.attachments) {
+                setLoading(true);
+                try {
+                    const response = await api.get<AppointmentAttachment[]>(`/appointments/${appointment.id}/attachments`);
+                    appointment.attachments = response.data;
+                } catch (error) {
+                    console.error("Error fetching attachments:", error);
+                } finally {
+                    setLoading(false);
+                }
+            }
+        };
+        
+        fetchAttachments();
+    }, [appointment, api]);
 
     const handleEdit = (appointmentId: number) => {
         navigate(AdminAppointmentsEditRoute.path?.replace(':id', appointmentId.toString()) || '');
@@ -160,7 +184,7 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                 </Paper>
 
                 {/* Secretariat Notes */}
-                <Paper elevation={0} sx={{ p: 2, borderRadius: 2 }}>
+                <Paper elevation={0} sx={{ p: 2, mb: 3, borderRadius: 2 }}>
                     <Typography variant="h6" gutterBottom color="primary">
                     Secretariat Notes
                     </Typography>
@@ -183,6 +207,11 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                     )}
                     </Grid>
                 </Paper>
+
+                {/* Attachments Section */}
+                {appointment.attachments && appointment.attachments.length > 0 && (
+                    <AttachmentSection attachments={appointment.attachments} />
+                )}
 
                 <Paper elevation={0} sx={{ p: 2, mb: 0, border: 'none', boxShadow: 'none', borderRadius: 0, bgcolor: 'transparent' }}>
                     <Grid container spacing={2}>
