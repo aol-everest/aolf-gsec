@@ -34,26 +34,34 @@ This is the backend API for the AOLF GSEC (Global Secretariat) application.
 
 ## Environment Configuration
 
-The application uses environment-specific configuration files to manage settings for different environments:
+The application uses environment-specific configuration files:
 
-- `.env.dev` - Development environment settings
-- `.env.uat` - UAT (User Acceptance Testing) environment settings
-- `.env.prod` - Production environment settings
+- `.env.dev` - Development environment configuration
+- `.env.uat` - UAT environment configuration
+- `.env.prod` - Production environment configuration
 
-To specify which environment to use, set the `ENVIRONMENT` variable when starting the application:
+Environment variables are loaded from the appropriate file based on the `ENVIRONMENT` setting. The loading is centralized in the `config/environment.py` module, which is imported by other components that need access to environment variables.
+
+### Running the Application
+
+To run the application in a specific environment, use the `run.sh` script:
 
 ```bash
-# For development
-ENVIRONMENT=dev uvicorn app:app --reload
-
-# For UAT
-ENVIRONMENT=uat uvicorn app:app
-
-# For production
-ENVIRONMENT=prod uvicorn app:app
+./run.sh <environment> [port]
 ```
 
-If no `ENVIRONMENT` variable is set, the application defaults to `dev`.
+For example:
+```bash
+./run.sh dev      # Run in development environment on default port (8001)
+./run.sh uat 8002 # Run in UAT environment on port 8002
+./run.sh prod     # Run in production environment on default port (8001)
+```
+
+The script will:
+1. Check if the specified environment file exists
+2. Activate the virtual environment
+3. Check if the specified port is in use and try an alternative if needed
+4. Start the application with the appropriate environment settings
 
 ## AWS S3 Configuration
 

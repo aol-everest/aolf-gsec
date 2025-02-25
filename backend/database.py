@@ -2,10 +2,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
+from config import environment  # Import the centralized environment module
 
 # Get database URL from environment variable or use default
 POSTGRES_USER = os.getenv("POSTGRES_USER", "postgres")

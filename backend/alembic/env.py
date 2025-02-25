@@ -7,13 +7,12 @@ from alembic import context
 
 import os
 import sys
-from dotenv import load_dotenv
 
 # Add the parent directory to sys.path
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-# Load environment variables from .env file
-load_dotenv()
+# Import the centralized environment module
+from config import environment
 
 # Import your models
 from models import Base

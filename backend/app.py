@@ -9,27 +9,16 @@ import jwt
 from google.oauth2 import id_token
 from google.auth.transport import requests
 import os
-from dotenv import load_dotenv
 from jwt.exceptions import InvalidTokenError
 from functools import wraps
 import json
+from config import environment  # Import the centralized environment module
 from database import SessionLocal, engine
 import models
 import schemas
 from utils.email_notifications import notify_appointment_creation, notify_appointment_update
 from utils.s3 import upload_file, get_file
 import io
-
-# Load environment variables based on ENVIRONMENT setting
-env = os.getenv("ENVIRONMENT", "dev")
-env_file = f".env.{env}"
-
-if os.path.exists(env_file):
-    print(f"Loading environment from {env_file}")
-    load_dotenv(env_file)
-else:
-    print(f"Environment file {env_file} not found, falling back to .env")
-    load_dotenv()
 
 # Get environment variables
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
