@@ -55,7 +55,17 @@ The application supports uploading and retrieving attachments for appointments. 
 - `GET /appointments/{appointment_id}/attachments`: Get all attachments for an appointment
 - `GET /appointments/attachments/{attachment_id}`: Get a specific attachment file
 
-Attachments are stored in S3 with the path format: `appointment_attachments/{appointment_id}/{filename}`
+Attachments are stored in S3 with the path format: `{environment}/attachments/{entity_type}/{entity_id}/{filename}`
+
+Where:
+- `environment`: The deployment environment (dev, uat, prod)
+- `entity_type`: The type of entity (appointments, dignitaries)
+- `entity_id`: The ID of the entity (appointment_id, dignitary_id)
+- `filename`: The original filename of the attachment
+
+For example:
+- `uat/attachments/appointments/123/document.pdf`
+- `prod/attachments/dignitaries/456/profile.jpg`
 
 ## Database Migrations
 

@@ -11,13 +11,29 @@ s3_client = boto3.client(
 )
 
 BUCKET_NAME = os.getenv('S3_BUCKET_NAME')
+ENVIRONMENT = os.getenv('ENVIRONMENT', 'dev')  # Default to 'dev' if not specified
+
 if not BUCKET_NAME:
     raise HTTPException(status_code=500, detail="S3_BUCKET_NAME is not set")
 
-def upload_file(file_data: bytes, file_name: str, content_type: str) -> str:
-    """Upload a file to S3 and return its path"""
+def upload_file(file_data: bytes, file_name: str, content_type: str, entity_type: str = "appointments") -> str:
+    """
+    Upload a file to S3 and return its path
+    
+    Parameters:
+    - file_data: The binary content of the file
+    - file_name: The name of the file (should include entity ID as prefix)
+    - content_type: The MIME type of the file
+    - entity_type: The type of entity (appointments, dignitaries, etc.)
+    
+    Returns:
+    - S3 path where the file is stored
+    """
     try:
-        s3_path = f"appointment_attachments/{file_name}"
+        # Format: environment/attachments/entity_type/file_name
+        # Example: uat/attachments/appointments/123/document.pdf
+        s3_path = f"{ENVIRONMENT}/attachments/{entity_type}/{file_name}"
+        
         s3_client.put_object(
             Bucket=BUCKET_NAME,
             Key=s3_path,

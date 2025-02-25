@@ -624,7 +624,8 @@ async def upload_appointment_attachment(
     s3_path = upload_file(
         file_content,
         f"{appointment_id}/{file.filename}",
-        file.content_type
+        file.content_type,
+        entity_type="appointments"
     )
 
     # Create attachment record

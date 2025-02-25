@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -13,6 +13,15 @@ import {
   Select,
   MenuItem,
   CircularProgress,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  ListItemSecondaryAction,
+  IconButton,
+  Divider,
+  Card,
+  CardContent,
 } from '@mui/material';
 import Layout from '../components/Layout';
 import { useForm, Controller } from 'react-hook-form';
@@ -21,6 +30,14 @@ import { useSnackbar } from 'notistack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AdminAppointmentsReviewRoute } from '../config/routes';
 import { Appointment, Location } from '../models/types';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import DeleteIcon from '@mui/icons-material/Delete';
+import DownloadIcon from '@mui/icons-material/Download';
+import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+import ImageIcon from '@mui/icons-material/Image';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import DescriptionIcon from '@mui/icons-material/Description';
 
 interface AppointmentFormData {
   appointment_date: string;
@@ -35,12 +52,25 @@ interface AppointmentFormData {
   secretariat_notes_to_requester: string;
 }
 
+interface Attachment {
+  id: number;
+  appointment_id: number;
+  file_name: string;
+  file_path: string;
+  file_type: string;
+  uploaded_by: number;
+  created_at: string;
+}
+
 const AppointmentEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const api = useApi();
   const { enqueueSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
 
   const { control, handleSubmit, reset } = useForm<AppointmentFormData>();
 
@@ -102,6 +132,16 @@ const AppointmentEdit: React.FC = () => {
     enabled: !!id,
   });
 
+  // Fetch attachments
+  const { data: attachments = [], refetch: refetchAttachments } = useQuery<Attachment[]>({
+    queryKey: ['appointment-attachments', id],
+    queryFn: async () => {
+      const { data } = await api.get<Attachment[]>(`/appointments/${id}/attachments`);
+      return data;
+    },
+    enabled: !!id,
+  });
+
   // Update appointment mutation
   const updateAppointmentMutation = useMutation({
     mutationFn: async (data: AppointmentFormData) => {
@@ -121,6 +161,93 @@ const AppointmentEdit: React.FC = () => {
 
   const onSubmit = (data: AppointmentFormData) => {
     updateAppointmentMutation.mutate(data);
+  };
+
+  const handleFileUpload = async (files: FileList) => {
+    if (!id || !files.length) return;
+
+    setUploading(true);
+    try {
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        await api.post(`/appointments/${id}/attachments`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+      });
+
+      await Promise.all(uploadPromises);
+      
+      enqueueSnackbar(`${files.length} file(s) uploaded successfully`, { variant: 'success' });
+      refetchAttachments();
+    } catch (error) {
+      console.error('Error uploading files:', error);
+      enqueueSnackbar('Failed to upload files', { variant: 'error' });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files.length > 0) {
+      handleFileUpload(event.target.files);
+    }
+  };
+
+  const handleCameraInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files.length > 0) {
+      handleFileUpload(event.target.files);
+    }
+  };
+
+  const handleChooseFile = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleTakePhoto = () => {
+    if (cameraInputRef.current) {
+      cameraInputRef.current.click();
+    }
+  };
+
+  const handleDownloadAttachment = async (attachmentId: number, fileName: string) => {
+    try {
+      const response = await api.get(`/appointments/attachments/${attachmentId}`, {
+        responseType: 'blob',
+      });
+      
+      // Create a download link
+      const url = window.URL.createObjectURL(new Blob([response.data as BlobPart]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      
+      // Clean up
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading attachment:', error);
+      enqueueSnackbar('Failed to download attachment', { variant: 'error' });
+    }
+  };
+
+  const getFileIcon = (fileType: string) => {
+    if (fileType.startsWith('image/')) {
+      return <ImageIcon />;
+    } else if (fileType === 'application/pdf') {
+      return <PictureAsPdfIcon />;
+    } else if (fileType.startsWith('text/')) {
+      return <DescriptionIcon />;
+    } else {
+      return <InsertDriveFileIcon />;
+    }
   };
 
   if (isLoading || !appointment) {
@@ -345,6 +472,91 @@ const AppointmentEdit: React.FC = () => {
                     />
                   </Grid>
                 )}
+
+
+                {/* File Attachments Section */}
+                <Grid item xs={12}>
+                  <Typography variant="h6" gutterBottom color="primary" sx={{ mt: 2 }}>
+                    Attachments
+                  </Typography>
+                  
+                  {/* File Upload Buttons */}
+                  <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                    <Button
+                      variant="outlined"
+                      startIcon={<AttachFileIcon />}
+                      onClick={handleChooseFile}
+                      disabled={uploading}
+                    >
+                      Choose Files
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      startIcon={<PhotoCameraIcon />}
+                      onClick={handleTakePhoto}
+                      disabled={uploading}
+                    >
+                      Take Photo
+                    </Button>
+                    
+                    {/* Hidden file inputs */}
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      style={{ display: 'none' }}
+                      onChange={handleFileInputChange}
+                      multiple
+                    />
+                    <input
+                      type="file"
+                      ref={cameraInputRef}
+                      style={{ display: 'none' }}
+                      onChange={handleCameraInputChange}
+                      accept="image/*"
+                      capture="environment"
+                      multiple
+                    />
+                    
+                    {uploading && <CircularProgress size={24} sx={{ ml: 2 }} />}
+                  </Box>
+                  
+                  {/* Attachments List */}
+                  <Card variant="outlined" sx={{ mb: 3 }}>
+                    <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
+                      {attachments.length === 0 ? (
+                        <Box sx={{ p: 2, textAlign: 'center' }}>
+                          <Typography color="text.secondary">No attachments yet</Typography>
+                        </Box>
+                      ) : (
+                        <List>
+                          {attachments.map((attachment, index) => (
+                            <React.Fragment key={attachment.id}>
+                              <ListItem>
+                                <ListItemIcon>
+                                  {getFileIcon(attachment.file_type)}
+                                </ListItemIcon>
+                                <ListItemText
+                                  primary={attachment.file_name}
+                                  secondary={new Date(attachment.created_at).toLocaleString()}
+                                />
+                                <ListItemSecondaryAction>
+                                  <IconButton 
+                                    edge="end" 
+                                    aria-label="download"
+                                    onClick={() => handleDownloadAttachment(attachment.id, attachment.file_name)}
+                                  >
+                                    <DownloadIcon />
+                                  </IconButton>
+                                </ListItemSecondaryAction>
+                              </ListItem>
+                              {index < attachments.length - 1 && <Divider />}
+                            </React.Fragment>
+                          ))}
+                        </List>
+                      )}
+                    </CardContent>
+                  </Card>
+                </Grid>
 
                 {/* Buttons */}
                 <Grid item xs={12} sx={{ mt: 2 }}>
