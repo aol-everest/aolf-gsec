@@ -41,6 +41,14 @@ uvicorn app:app --reload
 python3 -m uvicorn app:app --reload --port 8001
 python3.12 -m uvicorn app:app --reload --port 8001
 
+# Run the FastAPI application with environment variables
+# uvicorn app:app --reload --env-file .env
+
+# Run the FastAPI application using the helper script
+./run.sh dev    # For development
+./run.sh uat    # For UAT
+./run.sh prod   # For production
+
 
 # PostgreSQL ------------------------------------------------------------------------------------
 

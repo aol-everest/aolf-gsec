@@ -3,15 +3,20 @@ import os
 from botocore.exceptions import ClientError
 from fastapi import HTTPException
 
+# Get environment variables directly
+ENV = os.getenv('ENVIRONMENT', 'dev')
+AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+AWS_REGION = os.getenv('AWS_REGION', 'us-east-1')
+BUCKET_NAME = os.getenv('S3_BUCKET_NAME')
+
+# Initialize S3 client with the environment variables
 s3_client = boto3.client(
     's3',
-    aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
-    aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
-    region_name=os.getenv('AWS_REGION', 'us-east-1')
+    aws_access_key_id=AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+    region_name=AWS_REGION
 )
-
-BUCKET_NAME = os.getenv('S3_BUCKET_NAME')
-ENVIRONMENT = os.getenv('ENVIRONMENT', 'dev')  # Default to 'dev' if not specified
 
 if not BUCKET_NAME:
     raise HTTPException(status_code=500, detail="S3_BUCKET_NAME is not set")
@@ -32,7 +37,7 @@ def upload_file(file_data: bytes, file_name: str, content_type: str, entity_type
     try:
         # Format: environment/attachments/entity_type/file_name
         # Example: uat/attachments/appointments/123/document.pdf
-        s3_path = f"{ENVIRONMENT}/attachments/{entity_type}/{file_name}"
+        s3_path = f"{ENV}/attachments/{entity_type}/{file_name}"
         
         s3_client.put_object(
             Bucket=BUCKET_NAME,

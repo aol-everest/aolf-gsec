@@ -32,15 +32,38 @@ This is the backend API for the AOLF GSEC (Global Secretariat) application.
    uvicorn app:app --reload
    ```
 
+## Environment Configuration
+
+The application uses environment-specific configuration files to manage settings for different environments:
+
+- `.env.dev` - Development environment settings
+- `.env.uat` - UAT (User Acceptance Testing) environment settings
+- `.env.prod` - Production environment settings
+
+To specify which environment to use, set the `ENVIRONMENT` variable when starting the application:
+
+```bash
+# For development
+ENVIRONMENT=dev uvicorn app:app --reload
+
+# For UAT
+ENVIRONMENT=uat uvicorn app:app
+
+# For production
+ENVIRONMENT=prod uvicorn app:app
+```
+
+If no `ENVIRONMENT` variable is set, the application defaults to `dev`.
+
 ## AWS S3 Configuration
 
-The application uses AWS S3 for storing appointment attachments. The following environment variables need to be set in the `.env` file:
+The application uses AWS S3 for storing appointment attachments. The following environment variables need to be set in the appropriate `.env.[environment]` file:
 
 ```
 AWS_ACCESS_KEY_ID=your_access_key
 AWS_SECRET_ACCESS_KEY=your_secret_key
-AWS_REGION=your_region
-S3_BUCKET_NAME=your_bucket_name
+AWS_REGION=us-east-1
+S3_BUCKET_NAME=aolf-gsec-[environment]
 ```
 
 AWS IAM policy files are stored in the `config/aws` directory:

@@ -20,13 +20,25 @@ from utils.email_notifications import notify_appointment_creation, notify_appoin
 from utils.s3 import upload_file, get_file
 import io
 
-# Load environment variables
-load_dotenv()
+# Load environment variables based on ENVIRONMENT setting
+env = os.getenv("ENVIRONMENT", "dev")
+env_file = f".env.{env}"
+
+if os.path.exists(env_file):
+    print(f"Loading environment from {env_file}")
+    load_dotenv(env_file)
+else:
+    print(f"Environment file {env_file} not found, falling back to .env")
+    load_dotenv()
 
 # Get environment variables
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not SECRET_KEY:  
+    raise ValueError("JWT_SECRET_KEY is not set")
 ALGORITHM = "HS256"
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+if not GOOGLE_CLIENT_ID:
+    raise ValueError("GOOGLE_CLIENT_ID is not set")
 
 # Create database tables
 models.Base.metadata.create_all(bind=engine)

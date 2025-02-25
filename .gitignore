@@ -87,6 +87,9 @@ backend/__pycache__/
 *.pyd
 
 backend/.env
+backend/.env.dev
+backend/.env.uat
+backend/.env.prod
 
 
 # Frontend v2 -----------------------------------------------------------------------------------
