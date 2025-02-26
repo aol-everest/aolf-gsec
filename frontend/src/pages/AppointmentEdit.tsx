@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -22,6 +22,7 @@ import {
   Divider,
   Card,
   CardContent,
+  Autocomplete,
 } from '@mui/material';
 import Layout from '../components/Layout';
 import { useForm, Controller } from 'react-hook-form';
@@ -250,6 +251,27 @@ const AppointmentEdit: React.FC = () => {
     }
   };
 
+  // Generate time options in 15-minute increments
+  const timeOptions = useMemo(() => {
+    const options = [];
+    for (let hour = 0; hour < 24; hour++) {
+      for (let minute = 0; minute < 60; minute += 15) {
+        const hourFormatted = hour.toString().padStart(2, '0');
+        const minuteFormatted = minute.toString().padStart(2, '0');
+        const value = `${hourFormatted}:${minuteFormatted}`;
+        const label = `${hour % 12 === 0 ? 12 : hour % 12}:${minuteFormatted} ${hour < 12 ? 'AM' : 'PM'}`;
+        options.push({ value, label });
+      }
+    }
+    return options;
+  }, []);
+
+  // Helper function to find the time option object from a time string
+  const findTimeOption = (timeString: string | null) => {
+    if (!timeString) return null;
+    return timeOptions.find(option => option.value === timeString) || null;
+  };
+
   if (isLoading || !appointment) {
     return (
       <Layout>
@@ -319,15 +341,37 @@ const AppointmentEdit: React.FC = () => {
                   <Controller
                     name="appointment_time"
                     control={control}
-                    render={({ field }) => (
-                      <TextField
-                        {...field}
-                        fullWidth
-                        label="Appointment Time"
-                        type="time"
-                        InputLabelProps={{ shrink: true }}
-                      />
-                    )}
+                    render={({ field }) => {
+                      const timeOption = findTimeOption(field.value);
+                      return (
+                        <Autocomplete
+                          options={timeOptions}
+                          getOptionLabel={(option) => typeof option === 'string' ? option : option.label}
+                          isOptionEqualToValue={(option, value) => 
+                            option.value === (typeof value === 'string' ? value : value.value)
+                          }
+                          value={timeOption}
+                          onChange={(_, newValue) => {
+                            field.onChange(newValue ? newValue.value : '');
+                          }}
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              label="Appointment Time"
+                              fullWidth
+                              InputLabelProps={{ shrink: true }}
+                            />
+                          )}
+                          renderOption={(props, option) => (
+                            <li {...props}>
+                              {option.label}
+                            </li>
+                          )}
+                          freeSolo={false}
+                          disableClearable={false}
+                        />
+                      );
+                    }}
                   />
                 </Grid>
 
