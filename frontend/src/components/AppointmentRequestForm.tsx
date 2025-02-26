@@ -868,7 +868,7 @@ export const AppointmentRequestForm: React.FC = () => {
               
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth required error={!!dignitaryForm.formState.errors.dignitaryPrimaryDomain}>
-                  <InputLabel>Primary Domain *</InputLabel>
+                  <InputLabel>Primary Domain</InputLabel>
                   <Select
                     label="Primary Domain *"
                     value={dignitaryForm.watch('dignitaryPrimaryDomain')}
@@ -1165,7 +1165,7 @@ export const AppointmentRequestForm: React.FC = () => {
 
               <Grid item xs={12} md={6} lg={4}>
                 <FormControl fullWidth required error={!!appointmentForm.formState.errors.preferredTimeOfDay}>
-                  <InputLabel>Preferred Time of Day *</InputLabel>
+                  <InputLabel>Preferred Time of Day</InputLabel>
                   <Select
                     label="Preferred Time of Day *"
                     value={appointmentForm.watch('preferredTimeOfDay')}
@@ -1189,7 +1189,7 @@ export const AppointmentRequestForm: React.FC = () => {
 
               <Grid item xs={12} md={6} lg={4}>
                 <FormControl fullWidth required error={!!appointmentForm.formState.errors.location_id}>
-                  <InputLabel>Location *</InputLabel>
+                  <InputLabel>Location</InputLabel>
                   <Controller
                     name="location_id"
                     control={appointmentForm.control}
