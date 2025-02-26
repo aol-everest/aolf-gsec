@@ -41,6 +41,10 @@ interface Dignitary {
   poc_email: string;
   poc_phone: string;
   linked_in_or_website: string;
+  country: string;
+  state: string;
+  city: string;
+  relationship_type?: string;
   has_dignitary_met_gurudev: boolean;
   gurudev_meeting_date?: string;
   gurudev_meeting_location?: string;

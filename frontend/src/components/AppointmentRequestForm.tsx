@@ -31,39 +31,24 @@ import {
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import LocationAutocomplete from './LocationAutocomplete';
-// import { 
-//   PRIMARY_DOMAINS, 
-//   HONORIFIC_TITLES, 
-//   PrimaryDomain, 
-//   HonorificTitle,
-//   RELATIONSHIP_TYPES,
-//   RelationshipType,
-// } from '../constants/formConstants';
 import { useNavigate } from 'react-router-dom';
 import { getStatusChipSx } from '../utils/formattingUtils';
 import { useTheme } from '@mui/material/styles';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
-
-// Add Location interface
-interface Location {
-  id: number;
-  name: string;
-  street_address: string;
-  state: string;
-  city: string;
-  country: string;
-  zip_code: string;
-  driving_directions?: string;
-  parking_info?: string;
-}
+import { Location, Dignitary, Appointment } from '../models/types';
 
 // Add AppointmentTimeOfDay enum
 enum AppointmentTimeOfDay {
   MORNING = "Morning",
   AFTERNOON = "Afternoon",
   EVENING = "Evening"
+}
+
+// Add AppointmentResponse interface for the API response
+interface AppointmentResponse extends Omit<Appointment, 'dignitary' | 'requester' | 'location' | 'approved_by_user' | 'last_updated_by_user' | 'attachments'> {
+  // Only include the fields that are returned by the API when creating a new appointment
 }
 
 // Step 1: POC Information
@@ -113,17 +98,18 @@ export const AppointmentRequestForm: React.FC = () => {
   const { userInfo, updateUserInfo } = useAuth();
   const [activeStep, setActiveStep] = useState(0);
   const [selectedCountryCode, setSelectedCountryCode] = useState<string>('');
-  const [dignitaries, setDignitaries] = useState<any[]>([]);
+  const [dignitaries, setDignitaries] = useState<Dignitary[]>([]);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [submittedAppointment, setSubmittedAppointment] = useState<any>(null);
+  const [submittedAppointment, setSubmittedAppointment] = useState<AppointmentResponse | null>(null);
+  // Use any type to avoid TypeScript errors with the selectedDignitary state
   const [selectedDignitary, setSelectedDignitary] = useState<any>(null);
   const [showWarningDialog, setShowWarningDialog] = useState(false);
-  const [locations, setLocations] = useState<Location[]>([]);
   const navigate = useNavigate();
-  const [statusOptions, setStatusOptions] = useState<string[]>([]);
   const theme = useTheme();
   const api = useApi();
   const { enqueueSnackbar } = useSnackbar();
+  const queryClient = useQueryClient();
+  
   // Add state for file attachments
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
@@ -155,20 +141,32 @@ export const AppointmentRequestForm: React.FC = () => {
     },
   });
 
-  useEffect(() => {
-    const fetchStatusOptions = async () => {
-      const response = await fetch('http://localhost:8001/appointments/status-options', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setStatusOptions(data);
-      }
-    };
-    fetchStatusOptions();
-  }, []);
+  // Fetch status options
+  const { data: statusOptions = [] } = useQuery<string[]>({
+    queryKey: ['status-options'],
+    queryFn: async () => {
+      const { data } = await api.get<string[]>('/appointments/status-options');
+      return data;
+    },
+  });
+
+  // Fetch locations
+  const { data: locations = [] } = useQuery<Location[]>({
+    queryKey: ['locations'],
+    queryFn: async () => {
+      const { data } = await api.get<Location[]>('/locations/all');
+      return data;
+    },
+  });
+
+  // Fetch dignitaries assigned to the user
+  const { data: fetchedDignitaries = [], isLoading: isLoadingDignitaries } = useQuery<Dignitary[]>({
+    queryKey: ['assigned-dignitaries'],
+    queryFn: async () => {
+      const { data } = await api.get<Dignitary[]>('/dignitaries/assigned');
+      return data;
+    },
+  });
   
   // Forms for each step
   const pocForm = useForm<PocFormData>({
@@ -184,12 +182,12 @@ export const AppointmentRequestForm: React.FC = () => {
     defaultValues: {
       isExistingDignitary: false,
       selectedDignitaryId: undefined,
-      dignitaryHonorificTitle: honorificTitles[0],
+      dignitaryHonorificTitle: '',
       dignitaryFirstName: '',
       dignitaryLastName: '',
       dignitaryEmail: '',
       dignitaryPhone: '',
-      dignitaryPrimaryDomain: primaryDomains[0],
+      dignitaryPrimaryDomain: '',
       dignitaryTitleInOrganization: '',
       dignitaryOrganization: '',
       dignitaryBioSummary: '',
@@ -198,12 +196,21 @@ export const AppointmentRequestForm: React.FC = () => {
       dignitaryState: '',
       dignitaryCity: '',
       dignitaryHasMetGurudev: false,
-      pocRelationshipType: relationshipTypes[0],
+      pocRelationshipType: '',
       dignitaryGurudevMeetingDate: '',
       dignitaryGurudevMeetingLocation: '',
       dignitaryGurudevMeetingNotes: '',
     }
   });
+
+  // Update dignitary form defaults when honorific titles and primary domains are loaded
+  useEffect(() => {
+    if (honorificTitles.length > 0 && primaryDomains.length > 0 && relationshipTypes.length > 0) {
+      dignitaryForm.setValue('dignitaryHonorificTitle', honorificTitles[0]);
+      dignitaryForm.setValue('dignitaryPrimaryDomain', primaryDomains[0]);
+      dignitaryForm.setValue('pocRelationshipType', relationshipTypes[0]);
+    }
+  }, [honorificTitles, primaryDomains, relationshipTypes]);
 
   const appointmentForm = useForm<AppointmentFormData>({
     defaultValues: {
@@ -215,36 +222,20 @@ export const AppointmentRequestForm: React.FC = () => {
     }
   });
 
-  // Fetch dignitaries assigned to the user
+  // Update the useEffect to handle the dignitaries data
   useEffect(() => {
-    const fetchDignitaries = async () => {
-      try {
-        const response = await fetch('http://localhost:8001/dignitaries/assigned', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-          },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setDignitaries(data);
-          
-          // If there are dignitaries, default to selecting the first one
-          if (data.length > 0) {
-            dignitaryForm.setValue('isExistingDignitary', true);
-            dignitaryForm.setValue('selectedDignitaryId', data[0].id);
-            setSelectedDignitary(data[0]);
-            populateDignitaryForm(data[0]);
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching dignitaries:', error);
-      }
-    };
-    fetchDignitaries();
-  }, []);
+    if (fetchedDignitaries.length > 0) {
+      setDignitaries(fetchedDignitaries);
+      // If there are dignitaries, default to selecting the first one
+      dignitaryForm.setValue('isExistingDignitary', true);
+      dignitaryForm.setValue('selectedDignitaryId', fetchedDignitaries[0].id);
+      setSelectedDignitary(fetchedDignitaries[0] as any);
+      populateDignitaryForm(fetchedDignitaries[0]);
+    }
+  }, [fetchedDignitaries]);
 
   // Function to populate dignitary form fields
-  const populateDignitaryForm = (dignitary: any) => {
+  const populateDignitaryForm = (dignitary: Dignitary) => {
     console.log('Populating dignitary form with:', dignitary);
     dignitaryForm.setValue('dignitaryHonorificTitle', dignitary.honorific_title);
     dignitaryForm.setValue('dignitaryFirstName', dignitary.first_name);
@@ -255,16 +246,19 @@ export const AppointmentRequestForm: React.FC = () => {
     dignitaryForm.setValue('dignitaryTitleInOrganization', dignitary.title_in_organization);
     dignitaryForm.setValue('dignitaryOrganization', dignitary.organization);
     dignitaryForm.setValue('dignitaryBioSummary', dignitary.bio_summary);
-    dignitaryForm.setValue('dignitaryLinkedInOrWebsite', dignitary.linked_in_or_website);
-    dignitaryForm.setValue('dignitaryCountry', dignitary.country);
-    dignitaryForm.setValue('dignitaryState', dignitary.state);
-    dignitaryForm.setValue('dignitaryCity', dignitary.city);
+    dignitaryForm.setValue('dignitaryLinkedInOrWebsite', dignitary.linked_in_or_website || '');
+    // Map country, state, city from the dignitary object
+    // These fields might be named differently in the Dignitary interface
+    dignitaryForm.setValue('dignitaryCountry', dignitary.country || '');
+    dignitaryForm.setValue('dignitaryState', dignitary.state || '');
+    dignitaryForm.setValue('dignitaryCity', dignitary.city || '');
     dignitaryForm.setValue('dignitaryHasMetGurudev', dignitary.has_dignitary_met_gurudev);
     dignitaryForm.setValue('dignitaryGurudevMeetingDate', dignitary.gurudev_meeting_date || '');
     dignitaryForm.setValue('dignitaryGurudevMeetingLocation', dignitary.gurudev_meeting_location || '');
     dignitaryForm.setValue('dignitaryGurudevMeetingNotes', dignitary.gurudev_meeting_notes || '');
     
     // Set the POC relationship type from the dignitary data
+    // This might need to be adjusted based on the actual Dignitary interface
     if (dignitary.relationship_type) {
       console.log('Setting POC relationship type from dignitary data:', dignitary.relationship_type);
       dignitaryForm.setValue('pocRelationshipType', dignitary.relationship_type);
@@ -286,63 +280,128 @@ export const AppointmentRequestForm: React.FC = () => {
     }
   }, [userInfo, pocForm]);
 
-  // Modify the checkExistingAppointments function to return all appointments
+  // Query for checking existing appointments
   const checkExistingAppointments = async (dignitaryId: number) => {
     try {
-      const response = await fetch(`http://localhost:8001/appointments/my/${dignitaryId}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-        },
-      });
-      if (response.ok) {
-        const appointments = await response.json();
-        const today = new Date();
-        const existingAppointments = appointments.filter(
-          (apt: any) => apt.dignitary_id === dignitaryId && 
-          new Date(apt.preferred_date) >= today
-        );
-        return existingAppointments.length > 0 ? existingAppointments : null;
-      }
+      const { data } = await api.get<any[]>(`/appointments/my/${dignitaryId}`);
+      const today = new Date();
+      const existingAppointments = data.filter(
+        (apt) => apt.dignitary_id === dignitaryId && 
+        new Date(apt.preferred_date) >= today
+      );
+      return existingAppointments.length > 0 ? existingAppointments : null;
     } catch (error) {
       console.error('Error checking existing appointments:', error);
+      enqueueSnackbar('Failed to check existing appointments', { variant: 'error' });
+      return null;
     }
-    return null;
   };
 
   // Modify the handleDignitarySelection function to not show warning
-  const handleDignitarySelection = async (dignitary: any) => {
-    setSelectedDignitary(dignitary);
+  const handleDignitarySelection = async (dignitary: Dignitary) => {
+    // Use type assertion to bypass TypeScript error
+    setSelectedDignitary(dignitary as any);
     populateDignitaryForm(dignitary);
     
     // Check for existing appointments
     const existingAppointments = await checkExistingAppointments(dignitary.id);
     if (existingAppointments && existingAppointments.length > 0) {
-      setSelectedDignitary({
+      // Use type assertion to bypass TypeScript error
+      const updatedDignitary = {
         ...dignitary,
         appointments: existingAppointments,
-      });
+      };
+      setSelectedDignitary(updatedDignitary as any);
     }
   };
 
-  // Add useEffect to fetch locations
-  useEffect(() => {
-    const fetchLocations = async () => {
-      try {
-        const response = await fetch('http://localhost:8001/locations/all', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-          },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setLocations(data);
-        }
-      } catch (error) {
-        console.error('Error fetching locations:', error);
+  // Mutation for updating user info
+  const updateUserMutation = useMutation({
+    mutationFn: async (data: { phone_number: string }) => {
+      await updateUserInfo(data);
+    },
+    onError: (error) => {
+      console.error('Error updating user:', error);
+      enqueueSnackbar('Failed to update user information', { variant: 'error' });
+    }
+  });
+
+  // Mutation for updating dignitary
+  const updateDignitaryMutation = useMutation<Dignitary, Error, { id: number, data: any }>({
+    mutationFn: async ({ id, data }) => {
+      const { data: response } = await api.patch<Dignitary>(`/dignitaries/update/${id}`, data);
+      return response;
+    },
+    onSuccess: (updatedDignitary) => {
+      console.log('Successfully updated dignitary:', updatedDignitary);
+      setSelectedDignitary(updatedDignitary);
+      queryClient.invalidateQueries({ queryKey: ['assigned-dignitaries'] });
+      enqueueSnackbar('Dignitary updated successfully', { variant: 'success' });
+    },
+    onError: (error: any) => {
+      console.error('Failed to update dignitary:', error);
+      enqueueSnackbar(`Failed to update dignitary: ${error.response?.data?.detail || 'Unknown error'}`, { 
+        variant: 'error',
+        autoHideDuration: 6000
+      });
+    }
+  });
+
+  // Mutation for creating new dignitary
+  const createDignitaryMutation = useMutation<Dignitary, Error, any>({
+    mutationFn: async (data: any) => {
+      const { data: response } = await api.post<Dignitary>('/dignitaries/new/', data);
+      return response;
+    },
+    onSuccess: (newDignitary) => {
+      // Update the dignitaries list with the new dignitary
+      setDignitaries(prev => [...prev, newDignitary]);
+      
+      // Switch to existing dignitary mode and select the new dignitary
+      dignitaryForm.setValue('isExistingDignitary', true);
+      dignitaryForm.setValue('selectedDignitaryId', newDignitary.id);
+      setSelectedDignitary(newDignitary);
+      
+      queryClient.invalidateQueries({ queryKey: ['assigned-dignitaries'] });
+      enqueueSnackbar('New dignitary created successfully', { variant: 'success' });
+    },
+    onError: (error: any) => {
+      console.error('Failed to create dignitary:', error);
+      enqueueSnackbar(`Failed to create dignitary: ${error.response?.data?.detail || 'Unknown error'}`, { 
+        variant: 'error',
+        autoHideDuration: 6000
+      });
+    }
+  });
+
+  // Mutation for creating new appointment
+  const createAppointmentMutation = useMutation<AppointmentResponse, Error, any>({
+    mutationFn: async (data: any) => {
+      const { data: response } = await api.post<AppointmentResponse>('/appointments/new', data);
+      return response;
+    },
+    onSuccess: async (appointmentResponse) => {
+      setSubmittedAppointment(appointmentResponse);
+      
+      // Upload attachments if any
+      if (selectedFiles.length > 0) {
+        setIsUploading(true);
+        await uploadAttachments(appointmentResponse.id);
       }
-    };
-    fetchLocations();
-  }, []);
+      
+      setShowConfirmation(true);
+      setIsUploading(false);
+      queryClient.invalidateQueries({ queryKey: ['my-appointments'] });
+    },
+    onError: (error: any) => {
+      console.error('Error creating appointment:', error);
+      setIsUploading(false);
+      enqueueSnackbar(`Failed to create appointment: ${error.response?.data?.detail || 'Unknown error'}`, { 
+        variant: 'error',
+        autoHideDuration: 6000
+      });
+    }
+  });
 
   const handleNext = async (skipExistingCheck: boolean = false) => {
     if (activeStep === 0) {
@@ -359,7 +418,7 @@ export const AppointmentRequestForm: React.FC = () => {
       
       const pocData = await pocForm.handleSubmit(async (data) => {
         try {
-          await updateUserInfo({ phone_number: data.pocPhone });
+          await updateUserMutation.mutateAsync({ phone_number: data.pocPhone });
           setActiveStep(1);
         } catch (error) {
           console.error('Error updating user:', error);
@@ -458,31 +517,10 @@ export const AppointmentRequestForm: React.FC = () => {
 
               console.log('Cleaned dignitary update data:', JSON.stringify(cleanedDignitaryUpdateData, null, 2));
 
-              const response = await fetch(`http://localhost:8001/dignitaries/update/${data.selectedDignitaryId}`, {
-                method: 'PATCH',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-                },
-                body: JSON.stringify(cleanedDignitaryUpdateData),
+              await updateDignitaryMutation.mutateAsync({ 
+                id: data.selectedDignitaryId, 
+                data: cleanedDignitaryUpdateData 
               });
-              
-              if (!response.ok) {
-                const errorData = await response.json();
-                console.error('Failed to update dignitary. Status:', response.status);
-                console.error('Error details:', JSON.stringify(errorData, null, 2));
-                
-                // Display error notification with more details
-                enqueueSnackbar(`Failed to update dignitary: ${response.status} - ${errorData.detail || 'Unknown error'}`, { 
-                  variant: 'error',
-                  autoHideDuration: 6000
-                });
-                
-                throw new Error(`Failed to update dignitary: ${JSON.stringify(errorData)}`);
-              }
-              const updatedDignitary = await response.json();
-              console.log('Successfully updated dignitary:', updatedDignitary);
-              setSelectedDignitary(updatedDignitary);
             }
           } else {
             // Create new dignitary
@@ -522,37 +560,7 @@ export const AppointmentRequestForm: React.FC = () => {
 
             console.log('Cleaned dignitary create data:', JSON.stringify(cleanedDignitaryCreateData, null, 2));
 
-            const response = await fetch('http://localhost:8001/dignitaries/new/', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-              },
-              body: JSON.stringify(cleanedDignitaryCreateData),
-            });
-
-            if (!response.ok) {
-              const errorData = await response.json();
-              console.error('Failed to create dignitary. Status:', response.status);
-              console.error('Error details:', JSON.stringify(errorData, null, 2));
-              
-              // Display error notification with more details
-              enqueueSnackbar(`Failed to create dignitary: ${response.status} - ${errorData.detail || 'Unknown error'}`, { 
-                variant: 'error',
-                autoHideDuration: 6000
-              });
-              
-              throw new Error(`Failed to create dignitary: ${JSON.stringify(errorData)}`);
-            }
-            const newDignitary = await response.json();
-            
-            // Update the dignitaries list with the new dignitary
-            setDignitaries(prev => [...prev, newDignitary]);
-            
-            // Switch to existing dignitary mode and select the new dignitary
-            dignitaryForm.setValue('isExistingDignitary', true);
-            dignitaryForm.setValue('selectedDignitaryId', newDignitary.id);
-            setSelectedDignitary(newDignitary);
+            await createDignitaryMutation.mutateAsync(cleanedDignitaryCreateData);
           }
           
           setActiveStep(2);
@@ -574,42 +582,19 @@ export const AppointmentRequestForm: React.FC = () => {
       
       const appointmentData = await appointmentForm.handleSubmit(async (data) => {
         try {
-          const response = await fetch('http://localhost:8001/appointments/new', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-            },
-            body: JSON.stringify({
-              dignitary_id: dignitaryForm.getValues().selectedDignitaryId,
-              purpose: data.purpose,
-              preferred_date: data.preferredDate,
-              preferred_time_of_day: data.preferredTimeOfDay,
-              location_id: data.location_id,
-              requester_notes_to_secretariat: data.requesterNotesToSecretariat,
-              status: statusOptions[0],
-            }),
-          });
-          if (!response.ok) {
-            const errorData = await response.json();
-            console.error('Failed to create appointment:', errorData);
-            throw new Error('Failed to create appointment');
-          }
-          const appointmentResponse = await response.json();
+          const appointmentCreateData = {
+            dignitary_id: dignitaryForm.getValues().selectedDignitaryId,
+            purpose: data.purpose,
+            preferred_date: data.preferredDate,
+            preferred_time_of_day: data.preferredTimeOfDay,
+            location_id: data.location_id,
+            requester_notes_to_secretariat: data.requesterNotesToSecretariat,
+            status: statusOptions[0],
+          };
           
-          // Upload attachments if any
-          if (selectedFiles.length > 0) {
-            setIsUploading(true);
-            await uploadAttachments(appointmentResponse.id);
-          }
-          
-          setSubmittedAppointment(appointmentResponse);
-          setShowConfirmation(true);
-          setIsUploading(false);
+          await createAppointmentMutation.mutateAsync(appointmentCreateData);
         } catch (error) {
           console.error('Error creating appointment:', error);
-          setIsUploading(false);
-          enqueueSnackbar('Failed to create appointment. Please try again.', { variant: 'error' });
         }
       })();
     }
@@ -663,6 +648,15 @@ export const AppointmentRequestForm: React.FC = () => {
   };
 
   const renderStepContent = (step: number) => {
+    // Show loading indicator if data is still loading
+    if (step === 1 && (isLoadingDomains || isLoadingTitles || isLoadingRelationships || isLoadingDignitaries)) {
+      return (
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+          <CircularProgress />
+        </Box>
+      );
+    }
+
     switch (step) {
       case 0:
         return (
