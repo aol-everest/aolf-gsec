@@ -156,6 +156,7 @@ export default function LocationsManage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [attachmentMarkedForDeletion, setAttachmentMarkedForDeletion] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
   const api = useApi();
   const queryClient = useQueryClient();
@@ -170,6 +171,7 @@ export default function LocationsManage() {
     setFormData(initialFormData);
     setEditingId(null);
     setSelectedFile(null);
+    setAttachmentMarkedForDeletion(false);
   };
 
   // Query for fetching locations
@@ -189,6 +191,24 @@ export default function LocationsManage() {
   // Mutation for creating/updating locations
   const locationMutation = useMutation({
     mutationFn: async (variables: { id?: number; data: LocationFormData }) => {
+      // If attachment is marked for deletion and we're editing an existing location
+      if (attachmentMarkedForDeletion && variables.id) {
+        try {
+          // Delete the attachment first
+          await api.delete<Location>(`/admin/locations/${variables.id}/attachment`);
+          // Clear attachment fields in the form data
+          variables.data = {
+            ...variables.data,
+            attachment_path: '',
+            attachment_name: '',
+            attachment_file_type: '',
+          };
+        } catch (error) {
+          enqueueSnackbar('Failed to remove attachment', { variant: 'error' });
+          throw error;
+        }
+      }
+
       // If there's a file to upload, handle it first
       if (selectedFile) {
         setIsUploading(true);
@@ -254,30 +274,10 @@ export default function LocationsManage() {
       queryClient.invalidateQueries({ queryKey: ['locations'] });
       enqueueSnackbar(editingId ? 'Location updated successfully' : 'Location created successfully', { variant: 'success' });
       handleClose();
+      setAttachmentMarkedForDeletion(false);
     },
     onError: () => {
       enqueueSnackbar('Failed to save location', { variant: 'error' });
-    }
-  });
-
-  // Mutation for removing an attachment
-  const removeAttachmentMutation = useMutation({
-    mutationFn: async (locationId: number) => {
-      const { data } = await api.delete<Location>(`/admin/locations/${locationId}/attachment`);
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['locations'] });
-      setFormData(prev => ({
-        ...prev,
-        attachment_path: '',
-        attachment_name: '',
-        attachment_file_type: '',
-      }));
-      enqueueSnackbar('Attachment removed successfully', { variant: 'success' });
-    },
-    onError: () => {
-      enqueueSnackbar('Failed to remove attachment', { variant: 'error' });
     }
   });
 
@@ -396,6 +396,7 @@ export default function LocationsManage() {
       setEditingId(null);
     }
     setSelectedFile(null);
+    setAttachmentMarkedForDeletion(false);
     setFormOpen(true);
   };
 
@@ -419,7 +420,15 @@ export default function LocationsManage() {
 
   const handleRemoveAttachment = () => {
     if (editingId) {
-      removeAttachmentMutation.mutate(editingId);
+      // Instead of immediately deleting, just mark it for deletion
+      setAttachmentMarkedForDeletion(true);
+      // Visually update the form to show the attachment is marked for deletion
+      setFormData(prev => ({
+        ...prev,
+        attachment_path: '',
+        attachment_name: '',
+        attachment_file_type: '',
+      }));
     } else {
       // For new locations, just clear the selected file
       setSelectedFile(null);
@@ -672,71 +681,111 @@ export default function LocationsManage() {
                         style={{ display: 'none' }}
                         onChange={handleFileSelect}
                       />
-                      {(formData.attachment_path || selectedFile) ? (
-                        <Paper variant="outlined" sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            {selectedFile && selectedFile.type.startsWith('image/') ? (
-                              <img 
-                                src={URL.createObjectURL(selectedFile)} 
-                                alt={selectedFile.name}
-                                style={{ width: 40, height: 40, objectFit: 'cover' }}
-                              />
-                            ) : formData.attachment_file_type?.startsWith('image/') && formData.attachment_path ? (
-                              <img 
-                                src={`https://${process.env.REACT_APP_S3_BUCKET_NAME}.s3.amazonaws.com/${formData.attachment_path}`} 
-                                alt={formData.attachment_name}
-                                style={{ width: 40, height: 40, objectFit: 'cover' }}
-                              />
-                            ) : (
-                              <AttachFileIcon />
-                            )}
-                            <Box>
-                              <Typography>
-                                {selectedFile ? selectedFile.name : formData.attachment_name}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {selectedFile ? 
-                                  `${(selectedFile.size / 1024).toFixed(1)} KB - ${selectedFile.type}` : 
-                                  formData.attachment_file_type
-                                }
-                              </Typography>
-                            </Box>
-                          </Box>
+                      
+                      {(() => {
+                        if ((formData.attachment_path || selectedFile) && !attachmentMarkedForDeletion) {
+                          return (
+                            <Paper variant="outlined" sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                {selectedFile && selectedFile.type.startsWith('image/') ? (
+                                  <img 
+                                    src={URL.createObjectURL(selectedFile)} 
+                                    alt={selectedFile.name}
+                                    style={{ width: 40, height: 40, objectFit: 'cover' }}
+                                  />
+                                ) : formData.attachment_file_type?.startsWith('image/') && formData.attachment_path ? (
+                                  <img 
+                                    src={`https://${process.env.REACT_APP_S3_BUCKET_NAME}.s3.amazonaws.com/${formData.attachment_path}`} 
+                                    alt={formData.attachment_name}
+                                    style={{ width: 40, height: 40, objectFit: 'cover' }}
+                                  />
+                                ) : (
+                                  <AttachFileIcon />
+                                )}
+                                <Box>
+                                  <Typography>
+                                    {selectedFile ? selectedFile.name : formData.attachment_name}
+                                  </Typography>
+                                  <Typography variant="caption" color="text.secondary">
+                                    {selectedFile ? 
+                                      `${(selectedFile.size / 1024).toFixed(1)} KB - ${selectedFile.type}` : 
+                                      formData.attachment_file_type
+                                    }
+                                  </Typography>
+                                </Box>
+                              </Box>
+                              <Box>
+                                {formData.attachment_path && (
+                                  <IconButton 
+                                    component="a" 
+                                    href={editingId ? `${api.defaults.baseURL}/locations/${editingId}/attachment` : formData.attachment_path} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    size="small"
+                                    sx={{ mr: 1 }}
+                                  >
+                                    <UploadFileIcon fontSize="small" />
+                                  </IconButton>
+                                )}
+                                <IconButton 
+                                  onClick={handleRemoveAttachment} 
+                                  size="small"
+                                >
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
+                              </Box>
+                            </Paper>
+                          );
+                        }
+                        
+                        return (
                           <Box>
-                            {formData.attachment_path && (
-                              <IconButton 
-                                component="a" 
-                                href={editingId ? `${api.defaults.baseURL}/locations/${editingId}/attachment` : formData.attachment_path} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                size="small"
-                                sx={{ mr: 1 }}
+                            {attachmentMarkedForDeletion && editingId && (
+                              <Paper 
+                                variant="outlined" 
+                                sx={{ 
+                                  p: 2, 
+                                  mb: 2, 
+                                  bgcolor: 'warning.light',
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center'
+                                }}
                               >
-                                <UploadFileIcon fontSize="small" />
-                              </IconButton>
+                                <Typography variant="body2">
+                                  Attachment will be removed when you save this location
+                                </Typography>
+                                <Button 
+                                  size="small" 
+                                  onClick={() => {
+                                    // Restore the original attachment data
+                                    const location = locations.find(loc => loc.id === editingId);
+                                    if (location) {
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        attachment_path: location.attachment_path || '',
+                                        attachment_name: location.attachment_name || '',
+                                        attachment_file_type: location.attachment_file_type || '',
+                                      }));
+                                    }
+                                    setAttachmentMarkedForDeletion(false);
+                                  }}
+                                >
+                                  Undo
+                                </Button>
+                              </Paper>
                             )}
-                            <IconButton 
-                              onClick={handleRemoveAttachment} 
-                              size="small"
-                              disabled={removeAttachmentMutation.isPending}
+                            <Button
+                              variant="outlined"
+                              startIcon={<UploadFileIcon />}
+                              onClick={triggerFileInput}
+                              disabled={attachmentMarkedForDeletion}
                             >
-                              {removeAttachmentMutation.isPending ? (
-                                <CircularProgress size={20} />
-                              ) : (
-                                <DeleteIcon fontSize="small" />
-                              )}
-                            </IconButton>
+                              Upload Attachment
+                            </Button>
                           </Box>
-                        </Paper>
-                      ) : (
-                        <Button
-                          variant="outlined"
-                          startIcon={<UploadFileIcon />}
-                          onClick={triggerFileInput}
-                        >
-                          Upload Attachment
-                        </Button>
-                      )}
+                        );
+                      })()}
                     </Box>
                   </Grid>
                 </Grid>
