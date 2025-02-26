@@ -254,9 +254,9 @@ const AttachmentSection: React.FC<AttachmentSectionProps> = ({ attachments }) =>
   return (
     <>
       <Box sx={{ mt: 3 }}>
-        <Typography variant="h6" gutterBottom>
+        {/* <Typography variant="h6" gutterBottom>
           Attachments
-        </Typography>
+        </Typography> */}
         <Grid container spacing={2}>
           {attachments.map((attachment) => (
             <Grid item xs={12} sm={6} md={4} lg={3} key={attachment.id}>

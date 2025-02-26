@@ -61,6 +61,7 @@ interface AppointmentAttachment {
   thumbnail_path?: string;
   uploaded_by: number;
   created_at: string;
+  attachment_type: string;
 }
 
 interface Appointment {

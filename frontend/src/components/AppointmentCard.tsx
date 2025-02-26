@@ -6,7 +6,7 @@ import EditIcon from "@mui/icons-material/Edit"
 import { Appointment, AppointmentAttachment } from "../models/types"
 import { useNavigate } from "react-router-dom";
 import { AdminAppointmentsEditRoute } from "../config/routes";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import AttachmentSection from "./AttachmentSection";
 import { useApi } from "../hooks/useApi";
 
@@ -16,6 +16,15 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
     const [loading, setLoading] = useState(false);
     const [attachments, setAttachments] = useState<AppointmentAttachment[]>(appointment.attachments || []);
     const api = useApi();
+
+    // Separate attachments by type
+    const businessCardAttachments = useMemo(() => {
+        return attachments.filter(attachment => attachment.attachment_type === 'business_card');
+    }, [attachments]);
+
+    const generalAttachments = useMemo(() => {
+        return attachments.filter(attachment => attachment.attachment_type === 'general');
+    }, [attachments]);
 
     // Fetch attachments if they're not already included in the appointment data
     useEffect(() => {
@@ -216,7 +225,27 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
 
                 {/* Attachments Section */}
                 {attachments && attachments.length > 0 && (
-                    <AttachmentSection attachments={attachments} />
+                    <>
+                        {/* Business Card Attachments */}
+                        {businessCardAttachments.length > 0 && (
+                            <Paper elevation={0} sx={{ p: 2, mb: 3, borderRadius: 2 }}>
+                                <Typography variant="h6" gutterBottom color="primary">
+                                    Business Cards
+                                </Typography>
+                                <AttachmentSection attachments={businessCardAttachments} />
+                            </Paper>
+                        )}
+                        
+                        {/* General Attachments */}
+                        {generalAttachments.length > 0 && (
+                            <Paper elevation={0} sx={{ p: 2, mb: 3, borderRadius: 2 }}>
+                                <Typography variant="h6" gutterBottom color="primary">
+                                    Other Attachments
+                                </Typography>
+                                <AttachmentSection attachments={generalAttachments} />
+                            </Paper>
+                        )}
+                    </>
                 )}
 
                 <Paper elevation={0} sx={{ p: 2, mb: 0, border: 'none', boxShadow: 'none', borderRadius: 0, bgcolor: 'transparent' }}>

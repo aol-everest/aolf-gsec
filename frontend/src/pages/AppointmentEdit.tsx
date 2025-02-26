@@ -40,6 +40,11 @@ import ImageIcon from '@mui/icons-material/Image';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import DescriptionIcon from '@mui/icons-material/Description';
 import ContactMailIcon from '@mui/icons-material/ContactMail';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
 
 interface AppointmentFormData {
   appointment_date: string;
@@ -76,6 +81,8 @@ const AppointmentEdit: React.FC = () => {
   const businessCardInputRef = useRef<HTMLInputElement>(null);
   const businessCardCameraInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [attachmentToDelete, setAttachmentToDelete] = useState<Attachment | null>(null);
 
   const { control, handleSubmit, reset } = useForm<AppointmentFormData>();
 
@@ -275,6 +282,32 @@ const AppointmentEdit: React.FC = () => {
       console.error('Error downloading attachment:', error);
       enqueueSnackbar('Failed to download attachment', { variant: 'error' });
     }
+  };
+
+  const handleDeleteAttachment = (attachment: Attachment) => {
+    setAttachmentToDelete(attachment);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteAttachment = async () => {
+    if (!attachmentToDelete) return;
+    
+    try {
+      await api.delete(`/appointments/attachments/${attachmentToDelete.id}`);
+      enqueueSnackbar('Attachment deleted successfully', { variant: 'success' });
+      refetchAttachments();
+    } catch (error) {
+      console.error('Error deleting attachment:', error);
+      enqueueSnackbar('Failed to delete attachment', { variant: 'error' });
+    } finally {
+      setDeleteDialogOpen(false);
+      setAttachmentToDelete(null);
+    }
+  };
+
+  const cancelDeleteAttachment = () => {
+    setDeleteDialogOpen(false);
+    setAttachmentToDelete(null);
   };
 
   const getFileIcon = (fileType: string) => {
@@ -662,7 +695,7 @@ const AppointmentEdit: React.FC = () => {
                               <ListItem>
                                 <ListItemText 
                                   primary={
-                                    <Typography variant="subtitle1" color="secondary" sx={{ fontWeight: 'bold' }}>
+                                    <Typography variant="subtitle1" color="subtitle1" sx={{ fontWeight: 'bold' }}>
                                       Business Cards
                                     </Typography>
                                   } 
@@ -683,8 +716,17 @@ const AppointmentEdit: React.FC = () => {
                                         edge="end" 
                                         aria-label="download"
                                         onClick={() => handleDownloadAttachment(attachment.id, attachment.file_name)}
+                                        sx={{ mr: 1 }}
                                       >
                                         <DownloadIcon />
+                                      </IconButton>
+                                      <IconButton 
+                                        edge="end" 
+                                        aria-label="delete"
+                                        onClick={() => handleDeleteAttachment(attachment)}
+                                        color="error"
+                                      >
+                                        <DeleteIcon />
                                       </IconButton>
                                     </ListItemSecondaryAction>
                                   </ListItem>
@@ -702,7 +744,7 @@ const AppointmentEdit: React.FC = () => {
                                 <ListItemText 
                                   primary={
                                     <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                                      General Attachments
+                                      Other Attachments
                                     </Typography>
                                   } 
                                 />
@@ -722,8 +764,17 @@ const AppointmentEdit: React.FC = () => {
                                         edge="end" 
                                         aria-label="download"
                                         onClick={() => handleDownloadAttachment(attachment.id, attachment.file_name)}
+                                        sx={{ mr: 1 }}
                                       >
                                         <DownloadIcon />
+                                      </IconButton>
+                                      <IconButton 
+                                        edge="end" 
+                                        aria-label="delete"
+                                        onClick={() => handleDeleteAttachment(attachment)}
+                                        color="error"
+                                      >
+                                        <DeleteIcon />
                                       </IconButton>
                                     </ListItemSecondaryAction>
                                   </ListItem>
@@ -761,6 +812,31 @@ const AppointmentEdit: React.FC = () => {
           </Paper>
         </Box>
       </Container>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={cancelDeleteAttachment}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">
+          {"Confirm Deletion"}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            Are you sure you want to delete the attachment "{attachmentToDelete?.file_name}"? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={cancelDeleteAttachment} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={confirmDeleteAttachment} color="error" autoFocus>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Layout>
   );
 };

@@ -932,3 +932,29 @@ async def upload_file_endpoint(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to upload file: {str(e)}")
+
+@app.delete("/appointments/attachments/{attachment_id}", status_code=204)
+async def delete_attachment(
+    attachment_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete an attachment"""
+    # Get the attachment
+    attachment = db.query(models.AppointmentAttachment).filter(models.AppointmentAttachment.id == attachment_id).first()
+    if not attachment:
+        raise HTTPException(status_code=404, detail="Attachment not found")
+    
+    # Check if user has permission to delete
+    appointment = db.query(models.Appointment).filter(models.Appointment.id == attachment.appointment_id).first()
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    
+    if current_user.role != models.UserRole.SECRETARIAT and appointment.requester_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this attachment")
+    
+    # Delete the attachment
+    db.delete(attachment)
+    db.commit()
+    
+    return None
