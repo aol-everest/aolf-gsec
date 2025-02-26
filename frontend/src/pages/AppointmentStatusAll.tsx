@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Typography,
@@ -9,6 +9,8 @@ import {
   MenuItem,
   SelectChangeEvent,
   Checkbox,
+  CircularProgress,
+  Button,
 } from '@mui/material';
 import {
   GridColDef,
@@ -29,8 +31,10 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/DeleteOutlined';
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Close';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
+import FilterListIcon from '@mui/icons-material/FilterList';
 import Layout from '../components/Layout';
-import { getStatusChipSx, getSubStatusChipSx } from '../utils/formattingUtils';
+import { getStatusChipSx, getSubStatusChipSx, getStatusColor } from '../utils/formattingUtils';
 import { useTheme } from '@mui/material/styles';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
@@ -70,6 +74,9 @@ const StatusEditCell = (props: StatusEditCellProps) => {
 
 const AppointmentStatusAll: React.FC = () => {
   const [rowModesModel, setRowModesModel] = useState<GridRowModesModel>({});
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
+  const [filteredAppointments, setFilteredAppointments] = useState<Appointment[]>([]);
   const theme = useTheme();
   const api = useApi();
   const { enqueueSnackbar } = useSnackbar();
@@ -103,22 +110,65 @@ const AppointmentStatusAll: React.FC = () => {
   });
 
   // Fetch locations
-  const { data: locations = [] } = useQuery({
+  const { data: locations = [], isLoading: isLoadingLocations } = useQuery({
     queryKey: ['locations'],
     queryFn: async () => {
       const { data } = await api.get<Location[]>('/locations/all');
       return data;
     },
+    retry: 1,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   // Fetch appointments
   const { data: appointments = [], isLoading } = useQuery({
     queryKey: ['appointments-all'],
     queryFn: async () => {
-      const { data } = await api.get<Appointment[]>('/admin/appointments/all');
+      const { data } = await api.get<Appointment[]>('/admin/appointments/all', {
+        params: {
+          include_location: true
+        }
+      });
       return data;
     },
   });
+
+  // Filter appointments based on selected status and location
+  useEffect(() => {
+    let filtered = [...appointments];
+    
+    // Apply status filter if selected
+    if (selectedStatus) {
+      filtered = filtered.filter(appointment => appointment.status === selectedStatus);
+    }
+    
+    // Apply location filter if selected
+    if (selectedLocation) {
+      filtered = filtered.filter(appointment => 
+        appointment.location && appointment.location.id === selectedLocation
+      );
+    }
+    
+    setFilteredAppointments(filtered);
+  }, [selectedStatus, selectedLocation, appointments]);
+
+  // Get count of appointments for a specific location
+  const getLocationAppointmentCount = (locationId: number) => {
+    try {
+      return appointments.filter(a => a.location && a.location.id === locationId).length;
+    } catch (error) {
+      console.error('Error counting appointments for location:', error);
+      return 0;
+    }
+  };
+
+  const handleStatusFilter = (status: string | null) => {
+    setSelectedStatus(status === selectedStatus ? null : status);
+  };
+
+  const handleLocationFilter = (locationId: number | null) => {
+    setSelectedLocation(locationId === selectedLocation ? null : locationId);
+  };
 
   // Update appointment mutation
   const updateAppointmentMutation = useMutation({
@@ -393,6 +443,124 @@ const AppointmentStatusAll: React.FC = () => {
           <Typography variant="h4" component="h1" gutterBottom>
             All Appointments
           </Typography>
+
+          {/* Filters Section */}
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <FilterListIcon fontSize="small" />
+                Filters
+              </Typography>
+              
+              {/* Status Filters */}
+              <Box>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>Filter by Status</Typography>
+                <Box sx={{ 
+                  display: 'flex', 
+                  gap: 1, 
+                  flexWrap: 'wrap'
+                }}>
+                  {statusOptions.map((status) => (
+                    <Chip
+                      key={status}
+                      label={`${status} (${appointments.filter(a => a.status === status).length})`}
+                      onClick={() => handleStatusFilter(status)}
+                      variant={selectedStatus === status ? 'filled' : 'outlined'}
+                      sx={{ 
+                        cursor: 'pointer',
+                        '&:hover': {
+                          opacity: 0.8,
+                        },
+                        bgcolor: selectedStatus === status ? theme.palette.primary.light : 'white',
+                        color: selectedStatus === status ? 'white' : getStatusColor(status, theme),
+                        border: `1px solid ${getStatusColor(status, theme)}`,
+                        borderRadius: '10px',
+                      }}
+                    />
+                  ))}
+                </Box>
+              </Box>
+              
+              {/* Location Filters */}
+              <Box>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>Filter by Location</Typography>
+                {isLoadingLocations ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <CircularProgress size={20} />
+                    <Typography variant="body2">Loading locations...</Typography>
+                  </Box>
+                ) : locations.length > 0 ? (
+                  <Box sx={{ 
+                    display: 'flex', 
+                    gap: 1, 
+                    flexWrap: 'wrap'
+                  }}>
+                    {locations.map((location) => (
+                      <Chip
+                        key={location.id}
+                        icon={<LocationOnIcon />}
+                        label={`${location.name} (${getLocationAppointmentCount(location.id)})`}
+                        onClick={() => handleLocationFilter(location.id)}
+                        variant={selectedLocation === location.id ? 'filled' : 'outlined'}
+                        sx={{ 
+                          cursor: 'pointer',
+                          '&:hover': {
+                            opacity: 0.8,
+                          },
+                          bgcolor: selectedLocation === location.id ? theme.palette.primary.light : 'white',
+                          color: selectedLocation === location.id ? 'white' : theme.palette.primary.main,
+                          borderRadius: '10px',
+                        }}
+                      />
+                    ))}
+                  </Box>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    No locations available. Please check with your administrator.
+                  </Typography>
+                )}
+              </Box>
+              
+              {/* Active Filters Summary */}
+              {(selectedStatus || selectedLocation) && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+                  <Typography variant="body2">Active Filters:</Typography>
+                  {selectedStatus && (
+                    <Chip 
+                      label={selectedStatus} 
+                      size="small" 
+                      onDelete={() => setSelectedStatus(null)}
+                      sx={{ 
+                        color: getStatusColor(selectedStatus, theme),
+                        borderColor: getStatusColor(selectedStatus, theme),
+                      }}
+                    />
+                  )}
+                  {selectedLocation && (
+                    <Chip 
+                      label={locations.find(l => l.id === selectedLocation)?.name || `Location ID: ${selectedLocation}`} 
+                      size="small" 
+                      onDelete={() => setSelectedLocation(null)}
+                      icon={<LocationOnIcon fontSize="small" />}
+                      sx={{ 
+                        color: theme.palette.primary.main,
+                      }}
+                    />
+                  )}
+                  <Button 
+                    size="small" 
+                    onClick={() => {
+                      setSelectedStatus(null);
+                      setSelectedLocation(null);
+                    }}
+                  >
+                    Clear All
+                  </Button>
+                </Box>
+              )}
+            </Box>
+          </Paper>
+
           <Box
             sx={{
               width: '100%',
@@ -401,7 +569,7 @@ const AppointmentStatusAll: React.FC = () => {
             }}
           >
             <GenericDataGrid
-              rows={appointments}
+              rows={selectedStatus || selectedLocation ? filteredAppointments : appointments}
               // getRowHeight={() => 'auto'}
               columns={columns}
               loading={isLoading}
