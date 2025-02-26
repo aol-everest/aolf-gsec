@@ -747,3 +747,120 @@ async def get_attachment_thumbnail(
         io.BytesIO(file_data['file_data']),
         media_type=file_data['content_type']
     )
+
+@app.post("/admin/locations/{location_id}/attachment", response_model=schemas.LocationAdmin)
+@requires_role(models.UserRole.SECRETARIAT)
+async def upload_location_attachment(
+    location_id: int,
+    file: UploadFile = File(...),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Upload an attachment for a location"""
+    # Check if location exists
+    location = db.query(models.Location).filter(models.Location.id == location_id).first()
+    if not location:
+        raise HTTPException(status_code=404, detail="Location not found")
+    
+    try:
+        # Read file content
+        file_content = await file.read()
+        
+        # Upload to S3
+        result = upload_file(
+            file_data=file_content,
+            file_name=f"{location_id}/{file.filename}",
+            content_type=file.content_type,
+            entity_type="locations"
+        )
+        
+        # Update location with attachment info
+        location.attachment_path = result['s3_path']
+        location.attachment_name = file.filename
+        location.attachment_file_type = file.content_type
+        location.updated_by = current_user.id
+        
+        db.commit()
+        db.refresh(location)
+        
+        return location
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload file: {str(e)}")
+
+@app.get("/locations/{location_id}/attachment")
+async def get_location_attachment(
+    location_id: int,
+    db: Session = Depends(get_db)
+):
+    """Get a location's attachment - accessible to all users"""
+    location = db.query(models.Location).filter(models.Location.id == location_id).first()
+    if not location:
+        raise HTTPException(status_code=404, detail="Location not found")
+    
+    if not location.attachment_path or not location.attachment_name:
+        raise HTTPException(status_code=404, detail="Location has no attachment")
+    
+    try:
+        file_data = get_file(location.attachment_path)
+        
+        return StreamingResponse(
+            io.BytesIO(file_data['file_data']),
+            media_type=location.attachment_file_type,
+            headers={"Content-Disposition": f"attachment; filename={location.attachment_name}"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve attachment: {str(e)}")
+
+@app.delete("/admin/locations/{location_id}/attachment", response_model=schemas.LocationAdmin)
+@requires_role(models.UserRole.SECRETARIAT)
+async def remove_location_attachment(
+    location_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Remove an attachment from a location"""
+    location = db.query(models.Location).filter(models.Location.id == location_id).first()
+    if not location:
+        raise HTTPException(status_code=404, detail="Location not found")
+    
+    # Clear attachment fields
+    location.attachment_path = None
+    location.attachment_name = None
+    location.attachment_file_type = None
+    location.updated_by = current_user.id
+    
+    db.commit()
+    db.refresh(location)
+    return location
+
+# Deprecated - Use /admin/locations/{location_id}/attachment instead
+@app.post("/admin/upload", response_model=dict, deprecated=True)
+@requires_role(models.UserRole.SECRETARIAT)
+async def upload_file_endpoint(
+    file: UploadFile = File(...),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Upload a file to S3 and return its URL (DEPRECATED - Use /admin/locations/{location_id}/attachment instead)"""
+    try:
+        # Read file content
+        file_content = await file.read()
+        
+        # Generate a unique path for the file
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        unique_id = f"{current_user.id}_{timestamp}"
+        
+        # Upload to S3
+        result = upload_file(
+            file_data=file_content,
+            file_name=f"general/{unique_id}/{file.filename}",
+            content_type=file.content_type,
+            entity_type="general"
+        )
+        
+        # Return the file URL and name
+        return {
+            "url": f"https://{BUCKET_NAME}.s3.amazonaws.com/{result['s3_path']}",
+            "filename": file.filename
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload file: {str(e)}")

@@ -16,6 +16,9 @@ class Location(Base):
     driving_directions = Column(Text)
     secretariat_internal_notes = Column(Text)
     parking_info = Column(Text)
+    attachment_path = Column(String)  # Path to the stored attachment in S3
+    attachment_name = Column(String)  # Original filename of the attachment
+    attachment_file_type = Column(String)  # MIME type of the attachment
     
     # Timestamps and audit fields
     created_at = Column(DateTime, default=datetime.utcnow)

@@ -114,6 +114,9 @@ class Location(LocationBase):
 
 class LocationAdminCreate(LocationBase):
     secretariat_internal_notes: Optional[str] = None
+    attachment_path: Optional[str] = None
+    attachment_name: Optional[str] = None
+    attachment_file_type: Optional[str] = None
 
 class LocationAdminUpdate(LocationBase):
     name: Optional[str] = None
@@ -125,6 +128,9 @@ class LocationAdminUpdate(LocationBase):
     driving_directions: Optional[str] = None
     parking_info: Optional[str] = None
     secretariat_internal_notes: Optional[str] = None
+    attachment_path: Optional[str] = None
+    attachment_name: Optional[str] = None
+    attachment_file_type: Optional[str] = None
 
 class LocationAdmin(LocationBase):
     id: int
@@ -133,6 +139,9 @@ class LocationAdmin(LocationBase):
     updated_at: Optional[datetime] = None
     updated_by: Optional[int] = None
     secretariat_internal_notes: Optional[str] = None
+    attachment_path: Optional[str] = None
+    attachment_name: Optional[str] = None
+    attachment_file_type: Optional[str] = None
 
 
 class AppointmentBase(BaseModel):

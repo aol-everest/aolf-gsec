@@ -12,10 +12,15 @@ import {
   CardActions,
   Collapse,
   CircularProgress,
+  Link,
+  Paper,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
+import DeleteIcon from '@mui/icons-material/Delete';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
 import { useSnackbar } from 'notistack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../hooks/useApi';
@@ -64,6 +69,9 @@ interface Location {
   driving_directions?: string;
   secretariat_internal_notes?: string;
   parking_info?: string;
+  attachment_path?: string;
+  attachment_name?: string;
+  attachment_file_type?: string;
   created_at: string;
   updated_at?: string;
 }
@@ -78,6 +86,9 @@ interface LocationFormData {
   driving_directions?: string;
   secretariat_internal_notes?: string;
   parking_info?: string;
+  attachment_path?: string;
+  attachment_name?: string;
+  attachment_file_type?: string;
 }
 
 const initialFormData: LocationFormData = {
@@ -90,6 +101,9 @@ const initialFormData: LocationFormData = {
   driving_directions: '',
   secretariat_internal_notes: '',
   parking_info: '',
+  attachment_path: '',
+  attachment_name: '',
+  attachment_file_type: '',
 };
 
 // Move Google Maps script loading to a custom hook
@@ -140,12 +154,23 @@ export default function LocationsManage() {
   const [formOpen, setFormOpen] = useState(false);
   const [formData, setFormData] = useState<LocationFormData>(initialFormData);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
   const api = useApi();
   const queryClient = useQueryClient();
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const { isLoaded: mapsLoaded, error: mapsError } = useGoogleMapsScript();
+
+  // Function to close the form and reset state
+  const handleClose = () => {
+    setFormOpen(false);
+    setFormData(initialFormData);
+    setEditingId(null);
+    setSelectedFile(null);
+  };
 
   // Query for fetching locations
   const { data: locations = [], isLoading } = useQuery({
@@ -164,11 +189,64 @@ export default function LocationsManage() {
   // Mutation for creating/updating locations
   const locationMutation = useMutation({
     mutationFn: async (variables: { id?: number; data: LocationFormData }) => {
+      // If there's a file to upload, handle it first
+      if (selectedFile) {
+        setIsUploading(true);
+        try {
+          const formData = new FormData();
+          formData.append('file', selectedFile);
+          
+          // Use the new location-specific attachment endpoint if we have a location ID
+          if (variables.id) {
+            const uploadResponse = await api.post<Location>(`/admin/locations/${variables.id}/attachment`, formData, {
+              headers: {
+                'Content-Type': 'multipart/form-data',
+              },
+            });
+            
+            // The response now includes the updated location with attachment info
+            return uploadResponse.data;
+          } else {
+            // For new locations, we'll upload the attachment after creating the location
+            // So we just continue with the create operation
+          }
+        } catch (error) {
+          enqueueSnackbar('Failed to upload attachment', { variant: 'error' });
+          throw error;
+        } finally {
+          setIsUploading(false);
+        }
+      }
+      
       if (variables.id) {
         const { data } = await api.patch<Location>(`/admin/locations/update/${variables.id}`, variables.data);
         return data;
       } else {
+        // Create the location first
         const { data } = await api.post<Location>('/admin/locations/new', variables.data);
+        
+        // If we have a file to upload, attach it to the newly created location
+        if (selectedFile) {
+          setIsUploading(true);
+          try {
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            
+            const uploadResponse = await api.post<Location>(`/admin/locations/${data.id}/attachment`, formData, {
+              headers: {
+                'Content-Type': 'multipart/form-data',
+              },
+            });
+            
+            setIsUploading(false);
+            return uploadResponse.data;
+          } catch (error) {
+            enqueueSnackbar('Location created but failed to upload attachment', { variant: 'warning' });
+            setIsUploading(false);
+            return data;
+          }
+        }
+        
         return data;
       }
     },
@@ -179,6 +257,27 @@ export default function LocationsManage() {
     },
     onError: () => {
       enqueueSnackbar('Failed to save location', { variant: 'error' });
+    }
+  });
+
+  // Mutation for removing an attachment
+  const removeAttachmentMutation = useMutation({
+    mutationFn: async (locationId: number) => {
+      const { data } = await api.delete<Location>(`/admin/locations/${locationId}/attachment`);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['locations'] });
+      setFormData(prev => ({
+        ...prev,
+        attachment_path: '',
+        attachment_name: '',
+        attachment_file_type: '',
+      }));
+      enqueueSnackbar('Attachment removed successfully', { variant: 'success' });
+    },
+    onError: () => {
+      enqueueSnackbar('Failed to remove attachment', { variant: 'error' });
     }
   });
 
@@ -287,19 +386,17 @@ export default function LocationsManage() {
         driving_directions: location.driving_directions || '',
         secretariat_internal_notes: location.secretariat_internal_notes || '',
         parking_info: location.parking_info || '',
+        attachment_path: location.attachment_path || '',
+        attachment_name: location.attachment_name || '',
+        attachment_file_type: location.attachment_file_type || '',
       });
       setEditingId(location.id);
     } else {
       setFormData(initialFormData);
       setEditingId(null);
     }
+    setSelectedFile(null);
     setFormOpen(true);
-  };
-
-  const handleClose = () => {
-    setFormOpen(false);
-    setFormData(initialFormData);
-    setEditingId(null);
   };
 
   const handleSubmit = () => {
@@ -312,6 +409,33 @@ export default function LocationsManage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setSelectedFile(e.target.files[0]);
+    }
+  };
+
+  const handleRemoveAttachment = () => {
+    if (editingId) {
+      removeAttachmentMutation.mutate(editingId);
+    } else {
+      // For new locations, just clear the selected file
+      setSelectedFile(null);
+      setFormData(prev => ({
+        ...prev,
+        attachment_path: '',
+        attachment_name: '',
+        attachment_file_type: '',
+      }));
+    }
+  };
+
+  const triggerFileInput = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
   };
 
   const columns: GridColDef[] = [
@@ -344,6 +468,47 @@ export default function LocationsManage() {
       headerName: 'Country',
       width: 120,
       flex: 0.5,
+    },
+    {
+      field: 'attachment',
+      headerName: 'Attachment',
+      width: 120,
+      flex: 0.5,
+      renderCell: (params) => {
+        if (!params.row.attachment_path) return null;
+        
+        const isImage = params.row.attachment_file_type?.startsWith('image/');
+        
+        // Use the new public endpoint for accessing attachments
+        const attachmentUrl = `${api.defaults.baseURL}/locations/${params.row.id}/attachment`;
+        
+        // For image previews, construct the S3 URL from the path
+        const s3Url = params.row.attachment_path ? 
+          `https://${process.env.REACT_APP_S3_BUCKET_NAME}.s3.amazonaws.com/${params.row.attachment_path}` : 
+          '';
+        
+        return (
+          <Link 
+            href={attachmentUrl} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            sx={{ display: 'flex', alignItems: 'center' }}
+          >
+            {isImage ? (
+              <img 
+                src={s3Url} // Use the constructed S3 URL for image preview
+                alt={params.row.attachment_name}
+                style={{ width: 24, height: 24, marginRight: 4, objectFit: 'cover' }}
+              />
+            ) : (
+              <AttachFileIcon />
+            )}
+            <Typography variant="caption" sx={{ ml: 0.5 }}>
+              {params.row.attachment_name?.split('.').pop()?.toUpperCase()}
+            </Typography>
+          </Link>
+        );
+      }
     },
     {
       field: 'actions',
@@ -496,16 +661,94 @@ export default function LocationsManage() {
                       rows={3}
                     />
                   </Grid>
+                  <Grid item xs={12}>
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="subtitle1" gutterBottom>
+                        Attachment
+                      </Typography>
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        style={{ display: 'none' }}
+                        onChange={handleFileSelect}
+                      />
+                      {(formData.attachment_path || selectedFile) ? (
+                        <Paper variant="outlined" sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {selectedFile && selectedFile.type.startsWith('image/') ? (
+                              <img 
+                                src={URL.createObjectURL(selectedFile)} 
+                                alt={selectedFile.name}
+                                style={{ width: 40, height: 40, objectFit: 'cover' }}
+                              />
+                            ) : formData.attachment_file_type?.startsWith('image/') && formData.attachment_path ? (
+                              <img 
+                                src={`https://${process.env.REACT_APP_S3_BUCKET_NAME}.s3.amazonaws.com/${formData.attachment_path}`} 
+                                alt={formData.attachment_name}
+                                style={{ width: 40, height: 40, objectFit: 'cover' }}
+                              />
+                            ) : (
+                              <AttachFileIcon />
+                            )}
+                            <Box>
+                              <Typography>
+                                {selectedFile ? selectedFile.name : formData.attachment_name}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {selectedFile ? 
+                                  `${(selectedFile.size / 1024).toFixed(1)} KB - ${selectedFile.type}` : 
+                                  formData.attachment_file_type
+                                }
+                              </Typography>
+                            </Box>
+                          </Box>
+                          <Box>
+                            {formData.attachment_path && (
+                              <IconButton 
+                                component="a" 
+                                href={editingId ? `${api.defaults.baseURL}/locations/${editingId}/attachment` : formData.attachment_path} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                size="small"
+                                sx={{ mr: 1 }}
+                              >
+                                <UploadFileIcon fontSize="small" />
+                              </IconButton>
+                            )}
+                            <IconButton 
+                              onClick={handleRemoveAttachment} 
+                              size="small"
+                              disabled={removeAttachmentMutation.isPending}
+                            >
+                              {removeAttachmentMutation.isPending ? (
+                                <CircularProgress size={20} />
+                              ) : (
+                                <DeleteIcon fontSize="small" />
+                              )}
+                            </IconButton>
+                          </Box>
+                        </Paper>
+                      ) : (
+                        <Button
+                          variant="outlined"
+                          startIcon={<UploadFileIcon />}
+                          onClick={triggerFileInput}
+                        >
+                          Upload Attachment
+                        </Button>
+                      )}
+                    </Box>
+                  </Grid>
                 </Grid>
               </CardContent>
               <CardActions sx={{ justifyContent: 'flex-end', p: 2 }}>
-                <Button onClick={handleClose} disabled={locationMutation.isPending}>Cancel</Button>
+                <Button onClick={handleClose} disabled={locationMutation.isPending || isUploading}>Cancel</Button>
                 <Button 
                   onClick={handleSubmit} 
                   variant="contained"
-                  disabled={locationMutation.isPending}
+                  disabled={locationMutation.isPending || isUploading}
                 >
-                  {locationMutation.isPending ? (
+                  {(locationMutation.isPending || isUploading) ? (
                     <CircularProgress size={24} />
                   ) : editingId ? 'Update' : 'Create'}
                 </Button>
