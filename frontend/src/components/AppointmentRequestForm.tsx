@@ -599,6 +599,7 @@ export const AppointmentRequestForm: React.FC = () => {
                   {...pocForm.register('pocPhone', { required: 'Phone number is required' })}
                   error={!!pocForm.formState.errors.pocPhone}
                   helperText={pocForm.formState.errors.pocPhone?.message}
+                  required
                 />
               </Grid>
             </Grid>
@@ -703,7 +704,7 @@ export const AppointmentRequestForm: React.FC = () => {
               ) : null}
 
               <Grid item xs={12} md={6}>
-                <FormControl fullWidth>
+                <FormControl fullWidth required>
                   <InputLabel>Relationship Type</InputLabel>
                   <Select
                     label="Relationship Type"
@@ -748,6 +749,7 @@ export const AppointmentRequestForm: React.FC = () => {
                   {...dignitaryForm.register('dignitaryFirstName', { required: 'First name is required' })}
                   error={!!dignitaryForm.formState.errors.dignitaryFirstName}
                   helperText={dignitaryForm.formState.errors.dignitaryFirstName?.message}
+                  required
                 />
               </Grid>
               
@@ -759,6 +761,7 @@ export const AppointmentRequestForm: React.FC = () => {
                   {...dignitaryForm.register('dignitaryLastName', { required: 'Last name is required' })}
                   error={!!dignitaryForm.formState.errors.dignitaryLastName}
                   helperText={dignitaryForm.formState.errors.dignitaryLastName?.message}
+                  required
                 />
               </Grid>
               
@@ -771,6 +774,7 @@ export const AppointmentRequestForm: React.FC = () => {
                   {...dignitaryForm.register('dignitaryEmail', { required: 'Email is required' })}
                   error={!!dignitaryForm.formState.errors.dignitaryEmail}
                   helperText={dignitaryForm.formState.errors.dignitaryEmail?.message}
+                  required
                 />
               </Grid>
               
@@ -786,7 +790,7 @@ export const AppointmentRequestForm: React.FC = () => {
               </Grid>
               
               <Grid item xs={12} md={6} lg={4}>
-                <FormControl fullWidth>
+                <FormControl fullWidth required>
                   <InputLabel>Primary Domain</InputLabel>
                   <Select
                     label="Primary Domain"
@@ -834,6 +838,7 @@ export const AppointmentRequestForm: React.FC = () => {
                   {...dignitaryForm.register('dignitaryBioSummary', { required: 'Bio summary is required' })}
                   error={!!dignitaryForm.formState.errors.dignitaryBioSummary}
                   helperText={dignitaryForm.formState.errors.dignitaryBioSummary?.message}
+                  required
                 />
               </Grid>
               
@@ -988,6 +993,7 @@ export const AppointmentRequestForm: React.FC = () => {
                   {...appointmentForm.register('purpose', { required: 'Purpose is required' })}
                   error={!!appointmentForm.formState.errors.purpose}
                   helperText={appointmentForm.formState.errors.purpose?.message}
+                  required
                 />
               </Grid>
 
@@ -1004,12 +1010,13 @@ export const AppointmentRequestForm: React.FC = () => {
                   {...appointmentForm.register('preferredDate', { required: 'Preferred date is required' })}
                   error={!!appointmentForm.formState.errors.preferredDate}
                   helperText={appointmentForm.formState.errors.preferredDate?.message}
+                  required
                 />
               </Grid>
 
               <Grid item xs={12} md={6} lg={4}>
-                <FormControl fullWidth>
-                  <InputLabel>Preferred Time of Day</InputLabel>
+                <FormControl fullWidth required>
+                  <InputLabel>Preferred Time of Day *</InputLabel>
                   <Controller
                     name="preferredTimeOfDay"
                     control={appointmentForm.control}
@@ -1031,8 +1038,8 @@ export const AppointmentRequestForm: React.FC = () => {
               </Grid>
 
               <Grid item xs={12} md={6} lg={4}>
-                <FormControl fullWidth>
-                  <InputLabel>Location</InputLabel>
+                <FormControl fullWidth required>
+                  <InputLabel>Location *</InputLabel>
                   <Controller
                     name="location_id"
                     control={appointmentForm.control}
