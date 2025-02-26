@@ -1,6 +1,11 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, Enum
 from sqlalchemy.sql import func
 from database import Base
+import enum
+
+class AttachmentType(str, enum.Enum):
+    GENERAL = "general"
+    BUSINESS_CARD = "business_card"
 
 class AppointmentAttachment(Base):
     __tablename__ = "appointment_attachments"
@@ -13,4 +18,5 @@ class AppointmentAttachment(Base):
     is_image = Column(Boolean, default=False, nullable=False)
     thumbnail_path = Column(String, nullable=True)  # Path to the thumbnail in S3
     uploaded_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    attachment_type = Column(Enum(AttachmentType), default=AttachmentType.GENERAL, nullable=False)
     created_at = Column(DateTime, server_default=func.now(), nullable=False) 

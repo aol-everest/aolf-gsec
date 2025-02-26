@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Security, Request, File, UploadFile
+from fastapi import FastAPI, Depends, HTTPException, status, Security, Request, File, UploadFile, Form
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -647,6 +647,7 @@ async def get_location_for_user(
 async def upload_appointment_attachment(
     appointment_id: int,
     file: UploadFile = File(...),
+    attachment_type: str = Form(models.AttachmentType.GENERAL),
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -676,7 +677,8 @@ async def upload_appointment_attachment(
         file_type=file.content_type,
         is_image=upload_result.get('is_image', False),
         thumbnail_path=upload_result.get('thumbnail_path'),
-        uploaded_by=current_user.id
+        uploaded_by=current_user.id,
+        attachment_type=attachment_type
     )
     db.add(attachment)
     db.commit()

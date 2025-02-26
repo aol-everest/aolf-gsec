@@ -1,9 +1,11 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
 from datetime import datetime, date
 from models.appointment import AppointmentStatus, AppointmentTimeOfDay, AppointmentSubStatus, AppointmentType
 from models.dignitary import HonorificTitle, PrimaryDomain
 from models.dignitaryPointOfContact import RelationshipType
+from enum import Enum
+from models.appointmentAttachment import AttachmentType
 
 class GoogleToken(BaseModel):
     token: str
@@ -261,6 +263,7 @@ class AppointmentAttachmentBase(BaseModel):
     file_name: str
     file_type: str
     is_image: bool = False
+    attachment_type: AttachmentType = AttachmentType.GENERAL
 
 class AppointmentAttachmentCreate(AppointmentAttachmentBase):
     appointment_id: int

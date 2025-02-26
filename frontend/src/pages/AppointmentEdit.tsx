@@ -39,6 +39,7 @@ import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import ImageIcon from '@mui/icons-material/Image';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import DescriptionIcon from '@mui/icons-material/Description';
+import ContactMailIcon from '@mui/icons-material/ContactMail';
 
 interface AppointmentFormData {
   appointment_date: string;
@@ -61,6 +62,7 @@ interface Attachment {
   file_type: string;
   uploaded_by: number;
   created_at: string;
+  attachment_type: string;
 }
 
 const AppointmentEdit: React.FC = () => {
@@ -71,6 +73,8 @@ const AppointmentEdit: React.FC = () => {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const businessCardInputRef = useRef<HTMLInputElement>(null);
+  const businessCardCameraInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
   const { control, handleSubmit, reset } = useForm<AppointmentFormData>();
@@ -143,6 +147,15 @@ const AppointmentEdit: React.FC = () => {
     enabled: !!id,
   });
 
+  // Separate attachments by type
+  const businessCardAttachments = useMemo(() => {
+    return attachments.filter(attachment => attachment.attachment_type === 'business_card');
+  }, [attachments]);
+
+  const generalAttachments = useMemo(() => {
+    return attachments.filter(attachment => attachment.attachment_type === 'general');
+  }, [attachments]);
+
   // Update appointment mutation
   const updateAppointmentMutation = useMutation({
     mutationFn: async (data: AppointmentFormData) => {
@@ -164,7 +177,7 @@ const AppointmentEdit: React.FC = () => {
     updateAppointmentMutation.mutate(data);
   };
 
-  const handleFileUpload = async (files: FileList) => {
+  const handleFileUpload = async (files: FileList, attachmentType: string = 'general') => {
     if (!id || !files.length) return;
 
     setUploading(true);
@@ -172,6 +185,7 @@ const AppointmentEdit: React.FC = () => {
       const uploadPromises = Array.from(files).map(async (file) => {
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('attachment_type', attachmentType);
         
         await api.post(`/appointments/${id}/attachments`, formData, {
           headers: {
@@ -204,6 +218,18 @@ const AppointmentEdit: React.FC = () => {
     }
   };
 
+  const handleBusinessCardInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files.length > 0) {
+      handleFileUpload(event.target.files, 'business_card');
+    }
+  };
+
+  const handleBusinessCardCameraInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files.length > 0) {
+      handleFileUpload(event.target.files, 'business_card');
+    }
+  };
+
   const handleChooseFile = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
@@ -213,6 +239,18 @@ const AppointmentEdit: React.FC = () => {
   const handleTakePhoto = () => {
     if (cameraInputRef.current) {
       cameraInputRef.current.click();
+    }
+  };
+
+  const handleUploadBusinessCard = () => {
+    if (businessCardInputRef.current) {
+      businessCardInputRef.current.click();
+    }
+  };
+
+  const handleTakeBusinessCardPhoto = () => {
+    if (businessCardCameraInputRef.current) {
+      businessCardCameraInputRef.current.click();
     }
   };
 
@@ -564,6 +602,51 @@ const AppointmentEdit: React.FC = () => {
                     {uploading && <CircularProgress size={24} sx={{ ml: 2 }} />}
                   </Box>
                   
+                  {/* Business Cards Section */}
+                  <Typography variant="h6" gutterBottom color="primary" sx={{ mt: 3, mb: 1 }}>
+                    Business Cards
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    Upload or take photos of business cards for easy reference
+                  </Typography>
+                  
+                  <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                    <Button
+                      variant="outlined"
+                      startIcon={<ContactMailIcon />}
+                      onClick={handleUploadBusinessCard}
+                      disabled={uploading}
+                    >
+                      Upload Business Card
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      startIcon={<PhotoCameraIcon />}
+                      onClick={handleTakeBusinessCardPhoto}
+                      disabled={uploading}
+                    >
+                      Take Business Card Photo
+                    </Button>
+                    
+                    <input
+                      type="file"
+                      ref={businessCardInputRef}
+                      style={{ display: 'none' }}
+                      onChange={handleBusinessCardInputChange}
+                      accept="image/*"
+                      multiple
+                    />
+                    <input
+                      type="file"
+                      ref={businessCardCameraInputRef}
+                      style={{ display: 'none' }}
+                      onChange={handleBusinessCardCameraInputChange}
+                      accept="image/*"
+                      capture="environment"
+                      multiple
+                    />
+                  </Box>
+                  
                   {/* Attachments List */}
                   <Card variant="outlined" sx={{ mb: 3 }}>
                     <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
@@ -573,29 +656,82 @@ const AppointmentEdit: React.FC = () => {
                         </Box>
                       ) : (
                         <List>
-                          {attachments.map((attachment, index) => (
-                            <React.Fragment key={attachment.id}>
+                          {/* Business Cards Section */}
+                          {businessCardAttachments.length > 0 && (
+                            <>
                               <ListItem>
-                                <ListItemIcon>
-                                  {getFileIcon(attachment.file_type)}
-                                </ListItemIcon>
-                                <ListItemText
-                                  primary={attachment.file_name}
-                                  secondary={new Date(attachment.created_at).toLocaleString()}
+                                <ListItemText 
+                                  primary={
+                                    <Typography variant="subtitle1" color="secondary" sx={{ fontWeight: 'bold' }}>
+                                      Business Cards
+                                    </Typography>
+                                  } 
                                 />
-                                <ListItemSecondaryAction>
-                                  <IconButton 
-                                    edge="end" 
-                                    aria-label="download"
-                                    onClick={() => handleDownloadAttachment(attachment.id, attachment.file_name)}
-                                  >
-                                    <DownloadIcon />
-                                  </IconButton>
-                                </ListItemSecondaryAction>
                               </ListItem>
-                              {index < attachments.length - 1 && <Divider />}
-                            </React.Fragment>
-                          ))}
+                              {businessCardAttachments.map((attachment, index) => (
+                                <React.Fragment key={attachment.id}>
+                                  <ListItem>
+                                    <ListItemIcon>
+                                      {getFileIcon(attachment.file_type)}
+                                    </ListItemIcon>
+                                    <ListItemText
+                                      primary={attachment.file_name}
+                                      secondary={new Date(attachment.created_at).toLocaleString()}
+                                    />
+                                    <ListItemSecondaryAction>
+                                      <IconButton 
+                                        edge="end" 
+                                        aria-label="download"
+                                        onClick={() => handleDownloadAttachment(attachment.id, attachment.file_name)}
+                                      >
+                                        <DownloadIcon />
+                                      </IconButton>
+                                    </ListItemSecondaryAction>
+                                  </ListItem>
+                                  {index < businessCardAttachments.length - 1 && <Divider />}
+                                </React.Fragment>
+                              ))}
+                              {generalAttachments.length > 0 && <Divider />}
+                            </>
+                          )}
+                          
+                          {/* General Attachments Section */}
+                          {generalAttachments.length > 0 && (
+                            <>
+                              <ListItem>
+                                <ListItemText 
+                                  primary={
+                                    <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                                      General Attachments
+                                    </Typography>
+                                  } 
+                                />
+                              </ListItem>
+                              {generalAttachments.map((attachment, index) => (
+                                <React.Fragment key={attachment.id}>
+                                  <ListItem>
+                                    <ListItemIcon>
+                                      {getFileIcon(attachment.file_type)}
+                                    </ListItemIcon>
+                                    <ListItemText
+                                      primary={attachment.file_name}
+                                      secondary={new Date(attachment.created_at).toLocaleString()}
+                                    />
+                                    <ListItemSecondaryAction>
+                                      <IconButton 
+                                        edge="end" 
+                                        aria-label="download"
+                                        onClick={() => handleDownloadAttachment(attachment.id, attachment.file_name)}
+                                      >
+                                        <DownloadIcon />
+                                      </IconButton>
+                                    </ListItemSecondaryAction>
+                                  </ListItem>
+                                  {index < generalAttachments.length - 1 && <Divider />}
+                                </React.Fragment>
+                              ))}
+                            </>
+                          )}
                         </List>
                       )}
                     </CardContent>

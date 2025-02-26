@@ -141,8 +141,8 @@ store_parameters() {
   aws ssm put-parameter --name "JWT_SECRET_KEY_$PARAM_SUFFIX" --value "$JWT_SECRET_KEY" --type SecureString --overwrite --region $REGION
   aws ssm put-parameter --name "GOOGLE_CLIENT_ID_$PARAM_SUFFIX" --value "$GOOGLE_CLIENT_ID" --type SecureString --overwrite --region $REGION
   aws ssm put-parameter --name "SENDGRID_API_KEY_$PARAM_SUFFIX" --value "$SENDGRID_API_KEY" --type SecureString --overwrite --region $REGION
-  aws ssm put-parameter --name "AWS_ACCESS_KEY_ID_$PARAM_SUFFIX" --value "$AWS_ACCESS_KEY_ID" --type SecureString --overwrite --region $REGION
-  aws ssm put-parameter --name "AWS_SECRET_ACCESS_KEY_$PARAM_SUFFIX" --value "$AWS_SECRET_ACCESS_KEY" --type SecureString --overwrite --region $REGION
+  aws ssm put-parameter --name "ACCESS_KEY_ID_$PARAM_SUFFIX" --value "$AWS_ACCESS_KEY_ID" --type SecureString --overwrite --region $REGION
+  aws ssm put-parameter --name "SECRET_ACCESS_KEY_$PARAM_SUFFIX" --value "$AWS_SECRET_ACCESS_KEY" --type SecureString --overwrite --region $REGION
   
   log "Parameters stored in AWS Parameter Store."
 }
@@ -164,25 +164,14 @@ create_or_update_env() {
   else
     log "Creating new Elastic Beanstalk environment..."
     
-    if [ "$SKIP_PARAMETER_STORE" = true ]; then
-      # Create environment with direct database credentials
-      eb create $ENV_NAME \
-        --database \
-        --database.engine postgres \
-        --database.instance db.t3.micro \
-        --database.size 5 \
-        --database.username "$POSTGRES_USER" \
-        --database.password "$POSTGRES_PASSWORD"
-    else
-      # Create environment with parameter store references
-      eb create $ENV_NAME \
-        --database \
-        --database.engine postgres \
-        --database.instance db.t3.micro \
-        --database.size 5 \
-        --database.username "{{resolve:ssm:RDS_USERNAME_$PARAM_SUFFIX:1}}" \
-        --database.password "{{resolve:ssm:RDS_PASSWORD_$PARAM_SUFFIX:1}}"
-    fi
+    # Always create environment with direct database credentials
+    eb create $ENV_NAME \
+      --database \
+      --database.engine postgres \
+      --database.instance db.t3.micro \
+      --database.size 5 \
+      --database.username "$POSTGRES_USER" \
+      --database.password "$POSTGRES_PASSWORD"
     
     # Configure environment variables
     log "Configuring environment variables..."
@@ -217,8 +206,8 @@ create_or_update_env() {
         "SENDGRID_API_KEY={{resolve:ssm:SENDGRID_API_KEY_$PARAM_SUFFIX:1}}" \
         "FROM_EMAIL=$FROM_EMAIL" \
         ENABLE_EMAIL=true \
-        "AWS_ACCESS_KEY_ID={{resolve:ssm:AWS_ACCESS_KEY_ID_$PARAM_SUFFIX:1}}" \
-        "AWS_SECRET_ACCESS_KEY={{resolve:ssm:AWS_SECRET_ACCESS_KEY_$PARAM_SUFFIX:1}}" \
+        "AWS_ACCESS_KEY_ID={{resolve:ssm:ACCESS_KEY_ID_$PARAM_SUFFIX:1}}" \
+        "AWS_SECRET_ACCESS_KEY={{resolve:ssm:SECRET_ACCESS_KEY_$PARAM_SUFFIX:1}}" \
         "AWS_REGION=$REGION" \
         "S3_BUCKET_NAME=$S3_BUCKET_NAME"
     fi
