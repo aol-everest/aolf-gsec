@@ -15,6 +15,7 @@ import {
   SwipeableDrawer,
   MobileStepper,
   Container,
+  CircularProgress,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
@@ -23,60 +24,54 @@ import Layout from '../components/Layout';
 import { formatDate } from '../utils/dateUtils';
 import { getStatusChipSx, getStatusColor } from '../utils/formattingUtils';
 import { EmailIcon, ContactPhoneIcon, EmailIconSmall, ContactPhoneIconSmall, WorkIcon } from '../components/icons';
+import { useApi } from '../hooks/useApi';
+import { useSnackbar } from 'notistack';
+import { useQuery } from '@tanstack/react-query';
 
 import { Appointment } from '../models/types';
 
 import { AppointmentCard } from '../components/AppointmentCard';
 
 const AppointmentTiles: React.FC = () => {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [filteredAppointments, setFilteredAppointments] = useState<Appointment[]>([]);
   const [activeStep, setActiveStep] = useState(0);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
-  const [statusOptions, setStatusOptions] = useState<string[]>([]);
+  const [filteredAppointments, setFilteredAppointments] = useState<Appointment[]>([]);
   const theme = useTheme();
   const navigate = useNavigate();
+  const api = useApi();
+  const { enqueueSnackbar } = useSnackbar();
 
-  useEffect(() => {
-    const fetchStatusOptions = async () => {
+  // Fetch status options using React Query
+  const { data: statusOptions = [] } = useQuery({
+    queryKey: ['statusOptions'],
+    queryFn: async () => {
       try {
-        const response = await fetch('http://localhost:8001/appointments/status-options', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-          },
-        });
-        if (!response.ok) throw new Error('Failed to fetch status options');
-        const data = await response.json();
-        setStatusOptions(data);
+        const { data } = await api.get<string[]>('/appointments/status-options');
+        return data;
       } catch (error) {
         console.error('Error fetching status options:', error);
+        enqueueSnackbar('Failed to fetch status options', { variant: 'error' });
+        return [];
       }
-    };
+    }
+  });
 
-    fetchStatusOptions();
-  }, []);
-
-  useEffect(() => {
-    const fetchAppointments = async () => {
+  // Fetch appointments using React Query
+  const { data: appointments = [], isLoading } = useQuery({
+    queryKey: ['appointments'],
+    queryFn: async () => {
       try {
-        const response = await fetch('http://localhost:8001/admin/appointments/all', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-          },
-        });
-        if (!response.ok) throw new Error('Failed to fetch appointments');
-        const data = await response.json();
-        setAppointments(data);
-        setFilteredAppointments(data);
-        // console.log(data);
+        const { data } = await api.get<Appointment[]>('/admin/appointments/all');
+        return data;
       } catch (error) {
         console.error('Error fetching appointments:', error);
+        enqueueSnackbar('Failed to fetch appointments', { variant: 'error' });
+        throw error;
       }
-    };
+    }
+  });
 
-    fetchAppointments();
-  }, []);
-
+  // Filter appointments based on selected status
   useEffect(() => {
     if (selectedStatus) {
       const filtered = appointments.filter(appointment => appointment.status === selectedStatus);
@@ -111,7 +106,6 @@ const AppointmentTiles: React.FC = () => {
             display: 'flex', 
             flexDirection: 'column',
             gap: 2,
-            // px: 3,
             mb: 2
           }}>
             <Typography variant="h4">Appointment Details</Typography>
@@ -147,7 +141,11 @@ const AppointmentTiles: React.FC = () => {
             position: 'relative',
             touchAction: 'pan-y pinch-zoom',
           }}>
-            {filteredAppointments.length > 0 ? (
+            {isLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : filteredAppointments.length > 0 ? (
               <>
                 <AppointmentTile appointment={filteredAppointments[activeStep]} />
                 <MobileStepper
