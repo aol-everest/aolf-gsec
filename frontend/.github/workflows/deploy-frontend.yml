@@ -1,0 +1,68 @@
+name: Deploy Frontend to AWS
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: './frontend/package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          REACT_APP_API_BASE_URL: ${{ secrets.REACT_APP_API_BASE_URL }}
+          REACT_APP_GOOGLE_CLIENT_ID: ${{ secrets.REACT_APP_GOOGLE_CLIENT_ID }}
+          REACT_APP_GOOGLE_CLIENT_SECRET: ${{ secrets.REACT_APP_GOOGLE_CLIENT_SECRET }}
+          REACT_APP_GOOGLE_MAPS_API_KEY: ${{ secrets.REACT_APP_GOOGLE_MAPS_API_KEY }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Deploy to S3
+        run: |
+          aws s3 sync build/ s3://aolf-gsec-uat/frontend/ --delete
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
+        if: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID != '' }}
+
+      - name: Verify deployment
+        run: |
+          # Check if index.html exists in S3
+          aws s3 ls s3://aolf-gsec-uat/frontend/index.html
+          
+          # Check S3 website endpoint
+          curl -s -f -o /dev/null http://aolf-gsec-uat.s3-website-us-east-1.amazonaws.com/frontend/ || echo "S3 website not accessible"
+          
+          # If CloudFront is configured, check that too
+          if [[ -n "${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}" ]]; then
+            CF_DOMAIN=$(aws cloudfront get-distribution --id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --query "Distribution.DomainName" --output text)
+            curl -s -f -o /dev/null https://$CF_DOMAIN || echo "CloudFront distribution not accessible"
+          fi 
