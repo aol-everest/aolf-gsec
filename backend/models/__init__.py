@@ -1,5 +1,5 @@
 from .user import User, UserRole
-from .dignitary import Dignitary, HonorificTitle, PrimaryDomain
+from .dignitary import Dignitary, HonorificTitle, PrimaryDomain, DignitarySource
 from .dignitaryPointOfContact import DignitaryPointOfContact, RelationshipType
 from .location import Location
 from .appointment import Appointment, AppointmentStatus, AppointmentTimeOfDay, AppointmentSubStatus, AppointmentType
@@ -12,6 +12,7 @@ __all__ = [
     'Dignitary',
     'HonorificTitle',
     'PrimaryDomain',
+    'DignitarySource',
     'DignitaryPointOfContact',
     'RelationshipType',
     'Location',

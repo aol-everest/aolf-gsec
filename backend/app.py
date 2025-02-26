@@ -19,6 +19,8 @@ import schemas
 from utils.email_notifications import notify_appointment_creation, notify_appointment_update
 from utils.s3 import upload_file, get_file
 import io
+import tempfile
+from utils.business_card import extract_business_card_info, BusinessCardExtractionError
 
 # Get environment variables
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
@@ -685,6 +687,143 @@ async def upload_appointment_attachment(
     db.refresh(attachment)
 
     return attachment
+
+@app.post("/appointments/{appointment_id}/attachments/business-card", response_model=schemas.BusinessCardExtractionResponse)
+async def upload_business_card_attachment(
+    appointment_id: int,
+    file: UploadFile = File(...),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Upload a business card attachment and extract information from it"""
+    # Check if appointment exists and user has access
+    appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    
+    if current_user.role != models.UserRole.SECRETARIAT and appointment.requester_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to upload attachments for this appointment")
+
+    # Upload file to S3
+    file_content = await file.read()
+    upload_result = upload_file(
+        file_content,
+        f"{appointment_id}/{file.filename}",
+        file.content_type,
+        entity_type="appointments"
+    )
+
+    # Create attachment record
+    attachment = models.AppointmentAttachment(
+        appointment_id=appointment_id,
+        file_name=file.filename,
+        file_path=upload_result['s3_path'],
+        file_type=file.content_type,
+        is_image=upload_result.get('is_image', False),
+        thumbnail_path=upload_result.get('thumbnail_path'),
+        uploaded_by=current_user.id,
+        attachment_type=models.AttachmentType.BUSINESS_CARD
+    )
+    db.add(attachment)
+    db.commit()
+    db.refresh(attachment)
+
+    # Extract business card information
+    try:
+        # Save the file temporarily
+        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
+            temp_file_path = temp_file.name
+            # Reset file position
+            await file.seek(0)
+            # Write content to temp file
+            temp_file.write(await file.read())
+        
+        # Extract information from the business card
+        extraction_result = extract_business_card_info(temp_file_path)
+        
+        # Clean up the temporary file
+        os.unlink(temp_file_path)
+        
+        # Return the extraction result
+        return schemas.BusinessCardExtractionResponse(
+            extraction=extraction_result,
+            attachment_id=attachment.id,
+            appointment_id=appointment_id
+        )
+    except BusinessCardExtractionError as e:
+        # If extraction fails, still keep the attachment but return an error
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        # For any other error, return a 500 error
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
+@app.post("/appointments/{appointment_id}/business-card/create-dignitary", response_model=schemas.Dignitary)
+async def create_dignitary_from_business_card(
+    appointment_id: int,
+    extraction: schemas.BusinessCardExtraction,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Create a dignitary record from business card extraction"""
+    # Check if appointment exists and user has access
+    appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    
+    if current_user.role != models.UserRole.SECRETARIAT and appointment.requester_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to create dignitaries for this appointment")
+
+    # Create dignitary record
+    try:
+        # Try to determine honorific title
+        honorific_title = None
+        for title in models.HonorificTitle:
+            if extraction.title and title.value in extraction.title:
+                honorific_title = title
+                break
+        
+        # Default to Mr. if no title found
+        if not honorific_title:
+            honorific_title = models.HonorificTitle.MR
+        
+        # Debug logging
+        print(f"Creating dignitary with source={models.DignitarySource.BUSINESS_CARD}")
+        print(f"Appointment dignitary country: {appointment.dignitary.country if appointment.dignitary else 'None'}")
+        
+        # Create dignitary
+        dignitary = models.Dignitary(
+            honorific_title=honorific_title,
+            first_name=extraction.first_name,
+            last_name=extraction.last_name,
+            email=extraction.email,
+            phone=extraction.phone,
+            primary_domain=models.PrimaryDomain.BUSINESS,  # Default to Business
+            title_in_organization=extraction.title,
+            organization=extraction.company,
+            bio_summary="",
+            linked_in_or_website=extraction.website,
+            country=appointment.dignitary.country if appointment.dignitary else None,  # Use the appointment dignitary's country as default
+            state=appointment.dignitary.state if appointment.dignitary else None,  # Use the appointment dignitary's state as default
+            city=appointment.dignitary.city if appointment.dignitary else None,  # Use the appointment dignitary's city as default
+            has_dignitary_met_gurudev=True,  # Mark as met Gurudev
+            gurudev_meeting_date=appointment.appointment_date,  # Use appointment date
+            gurudev_meeting_location=appointment.location.name if appointment.location else None,
+            gurudev_meeting_notes=f"Met during appointment #{appointment_id}",
+            source=models.DignitarySource.BUSINESS_CARD,
+            source_appointment_id=appointment_id,
+            created_by=current_user.id
+        )
+        db.add(dignitary)
+        db.commit()
+        db.refresh(dignitary)
+        
+        return dignitary
+    except Exception as e:
+        db.rollback()
+        import traceback
+        print(f"Error creating dignitary: {str(e)}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Failed to create dignitary: {str(e)}")
 
 @app.get("/appointments/{appointment_id}/attachments", response_model=List[schemas.AppointmentAttachment])
 async def get_appointment_attachments(

@@ -23,6 +23,9 @@ import {
   Card,
   CardContent,
   Autocomplete,
+  Alert,
+  Snackbar,
+  Chip,
 } from '@mui/material';
 import Layout from '../components/Layout';
 import { useForm, Controller } from 'react-hook-form';
@@ -45,6 +48,8 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import BusinessIcon from '@mui/icons-material/Business';
 
 interface AppointmentFormData {
   appointment_date: string;
@@ -70,6 +75,27 @@ interface Attachment {
   attachment_type: string;
 }
 
+interface BusinessCardExtraction {
+  first_name: string;
+  last_name: string;
+  title?: string;
+  company?: string;
+  phone?: string;
+  other_phone?: string;
+  fax?: string;
+  email?: string;
+  website?: string;
+  address?: string;
+  social_media?: string[];
+  extra_fields?: string[];
+}
+
+interface BusinessCardExtractionResponse {
+  extraction: BusinessCardExtraction;
+  attachment_id: number;
+  appointment_id: number;
+}
+
 const AppointmentEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -83,6 +109,11 @@ const AppointmentEdit: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [attachmentToDelete, setAttachmentToDelete] = useState<Attachment | null>(null);
+  const [businessCardExtraction, setBusinessCardExtraction] = useState<BusinessCardExtractionResponse | null>(null);
+  const [extractionLoading, setExtractionLoading] = useState(false);
+  const [extractionError, setExtractionError] = useState<string | null>(null);
+  const [dignitaryCreated, setDignitaryCreated] = useState(false);
+  const [dignitaryCreationError, setDignitaryCreationError] = useState<string | null>(null);
 
   const { control, handleSubmit, reset } = useForm<AppointmentFormData>();
 
@@ -233,15 +264,15 @@ const AppointmentEdit: React.FC = () => {
     }
   };
 
-  const handleBusinessCardInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBusinessCardInputChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files.length > 0) {
-      handleFileUpload(event.target.files, 'business_card');
+      await handleBusinessCardUpload(event.target.files);
     }
   };
 
-  const handleBusinessCardCameraInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBusinessCardCameraInputChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files.length > 0) {
-      handleFileUpload(event.target.files, 'business_card');
+      await handleBusinessCardUpload(event.target.files);
     }
   };
 
@@ -349,6 +380,194 @@ const AppointmentEdit: React.FC = () => {
   const findTimeOption = (timeString: string | null) => {
     if (!timeString) return null;
     return timeOptions.find(option => option.value === timeString) || null;
+  };
+
+  const handleBusinessCardUpload = async (files: FileList) => {
+    if (!id || !files.length) return;
+
+    setUploading(true);
+    setExtractionLoading(true);
+    setExtractionError(null);
+    setBusinessCardExtraction(null);
+    
+    try {
+      const file = files[0]; // Only process the first file
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const { data } = await api.post<BusinessCardExtractionResponse>(
+        `/appointments/${id}/attachments/business-card`, 
+        formData, 
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+      
+      setBusinessCardExtraction(data);
+      enqueueSnackbar('Business card uploaded and information extracted successfully', { variant: 'success' });
+      refetchAttachments();
+    } catch (error) {
+      console.error('Error uploading business card:', error);
+      setExtractionError('Failed to extract information from business card');
+      enqueueSnackbar('Failed to extract information from business card', { variant: 'error' });
+      
+      // Still upload the file as a regular attachment
+      try {
+        const formData = new FormData();
+        formData.append('file', files[0]);
+        formData.append('attachment_type', 'business_card');
+        
+        await api.post(`/appointments/${id}/attachments`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+        
+        refetchAttachments();
+      } catch (uploadError) {
+        console.error('Error uploading business card as regular attachment:', uploadError);
+      }
+    } finally {
+      setUploading(false);
+      setExtractionLoading(false);
+    }
+  };
+
+  const handleCreateDignitaryFromBusinessCard = async () => {
+    if (!businessCardExtraction) return;
+    
+    try {
+      await api.post(`/appointments/${id}/business-card/create-dignitary`, businessCardExtraction.extraction);
+      setDignitaryCreated(true);
+      setBusinessCardExtraction(null);
+      enqueueSnackbar('Dignitary created successfully from business card', { variant: 'success' });
+    } catch (error) {
+      console.error('Error creating dignitary from business card:', error);
+      setDignitaryCreationError('Failed to create dignitary from business card');
+      enqueueSnackbar('Failed to create dignitary from business card', { variant: 'error' });
+    }
+  };
+
+  const handleDismissExtraction = () => {
+    setBusinessCardExtraction(null);
+  };
+
+  const renderBusinessCardExtraction = () => {
+    if (!businessCardExtraction) return null;
+    
+    const { extraction } = businessCardExtraction;
+    
+    return (
+      <Card variant="outlined" sx={{ mb: 3, mt: 2 }}>
+        <CardContent>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6" color="primary" sx={{ display: 'flex', alignItems: 'center' }}>
+              <BusinessIcon sx={{ mr: 1 }} />
+              Business Card Information
+            </Typography>
+            <Box>
+              <Button 
+                variant="contained" 
+                color="primary" 
+                startIcon={<PersonAddIcon />}
+                onClick={handleCreateDignitaryFromBusinessCard}
+                sx={{ mr: 1 }}
+              >
+                Create Contact
+              </Button>
+              <Button 
+                variant="outlined"
+                onClick={handleDismissExtraction}
+              >
+                Dismiss
+              </Button>
+            </Box>
+          </Box>
+          
+          <Divider sx={{ mb: 2 }} />
+          
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">Name</Typography>
+              <Typography variant="body1">{extraction.first_name} {extraction.last_name}</Typography>
+            </Grid>
+            
+            {extraction.title && (
+              <Grid item xs={12} sm={6}>
+                <Typography variant="subtitle2" color="text.secondary">Title</Typography>
+                <Typography variant="body1">{extraction.title}</Typography>
+              </Grid>
+            )}
+            
+            {extraction.company && (
+              <Grid item xs={12} sm={6}>
+                <Typography variant="subtitle2" color="text.secondary">Company</Typography>
+                <Typography variant="body1">{extraction.company}</Typography>
+              </Grid>
+            )}
+            
+            {extraction.email && (
+              <Grid item xs={12} sm={6}>
+                <Typography variant="subtitle2" color="text.secondary">Email</Typography>
+                <Typography variant="body1">{extraction.email}</Typography>
+              </Grid>
+            )}
+            
+            {extraction.phone && (
+              <Grid item xs={12} sm={6}>
+                <Typography variant="subtitle2" color="text.secondary">Phone</Typography>
+                <Typography variant="body1">{extraction.phone}</Typography>
+              </Grid>
+            )}
+            
+            {extraction.other_phone && (
+              <Grid item xs={12} sm={6}>
+                <Typography variant="subtitle2" color="text.secondary">Other Phone</Typography>
+                <Typography variant="body1">{extraction.other_phone}</Typography>
+              </Grid>
+            )}
+            
+            {extraction.website && (
+              <Grid item xs={12} sm={6}>
+                <Typography variant="subtitle2" color="text.secondary">Website</Typography>
+                <Typography variant="body1">{extraction.website}</Typography>
+              </Grid>
+            )}
+            
+            {extraction.address && (
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" color="text.secondary">Address</Typography>
+                <Typography variant="body1">{extraction.address}</Typography>
+              </Grid>
+            )}
+            
+            {extraction.social_media && extraction.social_media.length > 0 && (
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" color="text.secondary">Social Media</Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                  {extraction.social_media.map((social, index) => (
+                    <Chip key={index} label={social} size="small" />
+                  ))}
+                </Box>
+              </Grid>
+            )}
+            
+            {extraction.extra_fields && extraction.extra_fields.length > 0 && (
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" color="text.secondary">Additional Information</Typography>
+                <Box sx={{ mt: 1 }}>
+                  {extraction.extra_fields.map((field, index) => (
+                    <Typography key={index} variant="body2">{field}</Typography>
+                  ))}
+                </Box>
+              </Grid>
+            )}
+          </Grid>
+        </CardContent>
+      </Card>
+    );
   };
 
   if (isLoading || !appointment) {
@@ -648,7 +867,7 @@ const AppointmentEdit: React.FC = () => {
                     Business Cards
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    Upload or take photos of business cards for easy reference
+                    Upload or take photos of business cards for easy reference and automatic contact creation
                   </Typography>
                   
                   <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
@@ -656,7 +875,7 @@ const AppointmentEdit: React.FC = () => {
                       variant="outlined"
                       startIcon={<ContactMailIcon />}
                       onClick={handleUploadBusinessCard}
-                      disabled={uploading}
+                      disabled={uploading || extractionLoading}
                     >
                       Upload Business Card
                     </Button>
@@ -664,7 +883,7 @@ const AppointmentEdit: React.FC = () => {
                       variant="outlined"
                       startIcon={<PhotoCameraIcon />}
                       onClick={handleTakeBusinessCardPhoto}
-                      disabled={uploading}
+                      disabled={uploading || extractionLoading}
                     >
                       Take Business Card Photo
                     </Button>
@@ -687,6 +906,27 @@ const AppointmentEdit: React.FC = () => {
                       multiple
                     />
                   </Box>
+                  
+                  {/* Business Card Extraction Result */}
+                  {businessCardExtraction && renderBusinessCardExtraction()}
+                  
+                  {extractionError && (
+                    <Alert severity="error" sx={{ mb: 3 }}>
+                      {extractionError}
+                    </Alert>
+                  )}
+                  
+                  {dignitaryCreationError && (
+                    <Alert severity="error" sx={{ mb: 3 }}>
+                      {dignitaryCreationError}
+                    </Alert>
+                  )}
+                  
+                  {dignitaryCreated && (
+                    <Alert severity="success" sx={{ mb: 3 }}>
+                      Contact created successfully from business card
+                    </Alert>
+                  )}
                   
                   {/* Attachments List */}
                   <Card variant="outlined" sx={{ mb: 3 }}>

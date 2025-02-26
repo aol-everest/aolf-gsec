@@ -51,3 +51,6 @@ Pillow==11.1.0  # Required for image processing and thumbnails
 # Deployment dependencies
 gunicorn==21.2.0
 uvicorn[standard]==0.27.1
+
+# OpenAI
+openai==1.64.0

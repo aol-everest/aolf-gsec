@@ -1,8 +1,8 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional, Dict, Any, Union
+from typing import Optional, Dict, Any, Union, List
 from datetime import datetime, date
 from models.appointment import AppointmentStatus, AppointmentTimeOfDay, AppointmentSubStatus, AppointmentType
-from models.dignitary import HonorificTitle, PrimaryDomain
+from models.dignitary import HonorificTitle, PrimaryDomain, DignitarySource
 from models.dignitaryPointOfContact import RelationshipType
 from enum import Enum
 from models.appointmentAttachment import AttachmentType
@@ -45,23 +45,25 @@ class Token(BaseModel):
     user: User
 
 class DignitaryBase(BaseModel):
-    honorific_title: HonorificTitle
+    honorific_title: Optional[HonorificTitle] = None
     first_name: str
     last_name: str
-    email: EmailStr
+    email: Optional[EmailStr] = None
     phone: Optional[str] = None
-    primary_domain: PrimaryDomain
-    title_in_organization: str
-    organization: str
-    bio_summary: str
-    linked_in_or_website: str
-    country: str
-    state: str
-    city: str
+    primary_domain: Optional[PrimaryDomain] = None
+    title_in_organization: Optional[str] = None
+    organization: Optional[str] = None
+    bio_summary: Optional[str] = None
+    linked_in_or_website: Optional[str] = None
+    country: Optional[str] = None
+    state: Optional[str] = None
+    city: Optional[str] = None
     has_dignitary_met_gurudev: Optional[bool] = False
     gurudev_meeting_date: Optional[date] = None
     gurudev_meeting_location: Optional[str] = None
     gurudev_meeting_notes: Optional[str] = None
+    source: Optional[DignitarySource] = DignitarySource.MANUAL
+    source_appointment_id: Optional[int] = None
 
 class DignitaryCreate(DignitaryBase):
     poc_relationship_type: RelationshipType
@@ -278,4 +280,23 @@ class AppointmentAttachment(AppointmentAttachmentBase):
 
     class Config:
         orm_mode = True
+
+class BusinessCardExtraction(BaseModel):
+    first_name: str
+    last_name: str
+    title: Optional[str] = None
+    company: Optional[str] = None
+    phone: Optional[str] = None
+    other_phone: Optional[str] = None
+    fax: Optional[str] = None
+    email: Optional[str] = None
+    website: Optional[str] = None
+    address: Optional[str] = None
+    social_media: Optional[List[str]] = None
+    extra_fields: Optional[List[str]] = None
+
+class BusinessCardExtractionResponse(BaseModel):
+    extraction: BusinessCardExtraction
+    attachment_id: int
+    appointment_id: int
 

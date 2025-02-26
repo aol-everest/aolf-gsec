@@ -64,27 +64,36 @@ class PrimaryDomain(str, enum.Enum):
     EDUCATION = "Education"
     HEALTHCARE = "Healthcare"
 
+class DignitarySource(str, enum.Enum):
+    """Source of dignitary record"""
+    MANUAL = "manual"
+    BUSINESS_CARD = "business_card"
+
 class Dignitary(Base):
     __tablename__ = "dignitaries"
 
     id = Column(Integer, primary_key=True, index=True)
-    honorific_title = Column(Enum(HonorificTitle), nullable=False)
+    honorific_title = Column(Enum(HonorificTitle), nullable=True)
     first_name = Column(String, nullable=False)
     last_name = Column(String, nullable=False)
-    email = Column(String, nullable=False)
-    phone = Column(String)
-    primary_domain = Column(Enum(PrimaryDomain), nullable=False)
-    title_in_organization = Column(String, nullable=False)
-    organization = Column(String, nullable=False)
-    bio_summary = Column(Text)
-    linked_in_or_website = Column(String)
-    country = Column(String, nullable=False)
-    state = Column(String, nullable=False)
-    city = Column(String, nullable=False)
+    email = Column(String, nullable=True)
+    phone = Column(String, nullable=True)
+    primary_domain = Column(Enum(PrimaryDomain), nullable=True)
+    title_in_organization = Column(String, nullable=True)
+    organization = Column(String, nullable=True)
+    bio_summary = Column(Text, nullable=True)
+    linked_in_or_website = Column(String, nullable=True)
+    country = Column(String, nullable=True)
+    state = Column(String, nullable=True)
+    city = Column(String, nullable=True)
     has_dignitary_met_gurudev = Column(Boolean, nullable=True, default=False)
     gurudev_meeting_date = Column(Date, nullable=True)
     gurudev_meeting_location = Column(String, nullable=True)
     gurudev_meeting_notes = Column(Text, nullable=True)
+    
+    # Source of the dignitary record
+    source = Column(Enum(DignitarySource), default=DignitarySource.MANUAL, nullable=False)
+    source_appointment_id = Column(Integer, ForeignKey("appointments.id", ondelete="SET NULL"), nullable=True)
   
     # Foreign keys
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -94,5 +103,6 @@ class Dignitary(Base):
 
     # Relationships
     creator = relationship("User", foreign_keys=[created_by])
-    appointments = relationship("Appointment", back_populates="dignitary")
+    appointments = relationship("Appointment", back_populates="dignitary", foreign_keys="Appointment.dignitary_id")
+    source_appointment = relationship("Appointment", foreign_keys=[source_appointment_id])
     point_of_contacts = relationship("DignitaryPointOfContact", back_populates="dignitary") 
