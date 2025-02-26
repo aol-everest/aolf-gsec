@@ -227,6 +227,8 @@ const AppointmentEdit: React.FC = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointment', id] });
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['appointment-attachments', id] });
       enqueueSnackbar('Appointment updated successfully', { variant: 'success' });
       navigate(AdminAppointmentsReviewRoute.path || '');
     },
@@ -261,6 +263,7 @@ const AppointmentEdit: React.FC = () => {
       
       enqueueSnackbar(`${files.length} file(s) uploaded successfully`, { variant: 'success' });
       refetchAttachments();
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
     } catch (error) {
       console.error('Error uploading files:', error);
       enqueueSnackbar('Failed to upload files', { variant: 'error' });
@@ -352,6 +355,7 @@ const AppointmentEdit: React.FC = () => {
       await api.delete(`/appointments/attachments/${attachmentToDelete.id}`);
       enqueueSnackbar('Attachment deleted successfully', { variant: 'success' });
       refetchAttachments();
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
     } catch (error) {
       console.error('Error deleting attachment:', error);
       enqueueSnackbar('Failed to delete attachment', { variant: 'error' });
@@ -434,6 +438,7 @@ const AppointmentEdit: React.FC = () => {
       }
       
       refetchAttachments();
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
     } catch (error) {
       console.error('Error uploading business card:', error);
       setExtractionError('Failed to extract information from business card');
@@ -452,6 +457,7 @@ const AppointmentEdit: React.FC = () => {
         });
         
         refetchAttachments();
+        queryClient.invalidateQueries({ queryKey: ['appointments'] });
       } catch (uploadError) {
         console.error('Error uploading business card as regular attachment:', uploadError);
       }
@@ -468,6 +474,7 @@ const AppointmentEdit: React.FC = () => {
       await api.post(`/appointments/${id}/business-card/create-dignitary`, businessCardExtraction.extraction);
       setDignitaryCreated(true);
       setBusinessCardExtraction(null);
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
       enqueueSnackbar('Dignitary created successfully from business card', { variant: 'success' });
     } catch (error) {
       console.error('Error creating dignitary from business card:', error);

@@ -48,7 +48,7 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
         };
         
         fetchAttachments();
-    }, [appointment, api]);
+    }, [appointment, appointment.attachments, api]);
 
     const handleEdit = (appointmentId: number) => {
         navigate(AdminAppointmentsEditRoute.path?.replace(':id', appointmentId.toString()) || '');

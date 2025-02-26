@@ -106,7 +106,9 @@ const AppointmentTiles: React.FC = () => {
         enqueueSnackbar('Failed to fetch appointments', { variant: 'error' });
         throw error;
       }
-    }
+    },
+    refetchOnMount: true,
+    staleTime: 0 // Always consider data stale to ensure fresh data on navigation
   });
 
   // Filter appointments based on selected status and location
