@@ -293,47 +293,81 @@ async def update_dignitary(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    # Log the incoming request data
+    print(f"Updating dignitary {dignitary_id} with data: {dignitary.dict()}")
+    
     # Check if dignitary exists
     existing_dignitary = db.query(models.Dignitary).filter(models.Dignitary.id == dignitary_id).first()
     if not existing_dignitary:
+        print(f"Dignitary with ID {dignitary_id} not found")
         raise HTTPException(status_code=404, detail="Dignitary not found")
     
     # Extract poc_relationship_type and create dignitary without it
     poc_relationship_type = dignitary.poc_relationship_type
-    dignitary_data = dignitary.dict(exclude={'poc_relationship_type'}, exclude_unset=True)
+    try:
+        dignitary_data = dignitary.dict(exclude={'poc_relationship_type'}, exclude_unset=True)
+        print(f"Processed dignitary data for update: {dignitary_data}")
+    except Exception as e:
+        print(f"Error processing dignitary data: {str(e)}")
+        raise HTTPException(status_code=422, detail=f"Error processing dignitary data: {str(e)}")
 
     # Update dignitary  
-    for key, value in dignitary_data.items():
-        setattr(existing_dignitary, key, value)
-    db.commit()
-    db.refresh(existing_dignitary)
+    try:
+        for key, value in dignitary_data.items():
+            setattr(existing_dignitary, key, value)
+        db.commit()
+        db.refresh(existing_dignitary)
+    except Exception as e:
+        db.rollback()
+        print(f"Error updating dignitary: {str(e)}")
+        raise HTTPException(status_code=422, detail=f"Error updating dignitary: {str(e)}")
 
     # Update POC relationship
-    poc = db.query(models.DignitaryPointOfContact).filter(
-        models.DignitaryPointOfContact.dignitary_id == dignitary_id, 
-        models.DignitaryPointOfContact.poc_id == current_user.id
-    ).first()
-    if poc and poc_relationship_type and poc_relationship_type != poc.relationship_type:
-        poc.relationship_type = poc_relationship_type
-        db.commit()
-        db.refresh(poc)
+    try:
+        poc = db.query(models.DignitaryPointOfContact).filter(
+            models.DignitaryPointOfContact.dignitary_id == dignitary_id, 
+            models.DignitaryPointOfContact.poc_id == current_user.id
+        ).first()
+        if poc and poc_relationship_type and poc_relationship_type != poc.relationship_type:
+            print(f"Updating POC relationship type from {poc.relationship_type} to {poc_relationship_type}")
+            poc.relationship_type = poc_relationship_type
+            db.commit()
+            db.refresh(poc)
+    except Exception as e:
+        db.rollback()
+        print(f"Error updating POC relationship: {str(e)}")
+        raise HTTPException(status_code=422, detail=f"Error updating POC relationship: {str(e)}")
 
+    print(f"Successfully updated dignitary {dignitary_id}")
     return existing_dignitary
 
 
-@app.get("/dignitaries/assigned", response_model=List[schemas.Dignitary])
+@app.get("/dignitaries/assigned", response_model=List[schemas.DignitaryWithRelationship])
 async def get_assigned_dignitaries(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get all dignitaries assigned to the current user as POC"""
-    dignitaries = (
-        db.query(models.Dignitary)
+    """Get all dignitaries assigned to the current user as POC with their relationship type"""
+    # Query dignitaries and their relationship types in one go
+    results = (
+        db.query(
+            models.Dignitary, 
+            models.DignitaryPointOfContact.relationship_type
+        )
         .join(models.DignitaryPointOfContact)
         .filter(models.DignitaryPointOfContact.poc_id == current_user.id)
         .all()
     )
-    return dignitaries
+    
+    # Transform the results to include the relationship type
+    dignitaries_with_relationship = []
+    for dignitary, relationship_type in results:
+        # Add the relationship_type attribute to the dignitary object
+        # This will be picked up by Pydantic's ORM mode
+        setattr(dignitary, 'relationship_type', relationship_type.value)
+        dignitaries_with_relationship.append(dignitary)
+    
+    return dignitaries_with_relationship
 
 
 @app.patch("/users/me/update", response_model=schemas.User)

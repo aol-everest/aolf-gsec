@@ -88,6 +88,12 @@ class Dignitary(DignitaryBase):
     class Config:
         orm_mode = True
 
+class DignitaryWithRelationship(Dignitary):
+    relationship_type: str
+
+    class Config:
+        orm_mode = True
+
 class DignitaryAdmin(DignitaryBase):
     id: int
     created_by: int

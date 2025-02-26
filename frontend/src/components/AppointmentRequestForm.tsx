@@ -27,6 +27,7 @@ import {
   Checkbox,
   CircularProgress,
   LinearProgress,
+  FormHelperText,
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import LocationAutocomplete from './LocationAutocomplete';
@@ -262,6 +263,17 @@ export const AppointmentRequestForm: React.FC = () => {
     dignitaryForm.setValue('dignitaryGurudevMeetingDate', dignitary.gurudev_meeting_date || '');
     dignitaryForm.setValue('dignitaryGurudevMeetingLocation', dignitary.gurudev_meeting_location || '');
     dignitaryForm.setValue('dignitaryGurudevMeetingNotes', dignitary.gurudev_meeting_notes || '');
+    
+    // Set the POC relationship type from the dignitary data
+    if (dignitary.relationship_type) {
+      console.log('Setting POC relationship type from dignitary data:', dignitary.relationship_type);
+      dignitaryForm.setValue('pocRelationshipType', dignitary.relationship_type);
+    } else {
+      // If relationship_type is missing (which shouldn't happen with our updated backend),
+      // default to the first relationship type
+      console.warn('Dignitary data missing relationship_type, using default');
+      dignitaryForm.setValue('pocRelationshipType', relationshipTypes[0] || 'Direct');
+    }
   };
 
   // Update form values when userInfo changes
@@ -301,6 +313,15 @@ export const AppointmentRequestForm: React.FC = () => {
   const handleDignitarySelection = async (dignitary: any) => {
     setSelectedDignitary(dignitary);
     populateDignitaryForm(dignitary);
+    
+    // Check for existing appointments
+    const existingAppointments = await checkExistingAppointments(dignitary.id);
+    if (existingAppointments && existingAppointments.length > 0) {
+      setSelectedDignitary({
+        ...dignitary,
+        appointments: existingAppointments,
+      });
+    }
   };
 
   // Add useEffect to fetch locations
@@ -325,6 +346,17 @@ export const AppointmentRequestForm: React.FC = () => {
 
   const handleNext = async (skipExistingCheck: boolean = false) => {
     if (activeStep === 0) {
+      // Validate POC form
+      const isValid = await pocForm.trigger();
+      if (!isValid) {
+        // Show error notification
+        enqueueSnackbar('Please fill in all required fields', { 
+          variant: 'error',
+          autoHideDuration: 3000
+        });
+        return;
+      }
+      
       const pocData = await pocForm.handleSubmit(async (data) => {
         try {
           await updateUserInfo({ phone_number: data.pocPhone });
@@ -334,6 +366,17 @@ export const AppointmentRequestForm: React.FC = () => {
         }
       })();
     } else if (activeStep === 1) {
+      // Validate dignitary form
+      const isValid = await dignitaryForm.trigger();
+      if (!isValid) {
+        // Show error notification
+        enqueueSnackbar('Please fill in all required fields', { 
+          variant: 'error',
+          autoHideDuration: 3000
+        });
+        return;
+      }
+      
       const dignitaryData = await dignitaryForm.handleSubmit(async (data) => {
         try {
           if (data.isExistingDignitary && data.selectedDignitaryId && !skipExistingCheck) {
@@ -369,11 +412,12 @@ export const AppointmentRequestForm: React.FC = () => {
               selectedDignitary.has_dignitary_met_gurudev !== data.dignitaryHasMetGurudev ||
               selectedDignitary.gurudev_meeting_date !== data.dignitaryGurudevMeetingDate ||
               selectedDignitary.gurudev_meeting_location !== data.dignitaryGurudevMeetingLocation ||
-              selectedDignitary.gurudev_meeting_notes !== data.dignitaryGurudevMeetingNotes
+              selectedDignitary.gurudev_meeting_notes !== data.dignitaryGurudevMeetingNotes ||
+              selectedDignitary.relationship_type !== data.pocRelationshipType
             );
 
             if (hasChanges) {
-              // Dignitary update data without poc_relationship_type
+              // Dignitary update data including poc_relationship_type
               const dignitaryUpdateData = {
                 honorific_title: data.dignitaryHonorificTitle,
                 first_name: data.dignitaryFirstName,
@@ -392,7 +436,27 @@ export const AppointmentRequestForm: React.FC = () => {
                 gurudev_meeting_date: data.dignitaryGurudevMeetingDate,
                 gurudev_meeting_location: data.dignitaryGurudevMeetingLocation,
                 gurudev_meeting_notes: data.dignitaryGurudevMeetingNotes,
+                poc_relationship_type: data.pocRelationshipType,
               };
+
+              console.log('Updating dignitary with data:', JSON.stringify(dignitaryUpdateData, null, 2));
+              console.log('Specific field values:');
+              console.log('- honorific_title:', data.dignitaryHonorificTitle, typeof data.dignitaryHonorificTitle);
+              console.log('- primary_domain:', data.dignitaryPrimaryDomain, typeof data.dignitaryPrimaryDomain);
+              console.log('- poc_relationship_type:', data.pocRelationshipType, typeof data.pocRelationshipType);
+
+              // Convert empty strings to null for optional fields
+              const cleanedDignitaryUpdateData = Object.fromEntries(
+                Object.entries(dignitaryUpdateData).map(([key, value]) => {
+                  // If the value is an empty string, convert it to null
+                  if (value === '') {
+                    return [key, null];
+                  }
+                  return [key, value];
+                })
+              );
+
+              console.log('Cleaned dignitary update data:', JSON.stringify(cleanedDignitaryUpdateData, null, 2));
 
               const response = await fetch(`http://localhost:8001/dignitaries/update/${data.selectedDignitaryId}`, {
                 method: 'PATCH',
@@ -400,10 +464,24 @@ export const AppointmentRequestForm: React.FC = () => {
                   'Content-Type': 'application/json',
                   'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
                 },
-                body: JSON.stringify(dignitaryUpdateData),
+                body: JSON.stringify(cleanedDignitaryUpdateData),
               });
-              if (!response.ok) throw new Error('Failed to update dignitary');
+              
+              if (!response.ok) {
+                const errorData = await response.json();
+                console.error('Failed to update dignitary. Status:', response.status);
+                console.error('Error details:', JSON.stringify(errorData, null, 2));
+                
+                // Display error notification with more details
+                enqueueSnackbar(`Failed to update dignitary: ${response.status} - ${errorData.detail || 'Unknown error'}`, { 
+                  variant: 'error',
+                  autoHideDuration: 6000
+                });
+                
+                throw new Error(`Failed to update dignitary: ${JSON.stringify(errorData)}`);
+              }
               const updatedDignitary = await response.json();
+              console.log('Successfully updated dignitary:', updatedDignitary);
               setSelectedDignitary(updatedDignitary);
             }
           } else {
@@ -431,18 +509,39 @@ export const AppointmentRequestForm: React.FC = () => {
 
             console.log('Creating dignitary with data:', dignitaryCreateData);
 
+            // Convert empty strings to null for optional fields
+            const cleanedDignitaryCreateData = Object.fromEntries(
+              Object.entries(dignitaryCreateData).map(([key, value]) => {
+                // If the value is an empty string, convert it to null
+                if (value === '') {
+                  return [key, null];
+                }
+                return [key, value];
+              })
+            );
+
+            console.log('Cleaned dignitary create data:', JSON.stringify(cleanedDignitaryCreateData, null, 2));
+
             const response = await fetch('http://localhost:8001/dignitaries/new/', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
               },
-              body: JSON.stringify(dignitaryCreateData),
+              body: JSON.stringify(cleanedDignitaryCreateData),
             });
 
             if (!response.ok) {
               const errorData = await response.json();
-              console.error('Failed to create dignitary:', errorData);
+              console.error('Failed to create dignitary. Status:', response.status);
+              console.error('Error details:', JSON.stringify(errorData, null, 2));
+              
+              // Display error notification with more details
+              enqueueSnackbar(`Failed to create dignitary: ${response.status} - ${errorData.detail || 'Unknown error'}`, { 
+                variant: 'error',
+                autoHideDuration: 6000
+              });
+              
               throw new Error(`Failed to create dignitary: ${JSON.stringify(errorData)}`);
             }
             const newDignitary = await response.json();
@@ -455,12 +554,24 @@ export const AppointmentRequestForm: React.FC = () => {
             dignitaryForm.setValue('selectedDignitaryId', newDignitary.id);
             setSelectedDignitary(newDignitary);
           }
+          
           setActiveStep(2);
         } catch (error) {
-          console.error('Error handling dignitary:', error);
+          console.error('Error in dignitary form submission:', error);
         }
       })();
     } else if (activeStep === 2) {
+      // Validate appointment form
+      const isValid = await appointmentForm.trigger();
+      if (!isValid) {
+        // Show error notification
+        enqueueSnackbar('Please fill in all required fields', { 
+          variant: 'error',
+          autoHideDuration: 3000
+        });
+        return;
+      }
+      
       const appointmentData = await appointmentForm.handleSubmit(async (data) => {
         try {
           const response = await fetch('http://localhost:8001/appointments/new', {
@@ -704,12 +815,14 @@ export const AppointmentRequestForm: React.FC = () => {
               ) : null}
 
               <Grid item xs={12} md={6}>
-                <FormControl fullWidth required>
+                <FormControl fullWidth required error={!!dignitaryForm.formState.errors.pocRelationshipType}>
                   <InputLabel>Relationship Type</InputLabel>
                   <Select
                     label="Relationship Type"
                     value={dignitaryForm.watch('pocRelationshipType')}
-                    {...dignitaryForm.register('pocRelationshipType')}
+                    {...dignitaryForm.register('pocRelationshipType', { 
+                      required: 'Relationship type is required' 
+                    })}
                   >
                     {relationshipTypes.map((type) => (
                       <MenuItem key={type} value={type}>
@@ -717,6 +830,11 @@ export const AppointmentRequestForm: React.FC = () => {
                       </MenuItem>
                     ))}
                   </Select>
+                  {dignitaryForm.formState.errors.pocRelationshipType && (
+                    <FormHelperText>
+                      {dignitaryForm.formState.errors.pocRelationshipType.message}
+                    </FormHelperText>
+                  )}
                 </FormControl>
               </Grid>
 
@@ -724,13 +842,15 @@ export const AppointmentRequestForm: React.FC = () => {
                 <Divider sx={{ my: 1 }} />
               </Grid>
 
-              <Grid item xs={12} md={6} lg={4}>
-                <FormControl fullWidth>
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth required error={!!dignitaryForm.formState.errors.dignitaryHonorificTitle}>
                   <InputLabel>Honorific Title</InputLabel>
                   <Select
                     label="Honorific Title"
                     value={dignitaryForm.watch('dignitaryHonorificTitle')}
-                    {...dignitaryForm.register('dignitaryHonorificTitle')}
+                    {...dignitaryForm.register('dignitaryHonorificTitle', { 
+                      required: 'Honorific title is required' 
+                    })}
                   >
                     {honorificTitles.map((title) => (
                       <MenuItem key={title} value={title}>
@@ -738,6 +858,35 @@ export const AppointmentRequestForm: React.FC = () => {
                       </MenuItem>
                     ))}
                   </Select>
+                  {dignitaryForm.formState.errors.dignitaryHonorificTitle && (
+                    <FormHelperText>
+                      {dignitaryForm.formState.errors.dignitaryHonorificTitle.message}
+                    </FormHelperText>
+                  )}
+                </FormControl>
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth required error={!!dignitaryForm.formState.errors.dignitaryPrimaryDomain}>
+                  <InputLabel>Primary Domain *</InputLabel>
+                  <Select
+                    label="Primary Domain *"
+                    value={dignitaryForm.watch('dignitaryPrimaryDomain')}
+                    {...dignitaryForm.register('dignitaryPrimaryDomain', { 
+                      required: 'Primary domain is required' 
+                    })}
+                  >
+                    {primaryDomains.map((domain) => (
+                      <MenuItem key={domain} value={domain}>
+                        {domain}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  {dignitaryForm.formState.errors.dignitaryPrimaryDomain && (
+                    <FormHelperText>
+                      {dignitaryForm.formState.errors.dignitaryPrimaryDomain.message}
+                    </FormHelperText>
+                  )}
                 </FormControl>
               </Grid>
               
@@ -1015,30 +1164,31 @@ export const AppointmentRequestForm: React.FC = () => {
               </Grid>
 
               <Grid item xs={12} md={6} lg={4}>
-                <FormControl fullWidth required>
+                <FormControl fullWidth required error={!!appointmentForm.formState.errors.preferredTimeOfDay}>
                   <InputLabel>Preferred Time of Day *</InputLabel>
-                  <Controller
-                    name="preferredTimeOfDay"
-                    control={appointmentForm.control}
-                    render={({ field }) => (
-                      <Select
-                        label="Preferred Time of Day"
-                        value={field.value}
-                        onChange={field.onChange}
-                      >
-                        {Object.values(AppointmentTimeOfDay).map((timeOfDay) => (
-                          <MenuItem key={timeOfDay} value={timeOfDay}>
-                            {timeOfDay}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    )}
-                  />
+                  <Select
+                    label="Preferred Time of Day *"
+                    value={appointmentForm.watch('preferredTimeOfDay')}
+                    {...appointmentForm.register('preferredTimeOfDay', { 
+                      required: 'Preferred time of day is required' 
+                    })}
+                  >
+                    {Object.values(AppointmentTimeOfDay).map((timeOfDay) => (
+                      <MenuItem key={timeOfDay} value={timeOfDay}>
+                        {timeOfDay}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  {appointmentForm.formState.errors.preferredTimeOfDay && (
+                    <FormHelperText>
+                      {appointmentForm.formState.errors.preferredTimeOfDay.message}
+                    </FormHelperText>
+                  )}
                 </FormControl>
               </Grid>
 
               <Grid item xs={12} md={6} lg={4}>
-                <FormControl fullWidth required>
+                <FormControl fullWidth required error={!!appointmentForm.formState.errors.location_id}>
                   <InputLabel>Location *</InputLabel>
                   <Controller
                     name="location_id"
@@ -1046,10 +1196,8 @@ export const AppointmentRequestForm: React.FC = () => {
                     rules={{ required: 'Location is required' }}
                     render={({ field }) => (
                       <Select
-                        label="Location"
-                        value={field.value || ''}
-                        onChange={field.onChange}
-                        error={!!appointmentForm.formState.errors.location_id}
+                        label="Location *"
+                        {...field}
                       >
                         {locations.map((location) => (
                           <MenuItem key={location.id} value={location.id}>
@@ -1059,6 +1207,11 @@ export const AppointmentRequestForm: React.FC = () => {
                       </Select>
                     )}
                   />
+                  {appointmentForm.formState.errors.location_id && (
+                    <FormHelperText>
+                      {appointmentForm.formState.errors.location_id.message}
+                    </FormHelperText>
+                  )}
                 </FormControl>
               </Grid>
 
