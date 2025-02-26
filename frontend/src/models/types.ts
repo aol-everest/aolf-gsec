@@ -10,6 +10,10 @@ interface Location {
   zip_code: string;
   driving_directions?: string;
   parking_info?: string;
+  attachment_path?: string;
+  attachment_name?: string;
+  attachment_file_type?: string;
+  attachment_thumbnail_path?: string;
 }
 
 interface User {

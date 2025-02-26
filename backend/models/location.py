@@ -19,6 +19,7 @@ class Location(Base):
     attachment_path = Column(String)  # Path to the stored attachment in S3
     attachment_name = Column(String)  # Original filename of the attachment
     attachment_file_type = Column(String)  # MIME type of the attachment
+    attachment_thumbnail_path = Column(String)  # Path to the thumbnail in S3
     
     # Timestamps and audit fields
     created_at = Column(DateTime, default=datetime.utcnow)

@@ -74,6 +74,7 @@ interface Location {
   attachment_file_type?: string;
   created_at: string;
   updated_at?: string;
+  attachment_thumbnail_path?: string;
 }
 
 interface LocationFormData {
@@ -89,6 +90,7 @@ interface LocationFormData {
   attachment_path?: string;
   attachment_name?: string;
   attachment_file_type?: string;
+  attachment_thumbnail_path?: string;
 }
 
 const initialFormData: LocationFormData = {
@@ -104,6 +106,7 @@ const initialFormData: LocationFormData = {
   attachment_path: '',
   attachment_name: '',
   attachment_file_type: '',
+  attachment_thumbnail_path: '',
 };
 
 // Move Google Maps script loading to a custom hook
@@ -389,6 +392,7 @@ export default function LocationsManage() {
         attachment_path: location.attachment_path || '',
         attachment_name: location.attachment_name || '',
         attachment_file_type: location.attachment_file_type || '',
+        attachment_thumbnail_path: location.attachment_thumbnail_path || '',
       });
       setEditingId(location.id);
     } else {
@@ -491,10 +495,8 @@ export default function LocationsManage() {
         // Use the new public endpoint for accessing attachments
         const attachmentUrl = `${api.defaults.baseURL}/locations/${params.row.id}/attachment`;
         
-        // For image previews, construct the S3 URL from the path
-        const s3Url = params.row.attachment_path ? 
-          `https://${process.env.REACT_APP_S3_BUCKET_NAME}.s3.amazonaws.com/${params.row.attachment_path}` : 
-          '';
+        // For thumbnails, use the thumbnail endpoint
+        const thumbnailUrl = `${api.defaults.baseURL}/locations/${params.row.id}/thumbnail`;
         
         return (
           <Link 
@@ -505,7 +507,7 @@ export default function LocationsManage() {
           >
             {isImage ? (
               <img 
-                src={s3Url} // Use the constructed S3 URL for image preview
+                src={thumbnailUrl} 
                 alt={params.row.attachment_name}
                 style={{ width: 24, height: 24, marginRight: 4, objectFit: 'cover' }}
               />
@@ -686,17 +688,20 @@ export default function LocationsManage() {
                         if ((formData.attachment_path || selectedFile) && !attachmentMarkedForDeletion) {
                           return (
                             <Paper variant="outlined" sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                                 {selectedFile && selectedFile.type.startsWith('image/') ? (
                                   <img 
                                     src={URL.createObjectURL(selectedFile)} 
-                                    alt={selectedFile.name}
+                                    alt="Preview" 
                                     style={{ width: 40, height: 40, objectFit: 'cover' }}
                                   />
-                                ) : formData.attachment_file_type?.startsWith('image/') && formData.attachment_path ? (
+                                ) : formData.attachment_file_type?.startsWith('image/') ? (
                                   <img 
-                                    src={`https://${process.env.REACT_APP_S3_BUCKET_NAME}.s3.amazonaws.com/${formData.attachment_path}`} 
-                                    alt={formData.attachment_name}
+                                    src={editingId ? 
+                                      `${api.defaults.baseURL}/locations/${editingId}/thumbnail` : 
+                                      ''
+                                    } 
+                                    alt="Attachment" 
                                     style={{ width: 40, height: 40, objectFit: 'cover' }}
                                   />
                                 ) : (

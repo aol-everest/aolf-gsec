@@ -117,6 +117,7 @@ class LocationAdminCreate(LocationBase):
     attachment_path: Optional[str] = None
     attachment_name: Optional[str] = None
     attachment_file_type: Optional[str] = None
+    attachment_thumbnail_path: Optional[str] = None
 
 class LocationAdminUpdate(LocationBase):
     name: Optional[str] = None
@@ -131,6 +132,7 @@ class LocationAdminUpdate(LocationBase):
     attachment_path: Optional[str] = None
     attachment_name: Optional[str] = None
     attachment_file_type: Optional[str] = None
+    attachment_thumbnail_path: Optional[str] = None
 
 class LocationAdmin(LocationBase):
     id: int
@@ -142,6 +144,7 @@ class LocationAdmin(LocationBase):
     attachment_path: Optional[str] = None
     attachment_name: Optional[str] = None
     attachment_file_type: Optional[str] = None
+    attachment_thumbnail_path: Optional[str] = None
 
 
 class AppointmentBase(BaseModel):

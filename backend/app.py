@@ -778,6 +778,9 @@ async def upload_location_attachment(
         location.attachment_path = result['s3_path']
         location.attachment_name = file.filename
         location.attachment_file_type = file.content_type
+        # Store thumbnail path if available
+        if 'thumbnail_path' in result:
+            location.attachment_thumbnail_path = result['thumbnail_path']
         location.updated_by = current_user.id
         
         db.commit()
@@ -802,14 +805,37 @@ async def get_location_attachment(
     
     try:
         file_data = get_file(location.attachment_path)
-        
         return StreamingResponse(
             io.BytesIO(file_data['file_data']),
             media_type=location.attachment_file_type,
-            headers={"Content-Disposition": f"attachment; filename={location.attachment_name}"}
+            headers={
+                'Content-Disposition': f'attachment; filename="{location.attachment_name}"'
+            }
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve attachment: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve file: {str(e)}")
+
+@app.get("/locations/{location_id}/thumbnail")
+async def get_location_thumbnail(
+    location_id: int,
+    db: Session = Depends(get_db)
+):
+    """Get a location's attachment thumbnail - accessible to all users"""
+    location = db.query(models.Location).filter(models.Location.id == location_id).first()
+    if not location:
+        raise HTTPException(status_code=404, detail="Location not found")
+    
+    if not location.attachment_thumbnail_path:
+        raise HTTPException(status_code=404, detail="Location has no thumbnail")
+    
+    try:
+        file_data = get_file(location.attachment_thumbnail_path)
+        return StreamingResponse(
+            io.BytesIO(file_data['file_data']),
+            media_type=location.attachment_file_type
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve thumbnail: {str(e)}")
 
 @app.delete("/admin/locations/{location_id}/attachment", response_model=schemas.LocationAdmin)
 @requires_role(models.UserRole.SECRETARIAT)
@@ -827,6 +853,7 @@ async def remove_location_attachment(
     location.attachment_path = None
     location.attachment_name = None
     location.attachment_file_type = None
+    location.attachment_thumbnail_path = None
     location.updated_by = current_user.id
     
     db.commit()
