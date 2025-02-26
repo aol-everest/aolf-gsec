@@ -12,15 +12,24 @@ import {
   FormGroup,
   FormControlLabel,
   Switch,
-  Divider
+  Divider,
+  CircularProgress
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import Layout from '../components/Layout';
+import { useApi } from '../hooks/useApi';
+import { useSnackbar } from 'notistack';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface NotificationPreferences {
   appointment_created: boolean;
   appointment_updated: boolean;
   new_appointment_request: boolean;
+}
+
+interface UserUpdateData {
+  phone_number: string;
+  email_notification_preferences: NotificationPreferences;
 }
 
 const DEFAULT_PREFERENCES: NotificationPreferences = {
@@ -30,40 +39,73 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
 };
 
 const Profile: React.FC = () => {
-  const { userInfo, logout, updateUserInfo } = useAuth();
-  const [phoneNumber, setPhoneNumber] = useState(userInfo?.phone_number || '');
+  const { userInfo, logout } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const api = useApi();
+  const { enqueueSnackbar } = useSnackbar();
+  const queryClient = useQueryClient();
+
+  // Fetch user profile data using React Query
+  const { data: userData, isLoading } = useQuery({
+    queryKey: ['userProfile'],
+    queryFn: async () => {
+      try {
+        // If your API has a specific endpoint for user profile, use that instead
+        // This is a placeholder assuming userInfo from auth context is sufficient
+        return userInfo;
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+        enqueueSnackbar('Failed to fetch user profile', { variant: 'error' });
+        throw error;
+      }
+    },
+    // Use initial data from auth context to avoid loading state if data is already available
+    initialData: userInfo,
+    enabled: !!userInfo // Only run the query if userInfo exists
+  });
+
+  const [phoneNumber, setPhoneNumber] = useState(userData?.phone_number || '');
   const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>(
-    userInfo?.email_notification_preferences || DEFAULT_PREFERENCES
+    userData?.email_notification_preferences || DEFAULT_PREFERENCES
   );
 
-  // Update values when userInfo changes
+  // Update local state when userData changes
   useEffect(() => {
-    if (userInfo) {
-      setPhoneNumber(userInfo.phone_number || '');
-      setNotificationPreferences(userInfo.email_notification_preferences || DEFAULT_PREFERENCES);
+    if (userData) {
+      setPhoneNumber(userData.phone_number || '');
+      setNotificationPreferences(userData.email_notification_preferences || DEFAULT_PREFERENCES);
     }
-  }, [userInfo]);
+  }, [userData]);
 
-  const handleSave = async () => {
-    try {
-      await updateUserInfo({ 
-        phone_number: phoneNumber,
-        email_notification_preferences: notificationPreferences
-      });
-      setMessage({ type: 'success', text: 'Profile updated successfully' });
+  // Update user profile mutation
+  const updateProfileMutation = useMutation({
+    mutationFn: async (updateData: UserUpdateData) => {
+      const { data } = await api.patch('/users/me/update', updateData);
+      return data;
+    },
+    onSuccess: () => {
+      enqueueSnackbar('Profile updated successfully', { variant: 'success' });
       setIsEditing(false);
-    } catch (error) {
+      // Invalidate and refetch user profile data
+      queryClient.invalidateQueries({ queryKey: ['userProfile'] });
+    },
+    onError: (error) => {
       console.error('Error updating profile:', error);
-      setMessage({ type: 'error', text: 'Error updating profile' });
+      enqueueSnackbar('Error updating profile', { variant: 'error' });
     }
+  });
+
+  const handleSave = () => {
+    updateProfileMutation.mutate({ 
+      phone_number: phoneNumber,
+      email_notification_preferences: notificationPreferences
+    });
   };
 
   const handleCancel = () => {
     setIsEditing(false);
-    setPhoneNumber(userInfo?.phone_number || '');
-    setNotificationPreferences(userInfo?.email_notification_preferences || DEFAULT_PREFERENCES);
+    setPhoneNumber(userData?.phone_number || '');
+    setNotificationPreferences(userData?.email_notification_preferences || DEFAULT_PREFERENCES);
   };
 
   const handleNotificationChange = (key: keyof NotificationPreferences) => (
@@ -88,6 +130,18 @@ const Profile: React.FC = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <Layout>
+        <Container maxWidth="md">
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+            <CircularProgress />
+          </Box>
+        </Container>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <Container maxWidth="md">
@@ -102,19 +156,19 @@ const Profile: React.FC = () => {
 
             {/* User info section */}
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
-              {userInfo?.picture && (
+              {userData?.picture && (
                 <Avatar
-                  src={userInfo.picture}
-                  alt={userInfo.name}
+                  src={userData.picture}
+                  alt={userData.name}
                   sx={{ width: 80, height: 80, mr: 2 }}
                 />
               )}
               <Box>
                 <Typography variant="h5" gutterBottom>
-                  {(userInfo?.first_name || 'User Name') + " " + (userInfo?.last_name || 'User Name')}
+                  {(userData?.first_name || 'User Name') + " " + (userData?.last_name || 'User Name')}
                 </Typography>
                 <Typography color="textSecondary">
-                  {userInfo?.email || 'email@example.com'}
+                  {userData?.email || 'email@example.com'}
                 </Typography>
               </Box>
             </Box>
@@ -147,7 +201,7 @@ const Profile: React.FC = () => {
               <FormGroup>
                 {Object.keys(notificationPreferences).map((key) => {
                   // Only show new_appointment_request to secretariat users
-                  if (key === 'new_appointment_request' && userInfo?.role !== 'SECRETARIAT') {
+                  if (key === 'new_appointment_request' && userData?.role !== 'SECRETARIAT') {
                     return null;
                   }
                   
@@ -179,31 +233,22 @@ const Profile: React.FC = () => {
                   <Button variant="outlined" onClick={handleCancel}>
                     Cancel
                   </Button>
-                  <Button variant="contained" onClick={handleSave}>
-                    Save Changes
+                  <Button 
+                    variant="contained" 
+                    onClick={handleSave}
+                    disabled={updateProfileMutation.isPending}
+                  >
+                    {updateProfileMutation.isPending ? (
+                      <CircularProgress size={24} color="inherit" />
+                    ) : (
+                      'Save Changes'
+                    )}
                   </Button>
                 </>
               )}
             </Box>
           </Paper>
         </Box>
-
-        {message && (
-          <Snackbar
-            open={true}
-            autoHideDuration={6000}
-            onClose={() => setMessage(null)}
-            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-          >
-            <Alert
-              onClose={() => setMessage(null)}
-              severity={message.type}
-              sx={{ width: '100%' }}
-            >
-              {message.text}
-            </Alert>
-          </Snackbar>
-        )}
       </Container>
     </Layout>
   );
