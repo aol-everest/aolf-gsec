@@ -4,9 +4,63 @@
 # Exit on error
 set -e
 
+# Default environment
+DEPLOY_ENV="prod"
+
+# Display help
+show_help() {
+  echo "AOLF GSEC Backend Deployment Verification Script"
+  echo "Usage: $0 [options]"
+  echo ""
+  echo "Options:"
+  echo "  -e, --env ENV           Specify the deployment environment (prod or uat)"
+  echo "  --environment=ENV       Specify the deployment environment (prod or uat)"
+  echo "  -h, --help              Display this help message"
+  echo ""
+  echo "Examples:"
+  echo "  $0                      Verify production environment (default)"
+  echo "  $0 --env=uat            Verify UAT environment"
+  echo "  $0 -e uat               Verify UAT environment"
+  echo ""
+}
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --env=*)
+      DEPLOY_ENV="${1#*=}"
+      shift
+      ;;
+    --environment=*)
+      DEPLOY_ENV="${1#*=}"
+      shift
+      ;;
+    -e|--env)
+      DEPLOY_ENV="$2"
+      shift 2
+      ;;
+    -h|--help)
+      show_help
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1"
+      echo "Usage: $0 [--env=prod|uat] or $0 [-e prod|uat] or $0 [--help]"
+      exit 1
+      ;;
+  esac
+done
+
+# Validate environment
+if [[ "$DEPLOY_ENV" != "prod" && "$DEPLOY_ENV" != "uat" ]]; then
+  echo "Invalid environment: $DEPLOY_ENV. Must be 'prod' or 'uat'."
+  echo "Usage: $0 [--env=prod|uat] or $0 [-e prod|uat]"
+  exit 1
+fi
+
 # Configuration
 APP_NAME="aolf-gsec-backend"
-ENV_NAME="aolf-gsec-backend-prod"
+ENV_NAME="aolf-gsec-backend-$DEPLOY_ENV"
 REGION="us-east-1"
 
 # Log function for better visibility
@@ -118,7 +172,7 @@ check_app() {
 
 # Main execution
 main() {
-  log "Starting deployment verification for AOLF GSEC Backend on Elastic Beanstalk..."
+  log "Starting deployment verification for AOLF GSEC Backend on Elastic Beanstalk ($DEPLOY_ENV environment)..."
   
   # Run checks
   check_eb_cli
@@ -154,8 +208,8 @@ main() {
   
   # Provide next steps
   log "Next steps:"
-  log "1. If any checks failed, review the Elastic Beanstalk logs: eb logs"
-  log "2. SSH into the instance for further investigation: eb ssh"
+  log "1. If any checks failed, review the Elastic Beanstalk logs: eb logs -e $ENV_NAME"
+  log "2. SSH into the instance for further investigation: eb ssh -e $ENV_NAME"
   log "3. Check the application configuration in the AWS Management Console"
 }
 

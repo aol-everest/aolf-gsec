@@ -1,112 +1,100 @@
-# AOLF GSEC (Global Secretariat) System
+# AOLF GSEC Application
 
-This is the main repository for the Art of Living Foundation Global Secretariat (GSEC) system. The application manages appointments, dignitaries, and related information for the AOLF Global Secretariat.
+This repository contains the AOLF GSEC application, which consists of a frontend React application and a backend FastAPI application.
 
-## Project Overview
-
-The AOLF GSEC system is a full-stack web application with the following components:
-
-- **Frontend**: React application with TypeScript and Material-UI
-- **Backend**: FastAPI application with Python and PostgreSQL
-- **Authentication**: Google OAuth for user authentication
-
-## Repository Structure
+## Project Structure
 
 - `frontend/`: React frontend application
 - `backend/`: FastAPI backend application
-- `secrets/`: Configuration files and secrets (not committed to version control)
-- `frontend-theme-demo/`: UI theme demonstration
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js (v16+)
-- Python (v3.12+)
-- PostgreSQL (v14+)
-- Git
-
-### Setup Instructions
-
-1. Clone the repository:
-   ```
-   git clone https://github.com/your-username/aolf-gsec.git
-   cd aolf-gsec
-   ```
-
-2. Set up the backend:
-   ```
-   cd backend
-   python -m venv .venv
-   source .venv/bin/activate  # On Unix/macOS
-   .venv\Scripts\activate     # On Windows
-   pip install -r requirements.txt
-   cp .env.example .env  # Then edit .env with your configuration
-   alembic upgrade head
-   ```
-
-3. Set up the frontend:
-   ```
-   cd ../frontend
-   npm install
-   cp .env.example .env  # Then edit .env with your configuration
-   ```
-
-4. Start the backend server:
-   ```
-   cd ../backend
-   uvicorn app:app --reload
-   ```
-
-5. Start the frontend development server:
-   ```
-   cd ../frontend
-   npm start
-   ```
-
-6. Access the application at [http://localhost:3000](http://localhost:3000)
-
-## Features
-
-- User authentication with Google OAuth
-- Appointment management
-- Dignitary management
-- File attachments for appointments
-- User role-based access control
-- Email notifications
-
-## Development
-
-### Backend Development
-
-See the [backend README](backend/README.md) for detailed information on backend development.
-
-### Frontend Development
-
-See the [frontend README](frontend/README.md) for detailed information on frontend development.
 
 ## Deployment
 
+The application can be deployed to both production and UAT (User Acceptance Testing) environments.
+
 ### Backend Deployment
 
-The backend can be deployed using Docker or directly on a server with Python and PostgreSQL installed.
+The backend is deployed to AWS Elastic Beanstalk. For detailed information, see:
+
+- [Backend Deployment Files Summary](backend/DEPLOYMENT-FILES-SUMMARY.md)
+
+To deploy the backend:
+
+```bash
+cd backend
+./deploy-eb.sh --env=prod  # For production environment
+./deploy-eb.sh --env=uat   # For UAT environment
+./deploy-eb.sh --help      # For usage instructions
+```
+
+To verify the backend deployment:
+
+```bash
+cd backend
+./verify-eb-deployment.sh --env=prod  # For production environment
+./verify-eb-deployment.sh --env=uat   # For UAT environment
+./verify-eb-deployment.sh --help      # For usage instructions
+```
 
 ### Frontend Deployment
 
-The frontend can be deployed to any static hosting service like Netlify, Vercel, or AWS S3.
+The frontend is deployed to AWS S3 and CloudFront. For detailed information, see:
 
-## Contributing
+- [Frontend Deployment Files Summary](frontend/DEPLOYMENT-FILES-SUMMARY.md)
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/your-feature-name`
-3. Commit your changes: `git commit -m 'Add some feature'`
-4. Push to the branch: `git push origin feature/your-feature-name`
-5. Submit a pull request
+To deploy the frontend:
+
+```bash
+cd frontend
+./deploy.sh --env=prod  # For production environment
+./deploy.sh --env=uat   # For UAT environment (default)
+./deploy.sh --help      # For usage instructions
+```
+
+## Required AWS Resources
+
+### Backend
+- Elastic Beanstalk environment
+- RDS PostgreSQL database
+- IAM roles and policies for Elastic Beanstalk
+
+### Frontend
+- S3 bucket for hosting static files
+- CloudFront distribution for CDN (optional but recommended)
+- IAM user with appropriate permissions for S3 and CloudFront
+
+## Environment Variables
+
+### Backend
+See [Backend Deployment Files Summary](backend/DEPLOYMENT-FILES-SUMMARY.md) for a list of required environment variables.
+
+### Frontend
+See [Frontend Deployment Files Summary](frontend/DEPLOYMENT-FILES-SUMMARY.md) for a list of required environment variables.
+
+## Development
+
+### Backend
+
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn app:app --reload
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm start
+```
+
+## CI/CD
+
+The application uses GitHub Actions for CI/CD. The workflows are defined in:
+
+- `.github/workflows/deploy-backend.yml`
+- `.github/workflows/deploy-frontend.yml` (if available)
 
 ## License
 
-This project is proprietary and confidential. Unauthorized copying, distribution, or use is strictly prohibited.
-
-## Contact
-
-For questions or support, please contact the AOLF Tech Team. 
+[Specify your license here] 
