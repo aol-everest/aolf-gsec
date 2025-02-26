@@ -728,6 +728,26 @@ async def upload_business_card_attachment(
     db.commit()
     db.refresh(attachment)
 
+    # Check if business card extraction is enabled
+    enable_extraction = os.environ.get("ENABLE_BUSINESS_CARD_EXTRACTION", "true").lower() == "true"
+    
+    if not enable_extraction:
+        # If extraction is disabled, return a response with empty extraction data
+        return schemas.BusinessCardExtractionResponse(
+            extraction=schemas.BusinessCardExtraction(
+                first_name="",
+                last_name="",
+                title=None,
+                company=None,
+                phone=None,
+                email=None,
+                website=None,
+                address=None
+            ),
+            attachment_id=attachment.id,
+            appointment_id=appointment_id
+        )
+
     # Extract business card information
     try:
         # Save the file temporarily
@@ -1097,3 +1117,11 @@ async def delete_attachment(
     db.commit()
     
     return None
+
+@app.get("/appointments/business-card/extraction-status")
+async def get_business_card_extraction_status(
+    current_user: models.User = Depends(get_current_user)
+):
+    """Check if business card extraction is enabled"""
+    enable_extraction = os.environ.get("ENABLE_BUSINESS_CARD_EXTRACTION", "true").lower() == "true"
+    return {"enabled": enable_extraction}

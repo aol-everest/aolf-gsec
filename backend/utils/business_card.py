@@ -27,6 +27,22 @@ def extract_business_card_info(image_path: str) -> BusinessCardExtraction:
     Raises:
         BusinessCardExtractionError: If extraction fails
     """
+    # Check if business card extraction is enabled
+    enable_extraction = os.environ.get("ENABLE_BUSINESS_CARD_EXTRACTION", "true").lower() == "true"
+    
+    if not enable_extraction:
+        logger.info("Business card extraction is disabled")
+        return BusinessCardExtraction(
+            first_name="",
+            last_name="",
+            title=None,
+            company=None,
+            phone=None,
+            email=None,
+            website=None,
+            address=None
+        )
+    
     try:
         # Get OpenAI API key from environment variable
         api_key = os.environ.get("OPENAI_API_KEY")

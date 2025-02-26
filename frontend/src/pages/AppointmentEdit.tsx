@@ -114,6 +114,7 @@ const AppointmentEdit: React.FC = () => {
   const [extractionError, setExtractionError] = useState<string | null>(null);
   const [dignitaryCreated, setDignitaryCreated] = useState(false);
   const [dignitaryCreationError, setDignitaryCreationError] = useState<string | null>(null);
+  const [isExtractionDisabled, setIsExtractionDisabled] = useState(false);
 
   const { control, handleSubmit, reset } = useForm<AppointmentFormData>();
 
@@ -181,6 +182,22 @@ const AppointmentEdit: React.FC = () => {
       });
     }
   }, [appointment, reset]);
+
+  // Check if business card extraction is enabled
+  useEffect(() => {
+    const checkExtractionStatus = async () => {
+      try {
+        const { data } = await api.get<{ enabled: boolean }>('/appointments/business-card/extraction-status');
+        setIsExtractionDisabled(!data.enabled);
+      } catch (error) {
+        console.error('Error checking business card extraction status:', error);
+        // Default to enabled if we can't check
+        setIsExtractionDisabled(false);
+      }
+    };
+    
+    checkExtractionStatus();
+  }, [api]);
 
   // Fetch attachments
   const { data: attachments = [], refetch: refetchAttachments } = useQuery<Attachment[]>({
@@ -405,8 +422,17 @@ const AppointmentEdit: React.FC = () => {
         }
       );
       
-      setBusinessCardExtraction(data);
-      enqueueSnackbar('Business card uploaded and information extracted successfully', { variant: 'success' });
+      // Check if extraction is disabled (empty first_name and last_name)
+      if (data.extraction.first_name === "" && data.extraction.last_name === "") {
+        setExtractionError("Business card information extraction is currently disabled. The card has been uploaded as an attachment.");
+        enqueueSnackbar('Business card uploaded as an attachment. Extraction is disabled.', { variant: 'info' });
+        setIsExtractionDisabled(true);
+      } else {
+        setBusinessCardExtraction(data);
+        enqueueSnackbar('Business card uploaded and information extracted successfully', { variant: 'success' });
+        setIsExtractionDisabled(false);
+      }
+      
       refetchAttachments();
     } catch (error) {
       console.error('Error uploading business card:', error);
@@ -868,7 +894,21 @@ const AppointmentEdit: React.FC = () => {
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                     Upload or take photos of business cards for easy reference and automatic contact creation
+                    {isExtractionDisabled && (
+                      <Chip 
+                        label="Extraction Disabled" 
+                        color="warning" 
+                        size="small" 
+                        sx={{ ml: 2 }}
+                      />
+                    )}
                   </Typography>
+                  
+                  {isExtractionDisabled && (
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                      Business card information extraction is currently disabled. Cards will be uploaded as attachments only.
+                    </Alert>
+                  )}
                   
                   <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
                     <Button
