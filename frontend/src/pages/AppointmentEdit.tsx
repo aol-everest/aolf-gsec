@@ -552,7 +552,7 @@ const AppointmentEdit: React.FC = () => {
                   />
                 </Grid>
 
-                {appointment.status === 'Approved' && appointment.appointment_date && new Date(appointment.appointment_date) >= new Date() && (
+                {appointment.status === 'Approved' && appointment.appointment_date && new Date(appointment.appointment_date) <= new Date() && (
                   <Grid item xs={12}>
                     <Controller
                       name="secretariat_follow_up_actions"
@@ -570,7 +570,7 @@ const AppointmentEdit: React.FC = () => {
                   </Grid>
                 )}
 
-                {appointment.status === 'Approved' && appointment.appointment_date && new Date(appointment.appointment_date) >= new Date() && (
+                {appointment.status === 'Approved' && appointment.appointment_date && new Date(appointment.appointment_date) <= new Date() && (
                   <Grid item xs={12}>
                     <Controller
                       name="secretariat_meeting_notes"
