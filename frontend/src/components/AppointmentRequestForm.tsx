@@ -39,12 +39,12 @@ import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { Location, Dignitary, Appointment } from '../models/types';
 
-// Add AppointmentTimeOfDay enum
-enum AppointmentTimeOfDay {
-  MORNING = "Morning",
-  AFTERNOON = "Afternoon",
-  EVENING = "Evening"
-}
+// Remove the hardcoded enum and add a state for time of day options
+// const AppointmentTimeOfDay = {
+//   MORNING: "Morning",
+//   AFTERNOON: "Afternoon",
+//   EVENING: "Evening"
+// }
 
 // Add AppointmentResponse interface for the API response
 interface AppointmentResponse extends Omit<Appointment, 'dignitary' | 'requester' | 'location' | 'approved_by_user' | 'last_updated_by_user' | 'attachments'> {
@@ -87,7 +87,7 @@ interface DignitaryFormData {
 interface AppointmentFormData {
   purpose: string;
   preferredDate: string;
-  preferredTimeOfDay: AppointmentTimeOfDay;
+  preferredTimeOfDay: string;
   location_id: number;
   requesterNotesToSecretariat: string;
 }
@@ -104,6 +104,7 @@ export const AppointmentRequestForm: React.FC = () => {
   // Use any type to avoid TypeScript errors with the selectedDignitary state
   const [selectedDignitary, setSelectedDignitary] = useState<any>(null);
   const [showWarningDialog, setShowWarningDialog] = useState(false);
+  const [timeOfDayOptions, setTimeOfDayOptions] = useState<string[]>([]);
   const navigate = useNavigate();
   const theme = useTheme();
   const api = useApi();
@@ -140,6 +141,22 @@ export const AppointmentRequestForm: React.FC = () => {
       return data;
     },
   });
+
+  // Fetch time of day options
+  const { data: timeOptions = [], isLoading: isLoadingTimeOptions } = useQuery<string[]>({
+    queryKey: ['time-of-day-options'],
+    queryFn: async () => {
+      const { data } = await api.get<string[]>('/appointments/time-of-day-options');
+      return data;
+    },
+  });
+
+  // Update state when time options are loaded
+  useEffect(() => {
+    if (timeOptions.length > 0) {
+      setTimeOfDayOptions(timeOptions);
+    }
+  }, [timeOptions]);
 
   // Fetch status options
   const { data: statusOptions = [] } = useQuery<string[]>({
@@ -216,7 +233,7 @@ export const AppointmentRequestForm: React.FC = () => {
     defaultValues: {
       purpose: '',
       preferredDate: '',
-      preferredTimeOfDay: AppointmentTimeOfDay.MORNING,
+      preferredTimeOfDay: '',
       location_id: 0,
       requesterNotesToSecretariat: '',
     }
@@ -233,6 +250,14 @@ export const AppointmentRequestForm: React.FC = () => {
       populateDignitaryForm(fetchedDignitaries[0]);
     }
   }, [fetchedDignitaries]);
+
+  // Update appointmentForm when time options are loaded
+  useEffect(() => {
+    if (timeOptions.length > 0) {
+      setTimeOfDayOptions(timeOptions);
+      appointmentForm.setValue('preferredTimeOfDay', timeOptions[0]);
+    }
+  }, [timeOptions]);
 
   // Function to populate dignitary form fields
   const populateDignitaryForm = (dignitary: Dignitary) => {
@@ -650,6 +675,15 @@ export const AppointmentRequestForm: React.FC = () => {
   const renderStepContent = (step: number) => {
     // Show loading indicator if data is still loading
     if (step === 1 && (isLoadingDomains || isLoadingTitles || isLoadingRelationships || isLoadingDignitaries)) {
+      return (
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+          <CircularProgress />
+        </Box>
+      );
+    }
+
+    // Show loading indicator for step 3 if time options are still loading
+    if (step === 2 && isLoadingTimeOptions) {
       return (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
           <CircularProgress />
@@ -1167,9 +1201,9 @@ export const AppointmentRequestForm: React.FC = () => {
                       required: 'Preferred time of day is required' 
                     })}
                   >
-                    {Object.values(AppointmentTimeOfDay).map((timeOfDay) => (
-                      <MenuItem key={timeOfDay} value={timeOfDay}>
-                        {timeOfDay}
+                    {timeOfDayOptions.map((type) => (
+                      <MenuItem key={type} value={type}>
+                        {type}
                       </MenuItem>
                     ))}
                   </Select>

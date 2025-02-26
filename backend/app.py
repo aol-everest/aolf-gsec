@@ -555,6 +555,11 @@ async def get_primary_domain_options():
     """Get all possible primary domain options"""
     return [domain.value for domain in models.PrimaryDomain]
 
+@app.get("/appointments/time-of-day-options", response_model=List[str])
+async def get_appointment_time_of_day_options():
+    """Get all possible appointment time of day options"""
+    return [time.value for time in models.AppointmentTimeOfDay]
+
 @app.post("/admin/locations/new", response_model=schemas.LocationAdmin)
 @requires_role(models.UserRole.SECRETARIAT)
 async def create_location(
