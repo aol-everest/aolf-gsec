@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -127,22 +127,29 @@ const AppointmentEdit: React.FC = () => {
     queryKey: ['appointment', id],
     queryFn: async () => {
       const { data } = await api.get<Appointment>(`/admin/appointments/${id}`);
-      reset({
-        appointment_date: data.appointment_date || data.preferred_date,
-        appointment_time: data.appointment_time || data.preferred_time_of_day,
-        location_id: data.location_id || null,
-        status: data.status,
-        sub_status: data.sub_status,
-        appointment_type: data.appointment_type,
-        requester_notes_to_secretariat: data.requester_notes_to_secretariat,
-        secretariat_follow_up_actions: data.secretariat_follow_up_actions,
-        secretariat_meeting_notes: data.secretariat_meeting_notes,
-        secretariat_notes_to_requester: data.secretariat_notes_to_requester,
-      });
       return data;
     },
     enabled: !!id,
+    refetchOnMount: true,
   });
+
+  // Add useEffect to reset form when appointment data is available
+  useEffect(() => {
+    if (appointment) {
+      reset({
+        appointment_date: appointment.appointment_date || appointment.preferred_date,
+        appointment_time: appointment.appointment_time || appointment.preferred_time_of_day,
+        location_id: appointment.location_id || null,
+        status: appointment.status,
+        sub_status: appointment.sub_status,
+        appointment_type: appointment.appointment_type,
+        requester_notes_to_secretariat: appointment.requester_notes_to_secretariat,
+        secretariat_follow_up_actions: appointment.secretariat_follow_up_actions,
+        secretariat_meeting_notes: appointment.secretariat_meeting_notes,
+        secretariat_notes_to_requester: appointment.secretariat_notes_to_requester,
+      });
+    }
+  }, [appointment, reset]);
 
   // Fetch attachments
   const { data: attachments = [], refetch: refetchAttachments } = useQuery<Attachment[]>({
@@ -152,6 +159,7 @@ const AppointmentEdit: React.FC = () => {
       return data;
     },
     enabled: !!id,
+    refetchOnMount: true,
   });
 
   // Separate attachments by type
