@@ -50,6 +50,8 @@ import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import BusinessIcon from '@mui/icons-material/Business';
+import { EnumSelect } from '../components/EnumSelect';
+import { useEnums } from '../hooks/useEnums';
 
 interface AppointmentFormData {
   appointment_date: string;
@@ -117,33 +119,6 @@ const AppointmentEdit: React.FC = () => {
   const [isExtractionDisabled, setIsExtractionDisabled] = useState(false);
 
   const { control, handleSubmit, reset } = useForm<AppointmentFormData>();
-
-  // Fetch status options
-  const { data: statusOptions = [] } = useQuery<string[]>({
-    queryKey: ['status-options'],
-    queryFn: async () => {
-      const { data } = await api.get<string[]>('/appointments/status-options');
-      return data;
-    },
-  });
-
-  // Fetch sub-status options
-  const { data: subStatusOptions = [] } = useQuery<string[]>({
-    queryKey: ['sub-status-options'],
-    queryFn: async () => {
-      const { data } = await api.get<string[]>('/appointments/sub-status-options');
-      return data;
-    },
-  });
-
-  // Fetch appointment type options
-  const { data: appointmentTypeOptions = [] } = useQuery<string[]>({
-    queryKey: ['type-options'],
-    queryFn: async () => {
-      const { data } = await api.get<string[]>('/appointments/type-options');
-      return data;
-    },
-  });
 
   // Fetch locations
   const { data: locations = [] } = useQuery<Location[]>({
@@ -739,16 +714,11 @@ const AppointmentEdit: React.FC = () => {
                     name="status"
                     control={control}
                     render={({ field }) => (
-                      <FormControl fullWidth>
-                        <InputLabel>Status</InputLabel>
-                        <Select {...field} label="Status">
-                          {statusOptions.map((status) => (
-                            <MenuItem key={status} value={status}>
-                              {status}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
+                      <EnumSelect
+                        enumType="appointmentStatus"
+                        label="Status"
+                        {...field}
+                      />
                     )}
                   />
                 </Grid>
@@ -759,16 +729,11 @@ const AppointmentEdit: React.FC = () => {
                     name="sub_status"
                     control={control}
                     render={({ field }) => (
-                      <FormControl fullWidth>
-                        <InputLabel>Sub-Status</InputLabel>
-                        <Select {...field} label="Sub-Status">
-                          {subStatusOptions.map((subStatus) => (
-                            <MenuItem key={subStatus} value={subStatus}>
-                              {subStatus}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
+                      <EnumSelect
+                        enumType="appointmentSubStatus"
+                        label="Sub-Status"
+                        {...field}
+                      />
                     )}
                   />
                 </Grid>
@@ -779,19 +744,11 @@ const AppointmentEdit: React.FC = () => {
                     name="appointment_type"
                     control={control}
                     render={({ field }) => (
-                      <FormControl fullWidth>
-                        <InputLabel>Appointment Type</InputLabel>
-                        <Select {...field} label="Appointment Type">
-                          <MenuItem value="">
-                            <em>None</em>
-                          </MenuItem>
-                          {appointmentTypeOptions.map((type) => (
-                            <MenuItem key={type} value={type}>
-                              {type}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
+                      <EnumSelect
+                        enumType="appointmentType"
+                        label="Appointment Type"
+                        {...field}
+                      />
                     )}
                   />
                 </Grid>
@@ -847,7 +804,6 @@ const AppointmentEdit: React.FC = () => {
                     />
                   </Grid>
                 )}
-
 
                 {/* File Attachments Section */}
                 <Grid item xs={12}>

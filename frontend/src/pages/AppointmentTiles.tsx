@@ -34,6 +34,8 @@ import { EmailIcon, ContactPhoneIcon, EmailIconSmall, ContactPhoneIconSmall, Wor
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { useQuery } from '@tanstack/react-query';
+import { useEnums } from '../hooks/useEnums';
+import { FilterChip, FilterChipGroup } from '../components/FilterChip';
 
 import { Appointment } from '../models/types';
 
@@ -57,20 +59,8 @@ const AppointmentTiles: React.FC = () => {
   const api = useApi();
   const { enqueueSnackbar } = useSnackbar();
 
-  // Fetch status options using React Query
-  const { data: statusOptions = [] } = useQuery({
-    queryKey: ['statusOptions'],
-    queryFn: async () => {
-      try {
-        const { data } = await api.get<string[]>('/appointments/status-options');
-        return data;
-      } catch (error) {
-        console.error('Error fetching status options:', error);
-        enqueueSnackbar('Failed to fetch status options', { variant: 'error' });
-        return [];
-      }
-    }
-  });
+  // Fetch status options using useEnums hook
+  const { values: statusOptions = [], isLoading: isLoadingStatusOptions } = useEnums('appointmentStatus');
 
   // Fetch locations using React Query
   const { data: locations = [], isLoading: isLoadingLocations } = useQuery({
@@ -140,11 +130,11 @@ const AppointmentTiles: React.FC = () => {
   };
 
   const handleStatusFilter = (status: string | null) => {
-    setSelectedStatus(status === selectedStatus ? null : status);
+    setSelectedStatus(status);
   };
 
   const handleLocationFilter = (locationId: number | null) => {
-    setSelectedLocation(locationId === selectedLocation ? null : locationId);
+    setSelectedLocation(locationId);
   };
 
   // Get count of appointments for a specific location
@@ -155,6 +145,11 @@ const AppointmentTiles: React.FC = () => {
       console.error('Error counting appointments for location:', error);
       return 0;
     }
+  };
+
+  // Get count of appointments for a specific status
+  const getStatusAppointmentCount = (status: string) => {
+    return appointments.filter(a => a.status === status).length;
   };
 
   const AppointmentTile = ({ appointment }: { appointment: Appointment }) => (
@@ -176,30 +171,21 @@ const AppointmentTiles: React.FC = () => {
             {/* Status Filters */}
             <Box>
               <Typography variant="subtitle1" sx={{ mb: 1 }}>Filter by Status</Typography>
-              <Box sx={{ 
-                display: 'flex', 
-                gap: 1, 
-                flexWrap: 'wrap'
-              }}>
-                {statusOptions.map((status) => (
-                  <Chip
-                    key={status}
-                    label={`${status} (${appointments.filter(a => a.status === status).length})`}
-                    onClick={() => handleStatusFilter(status)}
-                    variant={selectedStatus === status ? 'filled' : 'outlined'}
-                    sx={{ 
-                      cursor: 'pointer',
-                      '&:hover': {
-                        opacity: 0.8,
-                      },
-                      bgcolor: 'white',
-                      color: getStatusColor(status, theme),
-                      border: `1px solid ${getStatusColor(status, theme)}`,
-                      borderRadius: '10px',
-                    }}
-                  />
-                ))}
-              </Box>
+              {isLoadingStatusOptions ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <CircularProgress size={20} />
+                  <Typography variant="body2">Loading status options...</Typography>
+                </Box>
+              ) : (
+                <FilterChipGroup
+                  options={statusOptions}
+                  selectedValue={selectedStatus}
+                  getLabel={(status) => status}
+                  getCount={getStatusAppointmentCount}
+                  getColor={(status, theme) => getStatusColor(status, theme)}
+                  onToggle={handleStatusFilter}
+                />
+              )}
             </Box>
             
             {/* Location Filters */}
@@ -211,30 +197,18 @@ const AppointmentTiles: React.FC = () => {
                   <Typography variant="body2">Loading locations...</Typography>
                 </Box>
               ) : locations.length > 0 ? (
-                <Box sx={{ 
-                  display: 'flex', 
-                  gap: 1, 
-                  flexWrap: 'wrap'
-                }}>
-                  {locations.map((location) => (
-                    <Chip
-                      key={location.id}
-                      icon={<LocationOnIcon />}
-                      label={`${location.name} (${getLocationAppointmentCount(location.id)})`}
-                      onClick={() => handleLocationFilter(location.id)}
-                      variant={selectedLocation === location.id ? 'filled' : 'outlined'}
-                      sx={{ 
-                        cursor: 'pointer',
-                        '&:hover': {
-                          opacity: 0.8,
-                        },
-                        bgcolor: selectedLocation === location.id ? theme.palette.primary.light : 'white',
-                        color: selectedLocation === location.id ? 'white' : theme.palette.primary.main,
-                        borderRadius: '10px',
-                      }}
-                    />
-                  ))}
-                </Box>
+                <FilterChipGroup
+                  options={locations.map(loc => loc.id)}
+                  selectedValue={selectedLocation}
+                  getLabel={(locationId) => {
+                    const location = locations.find(l => l.id === locationId);
+                    return location ? location.name : `Location ${locationId}`;
+                  }}
+                  getCount={(locationId) => getLocationAppointmentCount(locationId)}
+                  getColor={(_, theme) => theme.palette.primary.main}
+                  onToggle={handleLocationFilter}
+                  getIcon={() => <LocationOnIcon />}
+                />
               ) : (
                 <Typography variant="body2" color="text.secondary">
                   No locations available. Please check with your administrator.
