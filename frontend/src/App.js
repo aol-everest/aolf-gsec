@@ -11,13 +11,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Pages
 import Landing from './pages/Landing';
+import Unauthorized from './pages/Unauthorized';
 
 // Components
 import PrivateRoute from './components/PrivateRoute';
 import RoleBasedRoute from './components/RoleBasedRoute';
 
 // Route Configuration
-import { userRoutes, adminRoutes, SECRETARIAT_ROLE } from './config/routes';
+import { userRoutes, adminRoutes, usherRoutes, SECRETARIAT_ROLE, USHER_ROLE } from './config/routes';
 
 // Wrapper component to handle auth redirect
 const AuthRedirect = () => {
@@ -47,6 +48,7 @@ function App() {
               <AuthProvider>
                 <Routes>
                   <Route path="/" element={<AuthRedirect />} />
+                  <Route path="/unauthorized" element={<Unauthorized />} />
                   
                   {/* Regular authenticated routes */}
                   {userRoutes.filter(route => route.path && route.component).map((route) => (
@@ -69,6 +71,21 @@ function App() {
                       element={
                         <PrivateRoute>
                           <RoleBasedRoute allowedRoles={[SECRETARIAT_ROLE]}>
+                            <route.component />
+                          </RoleBasedRoute>
+                        </PrivateRoute>
+                      }
+                    />
+                  ))}
+
+                  {/* Usher routes */}
+                  {usherRoutes.filter(route => route.path && route.component).map((route) => (
+                    <Route
+                      key={route.path}
+                      path={route.path}
+                      element={
+                        <PrivateRoute>
+                          <RoleBasedRoute allowedRoles={[USHER_ROLE, SECRETARIAT_ROLE]}>
                             <route.component />
                           </RoleBasedRoute>
                         </PrivateRoute>

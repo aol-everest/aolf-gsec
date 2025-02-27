@@ -21,6 +21,7 @@ from utils.s3 import upload_file, get_file
 import io
 import tempfile
 from utils.business_card import extract_business_card_info, BusinessCardExtractionError
+import inspect
 
 # Get environment variables
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
@@ -91,17 +92,44 @@ def requires_role(required_role: models.UserRole):
     def decorator(func: Callable):
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            current_user = kwargs.get("current_user")
-            if current_user is None:
+            # Get the current user from the kwargs
+            current_user = kwargs.get('current_user')
+            if not current_user:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Not authenticated"
                 )
+            
             if current_user.role != required_role:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Not enough privileges"
                 )
+            
+            return await func(*args, **kwargs)
+        # Preserve the original function signature for dependency injection
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+    return decorator
+
+def requires_any_role(required_roles: List[models.UserRole]):
+    def decorator(func: Callable):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            # Get the current user from the kwargs
+            current_user = kwargs.get('current_user')
+            if not current_user:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Not authenticated"
+                )
+            
+            if current_user.role not in required_roles:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Not enough privileges"
+                )
+            
             return await func(*args, **kwargs)
         # Preserve the original function signature for dependency injection
         wrapper.__signature__ = inspect.signature(func)
@@ -136,28 +164,6 @@ async def get_current_user(
         raise token_expired_exception
     except InvalidTokenError:
         raise credentials_exception
-
-def requires_role(required_role: models.UserRole):
-    def decorator(func: Callable):
-        @wraps(func)
-        async def wrapper(*args, **kwargs):
-            # Get the current user from the kwargs
-            current_user = kwargs.get('current_user')
-            if not current_user:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Not authenticated"
-                )
-            
-            if current_user.role != required_role:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Not enough privileges"
-                )
-            
-            return await func(*args, **kwargs)
-        return wrapper
-    return decorator
 
 @app.post("/verify-google-token", response_model=schemas.Token)
 async def verify_google_token(
@@ -437,8 +443,8 @@ async def get_all_dignitaries(
 @app.get("/admin/appointments/all", response_model=List[schemas.AppointmentAdmin])
 @requires_role(models.UserRole.SECRETARIAT)
 async def get_all_appointments(
-    current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
     status: Optional[str] = None
 ):
     """Get all appointments with optional status filter"""
@@ -450,6 +456,42 @@ async def get_all_appointments(
     appointments = query.all()
     print(f"Appointments: {appointments}")
     return appointments 
+
+@app.get("/usher/appointments", response_model=List[schemas.AppointmentUsherView])
+@requires_any_role([models.UserRole.USHER, models.UserRole.SECRETARIAT])
+async def get_usher_appointments(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+    date: Optional[str] = None,
+):
+    """
+    Get appointments for USHER role. By default, returns appointments for today and the next two days.
+    If date parameter is provided, returns appointments for that specific date.
+    """
+    # If specific date is provided, use that
+    if date:
+        try:
+            target_date = datetime.strptime(date, "%Y-%m-%d").date()
+            start_date = target_date
+            end_date = target_date
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+    else:
+        # Default: today and next two days
+        today = datetime.now().date()
+        start_date = today
+        end_date = today + timedelta(days=2)
+    
+    # Get appointments within date range
+    appointments = db.query(models.Appointment).filter(
+        models.Appointment.appointment_date >= start_date,
+        models.Appointment.appointment_date <= end_date
+    ).order_by(
+        models.Appointment.appointment_date,
+        models.Appointment.appointment_time
+    ).all()
+    
+    return appointments
 
 @app.get("/admin/appointments/{appointment_id}", response_model=schemas.AppointmentAdmin)
 @requires_role(models.UserRole.SECRETARIAT) 

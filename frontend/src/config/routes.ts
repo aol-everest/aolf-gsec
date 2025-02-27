@@ -16,6 +16,7 @@ import AppointmentTiles from '../pages/AppointmentTiles';
 import AppointmentEdit from '../pages/AppointmentEdit';
 import AppointmentDayView from '../pages/AppointmentDayView';
 import LocationsManage from '../pages/LocationsManage';
+import AppointmentUsherView from '../pages/AppointmentUsherView';
 
 import { 
     AddIcon, 
@@ -31,9 +32,11 @@ import {
     OutlineTableChartIcon, 
     RoundViewColumnIcon,
     RoundPeopleIcon,
+    UsherIcon,
 } from '../components/icons';
 
 export const SECRETARIAT_ROLE = 'SECRETARIAT';
+export const USHER_ROLE = 'USHER';
 
 // Route configuration interface ----------------------------------------------------------------------
 interface RouteConfig {
@@ -157,6 +160,22 @@ export const AdminHeaderRoute: RouteConfig = {
   showInSidebar: true,
 }
 
+// Usher routes ---------------------------------------------------------------------------------------
+export const UsherAppointmentsRoute: RouteConfig = {
+  path: '/usher/appointments',
+  label: 'Appointments Schedule',
+  icon: CalendarViewDayIcon,
+  roles: [USHER_ROLE, SECRETARIAT_ROLE],
+  showInSidebar: true,
+  component: AppointmentUsherView
+}
+
+export const UsherHeaderRoute: RouteConfig = {
+  label: 'USHER',
+  icon: UsherIcon,
+  roles: [USHER_ROLE, SECRETARIAT_ROLE],
+  showInSidebar: true,
+}
 
 // Regular user routes ---------------------------------------------------------------------------------
 export const userRoutes: RouteConfig[] = [
@@ -179,8 +198,14 @@ export const adminRoutes: RouteConfig[] = [
   AdminAppointmentsEditRoute,
 ];
 
+// Usher routes ----------------------------------------------------------------------------------------
+export const usherRoutes: RouteConfig[] = [
+  UsherHeaderRoute,
+  UsherAppointmentsRoute,
+];
+
 // Combine all routes ----------------------------------------------------------------------------------
-export const allRoutes = [...userRoutes, ...adminRoutes];
+export const allRoutes = [...userRoutes, ...adminRoutes, ...usherRoutes];
 
 // Helper function to get sidebar items based on user role ----------------------------------------------
 export const getSidebarItems = (userRole: string | null) => {
@@ -188,6 +213,10 @@ export const getSidebarItems = (userRole: string | null) => {
   
   if (userRole === SECRETARIAT_ROLE) {
     items.push(...adminRoutes.filter(route => route.showInSidebar));
+  }
+  
+  if (userRole === USHER_ROLE || userRole === SECRETARIAT_ROLE) {
+    items.push(...usherRoutes.filter(route => route.showInSidebar));
   }
   
   return items;

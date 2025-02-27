@@ -300,3 +300,35 @@ class BusinessCardExtractionResponse(BaseModel):
     attachment_id: int
     appointment_id: int
 
+# New schemas for USHER role
+class DignitaryUsherView(BaseModel):
+    honorific_title: Optional[HonorificTitle] = None
+    first_name: str
+    last_name: str
+
+    class Config:
+        orm_mode = True
+
+class RequesterUsherView(BaseModel):
+    first_name: str
+    last_name: str
+    phone_number: Optional[str] = None
+
+    class Config:
+        orm_mode = True
+
+class AppointmentUsherView(BaseModel):
+    id: int
+    appointment_date: Optional[date] = None
+    appointment_time: Optional[str] = None
+    dignitary: DignitaryUsherView
+    requester: RequesterUsherView
+    location: Optional[Location] = None
+
+    class Config:
+        orm_mode = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat(),
+            date: lambda v: v.strftime("%Y-%m-%d")
+        }
+

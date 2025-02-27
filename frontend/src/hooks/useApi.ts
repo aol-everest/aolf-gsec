@@ -26,6 +26,9 @@ export function useApi() {
           localStorage.removeItem('accessToken');
           window.location.href = '/';
         }
+        if (error.response?.status === 403) {
+          window.location.href = '/unauthorized';
+        }
         return Promise.reject(error);
       }
     );
