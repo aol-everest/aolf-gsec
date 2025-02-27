@@ -31,6 +31,7 @@ export const EnumSelect: React.FC<EnumSelectProps> = ({
       <Select
         label={label}
         {...selectProps}
+        value={selectProps.value || ''}
         disabled={isLoading || selectProps.disabled}
         endAdornment={
           isLoading ? (
@@ -40,6 +41,9 @@ export const EnumSelect: React.FC<EnumSelectProps> = ({
           )
         }
       >
+        <MenuItem value="">
+          <em>None</em>
+        </MenuItem>
         {values.map((value) => (
           <MenuItem key={value} value={value}>
             {value}

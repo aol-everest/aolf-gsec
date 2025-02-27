@@ -147,9 +147,9 @@ const AppointmentEdit: React.FC = () => {
         appointment_date: appointment.appointment_date || appointment.preferred_date,
         appointment_time: appointment.appointment_time || appointment.preferred_time_of_day,
         location_id: appointment.location_id || null,
-        status: appointment.status,
-        sub_status: appointment.sub_status,
-        appointment_type: appointment.appointment_type,
+        status: appointment.status || '',
+        sub_status: appointment.sub_status || '',
+        appointment_type: appointment.appointment_type || '',
         requester_notes_to_secretariat: appointment.requester_notes_to_secretariat,
         secretariat_follow_up_actions: appointment.secretariat_follow_up_actions,
         secretariat_meeting_notes: appointment.secretariat_meeting_notes,
@@ -713,6 +713,7 @@ const AppointmentEdit: React.FC = () => {
                   <Controller
                     name="status"
                     control={control}
+                    defaultValue={appointment?.status || ''}
                     render={({ field }) => (
                       <EnumSelect
                         enumType="appointmentStatus"
@@ -728,6 +729,7 @@ const AppointmentEdit: React.FC = () => {
                   <Controller
                     name="sub_status"
                     control={control}
+                    defaultValue={appointment?.sub_status || ''}
                     render={({ field }) => (
                       <EnumSelect
                         enumType="appointmentSubStatus"
@@ -743,6 +745,7 @@ const AppointmentEdit: React.FC = () => {
                   <Controller
                     name="appointment_type"
                     control={control}
+                    defaultValue={appointment?.appointment_type || ''}
                     render={({ field }) => (
                       <EnumSelect
                         enumType="appointmentType"
