@@ -36,6 +36,7 @@ import { useSnackbar } from 'notistack';
 import { useQuery } from '@tanstack/react-query';
 import { useEnums } from '../hooks/useEnums';
 import { FilterChip, FilterChipGroup } from '../components/FilterChip';
+import { EnumFilterChipGroup } from '../components/EnumFilterChipGroup';
 
 import { Appointment } from '../models/types';
 
@@ -171,21 +172,13 @@ const AppointmentTiles: React.FC = () => {
             {/* Status Filters */}
             <Box>
               <Typography variant="subtitle1" sx={{ mb: 1 }}>Filter by Status</Typography>
-              {isLoadingStatusOptions ? (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <CircularProgress size={20} />
-                  <Typography variant="body2">Loading status options...</Typography>
-                </Box>
-              ) : (
-                <FilterChipGroup
-                  options={statusOptions}
-                  selectedValue={selectedStatus}
-                  getLabel={(status) => status}
-                  getCount={getStatusAppointmentCount}
-                  getColor={(status, theme) => getStatusColor(status, theme)}
-                  onToggle={handleStatusFilter}
-                />
-              )}
+              <EnumFilterChipGroup
+                enumType="appointmentStatus"
+                selectedValue={selectedStatus}
+                getCount={getStatusAppointmentCount}
+                getColor={(status, theme) => getStatusColor(status, theme)}
+                onToggle={handleStatusFilter}
+              />
             </Box>
             
             {/* Location Filters */}
