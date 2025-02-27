@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Typography,
@@ -9,17 +9,15 @@ import {
   alpha,
   CircularProgress,
   Alert,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  SelectChangeEvent,
+  Chip,
+  Stack,
 } from '@mui/material';
-import { format, addDays, parseISO } from 'date-fns';
+import { format, addDays, parseISO, isToday, isTomorrow, isYesterday } from 'date-fns';
 import Layout from '../components/Layout';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { useQuery } from '@tanstack/react-query';
+import { USHER_DISPLAY_DAYS } from '../constants/formConstants';
 
 // Define interfaces for the USHER view
 interface DignitaryUsherView {
@@ -52,6 +50,30 @@ const AppointmentUsherView: React.FC = () => {
   const { enqueueSnackbar } = useSnackbar();
   const today = new Date();
 
+  // Format dates for display
+  const formatDisplayDate = (date: Date) => {
+    return format(date, 'EEEE, MMMM d, yyyy');
+  };
+
+  // Generate date options for pills (today and next 2 days)
+  const dateOptions = [];
+  for (let i = 0; i < USHER_DISPLAY_DAYS; i++) {
+    const date = addDays(today, i);
+    dateOptions.push({
+      value: format(date, 'yyyy-MM-dd'),
+      label: format(date, 'EEE, MMM d'),
+      fullLabel: formatDisplayDate(date),
+      isToday: i === 0,
+    });
+  }
+
+  // Set default selected date to today on initial load
+  useEffect(() => {
+    if (!selectedDate) {
+      setSelectedDate(format(today, 'yyyy-MM-dd'));
+    }
+  }, []);
+
   // Get appointments for USHER view
   const { data: appointments, isLoading, error } = useQuery({
     queryKey: ['usher-appointments', selectedDate],
@@ -72,11 +94,6 @@ const AppointmentUsherView: React.FC = () => {
     staleTime: 0,
   });
 
-  // Format dates for display
-  const formatDisplayDate = (date: Date) => {
-    return format(date, 'EEEE, MMMM d, yyyy');
-  };
-
   // Group appointments by date
   const groupedAppointments = appointments?.reduce((acc, appointment) => {
     if (!appointment.appointment_date) return acc;
@@ -88,25 +105,24 @@ const AppointmentUsherView: React.FC = () => {
     return acc;
   }, {} as Record<string, AppointmentUsherView[]>) || {};
 
-  // Generate date options for the dropdown
-  const dateOptions = [];
-  for (let i = -7; i <= 14; i++) {
-    const date = addDays(today, i);
-    dateOptions.push({
-      value: format(date, 'yyyy-MM-dd'),
-      label: formatDisplayDate(date),
-    });
-  }
-
   // Handle date change
-  const handleDateChange = (event: SelectChangeEvent) => {
-    setSelectedDate(event.target.value);
+  const handleDateChange = (date: string) => {
+    setSelectedDate(date);
   };
 
   // Format dignitary name
   const formatDignitaryName = (dignitary: DignitaryUsherView) => {
     const honorific = dignitary.honorific_title || '';
     return `${honorific} ${dignitary.first_name} ${dignitary.last_name}`.trim();
+  };
+
+  // Get a friendly label for the date
+  const getDateLabel = (dateString: string) => {
+    const date = parseISO(dateString);
+    if (isToday(date)) return 'Today';
+    if (isTomorrow(date)) return 'Tomorrow';
+    if (isYesterday(date)) return 'Yesterday';
+    return format(date, 'EEE, MMM d');
   };
 
   if (isLoading) {
@@ -146,24 +162,23 @@ const AppointmentUsherView: React.FC = () => {
             <Typography variant="h4" component="h1">
               Appointments Schedule
             </Typography>
-            <Box sx={{ width: 300 }}>
-              <FormControl fullWidth>
-                <InputLabel id="date-select-label">Select Date</InputLabel>
-                <Select
-                  labelId="date-select-label"
-                  value={selectedDate || ''}
-                  label="Select Date"
-                  onChange={handleDateChange}
-                >
-                  <MenuItem value="">Today and Next Two Days</MenuItem>
-                  {dateOptions.map((option) => (
-                    <MenuItem key={option.value} value={option.value}>
-                      {option.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
+            <Stack direction="row" spacing={1}>
+              {dateOptions.map((option) => (
+                <Chip
+                  key={option.value}
+                  label={option.isToday ? `Today (${option.label})` : option.label}
+                  onClick={() => handleDateChange(option.value)}
+                  color={selectedDate === option.value ? "primary" : "default"}
+                  variant={selectedDate === option.value ? "filled" : "outlined"}
+                  sx={{ 
+                    fontWeight: selectedDate === option.value ? 'bold' : 'normal',
+                    fontSize: '0.9rem',
+                    py: 0.5,
+                    px: 0.5
+                  }}
+                />
+              ))}
+            </Stack>
           </Box>
 
           {Object.keys(groupedAppointments).length === 0 ? (
@@ -176,7 +191,7 @@ const AppointmentUsherView: React.FC = () => {
               }}
             >
               <Typography variant="h6" color="text.secondary">
-                No appointments found for the selected period
+                No appointments found for {selectedDate ? getDateLabel(selectedDate) : 'the selected date'}
               </Typography>
             </Paper>
           ) : (

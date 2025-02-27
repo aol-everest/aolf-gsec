@@ -1,4 +1,7 @@
-import { RelationshipType, HonorificTitle, PrimaryDomain } from "../constants/formConstants";
+// Define string types for enum values
+export type RelationshipType = string;
+export type HonorificTitle = string;
+export type PrimaryDomain = string;
 
 export interface AppointmentFormData {
   // POC Information (auto-populated for logged-in POCs)
