@@ -1,172 +1,115 @@
-# Google App Engine Deployment Guide
+# AOLF GSEC Google App Engine Deployment
 
-This guide provides instructions for deploying the AOLF GSEC application to Google App Engine (GAE).
+This directory contains scripts for deploying the AOLF GSEC application to Google App Engine.
+
+## Overview
+
+The deployment script `deploy-gae-fullstack.sh` automates the process of deploying both the frontend and backend components to Google App Engine. It handles:
+
+- Setting up the Google Cloud environment
+- Configuring Cloud SQL databases
+- Managing secrets in Google Secret Manager
+- Building the frontend application
+- Deploying both frontend and backend services
 
 ## Prerequisites
 
-Before deploying, ensure you have:
+Before running the deployment script, ensure you have:
 
 1. Google Cloud SDK installed and configured
-2. Node.js (v16+) and npm installed
-3. Python 3.9+ installed
-4. A Google Cloud Platform project with billing enabled
-5. App Engine enabled in your GCP project
-6. Frontend and backend environment files properly configured
-7. Google OAuth credentials configured with the appropriate redirect URIs
+2. Appropriate permissions on the target Google Cloud project
+3. Node.js and npm installed for frontend builds
+4. Python 3.9+ installed for backend dependency checks
 
-## Environment Configuration
-
-The AOLF GSEC application supports multiple deployment environments:
-
-- **Development**: Local development environment
-- **UAT**: User Acceptance Testing environment
-- **Production**: Production environment
-
-### Backend Environment Files
-
-Create environment-specific files in the `backend` directory:
-
-**UAT Environment (.env.uat)**:
-```
-JWT_SECRET_KEY=your_jwt_secret
-GOOGLE_CLIENT_ID=your_google_client_id
-POSTGRES_USER=gsec_user
-POSTGRES_PASSWORD=your_database_password
-POSTGRES_DB=gsec
-POSTGRES_HOST=/cloudsql/your-project-id:us-central1:aolf-gsec-postgres-uat
-POSTGRES_PORT=5432
-SENDGRID_API_KEY=your_sendgrid_api_key
-FROM_EMAIL=your_sender_email
-ENABLE_EMAIL=true
-```
-
-**Production Environment (.env.prod)**:
-```
-JWT_SECRET_KEY=your_jwt_secret
-GOOGLE_CLIENT_ID=your_google_client_id
-POSTGRES_USER=gsec_user
-POSTGRES_PASSWORD=your_database_password
-POSTGRES_DB=gsec
-POSTGRES_HOST=/cloudsql/your-project-id:us-central1:aolf-gsec-postgres-prod
-POSTGRES_PORT=5432
-SENDGRID_API_KEY=your_sendgrid_api_key
-FROM_EMAIL=your_sender_email
-ENABLE_EMAIL=true
-```
-
-### Frontend Environment Files
-
-Create environment-specific files in the `frontend` directory:
-
-**UAT Environment (.env.uat)**:
-```
-REACT_APP_API_URL=https://backend-uat-dot-your-project-id.appspot.com
-REACT_APP_ENVIRONMENT=uat
-```
-
-**Production Environment (.env.prod)**:
-```
-REACT_APP_API_URL=https://backend-dot-your-project-id.appspot.com
-REACT_APP_ENVIRONMENT=prod
-```
-
-## Deployment Process
-
-### 1. Update Your GAE Deployment Configuration
-
-Before deploying, run the update script to patch your deployment scripts:
+## Usage
 
 ```bash
-./deployment/gae/update-gae-deployment.sh
+./deploy-gae-fullstack.sh -p <PROJECT_ID> [options]
 ```
 
-This script will:
-- Install the env-cmd package (if not already installed)
-- Update the deployment script to use environment-specific configuration
+### Options
 
-### 2. Deploy to UAT Environment
+- `-p, --project <PROJECT_ID>`: Google Cloud project ID (required)
+- `--env <ENVIRONMENT>`: Deployment environment (dev, uat, prod) (default: uat)
+- `--version <VERSION>`: Version identifier for deployment (default: timestamp)
+- `--skip-secret-manager`: Skip storing parameters in Google Secret Manager
+- `--skip-db-creation`: Skip Cloud SQL database creation (use if DB already exists)
+- `--region <REGION>`: GCP region for resources (default: us-central1)
+- `-h, --help`: Display help message
+
+### Examples
 
 ```bash
-./deployment/gae/deploy-gae-fullstack.sh -p your-project-id --env=uat
+# Deploy to UAT environment
+./deploy-gae-fullstack.sh -p my-gae-project --env=uat
+
+# Deploy to production environment with specific version
+./deploy-gae-fullstack.sh -p my-gae-project --env=prod --version=v1-0-0
+
+# Deploy without creating a new database (if it already exists)
+./deploy-gae-fullstack.sh -p my-gae-project --skip-db-creation
+
+# Deploy to a specific region
+./deploy-gae-fullstack.sh -p my-gae-project --region=us-west1
 ```
 
-This command will:
-- Build the frontend application with UAT environment configuration
-- Deploy the backend to the `backend-uat` service
-- Deploy the frontend to the default service
-- Configure environment variables and Cloud SQL connections
+## Deployment Architecture
 
-### 3. Deploy to Production Environment
+The script deploys the application with the following architecture:
 
-```bash
-./deployment/gae/deploy-gae-fullstack.sh -p your-project-id --env=prod
-```
+- **Frontend**: Deployed as a Node.js service (default service)
+- **Backend**: Deployed as a Python service (backend or backend-{env})
+- **Database**: Cloud SQL PostgreSQL instance
 
-This command will:
-- Build the frontend application with production environment configuration
-- Deploy the backend to the `backend` service
-- Deploy the frontend to the default service
-- Configure environment variables and Cloud SQL connections
+### Service Names
 
-## Service Architecture
+- **Production Environment**:
+  - Frontend: `default`
+  - Backend: `backend`
 
-The deployed application will have the following architecture:
+- **Non-Production Environments** (dev, uat):
+  - Frontend: `default`
+  - Backend: `backend-{env}` (e.g., `backend-uat`)
 
-- **Frontend**: Deployed to the default service (`default`)
-  - URL: `https://your-project-id.appspot.com`
-  
-- **Backend APIs**:
-  - UAT: Deployed to `backend-uat` service
-    - URL: `https://backend-uat-dot-your-project-id.appspot.com`
-  - Production: Deployed to `backend` service
-    - URL: `https://backend-dot-your-project-id.appspot.com`
+## Environment Files
 
-## Google OAuth Configuration
+The script manages environment files for both frontend and backend:
 
-Ensure your Google OAuth credentials are configured with the appropriate redirect URIs:
+- Backend: `.env.{environment}` (e.g., `.env.uat`, `.env.prod`)
+- Frontend: `.env`
 
-- Development: `http://localhost:3000`
-- UAT: `https://your-project-id.appspot.com`
-- Production: `https://your-project-id.appspot.com`
+If these files don't exist, they will be created from templates or existing environment files.
+
+## Database Setup
+
+The script creates and configures a Cloud SQL PostgreSQL instance for the application:
+
+- Instance name: `aolf-gsec-postgres-{env}`
+- Database name: From environment file or default (`gsec`)
+- User: From environment file or default (`gsec_user`)
+
+## Secret Management
+
+Sensitive information is stored in Google Secret Manager:
+
+- Database credentials
+- JWT secret key
+- Google client ID
+- SendGrid API key
+- Email configuration
 
 ## Troubleshooting
 
-### Common Issues
+If the deployment fails, check:
 
-1. **Permission Errors**
-   - Ensure you have sufficient IAM permissions in the GCP project
-   - Make sure the necessary APIs are enabled (App Engine, Cloud SQL, etc.)
+1. Google Cloud project permissions
+2. Environment file configuration
+3. Deployment logs: `gcloud app logs tail --project=<PROJECT_ID>`
+4. Database connection settings
+5. Frontend build errors
 
-2. **Deployment Failures**
-   - Check App Engine logs: `gcloud app logs tail -s [SERVICE_NAME]`
-   - Verify environment variables are correctly configured
+## Additional Resources
 
-3. **Database Connection Issues**
-   - Ensure Cloud SQL instance exists and is properly configured
-   - Check that the service account has access to the Cloud SQL instance
-
-## Monitoring Your Deployment
-
-After deployment, you can:
-
-- View your application: `https://your-project-id.appspot.com`
-- Monitor App Engine status: Google Cloud Console > App Engine > Dashboard
-- View application logs: `gcloud app logs tail` or through Cloud Console
-
-## Scaling and Resources
-
-By default, the deployment uses F2 instance class. To adjust scaling, edit the `app.yaml` files before deployment or modify the deployment script to generate different configurations.
-
-For production deployments, consider:
-- Setting appropriate scaling parameters
-- Configuring automatic instance scaling
-- Setting up monitoring and alerts
-
-## Rollback Procedure
-
-If a deployment fails or causes issues:
-
-1. Use the Google Cloud Console to roll back to a previous version
-2. Navigate to App Engine > Versions
-3. Select the previous working version
-4. Click "Migrate Traffic" to route requests to that version 
+- [Google App Engine Documentation](https://cloud.google.com/appengine/docs)
+- [Cloud SQL Documentation](https://cloud.google.com/sql/docs)
+- [Secret Manager Documentation](https://cloud.google.com/secret-manager/docs) 

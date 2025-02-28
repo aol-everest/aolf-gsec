@@ -10,17 +10,30 @@ build_with_env() {
   
   cd $root_dir || exit 1
   
+  # Verify we have the correct .env file
+  if [[ -f ".env.$deploy_env" ]]; then
+    echo "Found environment-specific file: .env.$deploy_env"
+    # Make sure the main .env file matches the environment-specific one
+    cp ".env.$deploy_env" ".env"
+    echo "Copied .env.$deploy_env to .env to ensure correct build configuration"
+  else
+    echo "WARNING: Environment-specific file .env.$deploy_env not found. Using existing .env file."
+  fi
+  
   # Install dependencies
   echo "Installing dependencies..."
   npm install --legacy-peer-deps
   
-  # Check if environment-specific file exists
-  if [[ -f ".env.$deploy_env" ]]; then
-    echo "Using environment-specific file: .env.$deploy_env"
+  # Check if an environment-specific build script exists
+  if npm run | grep -q "build:$deploy_env"; then
+    echo "Using environment-specific build script: build:$deploy_env"
     npm run build:$deploy_env
   else
-    echo "Environment-specific file .env.$deploy_env not found. Using default .env file."
-    npm run build
+    echo "Environment-specific build script not found. Using default build script."
+    
+    # Set NODE_ENV to match our deployment environment
+    echo "Setting NODE_ENV to $deploy_env for build"
+    NODE_ENV=$deploy_env npm run build
   fi
   
   if [[ ! -d "build" ]]; then

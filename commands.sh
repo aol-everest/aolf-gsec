@@ -16,7 +16,7 @@ npm install
 
 # Start the frontend
 npm start
-
+npm run start:dev
 
 # Backend --------------------------------------------------------------------------------------
 

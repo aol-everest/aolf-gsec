@@ -1,0 +1,89 @@
+# Template app.yaml for AOLF GSEC application
+# This is a reference file only - the actual app.yaml is generated during deployment
+
+runtime: python312
+
+entrypoint: gunicorn application:application -w 4 -k uvicorn.workers.UvicornWorker
+
+instance_class: F2
+
+env_variables:
+  ENVIRONMENT: "${ENVIRONMENT}"
+  POSTGRES_HOST: "/cloudsql/${SQL_CONNECTION_NAME}"
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: "${POSTGRES_DB}"
+  POSTGRES_USER: "${POSTGRES_USER}"
+  POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+  JWT_SECRET_KEY: "${JWT_SECRET_KEY}"
+  GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID}"
+  SENDGRID_API_KEY: "${SENDGRID_API_KEY}"
+  FROM_EMAIL: "${FROM_EMAIL}"
+  ENABLE_EMAIL: "true"
+
+beta_settings:
+  cloud_sql_instances: ${SQL_CONNECTION_NAME}
+
+handlers:
+# API handlers
+- url: /docs.*
+  script: auto
+  secure: always
+
+- url: /openapi.json
+  script: auto
+  secure: always
+
+- url: /api/.*
+  script: auto
+  secure: always
+
+# Static file handlers for Create React App build output
+- url: /static/css/(.*\.css)
+  static_files: static/static/css/\1
+  upload: static/static/css/.*\.css$
+  secure: always
+
+- url: /static/js/(.*\.js)
+  static_files: static/static/js/\1
+  upload: static/static/js/.*\.js$
+  secure: always
+
+- url: /static/media/(.*)
+  static_files: static/static/media/\1
+  upload: static/static/media/.*
+  secure: always
+
+# Handle direct access to CSS files
+- url: /(css/.*\.css)
+  static_files: static/static/\1
+  upload: static/static/css/.*\.css$
+  secure: always
+
+# Handle direct access to JS files
+- url: /(js/.*\.js)
+  static_files: static/static/\1
+  upload: static/static/js/.*\.js$
+  secure: always
+
+# Handle other static assets
+- url: /static
+  static_dir: static
+  secure: always
+
+- url: /(.*\.(json|ico|js|css|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot))$
+  static_files: static/\1
+  upload: static/.*\.(json|ico|js|css|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)$
+  secure: always
+
+# All other routes go to index.html for React Router
+- url: /.*
+  static_files: static/index.html
+  upload: static/index.html
+  secure: always
+
+automatic_scaling:
+  min_instances: 1
+  max_instances: 5
+  target_cpu_utilization: 0.65
+  target_throughput_utilization: 0.65
+  max_concurrent_requests: 50 
