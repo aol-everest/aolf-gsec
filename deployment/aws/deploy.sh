@@ -1,17 +1,33 @@
 #!/bin/bash
-# AOLF GSEC Frontend Deployment Script
+# AOLF GSEC Frontend Deployment Script for AWS
 # This script automates the deployment of the frontend to AWS S3 and CloudFront
 
 # Exit on error
 set -e
+
+# Set script directory and load common utilities
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+COMMON_DIR="$SCRIPT_DIR/../common"
+FRONTEND_DIR="$PROJECT_ROOT/frontend"
+
+# Source common utilities
+source "$COMMON_DIR/env-utils.sh"
 
 # Log function for better visibility
 log() {
   echo "$(date '+%Y-%m-%d %H:%M:%S') - $1"
 }
 
+# Error handling
+handle_error() {
+  log "ERROR: $1"
+  log "Deployment failed. Please check the error message above."
+  exit 1
+}
+
 # Default environment
-DEPLOY_ENV="prod"
+DEPLOY_ENV="uat"
 
 # Configuration
 S3_BUCKET_PROD="aolf-gsec-prod"
@@ -26,7 +42,7 @@ CLOUDFRONT_DISTRIBUTION_ID=$CLOUDFRONT_DISTRIBUTION_ID_UAT  # Default to UAT
 
 # Display help
 show_help() {
-  echo "AOLF GSEC Frontend Deployment Script"
+  echo "AOLF GSEC Frontend AWS Deployment Script"
   echo "Usage: $0 [options]"
   echo ""
   echo "Options:"
@@ -69,11 +85,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Validate environment
-if [[ "$DEPLOY_ENV" != "prod" && "$DEPLOY_ENV" != "uat" ]]; then
-  echo "Invalid environment: $DEPLOY_ENV. Must be 'prod' or 'uat'."
-  echo "Usage: $0 [--env=prod|uat] or $0 [-e prod|uat]"
-  exit 1
-fi
+validate_environment "$DEPLOY_ENV" || handle_error "Invalid environment"
 
 # Set environment-specific configurations
 if [[ "$DEPLOY_ENV" == "prod" ]]; then
@@ -88,48 +100,19 @@ fi
 
 # Create production environment file
 create_prod_env() {
-  log "Creating production environment file..."
-  cp .env .env.production
+  log "Setting up environment for $DEPLOY_ENV..."
   
   # Prompt for production API URL
   read -p "Enter $DEPLOY_ENV API URL (e.g., https://api.example.com): " API_URL
   
-  # Update the API URL in the production env file
-  if [[ "$OSTYPE" == "darwin"* ]]; then
-    # macOS
-    sed -i '' "s|REACT_APP_API_BASE_URL=.*|REACT_APP_API_BASE_URL=$API_URL|g" .env.production
-  else
-    # Linux/other
-    sed -i "s|REACT_APP_API_BASE_URL=.*|REACT_APP_API_BASE_URL=$API_URL|g" .env.production
-  fi
-  
-  log "Production environment file created and updated."
+  # Create/update environment file
+  create_env_file "$DEPLOY_ENV" "$FRONTEND_DIR" "$API_URL"
 }
 
 # Build the React application
 build_app() {
   log "Building React application for $DEPLOY_ENV environment..."
-  
-  cd $ROOT_DIR
-  
-  # Install dependencies
-  log "Installing dependencies..."
-  npm install --legacy-peer-deps
-  
-  # Check if environment-specific file exists
-  if [[ -f ".env.$DEPLOY_ENV" ]]; then
-    log "Using environment-specific file: .env.$DEPLOY_ENV"
-    npm run build:$DEPLOY_ENV
-  else
-    log "Environment-specific file .env.$DEPLOY_ENV not found. Using default .env file."
-    npm run build
-  fi
-  
-  if [[ ! -d "build" ]]; then
-    handle_error "Build failed. No 'build' directory was created."
-  fi
-  
-  log "Build completed successfully."
+  build_with_env "$DEPLOY_ENV" "$FRONTEND_DIR"
 }
 
 # Deploy to S3
@@ -144,6 +127,7 @@ deploy_to_s3() {
   
   # Upload files to S3
   log "Uploading files to S3..."
+  cd "$FRONTEND_DIR"
   aws s3 sync build/ "s3://$S3_BUCKET/$S3_PREFIX/" --delete --region $REGION
   
   log "Setting up website configuration..."

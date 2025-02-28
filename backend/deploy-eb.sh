@@ -7,7 +7,7 @@ set -e
 
 # Default environment
 DEPLOY_ENV="prod"
-SKIP_PARAMETER_STORE=false
+SKIP_PARAMETER_STORE=true
 FORCE_UPDATE=false
 
 # Display help
@@ -177,15 +177,19 @@ create_or_update_env() {
     if [ "$SKIP_PARAMETER_STORE" = true ]; then
       # Create environment with direct database credentials
       eb create $ENV_NAME \
+        --tier WebServer \
+        --single \
         --database \
         --database.engine postgres \
         --database.instance db.t3.micro \
         --database.size 5 \
-        --database.username "$POSTGRES_USER" \
-        --database.password "$POSTGRES_PASSWORD"
+        --database.username "aolfgsecadmin" \
+        --database.password "aolfgsecadmin108"
     else
       # Create environment with parameter store references
       eb create $ENV_NAME \
+        --tier WebServer \
+        --single \
         --database \
         --database.engine postgres \
         --database.instance db.t3.micro \
