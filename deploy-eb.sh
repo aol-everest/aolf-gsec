@@ -1,6 +1,7 @@
 #!/bin/bash
 # AOLF GSEC Backend Deployment Script for AWS Elastic Beanstalk
 # This script automates the deployment of the backend to AWS Elastic Beanstalk
+# Note: Database is now managed separately by deploy-rds.sh
 
 # Exit on error
 set -e
@@ -8,6 +9,7 @@ set -e
 # Default environment
 DEPLOY_ENV="prod"
 SKIP_PARAMETER_STORE=false
+FORCE_UPDATE=false
 
 # Display help
 show_help() {
@@ -18,13 +20,18 @@ show_help() {
   echo "  -e, --env ENV           Specify the deployment environment (prod or uat)"
   echo "  --environment=ENV       Specify the deployment environment (prod or uat)"
   echo "  --skip-parameter-store  Skip storing parameters in AWS Parameter Store"
+  echo "  --update                Force update mode (skip environment creation)"
   echo "  -h, --help              Display this help message"
   echo ""
   echo "Examples:"
   echo "  $0                      Deploy to production environment (default)"
   echo "  $0 --env=uat            Deploy to UAT environment"
   echo "  $0 -e uat               Deploy to UAT environment"
+  echo "  $0 --env=uat --update   Update existing UAT environment"
   echo "  $0 --env=uat --skip-parameter-store  Deploy to UAT environment without using Parameter Store"
+  echo ""
+  echo "Note: Database is now managed separately by deploy-rds.sh"
+  echo "      Make sure to run deploy-rds.sh before running this script"
   echo ""
 }
 
@@ -45,6 +52,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --skip-parameter-store)
       SKIP_PARAMETER_STORE=true
+      shift
+      ;;
+    --update)
+      FORCE_UPDATE=true
       shift
       ;;
     -h|--help)
@@ -135,14 +146,12 @@ store_parameters() {
   # Parameter name suffix for environment
   PARAM_SUFFIX=$(echo $DEPLOY_ENV | tr '[:lower:]' '[:upper:]')
   
-  # Store parameters
-  aws ssm put-parameter --name "RDS_USERNAME_$PARAM_SUFFIX" --value "$POSTGRES_USER" --type SecureString --overwrite --region $REGION
-  aws ssm put-parameter --name "RDS_PASSWORD_$PARAM_SUFFIX" --value "$POSTGRES_PASSWORD" --type SecureString --overwrite --region $REGION
+  # Store parameters (excluding database parameters which are handled by deploy-rds.sh)
   aws ssm put-parameter --name "JWT_SECRET_KEY_$PARAM_SUFFIX" --value "$JWT_SECRET_KEY" --type SecureString --overwrite --region $REGION
   aws ssm put-parameter --name "GOOGLE_CLIENT_ID_$PARAM_SUFFIX" --value "$GOOGLE_CLIENT_ID" --type SecureString --overwrite --region $REGION
   aws ssm put-parameter --name "SENDGRID_API_KEY_$PARAM_SUFFIX" --value "$SENDGRID_API_KEY" --type SecureString --overwrite --region $REGION
-  aws ssm put-parameter --name "AWS_ACCESS_KEY_ID_$PARAM_SUFFIX" --value "$AWS_ACCESS_KEY_ID" --type SecureString --overwrite --region $REGION
-  aws ssm put-parameter --name "AWS_SECRET_ACCESS_KEY_$PARAM_SUFFIX" --value "$AWS_SECRET_ACCESS_KEY" --type SecureString --overwrite --region $REGION
+  aws ssm put-parameter --name "ACCESS_KEY_ID_$PARAM_SUFFIX" --value "$AWS_ACCESS_KEY_ID" --type SecureString --overwrite --region $REGION
+  aws ssm put-parameter --name "SECRET_ACCESS_KEY_$PARAM_SUFFIX" --value "$AWS_SECRET_ACCESS_KEY" --type SecureString --overwrite --region $REGION
   
   log "Parameters stored in AWS Parameter Store."
 }
@@ -157,32 +166,33 @@ create_or_update_env() {
   # Parameter name suffix for environment
   PARAM_SUFFIX=$(echo $DEPLOY_ENV | tr '[:lower:]' '[:upper:]')
   
-  # Check if environment exists
-  if eb status $ENV_NAME 2>&1 | grep -q "Environment $ENV_NAME"; then
+  # Get RDS parameters from Parameter Store
+  if [ "$SKIP_PARAMETER_STORE" = false ]; then
+    RDS_HOSTNAME=$(aws ssm get-parameter --name "RDS_HOSTNAME_$PARAM_SUFFIX" --query "Parameter.Value" --output text --region $REGION)
+    RDS_PORT=$(aws ssm get-parameter --name "RDS_PORT_$PARAM_SUFFIX" --query "Parameter.Value" --output text --region $REGION)
+    RDS_DB_NAME=$(aws ssm get-parameter --name "RDS_DB_NAME_$PARAM_SUFFIX" --query "Parameter.Value" --output text --region $REGION)
+    
+    if [ -z "$RDS_HOSTNAME" ] || [ -z "$RDS_PORT" ] || [ -z "$RDS_DB_NAME" ]; then
+      handle_error "RDS parameters not found in Parameter Store. Please run deploy-rds.sh first."
+    fi
+    
+    log "Found RDS instance: $RDS_HOSTNAME:$RDS_PORT/$RDS_DB_NAME"
+  fi
+  
+  # Check if environment exists or if update mode is forced
+  if [ "$FORCE_UPDATE" = true ]; then
+    log "Force update mode enabled. Updating environment $ENV_NAME..."
+    eb deploy $ENV_NAME
+  elif eb list | grep -E "^$ENV_NAME\$" >/dev/null; then
     log "Environment $ENV_NAME already exists. Updating..."
     eb deploy $ENV_NAME
   else
     log "Creating new Elastic Beanstalk environment..."
     
-    if [ "$SKIP_PARAMETER_STORE" = true ]; then
-      # Create environment with direct database credentials
-      eb create $ENV_NAME \
-        --database \
-        --database.engine postgres \
-        --database.instance db.t3.micro \
-        --database.size 5 \
-        --database.username "$POSTGRES_USER" \
-        --database.password "$POSTGRES_PASSWORD"
-    else
-      # Create environment with parameter store references
-      eb create $ENV_NAME \
-        --database \
-        --database.engine postgres \
-        --database.instance db.t3.micro \
-        --database.size 5 \
-        --database.username "{{resolve:ssm:RDS_USERNAME_$PARAM_SUFFIX:1}}" \
-        --database.password "{{resolve:ssm:RDS_PASSWORD_$PARAM_SUFFIX:1}}"
-    fi
+    # Create environment WITHOUT database
+    eb create $ENV_NAME \
+      --tier WebServer \
+      --single
     
     # Configure environment variables
     log "Configuring environment variables..."
@@ -190,11 +200,11 @@ create_or_update_env() {
     if [ "$SKIP_PARAMETER_STORE" = true ]; then
       # Set environment variables directly
       eb setenv ENVIRONMENT=$DEPLOY_ENV \
-        "POSTGRES_HOST=\${RDS_HOSTNAME}" \
-        "POSTGRES_PORT=\${RDS_PORT}" \
-        "POSTGRES_DB=\${RDS_DB_NAME}" \
-        "POSTGRES_USER=\${RDS_USERNAME}" \
-        "POSTGRES_PASSWORD=\${RDS_PASSWORD}" \
+        "POSTGRES_HOST=$POSTGRES_HOST" \
+        "POSTGRES_PORT=$POSTGRES_PORT" \
+        "POSTGRES_DB=$POSTGRES_DB" \
+        "POSTGRES_USER=$POSTGRES_USER" \
+        "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" \
         "JWT_SECRET_KEY=$JWT_SECRET_KEY" \
         "GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID" \
         "SENDGRID_API_KEY=$SENDGRID_API_KEY" \
@@ -207,11 +217,11 @@ create_or_update_env() {
     else
       # Set environment variables with parameter store references
       eb setenv ENVIRONMENT=$DEPLOY_ENV \
-        "POSTGRES_HOST=\${RDS_HOSTNAME}" \
-        "POSTGRES_PORT=\${RDS_PORT}" \
-        "POSTGRES_DB=\${RDS_DB_NAME}" \
-        "POSTGRES_USER=\${RDS_USERNAME}" \
-        "POSTGRES_PASSWORD=\${RDS_PASSWORD}" \
+        "POSTGRES_HOST=$RDS_HOSTNAME" \
+        "POSTGRES_PORT=$RDS_PORT" \
+        "POSTGRES_DB=$RDS_DB_NAME" \
+        "POSTGRES_USER={{resolve:ssm:RDS_USERNAME_$PARAM_SUFFIX:1}}" \
+        "POSTGRES_PASSWORD={{resolve:ssm:RDS_PASSWORD_$PARAM_SUFFIX:1}}" \
         "JWT_SECRET_KEY={{resolve:ssm:JWT_SECRET_KEY_$PARAM_SUFFIX:1}}" \
         "GOOGLE_CLIENT_ID={{resolve:ssm:GOOGLE_CLIENT_ID_$PARAM_SUFFIX:1}}" \
         "SENDGRID_API_KEY={{resolve:ssm:SENDGRID_API_KEY_$PARAM_SUFFIX:1}}" \
@@ -242,4 +252,4 @@ main() {
 }
 
 # Execute main function
-main 
+main

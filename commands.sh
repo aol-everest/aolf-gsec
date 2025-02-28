@@ -159,5 +159,7 @@ aws s3 ls s3://aolf-gsec-prod/frontend/
 # Replace YOUR_DISTRIBUTION_ID with your actual CloudFront distribution ID
 aws cloudfront create-invalidation --distribution-id YOUR_DISTRIBUTION_ID --paths "/*"
 
+./deploy-rds.sh --env=uat
+
 # GAE deployment
 ./deployment/gae/deploy-gae-fullstack.sh -p aolf-gsec-uat --env=uat --skip-dependency-check --skip-frontend-build

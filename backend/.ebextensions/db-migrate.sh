@@ -1,5 +1,6 @@
 #!/bin/bash
 # Database migration script for Elastic Beanstalk deployment
+# This script runs migrations on the external RDS instance
 
 # Exit on error
 set -e
@@ -34,6 +35,9 @@ log "POSTGRES_DB: $POSTGRES_DB"
 log "POSTGRES_USER: $POSTGRES_USER"
 log "Database password is set: $(if [ -n "$POSTGRES_PASSWORD" ]; then echo "Yes"; else echo "No"; fi)"
 
+# Set DATABASE_URL for Alembic
+export DATABASE_URL="postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST:$POSTGRES_PORT/$POSTGRES_DB"
+
 # Run database migrations
 log "Running alembic migrations..."
 alembic upgrade head
@@ -46,4 +50,4 @@ else
 fi
 
 # Exit with the status of the migration command
-exit $MIGRATION_RESULT 
+exit $MIGRATION_RESULT
