@@ -376,6 +376,24 @@ prepare_deployment() {
   log "Copying frontend build files..."
   cp -r frontend/build/* $TEMP_DIR/static/ || handle_error "Failed to copy frontend build files."
   
+  # Verify the static assets were copied correctly
+  log "Verifying static assets..."
+  if [[ -d "frontend/build/static" && ! -d "$TEMP_DIR/static/static" ]]; then
+    log "WARNING: Static directory structure is not as expected. Creating necessary directories..."
+    mkdir -p $TEMP_DIR/static/static
+    cp -r frontend/build/static/* $TEMP_DIR/static/static/ || log "WARNING: Failed to copy static assets to the correct location."
+  fi
+  
+  # Check if CSS files exist in the expected location
+  if [[ ! -d "$TEMP_DIR/static/static/css" ]]; then
+    log "WARNING: CSS directory not found in the expected location."
+    # Try to find CSS files and copy them to the correct location
+    if [[ -d "frontend/build/static/css" ]]; then
+      mkdir -p $TEMP_DIR/static/static/css
+      cp -r frontend/build/static/css/* $TEMP_DIR/static/static/css/ || log "WARNING: Failed to copy CSS files to the correct location."
+    fi
+  fi
+  
   log "Deployment directory prepared."
 }
 
@@ -451,7 +469,35 @@ handlers:
   script: auto
   secure: always
 
-# Static file handlers
+# Static file handlers for Create React App build output
+- url: /static/css/(.*\.css)
+  static_files: static/static/css/\1
+  upload: static/static/css/.*\.css$
+  secure: always
+
+- url: /static/js/(.*\.js)
+  static_files: static/static/js/\1
+  upload: static/static/js/.*\.js$
+  secure: always
+
+- url: /static/media/(.*)
+  static_files: static/static/media/\1
+  upload: static/static/media/.*
+  secure: always
+
+# Handle direct access to CSS files
+- url: /(css/.*\.css)
+  static_files: static/static/\1
+  upload: static/static/css/.*\.css$
+  secure: always
+
+# Handle direct access to JS files
+- url: /(js/.*\.js)
+  static_files: static/static/\1
+  upload: static/static/js/.*\.js$
+  secure: always
+
+# Handle other static assets
 - url: /static
   static_dir: static
   secure: always
@@ -553,6 +599,46 @@ check_python_dependencies() {
   log "Dependency check completed."
 }
 
+# Verify static file structure
+verify_static_structure() {
+  log "Verifying static file structure before deployment..."
+  
+  # Check if the static directory exists
+  if [[ ! -d "$TEMP_DIR/static" ]]; then
+    handle_error "Static directory does not exist in the deployment directory."
+  fi
+  
+  # Check if the CSS file exists
+  if [[ ! -d "$TEMP_DIR/static/static/css" ]]; then
+    log "WARNING: CSS directory not found in the expected location."
+    
+    # Try to find CSS files
+    CSS_FILES=$(find $TEMP_DIR -name "*.css" | wc -l)
+    if [[ $CSS_FILES -eq 0 ]]; then
+      log "WARNING: No CSS files found in the deployment directory."
+    else
+      log "Found $CSS_FILES CSS files in unexpected locations."
+    fi
+  else
+    CSS_FILES=$(find $TEMP_DIR/static/static/css -name "*.css" | wc -l)
+    log "Found $CSS_FILES CSS files in the expected location."
+  fi
+  
+  # Check if the JS directory exists
+  if [[ ! -d "$TEMP_DIR/static/static/js" ]]; then
+    log "WARNING: JS directory not found in the expected location."
+  else
+    JS_FILES=$(find $TEMP_DIR/static/static/js -name "*.js" | wc -l)
+    log "Found $JS_FILES JS files in the expected location."
+  fi
+  
+  # Print the directory structure for debugging
+  log "Directory structure of static files:"
+  find $TEMP_DIR/static -type d | sort
+  
+  log "Static file structure verification completed."
+}
+
 # Deploy to Google App Engine
 deploy_to_gae() {
   log "Deploying to Google App Engine..."
@@ -593,6 +679,7 @@ main() {
   prepare_deployment
   update_app_yaml
   update_cors_settings
+  verify_static_structure
   deploy_to_gae
   cleanup
   
