@@ -259,3 +259,8 @@ frontendv2/.google/token.json
 # Ignore temp_deploy
 temp_deploy/
 temp_venv/
+
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml

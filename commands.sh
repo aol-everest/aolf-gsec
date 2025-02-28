@@ -157,9 +157,29 @@ aws s3 ls s3://aolf-gsec-prod/frontend/
 
 # AWS CloudFront commands
 # Replace YOUR_DISTRIBUTION_ID with your actual CloudFront distribution ID
-aws cloudfront create-invalidation --distribution-id YOUR_DISTRIBUTION_ID --paths "/*"
+# aws cloudfront create-invalidation --distribution-id YOUR_DISTRIBUTION_ID --paths "/*"
 
 ./deploy-rds.sh --env=uat
+./deploy-eb.sh --env=uat
+
+
+./deploy-rds.sh --env=dev
+./deploy-eb.sh --env=dev
+
+
+aws rds create-db-instance \
+  --db-instance-identifier aolf-gsec-db-uat \
+  --db-instance-class db.t3.micro \
+  --engine postgres \
+  --allocated-storage 20 \
+  --master-username aolf_gsec_user \
+  --manage-master-user-password \
+  --db-subnet-group-name default \
+  --no-publicly-accessible
+
+
+
+
 
 # GAE deployment
 ./deployment/gae/deploy-gae-fullstack.sh -p aolf-gsec-uat --env=uat --skip-dependency-check --skip-frontend-build

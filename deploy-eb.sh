@@ -71,17 +71,18 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Validate environment
-if [[ "$DEPLOY_ENV" != "prod" && "$DEPLOY_ENV" != "uat" ]]; then
-  echo "Invalid environment: $DEPLOY_ENV. Must be 'prod' or 'uat'."
-  echo "Usage: $0 [--env=prod|uat] or $0 [-e prod|uat]"
+if [[ "$DEPLOY_ENV" != "prod" && "$DEPLOY_ENV" != "uat" && "$DEPLOY_ENV" != "dev" ]]; then
+  echo "Invalid environment: $DEPLOY_ENV. Must be 'prod', 'uat' or 'dev'."
+  echo "Usage: $0 [--env=prod|uat|dev] or $0 [-e prod|uat|dev]"
   exit 1
 fi
 
+PROJECT_ROOT=$(git rev-parse --show-toplevel)
 # Configuration
 APP_NAME="aolf-gsec-backend"
 ENV_NAME="aolf-gsec-backend-$DEPLOY_ENV"
 REGION="us-east-1"
-ENV_FILE=".env.$DEPLOY_ENV"
+ENV_FILE="$PROJECT_ROOT/backend/.env.$DEPLOY_ENV"
 
 # Log function for better visibility
 log() {
@@ -166,17 +167,41 @@ create_or_update_env() {
   # Parameter name suffix for environment
   PARAM_SUFFIX=$(echo $DEPLOY_ENV | tr '[:lower:]' '[:upper:]')
   
-  # Get RDS parameters from Parameter Store
-  if [ "$SKIP_PARAMETER_STORE" = false ]; then
-    RDS_HOSTNAME=$(aws ssm get-parameter --name "RDS_HOSTNAME_$PARAM_SUFFIX" --query "Parameter.Value" --output text --region $REGION)
-    RDS_PORT=$(aws ssm get-parameter --name "RDS_PORT_$PARAM_SUFFIX" --query "Parameter.Value" --output text --region $REGION)
-    RDS_DB_NAME=$(aws ssm get-parameter --name "RDS_DB_NAME_$PARAM_SUFFIX" --query "Parameter.Value" --output text --region $REGION)
-    
-    if [ -z "$RDS_HOSTNAME" ] || [ -z "$RDS_PORT" ] || [ -z "$RDS_DB_NAME" ]; then
-      handle_error "RDS parameters not found in Parameter Store. Please run deploy-rds.sh first."
-    fi
-    
-    log "Found RDS instance: $RDS_HOSTNAME:$RDS_PORT/$RDS_DB_NAME"
+  # Get RDS instance details
+  DB_IDENTIFIER="aolf-gsec-db-$DEPLOY_ENV"
+  
+  # If we're using dev environment, use the manually created instance
+  if [ "$DEPLOY_ENV" = "dev" ]; then
+    DB_IDENTIFIER="aolf-gsec-db-dev"
+  fi
+  
+  log "Using RDS instance: $DB_IDENTIFIER"
+  
+  # Get RDS endpoint details
+  RDS_HOSTNAME=$(aws rds describe-db-instances --db-instance-identifier $DB_IDENTIFIER --query 'DBInstances[0].Endpoint.Address' --output text --region $REGION)
+  RDS_PORT=$(aws rds describe-db-instances --db-instance-identifier $DB_IDENTIFIER --query 'DBInstances[0].Endpoint.Port' --output text --region $REGION)
+  RDS_DB_NAME=$(aws rds describe-db-instances --db-instance-identifier $DB_IDENTIFIER --query 'DBInstances[0].DBName' --output text --region $REGION)
+  
+  if [ -z "$RDS_HOSTNAME" ] || [ -z "$RDS_PORT" ]; then
+    handle_error "RDS instance $DB_IDENTIFIER not found or not accessible."
+  fi
+  
+  # If DB name is empty, use default name
+  if [ -z "$RDS_DB_NAME" ]; then
+    RDS_DB_NAME="aolf_gsec"
+  fi
+  
+  log "Found RDS instance: $RDS_HOSTNAME:$RDS_PORT/$RDS_DB_NAME"
+  
+  # Check if RDS instance uses Secrets Manager
+  SECRET_ARN=$(aws rds describe-db-instances --db-instance-identifier $DB_IDENTIFIER --query 'DBInstances[0].MasterUserSecret.SecretArn' --output text --region $REGION)
+  
+  if [ "$SECRET_ARN" = "None" ] || [ -z "$SECRET_ARN" ]; then
+    log "RDS instance does not use Secrets Manager. Will use Parameter Store for credentials."
+    USE_SECRETS_MANAGER=false
+  else
+    log "RDS instance uses Secrets Manager. Secret ARN: $SECRET_ARN"
+    USE_SECRETS_MANAGER=true
   fi
   
   # Check if environment exists or if update mode is forced
@@ -197,12 +222,29 @@ create_or_update_env() {
     # Configure environment variables
     log "Configuring environment variables..."
     
-    if [ "$SKIP_PARAMETER_STORE" = true ]; then
+    if [ "$USE_SECRETS_MANAGER" = true ]; then
+      # Set environment variables with Secrets Manager references
+      eb setenv ENVIRONMENT=$DEPLOY_ENV \
+        "POSTGRES_HOST=$RDS_HOSTNAME" \
+        "POSTGRES_PORT=$RDS_PORT" \
+        "POSTGRES_DB=$RDS_DB_NAME" \
+        "POSTGRES_USER={{resolve:secretsmanager:$SECRET_ARN:SecretString:username}}" \
+        "POSTGRES_PASSWORD={{resolve:secretsmanager:$SECRET_ARN:SecretString:password}}" \
+        "JWT_SECRET_KEY={{resolve:ssm:JWT_SECRET_KEY_$PARAM_SUFFIX:1}}" \
+        "GOOGLE_CLIENT_ID={{resolve:ssm:GOOGLE_CLIENT_ID_$PARAM_SUFFIX:1}}" \
+        "SENDGRID_API_KEY={{resolve:ssm:SENDGRID_API_KEY_$PARAM_SUFFIX:1}}" \
+        "FROM_EMAIL=$FROM_EMAIL" \
+        ENABLE_EMAIL=true \
+        "AWS_ACCESS_KEY_ID={{resolve:ssm:ACCESS_KEY_ID_$PARAM_SUFFIX:1}}" \
+        "AWS_SECRET_ACCESS_KEY={{resolve:ssm:SECRET_ACCESS_KEY_$PARAM_SUFFIX:1}}" \
+        "AWS_REGION=$REGION" \
+        "S3_BUCKET_NAME=$S3_BUCKET_NAME"
+    elif [ "$SKIP_PARAMETER_STORE" = true ]; then
       # Set environment variables directly
       eb setenv ENVIRONMENT=$DEPLOY_ENV \
-        "POSTGRES_HOST=$POSTGRES_HOST" \
-        "POSTGRES_PORT=$POSTGRES_PORT" \
-        "POSTGRES_DB=$POSTGRES_DB" \
+        "POSTGRES_HOST=$RDS_HOSTNAME" \
+        "POSTGRES_PORT=$RDS_PORT" \
+        "POSTGRES_DB=$RDS_DB_NAME" \
         "POSTGRES_USER=$POSTGRES_USER" \
         "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" \
         "JWT_SECRET_KEY=$JWT_SECRET_KEY" \
@@ -227,8 +269,8 @@ create_or_update_env() {
         "SENDGRID_API_KEY={{resolve:ssm:SENDGRID_API_KEY_$PARAM_SUFFIX:1}}" \
         "FROM_EMAIL=$FROM_EMAIL" \
         ENABLE_EMAIL=true \
-        "AWS_ACCESS_KEY_ID={{resolve:ssm:AWS_ACCESS_KEY_ID_$PARAM_SUFFIX:1}}" \
-        "AWS_SECRET_ACCESS_KEY={{resolve:ssm:AWS_SECRET_ACCESS_KEY_$PARAM_SUFFIX:1}}" \
+        "AWS_ACCESS_KEY_ID={{resolve:ssm:ACCESS_KEY_ID_$PARAM_SUFFIX:1}}" \
+        "AWS_SECRET_ACCESS_KEY={{resolve:ssm:SECRET_ACCESS_KEY_$PARAM_SUFFIX:1}}" \
         "AWS_REGION=$REGION" \
         "S3_BUCKET_NAME=$S3_BUCKET_NAME"
     fi
