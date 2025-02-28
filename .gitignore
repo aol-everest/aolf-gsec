@@ -252,3 +252,6 @@ frontendv2/.google/token.json
 frontendv2/.google/refresh_token.json
 frontendv2/.google/credentials.json
 frontendv2/.google/token.json
+
+# Ignore temp_deploy
+temp_deploy/
