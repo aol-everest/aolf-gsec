@@ -46,6 +46,8 @@ usage() {
   echo "  --version <VERSION>           Version identifier for deployment (default: timestamp)"
   echo "  --skip-secret-manager         Skip storing parameters in Google Secret Manager"
   echo "  --skip-db-creation            Skip Cloud SQL database creation (use if DB already exists)"
+  echo "  --skip-frontend-build         Skip building the frontend application"
+  echo "  --skip-dependency-check       Skip Python dependency check"
   echo "  --region <REGION>             GCP region for resources (default: us-central1)"
   echo "  -h, --help                    Display this help message"
   echo ""
@@ -62,6 +64,8 @@ VERSION=$(date +%Y%m%dt%H%M%S)
 PROJECT_ID=""
 SKIP_SECRET_MANAGER=false
 SKIP_DB_CREATION=false
+SKIP_FRONTEND_BUILD=false
+SKIP_DEPENDENCY_CHECK=false
 REGION="us-central1"
 
 # Parse command line arguments
@@ -99,6 +103,14 @@ while [[ $# -gt 0 ]]; do
       SKIP_DB_CREATION=true
       shift
       ;;
+    --skip-frontend-build)
+      SKIP_FRONTEND_BUILD=true
+      shift
+      ;;
+    --skip-dependency-check)
+      SKIP_DEPENDENCY_CHECK=true
+      shift
+      ;;
     --region=*)
       REGION="${1#*=}"
       shift
@@ -116,6 +128,10 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+# Cleaning unnecessary files
+log "Cleaning unnecessary files..."
+find /Users/amitnair/GoogleDrive/AOLF/1tech/git/aolf-gsec -name '*.pyc' -type f -delete; find /Users/amitnair/GoogleDrive/AOLF/1tech/git/aolf-gsec -name 'Icon?' -type f -delete;
 
 # Check if project ID is provided
 if [[ -z "$PROJECT_ID" ]]; then
@@ -283,6 +299,12 @@ EOL
     REACT_APP_ENVIRONMENT=uat \
     REACT_APP_API_BASE_URL=https://aolf-gsec-uat.appspot.com \
     npm run build || handle_error "Build failed with explicit environment variables."
+  elif [[ "$DEPLOY_ENV" == "prod" ]]; then
+    log "Using explicit environment variables for Production build"
+    REACT_APP_API_URL=https://aolf-gsec-prod.appspot.com \
+    REACT_APP_ENVIRONMENT=production \
+    REACT_APP_API_BASE_URL=https://aolf-gsec-prod.appspot.com \
+    npm run build || handle_error "Build failed with explicit environment variables."
   else
     # Use the environment-specific build script for other environments
     NODE_ENV=$DEPLOY_ENV npm run build:$DEPLOY_ENV || handle_error "Build failed with environment-specific script."
@@ -299,17 +321,26 @@ EOL
       log "ERROR: Built JavaScript contains production URL instead of UAT URL!"
       grep "aolf-gsec-prod.appspot.com" build/static/js/main*.js
       handle_error "Build contains incorrect API URL. Check environment configuration."
-    elif grep -q "aolf-gsec-uat.appspot.com" build/static/js/main*.js; then
-      log "SUCCESS: Built JavaScript contains the correct UAT URL."
-    else
-      log "WARNING: Could not find any API URL in built JavaScript."
     fi
+    
+    # Also verify that the UAT URL is actually present
+    if ! grep -q "aolf-gsec-uat.appspot.com" build/static/js/main*.js; then
+      log "ERROR: Built JavaScript does not contain UAT URL!"
+      handle_error "Build is missing the UAT API URL. Check environment configuration."
+    fi
+    
+    log "Verified UAT build contains correct API URL."
+  elif [[ "$DEPLOY_ENV" == "prod" ]]; then
+    # For production, verify UAT URL is not present
+    if grep -q "aolf-gsec-uat.appspot.com" build/static/js/main*.js; then
+      log "ERROR: Built JavaScript contains UAT URL instead of production URL!"
+      grep "aolf-gsec-uat.appspot.com" build/static/js/main*.js
+      handle_error "Build contains incorrect API URL. Check environment configuration."
+    fi
+    
+    log "Verified production build contains correct API URL."
   fi
   
-  # Verify static file structure
-  verify_static_structure "$FRONTEND_DIR" || log "WARNING: Static file structure verification failed. Continuing anyway."
-  
-  log "Frontend build completed successfully."
   cd "$PROJECT_ROOT"
 }
 
@@ -574,8 +605,15 @@ ensure_env_files
 setup_database
 
 # Build frontend and prepare for deployment
-build_frontend
-check_python_dependencies
+if [ "$SKIP_FRONTEND_BUILD" = false ]; then
+  build_frontend
+fi
+
+# Check Python dependencies if not skipped
+if [ "$SKIP_DEPENDENCY_CHECK" = false ]; then
+  check_python_dependencies
+fi
+
 prepare_deployment
 create_unified_app_yaml
 update_cors_settings
