@@ -8,6 +8,7 @@ set -e
 # Default environment
 DEPLOY_ENV="prod"
 SKIP_PARAMETER_STORE=false
+FORCE_UPDATE=false
 
 # Display help
 show_help() {
@@ -18,12 +19,14 @@ show_help() {
   echo "  -e, --env ENV           Specify the deployment environment (prod or uat)"
   echo "  --environment=ENV       Specify the deployment environment (prod or uat)"
   echo "  --skip-parameter-store  Skip storing parameters in AWS Parameter Store"
+  echo "  --update                Force update mode (skip environment creation)"
   echo "  -h, --help              Display this help message"
   echo ""
   echo "Examples:"
   echo "  $0                      Deploy to production environment (default)"
   echo "  $0 --env=uat            Deploy to UAT environment"
   echo "  $0 -e uat               Deploy to UAT environment"
+  echo "  $0 --env=uat --update   Update existing UAT environment"
   echo "  $0 --env=uat --skip-parameter-store  Deploy to UAT environment without using Parameter Store"
   echo ""
 }
@@ -45,6 +48,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --skip-parameter-store)
       SKIP_PARAMETER_STORE=true
+      shift
+      ;;
+    --update)
+      FORCE_UPDATE=true
       shift
       ;;
     -h|--help)
@@ -157,21 +164,35 @@ create_or_update_env() {
   # Parameter name suffix for environment
   PARAM_SUFFIX=$(echo $DEPLOY_ENV | tr '[:lower:]' '[:upper:]')
   
-  # Check if environment exists
-  if eb status $ENV_NAME 2>&1 | grep -q "Environment $ENV_NAME"; then
+  # Check if environment exists or if update mode is forced
+  if [ "$FORCE_UPDATE" = true ]; then
+    log "Force update mode enabled. Updating environment $ENV_NAME..."
+    eb deploy $ENV_NAME
+  elif eb list | grep -E "^$ENV_NAME\$" >/dev/null; then
     log "Environment $ENV_NAME already exists. Updating..."
     eb deploy $ENV_NAME
   else
     log "Creating new Elastic Beanstalk environment..."
     
-    # Always create environment with direct database credentials
-    eb create $ENV_NAME \
-      --database \
-      --database.engine postgres \
-      --database.instance db.t3.micro \
-      --database.size 5 \
-      --database.username "$POSTGRES_USER" \
-      --database.password "$POSTGRES_PASSWORD"
+    if [ "$SKIP_PARAMETER_STORE" = true ]; then
+      # Create environment with direct database credentials
+      eb create $ENV_NAME \
+        --database \
+        --database.engine postgres \
+        --database.instance db.t3.micro \
+        --database.size 5 \
+        --database.username "$POSTGRES_USER" \
+        --database.password "$POSTGRES_PASSWORD"
+    else
+      # Create environment with parameter store references
+      eb create $ENV_NAME \
+        --database \
+        --database.engine postgres \
+        --database.instance db.t3.micro \
+        --database.size 5 \
+        --database.username "{{resolve:ssm:RDS_USERNAME_$PARAM_SUFFIX:1}}" \
+        --database.password "{{resolve:ssm:RDS_PASSWORD_$PARAM_SUFFIX:1}}"
+    fi
     
     # Configure environment variables
     log "Configuring environment variables..."
@@ -206,8 +227,8 @@ create_or_update_env() {
         "SENDGRID_API_KEY={{resolve:ssm:SENDGRID_API_KEY_$PARAM_SUFFIX:1}}" \
         "FROM_EMAIL=$FROM_EMAIL" \
         ENABLE_EMAIL=true \
-        "AWS_ACCESS_KEY_ID={{resolve:ssm:ACCESS_KEY_ID_$PARAM_SUFFIX:1}}" \
-        "AWS_SECRET_ACCESS_KEY={{resolve:ssm:SECRET_ACCESS_KEY_$PARAM_SUFFIX:1}}" \
+        "AWS_ACCESS_KEY_ID={{resolve:ssm:AWS_ACCESS_KEY_ID_$PARAM_SUFFIX:1}}" \
+        "AWS_SECRET_ACCESS_KEY={{resolve:ssm:AWS_SECRET_ACCESS_KEY_$PARAM_SUFFIX:1}}" \
         "AWS_REGION=$REGION" \
         "S3_BUCKET_NAME=$S3_BUCKET_NAME"
     fi

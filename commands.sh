@@ -113,3 +113,49 @@ alembic upgrade head --sql
 # 4. Apply the migration: alembic upgrade head
 # 5. To rollback if needed: alembic downgrade -1
 
+# AWS Deployment ---------------------------------------------------------------------------------
+
+# Install AWS CLI and EB CLI
+pip install awscli awsebcli
+
+# Configure AWS CLI
+aws configure
+
+# Backend Deployment to AWS Elastic Beanstalk
+cd backend
+# Deploy to UAT environment
+./deploy-eb.sh --env=uat
+# Deploy to UAT environment with update mode (for existing environments)
+./deploy-eb.sh --env=uat --update
+# Deploy to production environment
+./deploy-eb.sh --env=prod
+# Deploy to production environment with update mode
+./deploy-eb.sh --env=prod --update
+
+# View Elastic Beanstalk logs
+eb logs -e aolf-gsec-backend-uat
+eb logs -e aolf-gsec-backend-prod
+
+# SSH into Elastic Beanstalk instance
+eb ssh -e aolf-gsec-backend-uat
+eb ssh -e aolf-gsec-backend-prod
+
+# Frontend Deployment to AWS S3 and CloudFront
+cd frontend
+# Deploy to UAT environment
+./deploy.sh --env=uat
+# Deploy to production environment
+./deploy.sh --env=prod
+
+# Verify deployments
+cd backend && ./verify-eb-deployment.sh --env=uat
+cd frontend && ./verify-deployment.sh --env=uat
+
+# AWS S3 commands
+aws s3 ls s3://aolf-gsec-uat/frontend/
+aws s3 ls s3://aolf-gsec-prod/frontend/
+
+# AWS CloudFront commands
+# Replace YOUR_DISTRIBUTION_ID with your actual CloudFront distribution ID
+aws cloudfront create-invalidation --distribution-id YOUR_DISTRIBUTION_ID --paths "/*"
+
