@@ -15,7 +15,7 @@ const Landing: React.FC = () => {
     },
     flow: 'auth-code',
     scope: 'openid email profile',
-    redirect_uri: 'http://localhost:3000'
+    redirect_uri: window.location.origin,
   });
 
   return (

@@ -52,7 +52,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshUserInfo = async () => {
     try {
-      const response = await fetch('http://localhost:8001/users/me', {
+      const apiUrl = process.env.REACT_APP_API_URL || process.env.REACT_APP_API_BASE_URL || 'http://localhost:8001';
+      const response = await fetch(`${apiUrl}/users/me`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -78,7 +79,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateUserInfo = async (updates: Partial<UserInfo>) => {
     try {
-      const response = await fetch('http://localhost:8001/users/me/update', {
+      const apiUrl = process.env.REACT_APP_API_URL || process.env.REACT_APP_API_BASE_URL || 'http://localhost:8001';
+      const response = await fetch(`${apiUrl}/users/me/update`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -148,7 +150,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           code: response.code,
           client_id: process.env.REACT_APP_GOOGLE_CLIENT_ID || '',
           client_secret: process.env.REACT_APP_GOOGLE_CLIENT_SECRET || '',
-          redirect_uri: 'http://localhost:3000',  // Use the same redirect URI
+          redirect_uri: window.location.origin,  // Use the application's origin instead of hardcoded localhost
           grant_type: 'authorization_code',
         }),
       });
@@ -163,7 +165,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('Google tokens response:', tokens); // Debug log
       
       // Verify the token with our backend
-      const tokenResponse = await fetch('http://localhost:8001/verify-google-token', {
+      const apiUrl = process.env.REACT_APP_API_URL || process.env.REACT_APP_API_BASE_URL || 'http://localhost:8001';
+      const tokenResponse = await fetch(`${apiUrl}/verify-google-token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

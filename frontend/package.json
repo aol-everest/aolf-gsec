@@ -42,7 +42,13 @@
   },
   "scripts": {
     "start": "react-scripts start",
+    "start:dev": "env-cmd -f .env.development react-scripts start",
+    "start:uat": "env-cmd -f .env.uat react-scripts start",
+    "start:prod": "env-cmd -f .env.production react-scripts start",
     "build": "react-scripts build",
+    "build:dev": "env-cmd -f .env.development react-scripts build",
+    "build:uat": "env-cmd -f .env.uat react-scripts build",
+    "build:prod": "env-cmd -f .env.production react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
@@ -66,6 +72,7 @@
   "devDependencies": {
     "@types/axios": "^0.9.36",
     "@types/google.maps": "^3.58.1",
+    "env-cmd": "^10.1.0",
     "openapi-typescript-codegen": "^0.29.0"
   }
 }

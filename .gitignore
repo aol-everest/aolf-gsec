@@ -12,6 +12,7 @@ frontend/.env
 frontend/.env.local
 frontend/.env.development
 frontend/.env.test
+frontend/.env.uat
 frontend/.env.production
 
 # Logs

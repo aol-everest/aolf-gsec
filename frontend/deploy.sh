@@ -106,13 +106,28 @@ create_prod_env() {
   log "Production environment file created and updated."
 }
 
-# Build the application
+# Build the React application
 build_app() {
-  log "Installing dependencies..."
-  npm install
+  log "Building React application for $DEPLOY_ENV environment..."
   
-  log "Building application for production..."
-  npm run build
+  cd $ROOT_DIR
+  
+  # Install dependencies
+  log "Installing dependencies..."
+  npm install --legacy-peer-deps
+  
+  # Check if environment-specific file exists
+  if [[ -f ".env.$DEPLOY_ENV" ]]; then
+    log "Using environment-specific file: .env.$DEPLOY_ENV"
+    npm run build:$DEPLOY_ENV
+  else
+    log "Environment-specific file .env.$DEPLOY_ENV not found. Using default .env file."
+    npm run build
+  fi
+  
+  if [[ ! -d "build" ]]; then
+    handle_error "Build failed. No 'build' directory was created."
+  fi
   
   log "Build completed successfully."
 }
