@@ -27,9 +27,15 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
   const userRole = localStorage.getItem('role');
   const sidebarItems = getSidebarItems(userRole);
 
+  // Log when mobile status changes
+  React.useEffect(() => {
+    console.log('Mobile status:', isMobile);
+  }, [isMobile]);
+
   const handleNavigation = (path: string) => {
     navigate(path);
     if (isMobile) {
+      console.log('Mobile device detected, closing drawer');
       handleDrawerToggle();
     }
   };
@@ -135,7 +141,10 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
       <Drawer
         variant={isMobile ? 'temporary' : 'permanent'}
         open={isOpen}
-        onClose={handleDrawerToggle}
+        onClose={() => {
+          console.log('Drawer onClose triggered');
+          handleDrawerToggle();
+        }}
         ModalProps={{
           keepMounted: true,
         }}

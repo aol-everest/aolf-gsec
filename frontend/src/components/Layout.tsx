@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import Box from '@mui/material/Box';
 import CssBaseline from '@mui/material/CssBaseline';
 import CustomAppBar from './AppBar';
 import Sidebar from './Sidebar';
+import { useTheme, useMediaQuery } from '@mui/material';
+import { useLocation } from 'react-router-dom';
 
 const drawerWidth = 260;
 
@@ -11,7 +13,22 @@ interface LayoutProps {
 }
 
 export default function Layout({ children }: LayoutProps) {
-  const [isDrawerOpen, setIsDrawerOpen] = React.useState(true);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [isDrawerOpen, setIsDrawerOpen] = React.useState(!isMobile);
+  const location = useLocation();
+
+  // Update drawer state if screen size changes
+  useEffect(() => {
+    setIsDrawerOpen(!isMobile);
+  }, [isMobile]);
+
+  // Close drawer on route change for mobile
+  useEffect(() => {
+    if (isMobile && isDrawerOpen) {
+      setIsDrawerOpen(false);
+    }
+  }, [location, isMobile]);
 
   const handleDrawerToggle = () => {
     setIsDrawerOpen(!isDrawerOpen);
