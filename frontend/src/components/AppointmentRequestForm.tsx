@@ -38,6 +38,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { Location, Dignitary, Appointment } from '../models/types';
+import { EnumSelect } from './EnumSelect';
+import { useEnums } from '../hooks/useEnums';
 
 // Remove the hardcoded enum and add a state for time of day options
 // const AppointmentTimeOfDay = {
@@ -104,7 +106,6 @@ export const AppointmentRequestForm: React.FC = () => {
   // Use any type to avoid TypeScript errors with the selectedDignitary state
   const [selectedDignitary, setSelectedDignitary] = useState<any>(null);
   const [showWarningDialog, setShowWarningDialog] = useState(false);
-  const [timeOfDayOptions, setTimeOfDayOptions] = useState<string[]>([]);
   const navigate = useNavigate();
   const theme = useTheme();
   const api = useApi();
@@ -117,47 +118,6 @@ export const AppointmentRequestForm: React.FC = () => {
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Fetch options from API
-  const { data: primaryDomains = [], isLoading: isLoadingDomains } = useQuery<string[]>({
-    queryKey: ['primary-domains'],
-    queryFn: async () => {
-      const { data } = await api.get<string[]>('/dignitaries/primary-domain-options');
-      return data;
-    },
-  });
-
-  const { data: honorificTitles = [], isLoading: isLoadingTitles } = useQuery<string[]>({
-    queryKey: ['honorific-titles'],
-    queryFn: async () => {
-      const { data } = await api.get<string[]>('/dignitaries/honorific-title-options');
-      return data;
-    },
-  });
-
-  const { data: relationshipTypes = [], isLoading: isLoadingRelationships } = useQuery<string[]>({
-    queryKey: ['relationship-types'],
-    queryFn: async () => {
-      const { data } = await api.get<string[]>('/dignitaries/relationship-type-options');
-      return data;
-    },
-  });
-
-  // Fetch time of day options
-  const { data: timeOptions = [], isLoading: isLoadingTimeOptions } = useQuery<string[]>({
-    queryKey: ['time-of-day-options'],
-    queryFn: async () => {
-      const { data } = await api.get<string[]>('/appointments/time-of-day-options');
-      return data;
-    },
-  });
-
-  // Update state when time options are loaded
-  useEffect(() => {
-    if (timeOptions.length > 0) {
-      setTimeOfDayOptions(timeOptions);
-    }
-  }, [timeOptions]);
-
   // Fetch status options
   const { data: statusOptions = [] } = useQuery<string[]>({
     queryKey: ['status-options'],
@@ -166,7 +126,7 @@ export const AppointmentRequestForm: React.FC = () => {
       return data;
     },
   });
-
+  
   // Fetch locations
   const { data: locations = [] } = useQuery<Location[]>({
     queryKey: ['locations'],
@@ -181,6 +141,14 @@ export const AppointmentRequestForm: React.FC = () => {
     queryKey: ['assigned-dignitaries'],
     queryFn: async () => {
       const { data } = await api.get<Dignitary[]>('/dignitaries/assigned');
+      return data;
+    },
+  });
+
+  const { data: timeOfDayOptions = [], isLoading: isLoadingTimeOfDayOptions } = useQuery<string[]>({
+    queryKey: ['time-of-day-options'],
+    queryFn: async () => {
+      const { data } = await api.get<string[]>('/appointments/time-of-day-options');
       return data;
     },
   });
@@ -220,15 +188,6 @@ export const AppointmentRequestForm: React.FC = () => {
     }
   });
 
-  // Update dignitary form defaults when honorific titles and primary domains are loaded
-  useEffect(() => {
-    if (honorificTitles.length > 0 && primaryDomains.length > 0 && relationshipTypes.length > 0) {
-      dignitaryForm.setValue('dignitaryHonorificTitle', honorificTitles[0]);
-      dignitaryForm.setValue('dignitaryPrimaryDomain', primaryDomains[0]);
-      dignitaryForm.setValue('pocRelationshipType', relationshipTypes[0]);
-    }
-  }, [honorificTitles, primaryDomains, relationshipTypes]);
-
   const appointmentForm = useForm<AppointmentFormData>({
     defaultValues: {
       purpose: '',
@@ -250,14 +209,6 @@ export const AppointmentRequestForm: React.FC = () => {
       populateDignitaryForm(fetchedDignitaries[0]);
     }
   }, [fetchedDignitaries]);
-
-  // Update appointmentForm when time options are loaded
-  useEffect(() => {
-    if (timeOptions.length > 0) {
-      setTimeOfDayOptions(timeOptions);
-      appointmentForm.setValue('preferredTimeOfDay', timeOptions[0]);
-    }
-  }, [timeOptions]);
 
   // Function to populate dignitary form fields
   const populateDignitaryForm = (dignitary: Dignitary) => {
@@ -291,7 +242,7 @@ export const AppointmentRequestForm: React.FC = () => {
       // If relationship_type is missing (which shouldn't happen with our updated backend),
       // default to the first relationship type
       console.warn('Dignitary data missing relationship_type, using default');
-      dignitaryForm.setValue('pocRelationshipType', relationshipTypes[0] || 'Direct');
+      // dignitaryForm.setValue('pocRelationshipType', relationshipTypes[0] || 'Direct');
     }
   };
 
@@ -674,22 +625,13 @@ export const AppointmentRequestForm: React.FC = () => {
 
   const renderStepContent = (step: number) => {
     // Show loading indicator if data is still loading
-    if (step === 1 && (isLoadingDomains || isLoadingTitles || isLoadingRelationships || isLoadingDignitaries)) {
-      return (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-          <CircularProgress />
-        </Box>
-      );
-    }
-
-    // Show loading indicator for step 3 if time options are still loading
-    if (step === 2 && isLoadingTimeOptions) {
-      return (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-          <CircularProgress />
-        </Box>
-      );
-    }
+    // if (step === 1 && (isLoadingDomains || isLoadingTitles || isLoadingRelationships || isLoadingDignitaries)) {
+    //   return (
+    //     <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+    //       <CircularProgress />
+    //     </Box>
+    //   );
+    // }
 
     switch (step) {
       case 0:
@@ -775,12 +717,12 @@ export const AppointmentRequestForm: React.FC = () => {
                         dignitaryForm.reset({
                           ...dignitaryForm.getValues(),
                           selectedDignitaryId: undefined,
-                          dignitaryHonorificTitle: honorificTitles[0],
+                          dignitaryHonorificTitle: '',
                           dignitaryFirstName: '',
                           dignitaryLastName: '',
                           dignitaryEmail: '',
                           dignitaryPhone: '',
-                          dignitaryPrimaryDomain: primaryDomains[0],
+                          dignitaryPrimaryDomain: '',
                           dignitaryTitleInOrganization: '',
                           dignitaryOrganization: '',
                           dignitaryBioSummary: '',
@@ -843,81 +785,47 @@ export const AppointmentRequestForm: React.FC = () => {
               ) : null}
 
               <Grid item xs={12} md={6}>
-                <FormControl fullWidth required error={!!dignitaryForm.formState.errors.pocRelationshipType}>
-                  <InputLabel>Relationship Type</InputLabel>
-                  <Select
-                    label="Relationship Type"
-                    value={dignitaryForm.watch('pocRelationshipType')}
-                    {...dignitaryForm.register('pocRelationshipType', { 
-                      required: 'Relationship type is required' 
-                    })}
-                  >
-                    {relationshipTypes.map((type) => (
-                      <MenuItem key={type} value={type}>
-                        {type}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {dignitaryForm.formState.errors.pocRelationshipType && (
-                    <FormHelperText>
-                      {dignitaryForm.formState.errors.pocRelationshipType.message}
-                    </FormHelperText>
+                <Controller
+                  name="pocRelationshipType"
+                  control={dignitaryForm.control}
+                  rules={{ required: 'Relationship type is required' }}
+                  render={({ field }) => (
+                    <EnumSelect
+                      enumType="relationshipType"
+                      label="Relationship Type"
+                      required
+                      error={!!dignitaryForm.formState.errors.pocRelationshipType}
+                      helperText={dignitaryForm.formState.errors.pocRelationshipType?.message}
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
                   )}
-                </FormControl>
+                />
               </Grid>
 
               <Grid item xs={12} sx={{ my: 2 }}>
                 <Divider sx={{ my: 1 }} />
               </Grid>
 
-              <Grid item xs={12} md={6}>
-                <FormControl fullWidth required error={!!dignitaryForm.formState.errors.dignitaryHonorificTitle}>
-                  <InputLabel>Honorific Title</InputLabel>
-                  <Select
-                    label="Honorific Title"
-                    value={dignitaryForm.watch('dignitaryHonorificTitle')}
-                    {...dignitaryForm.register('dignitaryHonorificTitle', { 
-                      required: 'Honorific title is required' 
-                    })}
-                  >
-                    {honorificTitles.map((title) => (
-                      <MenuItem key={title} value={title}>
-                        {title}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {dignitaryForm.formState.errors.dignitaryHonorificTitle && (
-                    <FormHelperText>
-                      {dignitaryForm.formState.errors.dignitaryHonorificTitle.message}
-                    </FormHelperText>
+              <Grid item xs={12} md={6} lg={4}>
+                <Controller
+                  name="dignitaryHonorificTitle"
+                  control={dignitaryForm.control}
+                  rules={{ required: 'Honorific title is required' }}
+                  render={({ field }) => (
+                    <EnumSelect
+                      enumType="honorificTitle"
+                      label="Honorific Title"
+                      required
+                      error={!!dignitaryForm.formState.errors.dignitaryHonorificTitle}
+                      helperText={dignitaryForm.formState.errors.dignitaryHonorificTitle?.message}
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
                   )}
-                </FormControl>
+                />
               </Grid>
-              
-              <Grid item xs={12} md={6}>
-                <FormControl fullWidth required error={!!dignitaryForm.formState.errors.dignitaryPrimaryDomain}>
-                  <InputLabel>Primary Domain</InputLabel>
-                  <Select
-                    label="Primary Domain *"
-                    value={dignitaryForm.watch('dignitaryPrimaryDomain')}
-                    {...dignitaryForm.register('dignitaryPrimaryDomain', { 
-                      required: 'Primary domain is required' 
-                    })}
-                  >
-                    {primaryDomains.map((domain) => (
-                      <MenuItem key={domain} value={domain}>
-                        {domain}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {dignitaryForm.formState.errors.dignitaryPrimaryDomain && (
-                    <FormHelperText>
-                      {dignitaryForm.formState.errors.dignitaryPrimaryDomain.message}
-                    </FormHelperText>
-                  )}
-                </FormControl>
-              </Grid>
-              
+                            
               <Grid item xs={12} md={6} lg={4}>
                 <TextField
                   fullWidth
@@ -967,22 +875,21 @@ export const AppointmentRequestForm: React.FC = () => {
               </Grid>
               
               <Grid item xs={12} md={6} lg={4}>
-                <FormControl fullWidth required>
-                  <InputLabel>Primary Domain</InputLabel>
-                  <Select
-                    label="Primary Domain"
-                    value={dignitaryForm.watch('dignitaryPrimaryDomain')}
-                    {...dignitaryForm.register('dignitaryPrimaryDomain')}
-                  >
-                    {primaryDomains.map((domain) => (
-                      <MenuItem key={domain} value={domain}>
-                        {domain}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <Controller
+                  name="dignitaryPrimaryDomain"
+                  control={dignitaryForm.control}
+                  render={({ field }) => (
+                    <EnumSelect
+                      enumType="primaryDomain"
+                      label="Primary Domain"
+                      required
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
               </Grid>
-              
+
               <Grid item xs={12} md={6} lg={4}>
                 <TextField
                   fullWidth
@@ -1192,7 +1099,7 @@ export const AppointmentRequestForm: React.FC = () => {
               </Grid>
 
               <Grid item xs={12} md={6} lg={4}>
-                <FormControl fullWidth required error={!!appointmentForm.formState.errors.preferredTimeOfDay}>
+              <FormControl fullWidth required error={!!appointmentForm.formState.errors.preferredTimeOfDay}>
                   <InputLabel>Preferred Time of Day</InputLabel>
                   <Select
                     label="Preferred Time of Day *"

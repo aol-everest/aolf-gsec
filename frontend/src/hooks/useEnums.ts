@@ -8,6 +8,10 @@ export type EnumType = 'honorificTitle' | 'primaryDomain' | 'relationshipType' |
 
 /**
  * Hook to fetch and cache enum values from the backend
+ * 
+ * Note: This hook uses React Query for caching. Multiple calls to useEnums with the same
+ * enumType will reuse the same cached data and only trigger a single API request.
+ * This means it's safe to call this hook in multiple components that need the same enum values.
  */
 export function useEnums<T extends string = string>(enumType: EnumType) {
   const api = useApi();
@@ -38,11 +42,16 @@ export function useEnums<T extends string = string>(enumType: EnumType) {
   const { data, isLoading, error } = useQuery<T[]>({
     queryKey: [`enum-${enumType}`],
     queryFn: async () => {
+      console.log(`Fetching enum values for ${enumType}`);
       const { data } = await api.get<T[]>(getEndpoint(enumType));
+      console.log(`Received enum values for ${enumType}:`, data);
       return data;
     },
     staleTime: 1000 * 60 * 60, // Cache for 1 hour
   });
+
+  // Log each time this hook returns values
+  console.log(`useEnums(${enumType}) returning:`, data || []);
 
   return {
     values: data || [],

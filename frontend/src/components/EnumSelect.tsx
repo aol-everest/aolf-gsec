@@ -25,6 +25,15 @@ export const EnumSelect: React.FC<EnumSelectProps> = ({
 }) => {
   const { values, isLoading } = useEnums(enumType);
 
+  // Add more detailed logging to track component renders and props
+  console.log(`EnumSelect(${enumType}) rendering with:`, { 
+    label, 
+    value: selectProps.value,
+    valueType: typeof selectProps.value,
+    enumValues: values,
+    loading: isLoading 
+  });
+
   return (
     <FormControl fullWidth={fullWidth} required={required} error={error}>
       <InputLabel>{label}</InputLabel>
@@ -41,9 +50,6 @@ export const EnumSelect: React.FC<EnumSelectProps> = ({
           )
         }
       >
-        <MenuItem value="">
-          <em>None</em>
-        </MenuItem>
         {values.map((value) => (
           <MenuItem key={value} value={value}>
             {value}
