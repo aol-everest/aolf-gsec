@@ -263,8 +263,47 @@ PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-db-uat.cxg084kkue8o.us-east-2.rd
   -c "CREATE USER $APP_USER_NAME WITH PASSWORD '$APP_USER_PASSWORD';"
 
 PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-db-uat.cxg084kkue8o.us-east-2.rds.amazonaws.com \
+  -U aolf_gsec_user \
+  -d postgres \
+  -c "CREATE DATABASE aolf_gsec;" \
   -c "GRANT ALL PRIVILEGES ON DATABASE aolf_gsec TO $APP_USER_NAME;" \
   -c "ALTER USER $APP_USER_NAME WITH CREATEDB;"
 
 echo "Database user $APP_USER_NAME created successfully!"
 
+
+PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-db-uat.cxg084kkue8o.us-east-2.rds.amazonaws.com \
+  -U aolf_gsec_user \
+  -d postgres \
+  -c "CREATE DATABASE aolf_gsec;" \
+  -c "GRANT ALL PRIVILEGES ON DATABASE aolf_gsec TO $APP_USER_NAME;" \
+  -c "ALTER USER $APP_USER_NAME WITH CREATEDB;"
+
+# Grant permissions on the public schema within aolf_gsec database
+PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-db-uat.cxg084kkue8o.us-east-2.rds.amazonaws.com \
+  -U aolf_gsec_user \
+  -d aolf_gsec \
+  -c "GRANT ALL ON SCHEMA public TO $APP_USER_NAME;" \
+  -c "GRANT USAGE ON SCHEMA public TO $APP_USER_NAME;" \
+  -c "GRANT CREATE ON SCHEMA public TO $APP_USER_NAME;"
+
+# -- If needed, also set the user as the schema owner
+# ALTER SCHEMA public OWNER TO aolf_gsec_app_user;
+
+# Insert a SECRETARIAT user record for Amit Nair
+PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-db-uat.cxg084kkue8o.us-east-2.rds.amazonaws.com \
+  -U aolf_gsec_user \
+  -d aolf_gsec \
+  -c "INSERT INTO users (email, first_name, last_name, role, email_notification_preferences, created_at, updated_at) VALUES (
+    'amit.nair@artofliving.org',
+    'Amit',
+    'Nair',
+    'SECRETARIAT',
+    '{\"appointment_created\": true, \"appointment_updated\": true, \"new_appointment_request\": true}',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+  ) ON CONFLICT (email) DO UPDATE SET 
+    role = 'SECRETARIAT',
+    email_notification_preferences = '{\"appointment_created\": true, \"appointment_updated\": true, \"new_appointment_request\": true}',
+    updated_at = CURRENT_TIMESTAMP
+    RETURNING id, email, role;"
