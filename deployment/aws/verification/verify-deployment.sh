@@ -7,7 +7,7 @@ set -e
 # Configuration
 S3_BUCKET="aolf-gsec-uat"
 S3_PREFIX="frontend"
-REGION="us-east-1"
+REGION="us-east-2"
 # Replace with your actual CloudFront distribution ID once created
 CLOUDFRONT_DISTRIBUTION_ID="YOUR_DISTRIBUTION_ID"
 

@@ -1,0 +1,39 @@
+files:
+  "/opt/elasticbeanstalk/hooks/appdeploy/post/01_run_db_migrations.sh":
+    mode: "000755"
+    owner: root
+    group: root
+    content: |
+      #!/bin/bash
+      
+      # Run the database migration script
+      if [ -f /var/app/current/.ebextensions/db-migrate.sh ]; then
+        # First try current directory (for post-deployment)
+        cd /var/app/current && chmod +x .ebextensions/db-migrate.sh && ./.ebextensions/db-migrate.sh
+      elif [ -f /var/app/staging/.ebextensions/db-migrate.sh ]; then
+        # Try staging directory (during deployment)
+        cd /var/app/staging && chmod +x .ebextensions/db-migrate.sh && ./.ebextensions/db-migrate.sh
+      else
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - Error: Migration script not found!"
+        exit 1
+      fi
+      
+      exit $?
+
+# Note: Database connection parameters are now set by the deployment script
+# directly as environment variables (POSTGRES_HOST, POSTGRES_PORT, etc.)
+# instead of using RDS_ variables from Elastic Beanstalk's integrated RDS.
+
+# Setting explicit values for the UAT environment
+option_settings:
+  aws:elasticbeanstalk:application:environment:
+    POSTGRES_HOST: 'aolf-gsec-db-uat.cxg084kkue8o.us-east-2.rds.amazonaws.com'
+    POSTGRES_PORT: '5432'
+    POSTGRES_DB: 'aolf_gsec'
+    POSTGRES_USER: 'aolf_gsec'
+    # Password is managed by AWS Secrets Manager and accessed dynamically by the application
+    # This will be handled within the application code or environment variables set during deployment
+  
+  # Specify an IAM instance profile with Secrets Manager access
+  aws:autoscaling:launchconfiguration:
+    IamInstanceProfile: aws-elasticbeanstalk-ec2-role 

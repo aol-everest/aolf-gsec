@@ -91,5 +91,5 @@ aws configure
 You will need to provide:
 - AWS Access Key ID
 - AWS Secret Access Key
-- Default region name (e.g., us-east-1)
+- Default region name (e.g., us-east-2)
 - Default output format (e.g., json) 

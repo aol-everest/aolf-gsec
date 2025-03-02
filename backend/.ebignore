@@ -1,0 +1,10 @@
+# Ignore virtual environment directory as we'll create it on the server
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.DS_Store 
+
+# IMPORTANT: Do NOT ignore .ebextensions directory as it contains critical deployment configuration
+# .ebextensions/ 

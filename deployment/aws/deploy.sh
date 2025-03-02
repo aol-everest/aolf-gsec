@@ -34,7 +34,7 @@ S3_BUCKET_PROD="aolf-gsec-prod"
 S3_BUCKET_UAT="aolf-gsec-uat"
 S3_BUCKET=$S3_BUCKET_UAT  # Default to UAT
 S3_PREFIX="frontend"
-REGION="us-east-1"
+REGION="us-east-2"
 # Replace with your actual CloudFront distribution IDs once created
 CLOUDFRONT_DISTRIBUTION_ID_PROD="YOUR_PROD_DISTRIBUTION_ID"
 CLOUDFRONT_DISTRIBUTION_ID_UAT="YOUR_UAT_DISTRIBUTION_ID"

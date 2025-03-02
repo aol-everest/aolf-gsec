@@ -42,7 +42,7 @@ This will create a `build` directory with the production-ready assets.
 1. Create an S3 bucket for hosting the frontend (if not already created):
 
 ```bash
-aws s3 mb s3://aolf-gsec-uat/frontend --region us-east-1
+aws s3 mb s3://aolf-gsec-uat/frontend --region us-east-2
 ```
 
 2. Configure the S3 bucket for static website hosting:
@@ -83,7 +83,7 @@ The `--delete` flag removes files in the destination that don't exist in the sou
 1. Create a CloudFront distribution for the S3 bucket:
 
 ```bash
-aws cloudfront create-distribution --origin-domain-name aolf-gsec-uat.s3-website-us-east-1.amazonaws.com --default-root-object index.html
+aws cloudfront create-distribution --origin-domain-name aolf-gsec-uat.s3-website-us-east-2.amazonaws.com --default-root-object index.html
 ```
 
 2. Configure CloudFront to handle React Router (SPA) routing:

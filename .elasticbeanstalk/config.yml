@@ -3,14 +3,14 @@ branch-defaults:
     environment: aolf-gsec-backend-uat
     group_suffix: null
   main:
-    environment: aolf-gsec-backend-dev
+    environment: aolf-gsec-backend-uat
     group_suffix: null
 global:
   application_name: aolf-gsec-dev
   branch: null
   default_ec2_keyname: null
   default_platform: Python 3.12 running on 64bit Amazon Linux 2023
-  default_region: us-east-1
+  default_region: us-east-2
   include_git_submodules: true
   instance_profile: null
   platform_name: null

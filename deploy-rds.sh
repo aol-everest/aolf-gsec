@@ -13,7 +13,7 @@ BACKEND_DIR="$PROJECT_ROOT/backend"
 
 # Default environment
 DEPLOY_ENV="prod"
-REGION="us-east-1"
+REGION="us-east-2"
 SKIP_PARAMETER_STORE=false
 SKIP_MIGRATION=false
 FORCE_UPDATE=false

@@ -61,7 +61,7 @@ fi
 # Configuration
 APP_NAME="aolf-gsec-backend"
 ENV_NAME="aolf-gsec-backend-$DEPLOY_ENV"
-REGION="us-east-1"
+REGION="us-east-2"
 
 # Log function for better visibility
 log() {

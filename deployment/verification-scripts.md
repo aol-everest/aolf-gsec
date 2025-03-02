@@ -38,7 +38,7 @@ The `verify-deployment.sh` script checks the following:
 You may need to update the configuration variables in the script:
 - `S3_BUCKET`: The S3 bucket name (default: "aolf-gsec-uat")
 - `S3_PREFIX`: The prefix within the bucket (default: "frontend")
-- `REGION`: AWS region (default: "us-east-1")
+- `REGION`: AWS region (default: "us-east-2")
 - `CLOUDFRONT_DISTRIBUTION_ID`: Your CloudFront distribution ID
 
 ## Elastic Beanstalk Verification

@@ -70,7 +70,7 @@ The application uses AWS S3 for storing appointment attachments. The following e
 ```
 AWS_ACCESS_KEY_ID=your_access_key
 AWS_SECRET_ACCESS_KEY=your_secret_key
-AWS_REGION=us-east-1
+AWS_REGION=us-east-2
 S3_BUCKET_NAME=aolf-gsec-[environment]
 ```
 

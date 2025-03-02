@@ -37,7 +37,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: us-east-2
 
       - name: Create production environment file
         run: |
@@ -63,7 +63,7 @@ jobs:
 
       - name: Initialize Elastic Beanstalk
         run: |
-          eb init aolf-gsec-backend -p python-3.12 --region us-east-1
+          eb init aolf-gsec-backend -p python-3.12 --region us-east-2
 
       - name: Deploy to Elastic Beanstalk
         run: |
@@ -95,7 +95,7 @@ jobs:
               ENABLE_EMAIL=true \
               "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" \
               "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
-              AWS_REGION=us-east-1 \
+              AWS_REGION=us-east-2 \
               "S3_BUCKET_NAME=aolf-gsec-uat"
           fi
 

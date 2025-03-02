@@ -16,7 +16,7 @@ This guide provides detailed steps for setting up a CloudFront distribution to s
 4. Configure the distribution:
 
    **Origin Settings:**
-   - Origin Domain: Select your S3 bucket (`aolf-gsec-uat.s3-website-us-east-1.amazonaws.com/frontend`)
+   - Origin Domain: Select your S3 bucket (`aolf-gsec-uat.s3-website-us-east-2.amazonaws.com/frontend`)
    - Origin Path: Leave empty or set to `/frontend` if needed
    - Origin ID: Auto-generated or provide a custom name
    - Origin Access: Select "Public"
@@ -114,7 +114,7 @@ Or through the AWS Console:
    - Check that the CloudFront distribution has the correct origin request policy
 
 4. **SSL/TLS Certificate Issues:**
-   - Ensure the certificate is validated and in the `us-east-1` region
+   - Ensure the certificate is validated and in the `us-east-2` region
    - Verify the certificate covers all domain names used in the distribution
 
 ## Monitoring

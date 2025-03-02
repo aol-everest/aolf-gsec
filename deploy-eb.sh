@@ -81,7 +81,7 @@ PROJECT_ROOT=$(git rev-parse --show-toplevel)
 # Configuration
 APP_NAME="aolf-gsec-backend"
 ENV_NAME="aolf-gsec-backend-$DEPLOY_ENV"
-REGION="us-east-1"
+REGION="us-east-2"
 ENV_FILE="$PROJECT_ROOT/backend/.env.$DEPLOY_ENV"
 
 # Log function for better visibility
@@ -110,8 +110,8 @@ ensure_env_file() {
     log "Production environment file created."
     log "Please review and update the .env.prod file if needed."
   elif [[ "$DEPLOY_ENV" == "uat" && ! -f ".env.uat" ]]; then
-    log "Creating UAT environment file from dev..."
-    cp .env.dev .env.uat
+    # log "Creating UAT environment file from dev..."
+    # cp .env.dev .env.uat
     log "UAT environment file created."
     log "Please review and update the .env.uat file if needed."
   else

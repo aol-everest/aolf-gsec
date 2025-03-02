@@ -133,7 +133,7 @@ eb setenv ENVIRONMENT=prod \
   ENABLE_EMAIL=true \
   AWS_ACCESS_KEY_ID="{{resolve:ssm:AWS_ACCESS_KEY_ID:1}}" \
   AWS_SECRET_ACCESS_KEY="{{resolve:ssm:AWS_SECRET_ACCESS_KEY:1}}" \
-  AWS_REGION=us-east-1 \
+  AWS_REGION=us-east-2 \
   S3_BUCKET_NAME=aolf-gsec-uat
 ```
 
