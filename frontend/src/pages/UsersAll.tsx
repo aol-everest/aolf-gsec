@@ -321,7 +321,7 @@ const UsersAll: React.FC = () => {
                 )}
                 
                 <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12} md={6} lg={4}>
                     <TextField
                       fullWidth
                       label="First Name"
@@ -333,7 +333,7 @@ const UsersAll: React.FC = () => {
                       helperText={formErrors.first_name || ''}
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12} md={6} lg={4}>
                     <TextField
                       fullWidth
                       label="Last Name"
@@ -345,7 +345,7 @@ const UsersAll: React.FC = () => {
                       helperText={formErrors.last_name || ''}
                     />
                   </Grid>
-                  <Grid item xs={12}>
+                  <Grid item xs={12} md={6} lg={4}>
                     <TextField
                       fullWidth
                       label="Email"
@@ -358,7 +358,7 @@ const UsersAll: React.FC = () => {
                       helperText={formErrors.email || ''}
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12} md={6} lg={4}>
                     <TextField
                       fullWidth
                       label="Phone Number"
@@ -367,7 +367,7 @@ const UsersAll: React.FC = () => {
                       onChange={handleChange}
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12} md={6} lg={4}>
                     <TextField
                       select
                       fullWidth
