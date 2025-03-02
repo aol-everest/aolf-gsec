@@ -230,10 +230,41 @@ eb init --platform python-3.12 --region us-east-2
 eb create aolf-gsec-backend-uat
 
 
-zip -r aolf-gsec-backend-uat.zip . \
+zip -r deployment/aolf-gsec-backend-uat.zip . \
     -x "*venv*" \
     -x "*.git*" \
     -x "*__pycache__*"
 
 openssl rand -base64 6
-# eHvO8gyF
+
+
+# -- Create a new database user for the application ----------------------------------------------------------------
+
+# 1. SSH into your Elastic Beanstalk environment
+eb ssh aolf-gsec-backend-uat
+
+# Once connected to the EB instance, run these commands:
+
+# 2. Install required tools if not present
+sudo yum install -y jq postgresql15
+
+# 3. Retrieve the master password from Secrets Manager
+# MASTER_PASSWORD=$(aws secretsmanager get-secret-value --secret-id 'arn:aws:secretsmanager:us-east-2:851725315788:secret:rds!db-f1759782-588f-413c-8d45-55675a2138bf-ZDATni' --query SecretString --output text | jq -r '.password')
+MASTER_PASSWORD="nnWV80:IT4U~q8Y-68~>BVpyryth"
+
+# 4. Connect to PostgreSQL and create the application user
+APP_USER_NAME="aolf_gsec_app_user"
+APP_USER_PASSWORD="eHvO8gyF"
+
+# Connect to postgres database and create user
+PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-db-uat.cxg084kkue8o.us-east-2.rds.amazonaws.com \
+  -U aolf_gsec_user \
+  -d postgres \
+  -c "CREATE USER $APP_USER_NAME WITH PASSWORD '$APP_USER_PASSWORD';"
+
+PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-db-uat.cxg084kkue8o.us-east-2.rds.amazonaws.com \
+  -c "GRANT ALL PRIVILEGES ON DATABASE aolf_gsec TO $APP_USER_NAME;" \
+  -c "ALTER USER $APP_USER_NAME WITH CREATEDB;"
+
+echo "Database user $APP_USER_NAME created successfully!"
+
