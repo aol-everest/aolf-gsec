@@ -707,6 +707,10 @@ async def create_location(
     db.add(new_location)
     db.commit()
     db.refresh(new_location)
+    
+    # Set creator user reference (it's the current user for a new record)
+    setattr(new_location, "created_by_user", current_user)
+    
     return new_location
 
 @app.get("/admin/locations/all", response_model=List[schemas.LocationAdmin])
@@ -715,9 +719,29 @@ async def get_all_locations(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get all locations"""
-    locations = db.query(models.Location).all()
-    return locations
+    """Get all locations with creator and updater information"""
+    # Create aliases for the User table for creator and updater
+    CreatorUser = aliased(models.User)
+    UpdaterUser = aliased(models.User)
+    
+    # Query locations with joins to get creator and updater information in one go
+    locations = (
+        db.query(models.Location, CreatorUser, UpdaterUser)
+        .outerjoin(CreatorUser, models.Location.created_by == CreatorUser.id)
+        .outerjoin(UpdaterUser, models.Location.updated_by == UpdaterUser.id)
+        .all()
+    )
+    
+    # Process results to set created_by_user and updated_by_user attributes
+    result_locations = []
+    for location, creator, updater in locations:
+        if creator:
+            setattr(location, "created_by_user", creator)
+        if updater:
+            setattr(location, "updated_by_user", updater)
+        result_locations.append(location)
+    
+    return result_locations
 
 @app.get("/admin/locations/{location_id}", response_model=schemas.LocationAdmin)
 @requires_role(models.UserRole.SECRETARIAT)
@@ -726,10 +750,30 @@ async def get_location(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get a specific location"""
-    location = db.query(models.Location).filter(models.Location.id == location_id).first()
-    if not location:
+    """Get a specific location with creator and updater information"""
+    # Create aliases for the User table for creator and updater
+    CreatorUser = aliased(models.User)
+    UpdaterUser = aliased(models.User)
+    
+    # Query location with joins to get creator and updater information
+    result = (
+        db.query(models.Location, CreatorUser, UpdaterUser)
+        .filter(models.Location.id == location_id)
+        .outerjoin(CreatorUser, models.Location.created_by == CreatorUser.id)
+        .outerjoin(UpdaterUser, models.Location.updated_by == UpdaterUser.id)
+        .first()
+    )
+    
+    if not result:
         raise HTTPException(status_code=404, detail="Location not found")
+    
+    location, creator, updater = result
+    
+    if creator:
+        setattr(location, "created_by_user", creator)
+    if updater:
+        setattr(location, "updated_by_user", updater)
+    
     return location
 
 @app.patch("/admin/locations/update/{location_id}", response_model=schemas.LocationAdmin)
@@ -752,6 +796,16 @@ async def update_location(
     
     db.commit()
     db.refresh(location)
+    
+    # Fetch creator information
+    if location.created_by:
+        creator = db.query(models.User).filter(models.User.id == location.created_by).first()
+        if creator:
+            setattr(location, "created_by_user", creator)
+    
+    # For updater, we know it's the current user who just did the update
+    setattr(location, "updated_by_user", current_user)
+    
     return location
 
 @app.get("/locations/all", response_model=List[schemas.Location])

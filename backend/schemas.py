@@ -177,6 +177,8 @@ class LocationAdmin(LocationBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     updated_by: Optional[int] = None
+    created_by_user: Optional[User] = None
+    updated_by_user: Optional[User] = None
     secretariat_internal_notes: Optional[str] = None
     attachment_path: Optional[str] = None
     attachment_name: Optional[str] = None

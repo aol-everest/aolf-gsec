@@ -417,7 +417,7 @@ const UsersAll: React.FC = () => {
             rows={users}
             columns={columns}
             loading={isLoading}
-            defaultVisibleColumns={['name', 'email', 'role', 'created_by_name', 'actions']}
+            defaultVisibleColumns={['name', 'email', 'role', 'actions']}
           />
         </Box>
       </Container>

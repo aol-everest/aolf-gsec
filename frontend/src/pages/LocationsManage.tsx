@@ -74,6 +74,18 @@ interface Location {
   attachment_file_type?: string;
   created_at: string;
   updated_at?: string;
+  created_by: number;
+  updated_by?: number;
+  created_by_user?: {
+    id: number;
+    first_name: string;
+    last_name: string;
+  };
+  updated_by_user?: {
+    id: number;
+    first_name: string;
+    last_name: string;
+  };
   attachment_thumbnail_path?: string;
 }
 
@@ -483,6 +495,24 @@ export default function LocationsManage() {
       flex: 0.5,
     },
     {
+      field: 'created_by_name',
+      headerName: 'Created By',
+      width: 150,
+      flex: 0.8,
+      renderCell: (params) => params.row.created_by_user 
+        ? `${params.row.created_by_user.first_name} ${params.row.created_by_user.last_name}`
+        : 'System'
+    },
+    {
+      field: 'updated_by_name',
+      headerName: 'Updated By',
+      width: 150,
+      flex: 0.8,
+      renderCell: (params) => params.row.updated_by_user 
+        ? `${params.row.updated_by_user.first_name} ${params.row.updated_by_user.last_name}`
+        : '-'
+    },
+    {
       field: 'attachment',
       headerName: 'Attachment',
       width: 120,
@@ -819,7 +849,7 @@ export default function LocationsManage() {
               rows={locations}
               columns={columns}
               loading={isLoading}
-              // defaultVisibleColumns={['name', 'street_address', 'city']}
+              defaultVisibleColumns={['name', 'street_address', 'city', 'attachment']}
             />
           )}
         </Box>
