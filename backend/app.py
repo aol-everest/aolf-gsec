@@ -1167,3 +1167,16 @@ async def get_business_card_extraction_status(
     """Check if business card extraction is enabled"""
     enable_extraction = os.environ.get("ENABLE_BUSINESS_CARD_EXTRACTION", "true").lower() == "true"
     return {"enabled": enable_extraction}
+
+# Health check endpoint
+@app.get("/health", tags=["health"])
+async def health_check():
+    """
+    Health check endpoint for AWS Elastic Beanstalk.
+    Returns a 200 OK status if the application is running correctly.
+    """
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "version": app.version,
+    }
