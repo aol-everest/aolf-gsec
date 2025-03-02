@@ -564,7 +564,7 @@ async def update_appointment(
     return appointment
 
 
-@app.get("/admin/users/all", response_model=List[schemas.User])
+@app.get("/admin/users/all", response_model=List[schemas.UserAdminView])
 @requires_role(models.UserRole.SECRETARIAT)
 async def get_all_users(
     current_user: models.User = Depends(get_current_user),
@@ -574,7 +574,7 @@ async def get_all_users(
     users = db.query(models.User).all()
     return users
 
-@app.post("/admin/users/new", response_model=schemas.User)
+@app.post("/admin/users/new", response_model=schemas.UserAdminView)
 @requires_role(models.UserRole.SECRETARIAT)
 async def create_user(
     user: schemas.UserAdminCreate,
@@ -584,14 +584,15 @@ async def create_user(
     """Create a new user"""
     new_user = models.User(
         **user.dict(),
-        created_by=current_user.id
+        created_by=current_user.id,
+        updated_by=current_user.id
     )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
     return new_user
 
-@app.patch("/admin/users/update/{user_id}", response_model=schemas.User)
+@app.patch("/admin/users/update/{user_id}", response_model=schemas.UserAdminView)
 @requires_role(models.UserRole.SECRETARIAT)
 async def update_user(
     user_id: int,

@@ -38,6 +38,18 @@ class UserUpdate(BaseModel):
     class Config:
         orm_mode = True
 
+class UserAdminView(UserBase):
+    id: int
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    created_by: Optional[int] = None
+    updated_by: Optional[int] = None
+    last_login_at: Optional[datetime] = None
+    role: str
+    
+    class Config:
+        orm_mode = True
+
 class UserAdminUpdate(BaseModel):
     role: Optional[str] = None
     

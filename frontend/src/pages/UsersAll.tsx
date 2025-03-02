@@ -42,6 +42,8 @@ interface User {
   role: string;
   created_at: string;
   last_login_at: string;
+  created_by: number;
+  updated_by: number;
 }
 
 interface UserFormData {
