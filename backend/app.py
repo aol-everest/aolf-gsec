@@ -574,6 +574,29 @@ async def get_all_users(
     users = db.query(models.User).all()
     return users
 
+@app.patch("/admin/users/update/{user_id}", response_model=schemas.User)
+@requires_role(models.UserRole.SECRETARIAT)
+async def update_user(
+    user_id: int,
+    user_update: schemas.UserAdminUpdate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update a user"""
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Update user with new data
+    update_data = user_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(user, key, value)
+    user.updated_by = current_user.id
+    
+    db.commit()
+    db.refresh(user)
+    return user
+
 @app.get("/appointments/status-options", response_model=List[str])
 async def get_appointment_status_options():
     """Get all possible appointment status options"""
@@ -608,6 +631,11 @@ async def get_primary_domain_options():
 async def get_appointment_time_of_day_options():
     """Get all possible appointment time of day options"""
     return [time.value for time in models.AppointmentTimeOfDay]
+
+@app.get("/admin/user-role-options", response_model=List[str])
+async def get_user_role_options():
+    """Get all possible user role options"""
+    return [role.value for role in models.UserRole]
 
 @app.post("/admin/locations/new", response_model=schemas.LocationAdmin)
 @requires_role(models.UserRole.SECRETARIAT)

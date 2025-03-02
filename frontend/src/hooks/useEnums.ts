@@ -4,7 +4,7 @@ import { useApi } from './useApi';
 /**
  * Enum types available from the backend
  */
-export type EnumType = 'honorificTitle' | 'primaryDomain' | 'relationshipType' | 'appointmentStatus' | 'appointmentSubStatus' | 'appointmentType' | 'timeOfDay';
+export type EnumType = 'honorificTitle' | 'primaryDomain' | 'relationshipType' | 'appointmentStatus' | 'appointmentSubStatus' | 'appointmentType' | 'timeOfDay' | 'userRole';
 
 /**
  * Hook to fetch and cache enum values from the backend
@@ -33,6 +33,8 @@ export function useEnums<T extends string = string>(enumType: EnumType) {
         return '/appointments/type-options';
       case 'timeOfDay':
         return '/appointments/time-of-day-options';
+      case 'userRole':
+        return '/admin/user-role-options';
       default:
         throw new Error(`Unknown enum type: ${type}`);
     }
