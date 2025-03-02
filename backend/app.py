@@ -65,7 +65,12 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://aolf-gsec-uat.appspot.com"],
+    allow_origins=[
+        "http://localhost:3000", 
+        "https://aolf-gsec-uat.appspot.com",
+        "https://d2wxu2rjtgc6ou.cloudfront.net",
+        "https://aolfgsecuat.aolf.app"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
