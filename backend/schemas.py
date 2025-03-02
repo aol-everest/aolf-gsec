@@ -44,6 +44,8 @@ class UserAdminView(UserBase):
     updated_at: Optional[datetime] = None
     created_by: Optional[int] = None
     updated_by: Optional[int] = None
+    created_by_user: Optional["User"] = None
+    updated_by_user: Optional["User"] = None
     last_login_at: Optional[datetime] = None
     role: str
     

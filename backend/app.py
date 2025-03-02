@@ -22,6 +22,8 @@ import io
 import tempfile
 from utils.business_card import extract_business_card_info, BusinessCardExtractionError
 import inspect
+from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import aliased
 
 # Get environment variables
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
@@ -570,9 +572,29 @@ async def get_all_users(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get all users"""
-    users = db.query(models.User).all()
-    return users
+    """Get all users with creator and updater information via joins"""
+    # Create aliases for the User table for creator and updater
+    CreatorUser = aliased(models.User)
+    UpdaterUser = aliased(models.User)
+    
+    # Query users with joins to get creator and updater information in one go
+    users = (
+        db.query(models.User, CreatorUser, UpdaterUser)
+        .outerjoin(CreatorUser, models.User.created_by == CreatorUser.id)
+        .outerjoin(UpdaterUser, models.User.updated_by == UpdaterUser.id)
+        .all()
+    )
+    
+    # Process results to set created_by_user and updated_by_user attributes
+    result_users = []
+    for user, creator, updater in users:
+        if creator:
+            setattr(user, "created_by_user", creator)
+        if updater:
+            setattr(user, "updated_by_user", updater)
+        result_users.append(user)
+    
+    return result_users
 
 @app.post("/admin/users/new", response_model=schemas.UserAdminView)
 @requires_role(models.UserRole.SECRETARIAT)
@@ -590,6 +612,11 @@ async def create_user(
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+    
+    # Set creator and updater user references (both are the current user for a new record)
+    setattr(new_user, "created_by_user", current_user)
+    setattr(new_user, "updated_by_user", current_user)
+    
     return new_user
 
 @app.patch("/admin/users/update/{user_id}", response_model=schemas.UserAdminView)
@@ -613,6 +640,16 @@ async def update_user(
     
     db.commit()
     db.refresh(user)
+    
+    # Fetch creator and updater information
+    if user.created_by:
+        creator = db.query(models.User).filter(models.User.id == user.created_by).first()
+        if creator:
+            setattr(user, "created_by_user", creator)
+    
+    # For updater, we know it's the current user who just did the update
+    setattr(user, "updated_by_user", current_user)
+    
     return user
 
 @app.get("/appointments/status-options", response_model=List[str])

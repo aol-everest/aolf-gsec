@@ -44,6 +44,16 @@ interface User {
   last_login_at: string;
   created_by: number;
   updated_by: number;
+  created_by_user?: {
+    id: number;
+    first_name: string;
+    last_name: string;
+  };
+  updated_by_user?: {
+    id: number;
+    first_name: string;
+    last_name: string;
+  };
 }
 
 interface UserFormData {
@@ -226,6 +236,24 @@ const UsersAll: React.FC = () => {
       renderCell: (params) => formatDate(params.row.created_at, false)
     },
     {
+      field: 'created_by_name',
+      headerName: 'Created By',
+      width: 150,
+      flex: 0.8,
+      renderCell: (params) => params.row.created_by_user 
+        ? `${params.row.created_by_user.first_name} ${params.row.created_by_user.last_name}`
+        : 'System'
+    },
+    {
+      field: 'updated_by_name',
+      headerName: 'Updated By',
+      width: 150,
+      flex: 0.8,
+      renderCell: (params) => params.row.updated_by_user 
+        ? `${params.row.updated_by_user.first_name} ${params.row.updated_by_user.last_name}`
+        : 'System'
+    },
+    {
       field: 'last_login_at',
       headerName: 'Last Login',
       width: 170,
@@ -389,7 +417,7 @@ const UsersAll: React.FC = () => {
             rows={users}
             columns={columns}
             loading={isLoading}
-            defaultVisibleColumns={['name', 'email', 'role', 'actions']}
+            defaultVisibleColumns={['name', 'email', 'role', 'created_by_name', 'actions']}
           />
         </Box>
       </Container>
