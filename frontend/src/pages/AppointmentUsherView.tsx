@@ -18,6 +18,7 @@ import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { useQuery } from '@tanstack/react-query';
 import { USHER_DISPLAY_DAYS } from '../constants/formConstants';
+import { FilterChip } from '../components/FilterChip';
 
 // Define interfaces for the USHER view
 interface DignitaryUsherView {
@@ -162,16 +163,24 @@ const AppointmentUsherView: React.FC = () => {
             <Typography variant="h4" component="h1">
               Appointments Schedule
             </Typography>
+          </Box>
+
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            mb: 4
+          }}>
             <Stack direction="row" spacing={1}>
               {dateOptions.map((option) => (
-                <Chip
+                <FilterChip
                   key={option.value}
                   label={option.isToday ? `Today (${option.label})` : option.label}
-                  onClick={() => handleDateChange(option.value)}
-                  color={selectedDate === option.value ? "primary" : "default"}
-                  variant={selectedDate === option.value ? "filled" : "outlined"}
+                  value={option.value}
+                  selectedValue={selectedDate}
+                  onToggle={handleDateChange}
                   sx={{ 
-                    fontWeight: selectedDate === option.value ? 'bold' : 'normal',
+                    fontWeight: option.value === selectedDate ? 'bold' : 'normal',
                     fontSize: '0.9rem',
                     py: 0.5,
                     px: 0.5
