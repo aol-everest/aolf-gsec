@@ -307,3 +307,18 @@ PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-db-uat.cxg084kkue8o.us-east-2.rd
     email_notification_preferences = '{\"appointment_created\": true, \"appointment_updated\": true, \"new_appointment_request\": true}',
     updated_at = CURRENT_TIMESTAMP
     RETURNING id, email, role;"
+
+# -- Adding created_by and updated_by to User model ----------------------------------------------------------------
+
+PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-db-uat.cxg084kkue8o.us-east-2.rds.amazonaws.com \
+  -U aolf_gsec_user \
+  -d aolf_gsec \
+  -c "ALTER TABLE users ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id);" \
+  -c "ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_by INTEGER REFERENCES users(id);"
+
+# -- Verify the changes ----------------------------------------------------------------
+PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-db-uat.cxg084kkue8o.us-east-2.rds.amazonaws.com \
+  -U aolf_gsec_user \
+  -d aolf_gsec \
+  -c "SELECT column_name FROM information_schema.columns WHERE table_name = 'users' ORDER BY column_name;"
+
