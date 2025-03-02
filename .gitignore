@@ -1,4 +1,7 @@
 
+backend/aolf-gsec-backend-uat-key-pair.pem
+backend/deployment/*.zip
+
 app-yaml-archive
 
 secrets
