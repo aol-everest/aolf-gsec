@@ -42,7 +42,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: us-east-2
 
       - name: Deploy to S3
         run: |
@@ -59,7 +59,7 @@ jobs:
           aws s3 ls s3://aolf-gsec-uat/frontend/index.html
           
           # Check S3 website endpoint
-          curl -s -f -o /dev/null http://aolf-gsec-uat.s3-website-us-east-1.amazonaws.com/frontend/ || echo "S3 website not accessible"
+          curl -s -f -o /dev/null http://aolf-gsec-uat.s3-website-us-east-2.amazonaws.com/frontend/ || echo "S3 website not accessible"
           
           # If CloudFront is configured, check that too
           if [[ -n "${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}" ]]; then
