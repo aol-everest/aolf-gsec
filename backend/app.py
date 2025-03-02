@@ -574,6 +574,23 @@ async def get_all_users(
     users = db.query(models.User).all()
     return users
 
+@app.post("/admin/users/new", response_model=schemas.User)
+@requires_role(models.UserRole.SECRETARIAT)
+async def create_user(
+    user: schemas.UserAdminCreate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Create a new user"""
+    new_user = models.User(
+        **user.dict(),
+        created_by=current_user.id
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
+
 @app.patch("/admin/users/update/{user_id}", response_model=schemas.User)
 @requires_role(models.UserRole.SECRETARIAT)
 async def update_user(

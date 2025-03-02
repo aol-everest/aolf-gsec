@@ -44,6 +44,12 @@ class UserAdminUpdate(BaseModel):
     class Config:
         orm_mode = True
 
+class UserAdminCreate(UserBase):
+    role: str
+
+    class Config:
+        orm_mode = True
+
 
 class Token(BaseModel):
     access_token: str
