@@ -40,6 +40,10 @@ import {
     PersonListIconV2,
     PeopleIconV2,
     CalendarIconV2,
+    RoundViewColumnIconV2,
+    LocationIconV2,
+    TeamCheckV2,
+    MemoCheckIconV2,
 } from '../components/icons';
 
 export const SECRETARIAT_ROLE = 'SECRETARIAT';
@@ -100,7 +104,7 @@ export const ProfileRoute: RouteConfig = {
 export const AdminLocationsRoute: RouteConfig = {
   path: '/admin/locations',
   label: 'Locations',
-  icon: LocationOnIcon,
+  icon: LocationIconV2,
   roles: [SECRETARIAT_ROLE],
   showInSidebar: true,
   component: LocationsManage
@@ -118,7 +122,7 @@ export const AdminAppointmentsRoute: RouteConfig = {
 export const AdminAppointmentsReviewRoute: RouteConfig = {
   path: '/admin/appointments/review',
   label: 'Review Appointments',
-  icon: ViewColumnIcon,
+  icon: MemoCheckIconV2,
   roles: [SECRETARIAT_ROLE],
   showInSidebar: true,
   component: AppointmentTiles
@@ -179,7 +183,7 @@ export const UsherAppointmentsRoute: RouteConfig = {
 
 export const UsherHeaderRoute: RouteConfig = {
   label: 'USHER',
-  icon: UsherIcon,
+  icon: TeamCheckV2,
   roles: [USHER_ROLE, SECRETARIAT_ROLE],
   showInSidebar: true,
 }

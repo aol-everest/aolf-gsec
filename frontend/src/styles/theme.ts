@@ -4,15 +4,23 @@ import { createTheme, responsiveFontSizes } from '@mui/material/styles';
 const colors = {
   primary: {
     // main: '#1976d2',
-    main: '#F9B818',
+    // Yellow
+    // main: '#F9B818',
+    // Orange (from Alex)
+    main: '#ED994E',
     // light: '#42a5f5',
     light: '#E0C685',
     dark: '#BA8B18',
     contrastText: '#fff',
   },
   secondary: {
-    main: 'rgba(249, 184, 24, 0.081)',
-    light: 'rgba(249, 184, 24, 0.13)',
+    // Yellow
+    // main: 'rgba(249, 184, 24, 0.081)',
+    // light: 'rgba(249, 184, 24, 0.13)',
+    // Orange (from Alex)
+    // main: '#FFFAF5',
+    main: 'rgba(255, 250, 245, 1)',
+    light: 'rgba(255, 250, 245, 0.81)',
     // light: '#ba68c8',
     dark: '#7b1fa2',
     contrastText: '#fff',

@@ -53,6 +53,11 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
                   <Icon />
                 </ListItemIcon>
                 <ListItemText 
+                  sx={{
+                    '& .MuiTypography-root': {
+                      fontWeight: 500,
+                    },
+                  }}
                   primary={text}
                 />
             </ListItem>
@@ -70,7 +75,7 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
             sx={{
               backgroundColor: location.pathname === path ? theme.palette.secondary.main : 'transparent',
               '&:hover': {
-                backgroundColor: location.pathname === path ? theme.palette.secondary.light : theme.palette.secondary.light,
+                backgroundColor: location.pathname === path ? theme.palette.secondary.main : theme.palette.secondary.main,
               },
               borderLeft: location.pathname === path ? '4px solid' : '4px solid transparent',
               borderLeftColor: theme.palette.primary.main,
@@ -88,7 +93,7 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
               sx={{
                 '& .MuiTypography-root': {
                   color: location.pathname === path ? theme.palette.primary.main : theme.palette.text.secondary,
-                  fontWeight: location.pathname === path ? 600 : 400,
+                  fontWeight: location.pathname === path ? 600 : 500,
                 },
               }}
             />
