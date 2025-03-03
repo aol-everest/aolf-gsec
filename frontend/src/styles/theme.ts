@@ -18,12 +18,12 @@ const colors = {
     contrastText: '#fff',
   },
   background: {
-    default: '#f5f5f5',
+    default: '#FFFAF5',
     paper: '#ffffff',
   },
   text: {
     primary: '#333',
-    secondary: '#777',
+    secondary: '#6F7283',
   },
   success: {
     main: '#2ecc71',
@@ -51,6 +51,7 @@ const colors = {
 // Define typography settings
 const typography = {
   fontFamily: [
+    'Work Sans',
     'Roboto',
     '-apple-system',
     'BlinkMacSystemFont',
@@ -79,12 +80,13 @@ const typography = {
     letterSpacing: '0em',
   },
   h4: {
-    fontWeight: 400,
-    fontSize: '1.7rem',
+    fontWeight: 500,
+    fontSize: '2rem',
     lineHeight: 2,
-    letterSpacing: '0.009em',
+    // letterSpacing: '0.009em',
+    letterSpacing: '0em',
     marginBottom: '16px',
-    fontFamily: 'Roboto Slab',
+    fontFamily: 'Lora',
     color: colors.primary.main,
   },
   h5: {
@@ -113,9 +115,10 @@ const typography = {
     textTransform: 'uppercase' as const,
   },
   body1: {
-    fontSize: '0.91rem',
+    fontSize: '1rem',
     lineHeight: 1.5,
-    letterSpacing: '0.00938em',
+    // letterSpacing: '0.00938em',
+    letterSpacing: '0em',
   },
   body2: {
     fontSize: '0.875rem',
@@ -138,8 +141,8 @@ const components = {
       root: {
         fontSize: '0.9rem',
         fontFamily: 'Roboto',
-        fontColor: '#999',
-        fontWeight: 400,
+        fontColor: '#6F7283',
+        fontWeight: 500,
       },
     },
   },
@@ -147,9 +150,9 @@ const components = {
     styleOverrides: {
       root: {
         fontSize: '0.9rem',
-        fontFamily: 'Roboto',
-        fontColor: '#999',
-        fontWeight: 400,
+        fontFamily: 'Work Sans',
+        fontColor: '#6F7283',
+        fontWeight: 500,
         // padding: '14px 23px 14px 23px',
         width: '300px',
       },
@@ -158,7 +161,7 @@ const components = {
   MuiListItem: {
     styleOverrides: {
       root: {
-        padding: '13px 23px 13px 23px',
+        padding: '10px 13px 10px 13px',
       },
     },
   },
@@ -173,10 +176,11 @@ const components = {
   MuiListItemText: {
     styleOverrides: {
       root: {
-        fontSize: '0.9rem',
-        fontFamily: 'Roboto',
-        fontWeight: 400,
-        color: '#637381',
+        fontSize: '1rem',
+        lineHeight: '1.5rem',
+        letterSpacing: '0',
+        fontWeight: 500,
+        color: '#6F7283',    
       },
     },
   },

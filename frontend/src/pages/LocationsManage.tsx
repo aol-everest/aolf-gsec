@@ -849,7 +849,7 @@ export default function LocationsManage() {
               rows={locations}
               columns={columns}
               loading={isLoading}
-              defaultVisibleColumns={['name', 'street_address', 'city', 'attachment']}
+              defaultVisibleColumns={['name', 'street_address', 'city', 'attachment', 'actions']}
             />
           )}
         </Box>

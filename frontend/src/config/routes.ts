@@ -23,6 +23,7 @@ import {
     EditCalendarIcon, 
     EditIcon, 
     HomeIcon, 
+    HomeIconV2,
     CalendarViewDayIcon, 
     CalendarAddIcon, 
     ListIcon, 
@@ -33,6 +34,12 @@ import {
     RoundViewColumnIcon,
     RoundPeopleIcon,
     UsherIcon,
+    CalendarAddIconV2,
+    PersonIconV2,
+    ListIconV2,
+    PersonListIconV2,
+    PeopleIconV2,
+    CalendarIconV2,
 } from '../components/icons';
 
 export const SECRETARIAT_ROLE = 'SECRETARIAT';
@@ -52,7 +59,7 @@ interface RouteConfig {
 export const HomeRoute: RouteConfig = {
   path: '/home',
   label: 'Home',
-  icon: HomeIcon,
+  icon: HomeIconV2,
   showInSidebar: true,
   component: Home
 }
@@ -60,7 +67,7 @@ export const HomeRoute: RouteConfig = {
 export const AppointmentRequestRoute: RouteConfig = {
   path: '/appointment/request',
   label: 'Request Appointment',
-  icon: CalendarAddIcon,
+  icon: CalendarAddIconV2,
   showInSidebar: true,
   component: AppointmentForm
 }
@@ -68,7 +75,7 @@ export const AppointmentRequestRoute: RouteConfig = {
 export const AppointmentsRoute: RouteConfig = {
   path: '/appointments',
   label: 'Appointments',
-  icon: ListIcon,
+  icon: ListIconV2,
   showInSidebar: true,
   component: AppointmentStatus
 }
@@ -76,7 +83,7 @@ export const AppointmentsRoute: RouteConfig = {
 export const DignitariesRoute: RouteConfig = {
   path: '/dignitaries',
   label: 'Dignitaries',
-  icon: PersonListIcon,
+  icon: PersonListIconV2,
   showInSidebar: true,
   component: DignitaryList
 }
@@ -84,7 +91,7 @@ export const DignitariesRoute: RouteConfig = {
 export const ProfileRoute: RouteConfig = {
   path: '/profile',
   label: 'My Profile',
-  icon: PersonIcon,
+  icon: PersonIconV2,
   showInSidebar: true,
   component: Profile
 }
@@ -102,7 +109,7 @@ export const AdminLocationsRoute: RouteConfig = {
 export const AdminAppointmentsRoute: RouteConfig = {
   path: '/admin/appointments',
   label: 'All Appointments',
-  icon: TableRowsIcon,
+  icon: ListIconV2,
   roles: [SECRETARIAT_ROLE],
   showInSidebar: true,
   component: AppointmentStatusAll
@@ -120,7 +127,7 @@ export const AdminAppointmentsReviewRoute: RouteConfig = {
 export const AdminAppointmentsCalendarRoute: RouteConfig = {
   path: '/admin/appointments/calendar',
   label: 'Daily Schedule',
-  icon: CalendarViewDayIcon,
+  icon: CalendarIconV2,
   roles: [SECRETARIAT_ROLE],
   showInSidebar: true,
   component: AppointmentDayView
@@ -138,7 +145,7 @@ export const AdminAppointmentsEditRoute: RouteConfig = {
 export const AdminUsersRoute: RouteConfig = {
   path: '/admin/users', 
   label: 'All Users',
-  icon: PersonListIcon,
+  icon: PeopleIconV2,
   roles: [SECRETARIAT_ROLE],
   showInSidebar: true,
   component: UsersAll
@@ -147,7 +154,7 @@ export const AdminUsersRoute: RouteConfig = {
 export const AdminDignitariesRoute: RouteConfig = {
   path: '/admin/dignitaries',
   label: 'All Dignitaries',
-  icon: PersonListIcon,
+  icon: PersonListIconV2,
   roles: [SECRETARIAT_ROLE],
   showInSidebar: true,
   component: DignitaryListAll
@@ -164,7 +171,7 @@ export const AdminHeaderRoute: RouteConfig = {
 export const UsherAppointmentsRoute: RouteConfig = {
   path: '/usher/appointments',
   label: 'Appointments Schedule',
-  icon: CalendarViewDayIcon,
+  icon: CalendarIconV2,
   roles: [USHER_ROLE, SECRETARIAT_ROLE],
   showInSidebar: true,
   component: AppointmentUsherView
