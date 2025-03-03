@@ -8,6 +8,7 @@ import {
   GridToolbarContainer,
   GridToolbarColumnsButton,
   GridRowHeightParams,
+  GridToolbarQuickFilter,
 } from '@mui/x-data-grid';
 import { Box, Paper } from '@mui/material';
 
@@ -18,6 +19,7 @@ export interface GenericDataGridProps extends Omit<DataGridProps, 'rows' | 'colu
   containerHeight?: number | string;
   defaultDensity?: GridDensity;
   defaultVisibleColumns?: string[];
+  getQuickFilterMatchesAmount?: (filter: string, row: any, isDetailPanel: boolean) => number;
 }
 
 const GenericDataGridStyles = {
@@ -60,6 +62,7 @@ function CustomToolbar() {
     <GridToolbarContainer>
       <GridToolbarColumnsButton />
       <GridToolbarDensitySelector />
+      <GridToolbarQuickFilter debounceMs={300} />
     </GridToolbarContainer>
   );
 }
@@ -156,6 +159,12 @@ const GenericDataGrid: React.FC<GenericDataGridProps> = ({
         [col.field]: false,
       }), {})),
     },
+    filter: {
+      filterModel: {
+        items: [],
+        quickFilterValues: [],
+      },
+    },
     ...initialState,
   };
 
@@ -198,6 +207,13 @@ const GenericDataGrid: React.FC<GenericDataGridProps> = ({
           slots={{
             toolbar: CustomToolbar,
             ...slots,
+          }}
+          slotProps={{
+            toolbar: {
+              showQuickFilter: true,
+              quickFilterProps: { debounceMs: 300 },
+            },
+            ...slotProps,
           }}
           onDensityChange={(newDensity) => setCurrentDensity(newDensity)}
           {...densitySettings}
