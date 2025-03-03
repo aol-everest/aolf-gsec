@@ -30,8 +30,8 @@ const colors = {
     paper: '#ffffff',
   },
   text: {
-    primary: '#333',
-    secondary: '#6F7283',
+    primary: '#6F7283',
+    secondary: '#9598A6',
   },
   success: {
     main: '#2ecc71',

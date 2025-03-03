@@ -49,13 +49,18 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
             <ListItem 
                 key={text} 
               >
-                <ListItemIcon >
+                <ListItemIcon 
+                  sx={{ 
+                    color: theme.palette.text.secondary
+                  }}
+                >
                   <Icon />
                 </ListItemIcon>
                 <ListItemText 
                   sx={{
                     '& .MuiTypography-root': {
                       fontWeight: 500,
+                      color: theme.palette.text.primary,
                     },
                   }}
                   primary={text}
@@ -92,7 +97,7 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
               primary={text}
               sx={{
                 '& .MuiTypography-root': {
-                  color: location.pathname === path ? theme.palette.primary.main : theme.palette.text.secondary,
+                  color: location.pathname === path ? theme.palette.primary.main : theme.palette.text.primary,
                   fontWeight: location.pathname === path ? 600 : 500,
                 },
               }}
