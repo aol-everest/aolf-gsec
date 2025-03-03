@@ -587,41 +587,6 @@ const AppointmentStatusAll: React.FC = () => {
                   },
                 },
               }}
-              getQuickFilterMatchesAmount={(filter: string, row: Appointment, isDetailPanel: boolean) => {
-                if (!filter || filter.trim() === '') {
-                  return 1;
-                }
-
-                const lowerFilter = filter.toLowerCase();
-                const rowData = [
-                  // ID
-                  String(row.id || ''),
-                  // Dignitary name
-                  row.dignitary ? `${row.dignitary.honorific_title || ''} ${row.dignitary.first_name || ''} ${row.dignitary.last_name || ''}`.toLowerCase() : '',
-                  // Preferred date and time
-                  `${formatDate(row.preferred_date, false)} ${row.preferred_time_of_day || ''}`.toLowerCase(),
-                  // Appointment date and time
-                  `${formatDate(row.appointment_date, false)} ${row.appointment_time || ''}`.toLowerCase(),
-                  // Location
-                  row.location ? `${row.location.name || ''} ${row.location.city || ''} ${row.location.state || ''}`.toLowerCase() : '',
-                  // Status
-                  (row.status || '').toLowerCase(),
-                  // Sub-status
-                  (row.sub_status || '').toLowerCase(),
-                  // Appointment type
-                  (row.appointment_type || '').toLowerCase(),
-                  // Created at and updated at
-                  formatDate(row.created_at, true).toLowerCase(),
-                  formatDate(row.updated_at, true).toLowerCase(),
-                  // Purpose
-                  (row.purpose || '').toLowerCase(),
-                  // Requester notes
-                  (row.requester_notes_to_secretariat || '').toLowerCase()
-                ];
-
-                // Check if any field contains the filter text
-                return rowData.some(field => field.includes(lowerFilter)) ? 1 : 0;
-              }}
             />
           </Box>
         </Box>
