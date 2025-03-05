@@ -400,13 +400,21 @@ class RequesterUsherView(BaseModel):
     class Config:
         orm_mode = True
 
+class AppointmentDignitaryUsherView(AppointmentDignitaryBase):
+    id: int
+    created_at: datetime
+    dignitary: DignitaryUsherView
+
+    class Config:
+        orm_mode = True
+
 class AppointmentUsherView(BaseModel):
     id: int
     appointment_date: Optional[date] = None
     appointment_time: Optional[str] = None
-    dignitary: DignitaryUsherView
     requester: RequesterUsherView
     location: Optional[Location] = None
+    appointment_dignitaries: List[AppointmentDignitaryUsherView]
 
     class Config:
         orm_mode = True
@@ -423,3 +431,4 @@ class AppointmentDignitary(AppointmentDignitaryBase):
 
     class Config:
         orm_mode = True
+

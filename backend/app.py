@@ -557,6 +557,9 @@ async def get_usher_appointments(
     appointments = db.query(models.Appointment).filter(
         models.Appointment.appointment_date >= start_date,
         models.Appointment.appointment_date <= end_date
+    ).options(
+        joinedload(models.Appointment.appointment_dignitaries).joinedload(models.AppointmentDignitary.dignitary),
+        joinedload(models.Appointment.requester)
     ).order_by(
         models.Appointment.appointment_date,
         models.Appointment.appointment_time
