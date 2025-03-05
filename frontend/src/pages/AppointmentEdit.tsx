@@ -1004,83 +1004,87 @@ const AppointmentEdit: React.FC = () => {
                   </Box>
                   
                   {/* Business Cards Section */}
-                  <Typography variant="h6" gutterBottom color="primary" sx={{ mt: 3, mb: 1 }}>
-                    Business Cards
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    Upload or take photos of business cards for easy reference and automatic contact creation
-                    {isExtractionDisabled && (
-                      <Chip 
-                        label="Extraction Disabled" 
-                        color="warning" 
-                        size="small" 
-                        sx={{ ml: 2 }}
-                      />
-                    )}
-                  </Typography>
-                  
-                  {isExtractionDisabled && (
-                    <Alert severity="info" sx={{ mb: 2 }}>
-                      Business card information extraction is currently disabled. Cards will be uploaded as attachments only.
-                    </Alert>
-                  )}
-                  
-                  <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-                    <Button
-                      variant="outlined"
-                      startIcon={<ContactMailIcon />}
-                      onClick={handleUploadBusinessCard}
-                      disabled={uploading || extractionLoading}
-                    >
-                      Upload Business Card
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      startIcon={<PhotoCameraIcon />}
-                      onClick={handleTakeBusinessCardPhoto}
-                      disabled={uploading || extractionLoading}
-                    >
-                      Take Business Card Photo
-                    </Button>
+                  {appointment.status === 'Approved' && appointment.appointment_date && new Date(appointment.appointment_date) <= new Date() && (
+                    <>
+                      <Typography variant="h6" gutterBottom color="primary" sx={{ mt: 3, mb: 1 }}>
+                        Business Cards
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        Upload or take photos of business cards for easy reference and automatic contact creation
+                        {isExtractionDisabled && (
+                          <Chip 
+                            label="Extraction Disabled" 
+                            color="warning" 
+                            size="small" 
+                            sx={{ ml: 2 }}
+                          />
+                        )}
+                      </Typography>
                     
-                    <input
-                      type="file"
-                      ref={businessCardInputRef}
-                      style={{ display: 'none' }}
-                      onChange={handleBusinessCardInputChange}
-                      accept="image/*"
-                      multiple
-                    />
-                    <input
-                      type="file"
-                      ref={businessCardCameraInputRef}
-                      style={{ display: 'none' }}
-                      onChange={handleBusinessCardCameraInputChange}
-                      accept="image/*"
-                      capture="environment"
-                      multiple
-                    />
-                  </Box>
-                  
-                  {/* Business Card Extraction Result */}
-                  {businessCardExtraction && renderBusinessCardExtraction()}
-                  
-                  {extractionError && (
-                    <Alert severity="error" sx={{ mb: 3 }}>
-                      {extractionError}
-                    </Alert>
-                  )}
-                  
-                  {dignitaryCreationError && (
-                    <Alert severity="error" sx={{ mb: 3 }}>
-                      {dignitaryCreationError}
-                    </Alert>
-                  )}
-                  
-                  {dignitaryCreated && (
-                    <Alert severity="success" sx={{ mb: 3 }}>
-                      Contact created successfully from business card
-                    </Alert>
+                      {isExtractionDisabled && (
+                        <Alert severity="info" sx={{ mb: 2 }}>
+                          Business card information extraction is currently disabled. Cards will be uploaded as attachments only.
+                        </Alert>
+                      )}
+                      
+                      <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                        <Button
+                          variant="outlined"
+                          startIcon={<ContactMailIcon />}
+                          onClick={handleUploadBusinessCard}
+                          disabled={uploading || extractionLoading}
+                        >
+                          Upload Business Card
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          startIcon={<PhotoCameraIcon />}
+                          onClick={handleTakeBusinessCardPhoto}
+                          disabled={uploading || extractionLoading}
+                        >
+                          Take Business Card Photo
+                        </Button>
+                        
+                        <input
+                          type="file"
+                          ref={businessCardInputRef}
+                          style={{ display: 'none' }}
+                          onChange={handleBusinessCardInputChange}
+                          accept="image/*"
+                          multiple
+                        />
+                        <input
+                          type="file"
+                          ref={businessCardCameraInputRef}
+                          style={{ display: 'none' }}
+                          onChange={handleBusinessCardCameraInputChange}
+                          accept="image/*"
+                          capture="environment"
+                          multiple
+                        />
+                      </Box>
+                      
+                      {/* Business Card Extraction Result */}
+                      {businessCardExtraction && renderBusinessCardExtraction()}
+                      
+                      {extractionError && (
+                        <Alert severity="error" sx={{ mb: 3 }}>
+                          {extractionError}
+                        </Alert>
+                      )}
+                      
+                      {dignitaryCreationError && (
+                        <Alert severity="error" sx={{ mb: 3 }}>
+                          {dignitaryCreationError}
+                        </Alert>
+                      )}
+                      
+                      {dignitaryCreated && (
+                        <Alert severity="success" sx={{ mb: 3 }}>
+                          Contact created successfully from business card
+                        </Alert>
+                      )}
+                    </>
                   )}
                   
                   {/* Attachments List */}
