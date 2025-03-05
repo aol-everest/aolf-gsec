@@ -11,6 +11,8 @@ import {
   Alert,
   Chip,
   Stack,
+  Collapse,
+  Button,
 } from '@mui/material';
 import { format, addDays, parseISO, isToday, isTomorrow, isYesterday } from 'date-fns';
 import Layout from '../components/Layout';
@@ -19,6 +21,8 @@ import { useSnackbar } from 'notistack';
 import { useQuery } from '@tanstack/react-query';
 import { USHER_DISPLAY_DAYS } from '../constants/formConstants';
 import { FilterChip } from '../components/FilterChip';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 
 // Define interfaces for the USHER view
 interface DignitaryUsherView {
@@ -56,6 +60,7 @@ const AppointmentUsherView: React.FC = () => {
   const api = useApi();
   const { enqueueSnackbar } = useSnackbar();
   const today = new Date();
+  const [expandedDignitaries, setExpandedDignitaries] = useState<Record<number, boolean>>({});
 
   // Format dates for display
   const formatDisplayDate = (date: Date) => {
@@ -117,7 +122,15 @@ const AppointmentUsherView: React.FC = () => {
     setSelectedDate(date);
   };
 
-  // Format dignitary name - updated to handle multiple dignitaries
+  // Toggle expanded state for a specific appointment
+  const toggleExpanded = (appointmentId: number) => {
+    setExpandedDignitaries(prev => ({
+      ...prev,
+      [appointmentId]: !prev[appointmentId]
+    }));
+  };
+
+  // Format dignitary name - updated to handle multiple dignitaries with collapsible list
   const formatDignitaryName = (appointment: AppointmentUsherView): ReactNode => {
     // First check for appointment_dignitaries
     if (appointment.appointment_dignitaries && appointment.appointment_dignitaries.length > 0) {
@@ -125,22 +138,58 @@ const AppointmentUsherView: React.FC = () => {
       const honorific = primaryDignitary.honorific_title || '';
       const primaryName = `${honorific} ${primaryDignitary.first_name} ${primaryDignitary.last_name}`.trim();
       
-      // If there are additional dignitaries, show a count
+      // If there are additional dignitaries, show a count with expand/collapse functionality
       if (appointment.appointment_dignitaries.length > 1) {
+        const isExpanded = !!expandedDignitaries[appointment.id];
+        const additionalCount = appointment.appointment_dignitaries.length - 1;
+        
         return (
-          <>
-            <span>{primaryName}</span>
-            <Typography variant="caption" sx={{ ml: 1, color: 'text.secondary' }}>
-              (+{appointment.appointment_dignitaries.length - 1} more)
-            </Typography>
-          </>
+          <Box>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Typography variant="body1" fontWeight="medium">{primaryName}</Typography>
+              <Button
+                size="small"
+                variant="text"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleExpanded(appointment.id);
+                }}
+                startIcon={isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                sx={{ ml: 1, minWidth: 0, p: 0.5 }}
+              >
+                {isExpanded ? "Less" : `+${additionalCount} more`}
+              </Button>
+            </Box>
+            
+            <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+              <Box sx={{ pl: 2, mt: 1, borderLeft: '2px solid', borderColor: 'divider' }}>
+                {appointment.appointment_dignitaries.slice(1).map((appDignitary, index) => {
+                  const dig = appDignitary.dignitary;
+                  const honorificTitle = dig.honorific_title || '';
+                  const fullName = `${honorificTitle} ${dig.first_name} ${dig.last_name}`.trim();
+                  
+                  return (
+                    <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
+                      {fullName}
+                    </Typography>
+                  );
+                })}
+              </Box>
+            </Collapse>
+          </Box>
         );
       }
       
-      return primaryName;
+      return <Typography variant="body1" fontWeight="medium">{primaryName}</Typography>;
     }
     
-    return 'No dignitary information';
+    // Fall back to dignitary field for backward compatibility
+    if (appointment.dignitary) {
+      const honorific = appointment.dignitary.honorific_title || '';
+      return <Typography variant="body1" fontWeight="medium">{`${honorific} ${appointment.dignitary.first_name} ${appointment.dignitary.last_name}`.trim()}</Typography>;
+    }
+    
+    return <Typography variant="body1">No dignitary information</Typography>;
   };
 
   // Get a friendly label for the date
