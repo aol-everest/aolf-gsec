@@ -55,6 +55,8 @@ import { useEnums } from '../hooks/useEnums';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Collapse from '@mui/material/Collapse';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
 
 interface AppointmentFormData {
   appointment_date: string;
@@ -121,6 +123,10 @@ const AppointmentEdit: React.FC = () => {
   const [dignitaryCreationError, setDignitaryCreationError] = useState<string | null>(null);
   const [isExtractionDisabled, setIsExtractionDisabled] = useState(false);
   const [expandedDignitaryList, setExpandedDignitaryList] = useState(false);
+  const theme = useTheme();
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
+  const isMediumScreen = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+  const isLargeScreen = useMediaQuery(theme.breakpoints.up('md'));
 
   const { control, handleSubmit, reset } = useForm<AppointmentFormData>();
 
@@ -595,74 +601,103 @@ const AppointmentEdit: React.FC = () => {
     if (appointment.appointment_dignitaries && appointment.appointment_dignitaries.length > 0) {
       const totalDignitaries = appointment.appointment_dignitaries.length;
       
+      // Determine how many dignitaries to show initially based on screen size
+      let initialVisibleCount = 1; // Default for small screens
+      if (isMediumScreen) initialVisibleCount = 2;
+      if (isLargeScreen) initialVisibleCount = 3;
+      
+      // Ensure we don't try to show more than we have
+      initialVisibleCount = Math.min(initialVisibleCount, totalDignitaries);
+      
+      // Calculate how many are hidden
+      const hiddenCount = totalDignitaries - initialVisibleCount;
+      
       return (
         <>
           <Typography variant="h6" gutterBottom color="primary">
             Dignitaries ({totalDignitaries})
           </Typography>
           
-          {/* Always show the first dignitary */}
-          {appointment.appointment_dignitaries.length > 0 && (
-            <Box 
-              key={appointment.appointment_dignitaries[0].dignitary.id} 
-              sx={{ 
-                mb: 2, 
-                p: 2, 
-                border: '1px solid', 
-                borderColor: 'divider', 
-                borderRadius: 1,
-                backgroundColor: 'transparent'
-              }}
-            >
-              <Typography>
-                {appointment.appointment_dignitaries[0].dignitary.honorific_title || ''} {appointment.appointment_dignitaries[0].dignitary.first_name} {appointment.appointment_dignitaries[0].dignitary.last_name}
-              </Typography>
-              <Typography color="text.secondary" sx={{ mt: 1 }}>
-                {appointment.appointment_dignitaries[0].dignitary.organization} - {appointment.appointment_dignitaries[0].dignitary.title_in_organization} | {appointment.appointment_dignitaries[0].dignitary.email} | {appointment.appointment_dignitaries[0].dignitary.phone}
-              </Typography>
-            </Box>
-          )}
-          
-          {/* Collapsible section for additional dignitaries */}
-          {totalDignitaries > 1 && (
-            <Collapse in={expandedDignitaryList} timeout="auto" unmountOnExit>
-              {appointment.appointment_dignitaries.slice(1).map((appointmentDignitary: AppointmentDignitary) => {
-                const dig = appointmentDignitary.dignitary;
-                return (
+          {/* Grid container for responsive layout */}
+          <Grid container spacing={2}>
+            {/* Show initial set of dignitaries based on screen size */}
+            {appointment.appointment_dignitaries.slice(0, initialVisibleCount).map((appointmentDignitary: AppointmentDignitary) => {
+              const dig = appointmentDignitary.dignitary;
+              return (
+                <Grid item xs={12} sm={6} md={4} key={dig.id}>
                   <Box 
-                    key={dig.id} 
                     sx={{ 
-                      mb: 2, 
+                      height: '100%',
                       p: 2, 
                       border: '1px solid', 
                       borderColor: 'divider', 
                       borderRadius: 1,
-                      backgroundColor: 'transparent'
+                      backgroundColor: 'transparent',
+                      display: 'flex',
+                      flexDirection: 'column'
                     }}
                   >
-                    <Typography>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
                       {dig.honorific_title || ''} {dig.first_name} {dig.last_name}
                     </Typography>
-                    <Typography color="text.secondary" sx={{ mt: 1 }}>
-                      {dig.organization} - {dig.title_in_organization} | {dig.email} | {dig.phone}
+                    <Typography color="text.secondary" variant="body2" sx={{ mt: 1 }}>
+                      {dig.organization && dig.organization} | {dig.title_in_organization && dig.title_in_organization}<br />
+                      {dig.email && dig.email} | {dig.phone && dig.phone}
                     </Typography>
                   </Box>
-                );
-              })}
+                </Grid>
+              );
+            })}
+          </Grid>
+          
+          {/* Collapsible section for additional dignitaries */}
+          {hiddenCount > 0 && (
+            <Collapse in={expandedDignitaryList} timeout="auto" unmountOnExit>
+              <Grid container spacing={2} sx={{ mt: 0.5 }}>
+                {appointment.appointment_dignitaries.slice(initialVisibleCount).map((appointmentDignitary: AppointmentDignitary) => {
+                  const dig = appointmentDignitary.dignitary;
+                  return (
+                    <Grid item xs={12} sm={6} md={4} key={dig.id}>
+                      <Box 
+                        sx={{ 
+                          height: '100%',
+                          p: 2, 
+                          border: '1px solid', 
+                          borderColor: 'divider', 
+                          borderRadius: 1,
+                          backgroundColor: 'transparent',
+                          display: 'flex',
+                          flexDirection: 'column'
+                        }}
+                      >
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
+                          {dig.honorific_title || ''} {dig.first_name} {dig.last_name}
+                        </Typography>
+                        <Typography color="text.secondary" variant="body2" sx={{ mt: 1 }}>
+                          {dig.organization && <>{dig.organization}<br /></>}
+                          {dig.title_in_organization && <>{dig.title_in_organization}<br /></>}
+                          {dig.email && <>{dig.email}<br /></>}
+                          {dig.phone && <>{dig.phone}</>}
+                        </Typography>
+                      </Box>
+                    </Grid>
+                  );
+                })}
+              </Grid>
             </Collapse>
           )}
           
-          {totalDignitaries > 1 && (
+          {hiddenCount > 0 && (
             <Button
               variant="text" 
               color="primary"
               onClick={() => setExpandedDignitaryList(!expandedDignitaryList)}
               startIcon={expandedDignitaryList ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-              sx={{ mt: 1 }}
+              sx={{ mt: 2 }}
             >
               {expandedDignitaryList 
                 ? "Show less" 
-                : `Show ${totalDignitaries - 1} more ${totalDignitaries - 1 === 1 ? "dignitary" : "dignitaries"}`
+                : `Show ${hiddenCount} more ${hiddenCount === 1 ? "dignitary" : "dignitaries"}`
               }
             </Button>
           )}
