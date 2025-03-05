@@ -322,3 +322,11 @@ PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-db-uat.cxg084kkue8o.us-east-2.rd
   -d aolf_gsec \
   -c "SELECT column_name FROM information_schema.columns WHERE table_name = 'users' ORDER BY column_name;"
 
+# -- Updates for multiple dignitaries in an appointment ----------------------------------------------------------------
+
+PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-db-uat.cxg084kkue8o.us-east-2.rds.amazonaws.com \
+  -U aolf_gsec_user \
+  -d aolf_gsec \
+  -c "INSERT INTO appointment_dignitaries (appointment_id, dignitary_id, created_at) SELECT id, dignitary_id, created_at FROM appointments WHERE dignitary_id IS NOT NULL;"
+
+

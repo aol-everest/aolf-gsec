@@ -8,6 +8,7 @@ from models.user import User, UserRole
 from models.appointment import Appointment
 from schemas import AppointmentAdminUpdate
 from utils.utils import str_to_bool
+from models.dignitary import Dignitary
 
 SENDGRID_API_KEY = os.getenv('SENDGRID_API_KEY')
 FROM_EMAIL = os.getenv('FROM_EMAIL', 'noreply@aolf-gsec.org')
@@ -39,10 +40,27 @@ def send_email(to_email: str, subject: str, content: str):
 
 def get_appointment_summary(appointment: Appointment) -> str:
     """Generate a summary of the appointment for email notifications."""
+    
+    # Handle multiple dignitaries
+    dignitaries_info = ""
+    if appointment.appointment_dignitaries:
+        dignitaries_list = []
+        for app_dignitary in appointment.appointment_dignitaries:
+            dignitary = app_dignitary.dignitary
+            dignitaries_list.append(f"{dignitary.honorific_title} {dignitary.first_name} {dignitary.last_name}")
+        
+        if dignitaries_list:
+            dignitaries_info = ", ".join(dignitaries_list)
+    # Fallback to legacy dignitary relationship if no dignitaries in the new relationship
+    elif appointment.dignitary:
+        dignitaries_info = f"{appointment.dignitary.honorific_title} {appointment.dignitary.first_name} {appointment.dignitary.last_name}"
+    else:
+        dignitaries_info = "No dignitaries assigned"
+    
     return f"""
         <h3>Appointment Request Summary</h3>
         <p><strong>Request ID:</strong> {appointment.id}</p>
-        <p><strong>Dignitary:</strong> {appointment.dignitary.honorific_title} {appointment.dignitary.first_name} {appointment.dignitary.last_name}</p>
+        <p><strong>Dignitary/Dignitaries:</strong> {dignitaries_info}</p>
         <p><strong>Purpose:</strong> {appointment.purpose}</p>
         <p><strong>Preferred Date:</strong> {appointment.preferred_date}</p>
         <p><strong>Preferred Time:</strong> {appointment.preferred_time_of_day or 'Not specified'}</p>
@@ -61,12 +79,33 @@ def get_appointment_changes_summary(old_data: Dict[str, Any], new_data: Dict[str
         ('location', 'Location'),
         ('secretariat_meeting_notes', 'Meeting Notes'),
         ('secretariat_follow_up_actions', 'Follow-up Actions'),
-        ('secretariat_notes_to_requester', 'Secretariat Comments')
+        ('secretariat_notes_to_requester', 'Secretariat Comments'),
+        ('dignitaries', 'Dignitaries')
     ]
 
     for field, display_name in fields_to_check:
         old_value = old_data.get(field)
         new_value = new_data.get(field)
+        
+        # Special handling for dignitaries which might be a list
+        if field == 'dignitaries':
+            if old_value != new_value and new_value is not None:
+                # Convert to sets of dignitary IDs for easy comparison if they're lists
+                if isinstance(old_value, list) and isinstance(new_value, list):
+                    old_ids = set(d.get('id') for d in old_value if d.get('id'))
+                    new_ids = set(d.get('id') for d in new_value if d.get('id'))
+                    
+                    if old_ids != new_ids:
+                        old_names = ", ".join(f"{d.get('honorific_title', '')} {d.get('first_name', '')} {d.get('last_name', '')}" 
+                                             for d in old_value) or "None"
+                        new_names = ", ".join(f"{d.get('honorific_title', '')} {d.get('first_name', '')} {d.get('last_name', '')}" 
+                                             for d in new_value) or "None"
+                        changes.append(f"<p><strong>{display_name}:</strong> Changed from '{old_names}' to '{new_names}'</p>")
+                else:
+                    changes.append(f"<p><strong>{display_name}:</strong> Changed</p>")
+            continue
+            
+        # Regular field comparison for non-dignitary fields
         if old_value != new_value and new_value is not None:
             changes.append(f"<p><strong>{display_name}:</strong> Changed from '{old_value or 'Not set'}' to '{new_value}'</p>")
 
@@ -109,6 +148,32 @@ def notify_appointment_creation(db: Session, appointment: Appointment):
 
 def notify_appointment_update(db: Session, appointment: Appointment, old_data: Dict[str, Any], new_data: Dict[str, Any]):
     """Send notifications when an appointment is updated."""
+    
+    # Ensure dignitaries data is properly prepared for get_appointment_changes_summary
+    if 'dignitaries' not in old_data and appointment.dignitary_id and 'dignitary_id' in old_data:
+        # Legacy dignitary handling
+        old_dignitary = db.query(Dignitary).filter(Dignitary.id == old_data.get('dignitary_id')).first()
+        if old_dignitary:
+            old_data['dignitaries'] = [{
+                'id': old_dignitary.id,
+                'first_name': old_dignitary.first_name,
+                'last_name': old_dignitary.last_name,
+                'honorific_title': getattr(old_dignitary, 'honorific_title', '')
+            }]
+    
+    if 'dignitaries' not in new_data:
+        # Get current dignitaries
+        dignitaries_data = []
+        for app_dignitary in appointment.appointment_dignitaries:
+            dignitary = app_dignitary.dignitary
+            dignitaries_data.append({
+                'id': dignitary.id,
+                'first_name': dignitary.first_name,
+                'last_name': dignitary.last_name,
+                'honorific_title': getattr(dignitary, 'honorific_title', '')
+            })
+        new_data['dignitaries'] = dignitaries_data
+    
     requester = appointment.requester
     if requester.email_notification_preferences.get('appointment_updated', True):
         subject = f"Appointment Request Updated - ID: {appointment.id}"
