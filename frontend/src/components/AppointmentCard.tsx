@@ -3,7 +3,7 @@ import { formatDate } from "../utils/dateUtils"
 import { getStatusChipSx, getSubStatusChipSx } from "../utils/formattingUtils"
 import { EmailIconSmall, ContactPhoneIconSmall, WorkIcon } from "./icons"
 import EditIcon from "@mui/icons-material/Edit"
-import { Appointment, AppointmentAttachment } from "../models/types"
+import { Appointment, AppointmentAttachment, AppointmentDignitary } from "../models/types"
 import { useNavigate } from "react-router-dom";
 import { AdminAppointmentsEditRoute } from "../config/routes";
 import { useEffect, useState, useMemo } from "react";
@@ -53,6 +53,90 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
     const handleEdit = (appointmentId: number) => {
         navigate(AdminAppointmentsEditRoute.path?.replace(':id', appointmentId.toString()) || '');
         console.log(`Editing appointment with ID: ${appointmentId}`);
+    };
+
+    // Helper function to get dignitaries display information
+    const renderDignitariesSection = () => {
+        // Check if appointment has appointment_dignitaries array
+        if (appointment.appointment_dignitaries && appointment.appointment_dignitaries.length > 0) {
+            // If there are multiple dignitaries, display them all
+            return (
+                <>
+                    <Typography variant="h6" gutterBottom color="primary">
+                        Dignitaries ({appointment.appointment_dignitaries.length})
+                    </Typography>
+                    {appointment.appointment_dignitaries.map((appointmentDignitary: AppointmentDignitary, index: number) => {
+                        const dig = appointmentDignitary.dignitary;
+                        return (
+                            <Paper elevation={0} 
+                                sx={{ 
+                                    p: 2, 
+                                    mb: index < appointment.appointment_dignitaries!.length - 1 ? 2 : 0, 
+                                    borderRadius: 2, 
+                                    border: '1px solid',
+                                    borderColor: 'divider'
+                                }} 
+                                key={dig.id}
+                            >
+                                <Typography variant="subtitle1" gutterBottom color="primary" fontWeight="bold">
+                                    {dig.honorific_title || ''} {dig.first_name} {dig.last_name}
+                                </Typography>
+                                <Grid container spacing={1} sx={{ color: theme.palette.text.secondary }}>
+                                    <Grid item xs={12} sm={6}>
+                                        <EmailIconSmall />
+                                        <Typography 
+                                            component="a" 
+                                            href={`mailto:${dig.email}`} 
+                                            sx={{ textDecoration: 'none', color: theme.palette.text.primary }}
+                                        >
+                                            {" " + dig.email}
+                                        </Typography>
+                                        <Box sx={{ color: 'text.secondary', display: 'inline-block', mx: 1 }}>|</Box>
+                                        <ContactPhoneIconSmall />
+                                        <Typography 
+                                            component="a" 
+                                            href={`tel:${dig.phone}`} 
+                                            sx={{ textDecoration: 'none', color: theme.palette.text.primary }}
+                                        >
+                                            {" " + dig.phone || 'N/A'}
+                                        </Typography>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6}>
+                                        Title: <Typography component="span" sx={{ color: theme.palette.text.primary }}>{dig.title_in_organization}</Typography>    
+                                        <Box sx={{ color: 'text.secondary', display: 'inline-block', mx: 1 }}>|</Box>
+                                        Organization: <Typography component="span" sx={{ color: theme.palette.text.primary }}>{dig.organization}</Typography>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6}>
+                                        LinkedIn: <Typography component="a" href={`${dig.linked_in_or_website}`}  sx={{ color: theme.palette.text.primary, textDecoration: 'none' }}>{dig.linked_in_or_website}</Typography>
+                                    </Grid>
+                                    <Grid item xs={12} sm={12}>
+                                        Bio: <Typography component="span" sx={{ color: theme.palette.text.primary }}>{dig.bio_summary}</Typography>
+                                    </Grid>
+                                    <Grid item xs={12} sm={4}>
+                                        Has Met Gurudev? <Typography component="span" sx={{ fontWeight: 'bold', color: dig.has_dignitary_met_gurudev ? theme.palette.success.main : theme.palette.error.main }}>{dig.has_dignitary_met_gurudev ? 'Yes' : 'No'}</Typography>
+                                    </Grid>
+                                    <Grid item xs={12} sm={4}>
+                                        Gurudev Meeting Date: <Typography component="span" sx={{ color: theme.palette.text.primary }}>{dig.gurudev_meeting_date ? formatDate(dig.gurudev_meeting_date, false) : 'N/A'}</Typography>
+                                    </Grid>
+                                    <Grid item xs={12} sm={4}>
+                                        Gurudev Meeting Location: <Typography component="span" sx={{ color: theme.palette.text.primary }}>{dig.gurudev_meeting_location || 'N/A'}</Typography>
+                                    </Grid>
+                                    <Grid item xs={12} sm={12}>
+                                        Gurudev Meeting Notes: <Typography component="span" sx={{ color: theme.palette.text.primary }}>{dig.gurudev_meeting_notes || 'N/A'}</Typography>
+                                    </Grid>
+                                </Grid>
+                            </Paper>
+                        );
+                    })}
+                </>
+            );
+        } else {
+            return (
+                <Typography variant="body1" color="text.secondary">
+                    No dignitary information available
+                </Typography>
+            );
+        }
     };
 
     return (
@@ -125,54 +209,7 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
 
                 {/* Dignitary Information */}
                 <Paper elevation={0} sx={{ p: 2, mb: 3, borderRadius: 2 }}>
-                    <Typography variant="h6" gutterBottom color="primary">
-                    Dignitary: <span style={{ fontWeight: 'bold', color: theme.palette.primary.dark }}>{appointment.dignitary.honorific_title} {appointment.dignitary.first_name} {appointment.dignitary.last_name}</span>
-                    </Typography>
-                    <Grid container spacing={1} sx={{ color: theme.palette.text.secondary }}>
-                        <Grid item xs={12} sm={6}>
-                            <EmailIconSmall />
-                            <Typography 
-                                component="a" 
-                                href={`mailto:${appointment.dignitary.email}`} 
-                                sx={{ textDecoration: 'none', color: theme.palette.text.primary }}
-                            >
-                                {" " + appointment.dignitary.email}
-                            </Typography>
-                            <Box sx={{ color: 'text.secondary', display: 'inline-block', mx: 1 }}>|</Box>
-                            <ContactPhoneIconSmall />
-                            <Typography 
-                                component="a" 
-                                href={`tel:${appointment.dignitary.phone}`} 
-                                sx={{ textDecoration: 'none', color: theme.palette.text.primary }}
-                            >
-                                {" " + appointment.dignitary.phone || 'N/A'}
-                            </Typography>
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                            {/* <WorkIcon />  */}
-                            Title: <Typography component="span" sx={{ color: theme.palette.text.primary }}>{appointment.dignitary.title_in_organization}</Typography>    
-                            <Box sx={{ color: 'text.secondary', display: 'inline-block', mx: 1 }}>|</Box>
-                            Organization: <Typography component="span" sx={{ color: theme.palette.text.primary }}>{appointment.dignitary.organization}</Typography>
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                            LinkedIn: <Typography component="a" href={`${appointment.dignitary.linked_in_or_website}`}  sx={{ color: theme.palette.text.primary, textDecoration: 'none' }}>{appointment.dignitary.linked_in_or_website}</Typography>
-                        </Grid>
-                        <Grid item xs={12} sm={12}>
-                            Bio: <Typography component="span" sx={{ color: theme.palette.text.primary }}>{appointment.dignitary.bio_summary}</Typography>
-                        </Grid>
-                        <Grid item xs={12} sm={4}>
-                            Has Dignitary Met Gurudev? <Typography component="span" sx={{ fontWeight: 'bold', color: appointment.dignitary.has_dignitary_met_gurudev ? theme.palette.success.main : theme.palette.error.main }}>{appointment.dignitary.has_dignitary_met_gurudev ? 'Yes' : 'No'}</Typography>
-                        </Grid>
-                        <Grid item xs={12} sm={4}>
-                            Gurudev Meeting Date: <Typography component="span" sx={{ color: theme.palette.text.primary }}>{appointment.dignitary.gurudev_meeting_date ? formatDate(appointment.dignitary.gurudev_meeting_date, false) : 'N/A'}</Typography>
-                        </Grid>
-                        <Grid item xs={12} sm={4}>
-                            Gurudev Meeting Location: <Typography component="span" sx={{ color: theme.palette.text.primary }}>{appointment.dignitary.gurudev_meeting_location || 'N/A'}</Typography>
-                        </Grid>
-                        <Grid item xs={12} sm={12}>
-                            Gurudev Meeting Notes: <Typography component="span" sx={{ color: theme.palette.text.primary }}>{appointment.dignitary.gurudev_meeting_notes || 'N/A'}</Typography>
-                        </Grid>
-                    </Grid>
+                    {renderDignitariesSection()}
                 </Paper>
 
                 {/* Appointment Information */}

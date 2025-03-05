@@ -103,4 +103,4 @@ interface AppointmentDignitary {
   created_at?: string;
 }
 
-export type { Location, User, Dignitary, Appointment, AppointmentAttachment };
+export type { Location, User, Dignitary, Appointment, AppointmentAttachment, AppointmentDignitary };

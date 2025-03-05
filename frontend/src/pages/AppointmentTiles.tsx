@@ -38,7 +38,7 @@ import { useEnums } from '../hooks/useEnums';
 import { FilterChip, FilterChipGroup } from '../components/FilterChip';
 import { EnumFilterChipGroup } from '../components/EnumFilterChipGroup';
 
-import { Appointment } from '../models/types';
+import { Appointment, AppointmentDignitary } from '../models/types';
 
 import { AppointmentCard } from '../components/AppointmentCard';
 
