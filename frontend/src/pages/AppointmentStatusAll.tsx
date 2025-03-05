@@ -174,7 +174,7 @@ const AppointmentStatusAll: React.FC = () => {
   const updateAppointmentMutation = useMutation({
     mutationFn: async (newRow: Appointment) => {
       const updateData = {
-        dignitary_id: newRow.dignitary_id,
+        // dignitary_id: newRow.dignitary_id,
         purpose: newRow.purpose,
         preferred_date: newRow.preferred_date,
         preferred_time_of_day: newRow.preferred_time_of_day,
@@ -286,11 +286,26 @@ const AppointmentStatusAll: React.FC = () => {
       flex: 1,
       editable: false,
       renderCell: (params: GridRenderCellParams<Appointment>) => {
-        {
-          const dignitary = params.row.dignitary;
-          return dignitary
-            ? `${dignitary.honorific_title} ${dignitary.first_name} ${dignitary.last_name}`
-            : 'N/A';
+        // Check for appointment_dignitaries first (multiple dignitaries case)
+        if (params.row.appointment_dignitaries && params.row.appointment_dignitaries.length > 0) {
+          const dignitariesNames = params.row.appointment_dignitaries.map((ad: any) => {
+            const dig = ad.dignitary;
+            return `${dig.honorific_title || ''} ${dig.first_name} ${dig.last_name}`;
+          });
+          
+          // Display only first dignitary with count if there are multiple
+          if (dignitariesNames.length > 1) {
+            return (
+              <div>
+                <div>{dignitariesNames[0]}</div>
+                <div style={{ color: 'gray', fontSize: '0.8rem' }}>+{dignitariesNames.length - 1} more</div>
+              </div>
+            );
+          } else {
+            return dignitariesNames[0];
+          }
+        } else {
+          return 'N/A';
         }
       },
     },
@@ -346,9 +361,22 @@ const AppointmentStatusAll: React.FC = () => {
       headerName: 'Met Gurudev?',
       width: 81,
       editable: true,
-      renderCell: (params: GridRenderCellParams<Appointment>) => (
-        <Checkbox checked={params.row.dignitary.has_dignitary_met_gurudev} />
-      ),
+      renderCell: (params: GridRenderCellParams<Appointment>) => {
+        if (params.row.appointment_dignitaries && params.row.appointment_dignitaries.length > 0) {
+          const dignitariesHasMetGurudev = params.row.appointment_dignitaries.map((ad: any) => {
+            const dig = ad.dignitary;
+            console.log(dig.first_name + ' ' + dig.last_name + ' ' + dig.has_dignitary_met_gurudev);
+            return dig.has_dignitary_met_gurudev;
+          });
+          
+          const yesCount = dignitariesHasMetGurudev.filter(Boolean).length;
+          const noCount = dignitariesHasMetGurudev.filter(Boolean).length === dignitariesHasMetGurudev.length ? 0 : dignitariesHasMetGurudev.length - yesCount;
+          
+          return `Yes: ${yesCount}, No: ${noCount}`;
+        } else {
+          return 'N/A';
+        }
+      },
     },
     {
       field: 'status',

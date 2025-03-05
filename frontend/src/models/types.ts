@@ -66,31 +66,41 @@ interface AppointmentAttachment {
 
 interface Appointment {
   id: number;
-  dignitary_id: number;
-  dignitary: Dignitary;
-  requester: User;
-  purpose: string;
-  preferred_date: string;
-  preferred_time_of_day: string;
   appointment_date: string;
+  appointment_dignitaries?: AppointmentDignitary[];
   appointment_time: string;
-  location_id: number;
-  location?: Location;
-  requester_notes_to_secretariat: string;
-  status: string;
-  sub_status: string;
   appointment_type: string;
-  created_at: string;
-  updated_at: string;
-  secretariat_notes_to_requester: string;
-  secretariat_meeting_notes: string;
-  secretariat_follow_up_actions: string;
-  approved_datetime: string;
   approved_by: number;
   approved_by_user: User;
+  approved_datetime: string;
+  attachments?: AppointmentAttachment[];
+  created_at: string;
+  dignitary: Dignitary; // MUST DEPRECATE
+  internal_secretariat_notes: string;
   last_updated_by: number;
   last_updated_by_user: User;
-  attachments?: AppointmentAttachment[];
+  location: Location;
+  location_id: number;
+  preferred_date: string;
+  preferred_time_of_day: string;
+  purpose: string;
+  requester: User;
+  requester_id: number;
+  requester_notes_to_secretariat: string;
+  secretariat_follow_up_actions: string;
+  secretariat_meeting_notes: string;
+  secretariat_notes_to_requester: string;
+  status: string;
+  sub_status: string;
+  updated_at: string;
+}
+
+interface AppointmentDignitary {
+  id: number;
+  appointment_id: number;
+  dignitary_id: number;
+  dignitary: Dignitary;
+  created_at?: string;
 }
 
 export type { Location, User, Dignitary, Appointment, AppointmentAttachment };

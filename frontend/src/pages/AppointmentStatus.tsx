@@ -135,10 +135,26 @@ const AppointmentStatus: React.FC = () => {
       width: 200,
       flex: 1,
       renderCell: (params: GridRenderCellParams) => {
-        const dignitary = params.row.dignitary as Dignitary;
-        if (dignitary) {
-          return `${dignitary.honorific_title} ${dignitary.first_name} ${dignitary.last_name}`;
-        } else {
+        // Check for appointment_dignitaries first (multiple dignitaries case)
+        if (params.row.appointment_dignitaries?.length > 0) {
+          const dignitariesNames = params.row.appointment_dignitaries.map((ad: any) => {
+            const dig = ad.dignitary;
+            return `${dig.honorific_title || ''} ${dig.first_name} ${dig.last_name}`;
+          });
+          
+          // Display only first dignitary with count if there are multiple
+          if (dignitariesNames.length > 1) {
+            return (
+              <div>
+                <div>{dignitariesNames[0]}</div>
+                <div style={{ color: 'gray', fontSize: '0.8rem' }}>+{dignitariesNames.length - 1} more</div>
+              </div>
+            );
+          } else {
+            return dignitariesNames[0];
+          }
+        } 
+        else {
           return 'N/A';
         }
       },
