@@ -52,6 +52,9 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import BusinessIcon from '@mui/icons-material/Business';
 import { EnumSelect } from '../components/EnumSelect';
 import { useEnums } from '../hooks/useEnums';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import Collapse from '@mui/material/Collapse';
 
 interface AppointmentFormData {
   appointment_date: string;
@@ -117,6 +120,7 @@ const AppointmentEdit: React.FC = () => {
   const [dignitaryCreated, setDignitaryCreated] = useState(false);
   const [dignitaryCreationError, setDignitaryCreationError] = useState<string | null>(null);
   const [isExtractionDisabled, setIsExtractionDisabled] = useState(false);
+  const [expandedDignitaryList, setExpandedDignitaryList] = useState(false);
 
   const { control, handleSubmit, reset } = useForm<AppointmentFormData>();
 
@@ -589,34 +593,79 @@ const AppointmentEdit: React.FC = () => {
   const renderDignitaryInfo = (appointment: Appointment) => {
     // First check if appointment has appointment_dignitaries array
     if (appointment.appointment_dignitaries && appointment.appointment_dignitaries.length > 0) {
+      const totalDignitaries = appointment.appointment_dignitaries.length;
+      
       return (
         <>
           <Typography variant="h6" gutterBottom color="primary">
-            Dignitaries ({appointment.appointment_dignitaries.length})
+            Dignitaries ({totalDignitaries})
           </Typography>
-          {appointment.appointment_dignitaries.map((appointmentDignitary: AppointmentDignitary, index: number) => {
-            const dig = appointmentDignitary.dignitary;
-            return (
-              <Box 
-                key={dig.id} 
-                sx={{ 
-                  mb: 2, 
-                  p: 2, 
-                  border: '1px solid', 
-                  borderColor: 'divider', 
-                  borderRadius: 1,
-                  backgroundColor: 'transparent'
-                }}
-              >
-                <Typography>
-                  {dig.honorific_title || ''} {dig.first_name} {dig.last_name}
-                </Typography>
-                <Typography color="text.secondary" sx={{ mt: 1 }}>
-                  {dig.organization} - {dig.title_in_organization} | {dig.email} | {dig.phone}
-                </Typography>
-              </Box>
-            );
-          })}
+          
+          {/* Always show the first dignitary */}
+          {appointment.appointment_dignitaries.length > 0 && (
+            <Box 
+              key={appointment.appointment_dignitaries[0].dignitary.id} 
+              sx={{ 
+                mb: 2, 
+                p: 2, 
+                border: '1px solid', 
+                borderColor: 'divider', 
+                borderRadius: 1,
+                backgroundColor: 'transparent'
+              }}
+            >
+              <Typography>
+                {appointment.appointment_dignitaries[0].dignitary.honorific_title || ''} {appointment.appointment_dignitaries[0].dignitary.first_name} {appointment.appointment_dignitaries[0].dignitary.last_name}
+              </Typography>
+              <Typography color="text.secondary" sx={{ mt: 1 }}>
+                {appointment.appointment_dignitaries[0].dignitary.organization} - {appointment.appointment_dignitaries[0].dignitary.title_in_organization} | {appointment.appointment_dignitaries[0].dignitary.email} | {appointment.appointment_dignitaries[0].dignitary.phone}
+              </Typography>
+            </Box>
+          )}
+          
+          {/* Collapsible section for additional dignitaries */}
+          {totalDignitaries > 1 && (
+            <Collapse in={expandedDignitaryList} timeout="auto" unmountOnExit>
+              {appointment.appointment_dignitaries.slice(1).map((appointmentDignitary: AppointmentDignitary) => {
+                const dig = appointmentDignitary.dignitary;
+                return (
+                  <Box 
+                    key={dig.id} 
+                    sx={{ 
+                      mb: 2, 
+                      p: 2, 
+                      border: '1px solid', 
+                      borderColor: 'divider', 
+                      borderRadius: 1,
+                      backgroundColor: 'transparent'
+                    }}
+                  >
+                    <Typography>
+                      {dig.honorific_title || ''} {dig.first_name} {dig.last_name}
+                    </Typography>
+                    <Typography color="text.secondary" sx={{ mt: 1 }}>
+                      {dig.organization} - {dig.title_in_organization} | {dig.email} | {dig.phone}
+                    </Typography>
+                  </Box>
+                );
+              })}
+            </Collapse>
+          )}
+          
+          {totalDignitaries > 1 && (
+            <Button
+              variant="text" 
+              color="primary"
+              onClick={() => setExpandedDignitaryList(!expandedDignitaryList)}
+              startIcon={expandedDignitaryList ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+              sx={{ mt: 1 }}
+            >
+              {expandedDignitaryList 
+                ? "Show less" 
+                : `Show ${totalDignitaries - 1} more ${totalDignitaries - 1 === 1 ? "dignitary" : "dignitaries"}`
+              }
+            </Button>
+          )}
         </>
       );
     } 
