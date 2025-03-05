@@ -4,6 +4,7 @@ from .dignitaryPointOfContact import DignitaryPointOfContact, RelationshipType
 from .location import Location
 from .appointment import Appointment, AppointmentStatus, AppointmentTimeOfDay, AppointmentSubStatus, AppointmentType
 from .appointmentAttachment import AppointmentAttachment, AttachmentType
+from .appointmentDignitary import AppointmentDignitary
 from database import Base
 
 __all__ = [
@@ -23,4 +24,5 @@ __all__ = [
     'AppointmentType',
     'AppointmentAttachment',
     'AttachmentType',
+    'AppointmentDignitary',
 ] 

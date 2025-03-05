@@ -28,6 +28,13 @@ import {
   CircularProgress,
   LinearProgress,
   FormHelperText,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemSecondaryAction,
+  IconButton,
+  Card,
+  CardContent,
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import LocationAutocomplete from './LocationAutocomplete';
@@ -40,6 +47,9 @@ import { useSnackbar } from 'notistack';
 import { Location, Dignitary, Appointment } from '../models/types';
 import { EnumSelect } from './EnumSelect';
 import { useEnums } from '../hooks/useEnums';
+import DeleteIcon from '@mui/icons-material/Delete';
+import AddIcon from '@mui/icons-material/Add';
+import EditIcon from '@mui/icons-material/Edit';
 
 // Remove the hardcoded enum and add a state for time of day options
 // const AppointmentTimeOfDay = {
@@ -85,6 +95,22 @@ interface DignitaryFormData {
   dignitaryGurudevMeetingNotes?: string;
 }
 
+// Create a type that makes all fields in Dignitary optional
+type PartialDignitary = Partial<Dignitary>;
+
+// New interface for selected dignitaries
+interface SelectedDignitary extends PartialDignitary {
+  id: number; // Only id is required
+  isNew?: boolean;
+  relationshipType?: string;
+  previousId?: number;
+  poc_relationship_type?: string;
+  first_name: string; // First name is required
+  last_name: string; // Last name is required
+  created_by?: number; // Add created_by property
+  created_at?: string; // Add created_at property
+}
+
 // Step 3: Appointment Information
 interface AppointmentFormData {
   purpose: string;
@@ -105,6 +131,10 @@ export const AppointmentRequestForm: React.FC = () => {
   const [submittedAppointment, setSubmittedAppointment] = useState<AppointmentResponse | null>(null);
   // Use any type to avoid TypeScript errors with the selectedDignitary state
   const [selectedDignitary, setSelectedDignitary] = useState<any>(null);
+  // New state for multiple dignitaries
+  const [selectedDignitaries, setSelectedDignitaries] = useState<SelectedDignitary[]>([]);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingDignitaryIndex, setEditingDignitaryIndex] = useState<number | null>(null);
   const [showWarningDialog, setShowWarningDialog] = useState(false);
   const navigate = useNavigate();
   const theme = useTheme();
@@ -117,6 +147,9 @@ export const AppointmentRequestForm: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Add a state to track if the selected dignitary has been modified
+  const [isDignitaryModified, setIsDignitaryModified] = useState<boolean>(false);
 
   // Fetch status options
   const { data: statusOptions = [] } = useQuery<string[]>({
@@ -223,8 +256,6 @@ export const AppointmentRequestForm: React.FC = () => {
     dignitaryForm.setValue('dignitaryOrganization', dignitary.organization);
     dignitaryForm.setValue('dignitaryBioSummary', dignitary.bio_summary);
     dignitaryForm.setValue('dignitaryLinkedInOrWebsite', dignitary.linked_in_or_website || '');
-    // Map country, state, city from the dignitary object
-    // These fields might be named differently in the Dignitary interface
     dignitaryForm.setValue('dignitaryCountry', dignitary.country || '');
     dignitaryForm.setValue('dignitaryState', dignitary.state || '');
     dignitaryForm.setValue('dignitaryCity', dignitary.city || '');
@@ -234,17 +265,49 @@ export const AppointmentRequestForm: React.FC = () => {
     dignitaryForm.setValue('dignitaryGurudevMeetingNotes', dignitary.gurudev_meeting_notes || '');
     
     // Set the POC relationship type from the dignitary data
-    // This might need to be adjusted based on the actual Dignitary interface
     if (dignitary.relationship_type) {
       console.log('Setting POC relationship type from dignitary data:', dignitary.relationship_type);
       dignitaryForm.setValue('pocRelationshipType', dignitary.relationship_type);
     } else {
-      // If relationship_type is missing (which shouldn't happen with our updated backend),
-      // default to the first relationship type
+      // If relationship_type is missing, default to the first relationship type
       console.warn('Dignitary data missing relationship_type, using default');
-      // dignitaryForm.setValue('pocRelationshipType', relationshipTypes[0] || 'Direct');
     }
+    
+    // Reset the modification flag when populating the form
+    setIsDignitaryModified(false);
   };
+
+  // Add an effect to watch for form changes to detect modifications
+  useEffect(() => {
+    const subscription = dignitaryForm.watch((value, { name, type }) => {
+      // Only check for modifications if we're in existing dignitary mode
+      if (dignitaryForm.getValues().isExistingDignitary && selectedDignitary) {
+        const currentValues = dignitaryForm.getValues();
+        const hasChanges = 
+          selectedDignitary.honorific_title !== currentValues.dignitaryHonorificTitle ||
+          selectedDignitary.first_name !== currentValues.dignitaryFirstName ||
+          selectedDignitary.last_name !== currentValues.dignitaryLastName ||
+          selectedDignitary.email !== currentValues.dignitaryEmail ||
+          selectedDignitary.phone !== currentValues.dignitaryPhone ||
+          selectedDignitary.primary_domain !== currentValues.dignitaryPrimaryDomain ||
+          selectedDignitary.title_in_organization !== currentValues.dignitaryTitleInOrganization ||
+          selectedDignitary.organization !== currentValues.dignitaryOrganization ||
+          selectedDignitary.bio_summary !== currentValues.dignitaryBioSummary ||
+          selectedDignitary.linked_in_or_website !== currentValues.dignitaryLinkedInOrWebsite ||
+          selectedDignitary.country !== currentValues.dignitaryCountry ||
+          selectedDignitary.state !== currentValues.dignitaryState ||
+          selectedDignitary.city !== currentValues.dignitaryCity ||
+          selectedDignitary.has_dignitary_met_gurudev !== currentValues.dignitaryHasMetGurudev ||
+          selectedDignitary.gurudev_meeting_date !== currentValues.dignitaryGurudevMeetingDate ||
+          selectedDignitary.gurudev_meeting_location !== currentValues.dignitaryGurudevMeetingLocation ||
+          selectedDignitary.gurudev_meeting_notes !== currentValues.dignitaryGurudevMeetingNotes ||
+          selectedDignitary.relationship_type !== currentValues.pocRelationshipType;
+          
+        setIsDignitaryModified(hasChanges);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [dignitaryForm, selectedDignitary]);
 
   // Update form values when userInfo changes
   useEffect(() => {
@@ -379,6 +442,209 @@ export const AppointmentRequestForm: React.FC = () => {
     }
   });
 
+  // Modify the addDignitaryToList function to call the API immediately
+  const addDignitaryToList = async () => {
+    // Validate the dignitary form
+    const isValid = await dignitaryForm.trigger();
+    if (!isValid) {
+      enqueueSnackbar('Please fill in all required fields for the dignitary', { 
+        variant: 'error',
+        autoHideDuration: 3000
+      });
+      return;
+    }
+
+    const formData = dignitaryForm.getValues();
+    
+    try {
+      let dignitaryToAdd: SelectedDignitary;
+      
+      if (formData.isExistingDignitary && formData.selectedDignitaryId) {
+        // Check if dignitary is already in the list (for edit mode)
+        if (!isEditMode && selectedDignitaries.some(d => d.id === formData.selectedDignitaryId)) {
+          enqueueSnackbar('This dignitary is already added to the appointment', { variant: 'warning' });
+          return;
+        }
+        
+        // For existing dignitary, check if it needs to be updated in the backend
+        if (isDignitaryModified) {
+          // Prepare dignitary update data
+          const dignitaryUpdateData = {
+            honorific_title: formData.dignitaryHonorificTitle,
+            first_name: formData.dignitaryFirstName,
+            last_name: formData.dignitaryLastName,
+            email: formData.dignitaryEmail,
+            phone: formData.dignitaryPhone,
+            primary_domain: formData.dignitaryPrimaryDomain,
+            title_in_organization: formData.dignitaryTitleInOrganization,
+            organization: formData.dignitaryOrganization,
+            bio_summary: formData.dignitaryBioSummary,
+            linked_in_or_website: formData.dignitaryLinkedInOrWebsite,
+            country: formData.dignitaryCountry,
+            state: formData.dignitaryState,
+            city: formData.dignitaryCity,
+            has_dignitary_met_gurudev: formData.dignitaryHasMetGurudev,
+            gurudev_meeting_date: formData.dignitaryGurudevMeetingDate,
+            gurudev_meeting_location: formData.dignitaryGurudevMeetingLocation,
+            gurudev_meeting_notes: formData.dignitaryGurudevMeetingNotes,
+            poc_relationship_type: formData.pocRelationshipType,
+          };
+          
+          // Clean data by converting empty strings to null
+          const cleanedDignitaryUpdateData = Object.fromEntries(
+            Object.entries(dignitaryUpdateData).map(([key, value]) => {
+              return [key, value === '' ? null : value];
+            })
+          );
+          
+          // Call the API to update the dignitary
+          const updatedDignitary = await updateDignitaryMutation.mutateAsync({ 
+            id: formData.selectedDignitaryId, 
+            data: cleanedDignitaryUpdateData 
+          });
+          
+          // Use the updated dignitary data
+          dignitaryToAdd = {
+            ...updatedDignitary,
+            relationshipType: formData.pocRelationshipType
+          };
+        } else {
+          // Use the existing dignitary data without changes
+          const existingDignitary = dignitaries.find(d => d.id === formData.selectedDignitaryId);
+          if (!existingDignitary) {
+            enqueueSnackbar('Selected dignitary not found', { variant: 'error' });
+            return;
+          }
+          
+          dignitaryToAdd = {
+            ...existingDignitary,
+            relationshipType: formData.pocRelationshipType
+          };
+        }
+      } else {
+        // For a new dignitary, prepare the data
+        const dignitaryCreateData = {
+          honorific_title: formData.dignitaryHonorificTitle,
+          first_name: formData.dignitaryFirstName,
+          last_name: formData.dignitaryLastName,
+          email: formData.dignitaryEmail,
+          phone: formData.dignitaryPhone || null,
+          primary_domain: formData.dignitaryPrimaryDomain,
+          title_in_organization: formData.dignitaryTitleInOrganization,
+          organization: formData.dignitaryOrganization,
+          bio_summary: formData.dignitaryBioSummary,
+          linked_in_or_website: formData.dignitaryLinkedInOrWebsite,
+          country: formData.dignitaryCountry,
+          state: formData.dignitaryState,
+          city: formData.dignitaryCity,
+          poc_relationship_type: formData.pocRelationshipType,
+          has_dignitary_met_gurudev: formData.dignitaryHasMetGurudev,
+          gurudev_meeting_date: formData.dignitaryGurudevMeetingDate,
+          gurudev_meeting_location: formData.dignitaryGurudevMeetingLocation,
+          gurudev_meeting_notes: formData.dignitaryGurudevMeetingNotes,
+        };
+        
+        // Clean data by converting empty strings to null
+        const cleanedDignitaryCreateData = Object.fromEntries(
+          Object.entries(dignitaryCreateData).map(([key, value]) => {
+            return [key, value === '' ? null : value];
+          })
+        );
+        
+        // Call the API to create the dignitary
+        const newDignitary = await createDignitaryMutation.mutateAsync(cleanedDignitaryCreateData);
+        
+        // Use the newly created dignitary
+        dignitaryToAdd = {
+          ...newDignitary,
+          relationshipType: formData.pocRelationshipType
+        };
+      }
+
+      if (isEditMode && editingDignitaryIndex !== null) {
+        // Update existing dignitary in the list
+        const updatedDignitaries = [...selectedDignitaries];
+        updatedDignitaries[editingDignitaryIndex] = dignitaryToAdd;
+        setSelectedDignitaries(updatedDignitaries);
+        setIsEditMode(false);
+        setEditingDignitaryIndex(null);
+      } else {
+        // Add new dignitary to the list
+        setSelectedDignitaries([...selectedDignitaries, dignitaryToAdd]);
+      }
+
+      // Reset form for next dignitary
+      resetDignitaryForm();
+      
+      enqueueSnackbar(
+        isEditMode 
+          ? 'Dignitary updated successfully' 
+          : isDignitaryModified && formData.isExistingDignitary
+            ? 'Dignitary updated and added to appointment'
+            : 'Dignitary added to appointment', 
+        { variant: 'success' }
+      );
+    } catch (error) {
+      console.error('Error processing dignitary:', error);
+      enqueueSnackbar('Failed to process dignitary', { variant: 'error' });
+    }
+  };
+
+  // Function to remove a dignitary from the list
+  const removeDignitaryFromList = (index: number) => {
+    const updatedDignitaries = [...selectedDignitaries];
+    updatedDignitaries.splice(index, 1);
+    setSelectedDignitaries(updatedDignitaries);
+    
+    if (isEditMode && editingDignitaryIndex === index) {
+      setIsEditMode(false);
+      setEditingDignitaryIndex(null);
+      resetDignitaryForm();
+    }
+  };
+
+  // Function to edit a dignitary in the list
+  const editDignitaryInList = (index: number) => {
+    const dignitaryToEdit = selectedDignitaries[index];
+    setIsEditMode(true);
+    setEditingDignitaryIndex(index);
+    
+    // Set form values based on the dignitary
+    dignitaryForm.setValue('isExistingDignitary', !dignitaryToEdit.isNew);
+    if (!dignitaryToEdit.isNew) {
+      dignitaryForm.setValue('selectedDignitaryId', dignitaryToEdit.id);
+    }
+    
+    // Populate the form with dignitary data
+    populateDignitaryForm(dignitaryToEdit as Dignitary);
+  };
+
+  // Reset the dignitary form
+  const resetDignitaryForm = () => {
+    dignitaryForm.reset({
+      isExistingDignitary: false,
+      selectedDignitaryId: undefined,
+      dignitaryHonorificTitle: '',
+      dignitaryFirstName: '',
+      dignitaryLastName: '',
+      dignitaryEmail: '',
+      dignitaryPhone: '',
+      dignitaryPrimaryDomain: '',
+      dignitaryTitleInOrganization: '',
+      dignitaryOrganization: '',
+      dignitaryBioSummary: '',
+      dignitaryLinkedInOrWebsite: '',
+      dignitaryCountry: '',
+      dignitaryState: '',
+      dignitaryCity: '',
+      dignitaryHasMetGurudev: false,
+      pocRelationshipType: '',
+      dignitaryGurudevMeetingDate: '',
+      dignitaryGurudevMeetingLocation: '',
+      dignitaryGurudevMeetingNotes: '',
+    });
+  };
+
   const handleNext = async (skipExistingCheck: boolean = false) => {
     if (activeStep === 0) {
       // Validate POC form
@@ -401,149 +667,33 @@ export const AppointmentRequestForm: React.FC = () => {
         }
       })();
     } else if (activeStep === 1) {
-      // Validate dignitary form
-      const isValid = await dignitaryForm.trigger();
-      if (!isValid) {
-        // Show error notification
-        enqueueSnackbar('Please fill in all required fields', { 
-          variant: 'error',
-          autoHideDuration: 3000
-        });
-        return;
+      // For step 2, check if we have at least one dignitary
+      if (selectedDignitaries.length === 0) {
+        // If the current form has data, try to add it
+        const currentFormData = dignitaryForm.getValues();
+        if (currentFormData.dignitaryFirstName && currentFormData.dignitaryLastName) {
+          // Try to add the current dignitary
+          await addDignitaryToList();
+        }
+        
+        // Check again after potential addition
+        if (selectedDignitaries.length === 0) {
+          enqueueSnackbar('Please add at least one dignitary', { 
+            variant: 'error',
+            autoHideDuration: 3000
+          });
+          return;
+        }
       }
       
-      const dignitaryData = await dignitaryForm.handleSubmit(async (data) => {
-        try {
-          if (data.isExistingDignitary && data.selectedDignitaryId && !skipExistingCheck) {
-            // Check for existing appointments before proceeding
-            const existingAppointments = await checkExistingAppointments(data.selectedDignitaryId);
-            if (existingAppointments) {
-              setSelectedDignitary({
-                ...selectedDignitary,
-                appointments: existingAppointments,
-              });
-              setShowWarningDialog(true);
-              return; // Stop here and wait for user confirmation
-            }
-          }
-          
-          if (data.isExistingDignitary && data.selectedDignitaryId) {
-            // Update existing dignitary if any field has changed
-            const selectedDignitary = dignitaries.find(d => d.id === data.selectedDignitaryId);
-            const hasChanges = selectedDignitary && (
-              selectedDignitary.honorific_title !== data.dignitaryHonorificTitle ||
-              selectedDignitary.first_name !== data.dignitaryFirstName ||
-              selectedDignitary.last_name !== data.dignitaryLastName ||
-              selectedDignitary.email !== data.dignitaryEmail ||
-              selectedDignitary.phone !== data.dignitaryPhone ||
-              selectedDignitary.primary_domain !== data.dignitaryPrimaryDomain ||
-              selectedDignitary.title_in_organization !== data.dignitaryTitleInOrganization ||
-              selectedDignitary.organization !== data.dignitaryOrganization ||
-              selectedDignitary.bio_summary !== data.dignitaryBioSummary ||
-              selectedDignitary.linked_in_or_website !== data.dignitaryLinkedInOrWebsite ||
-              selectedDignitary.country !== data.dignitaryCountry ||
-              selectedDignitary.state !== data.dignitaryState ||
-              selectedDignitary.city !== data.dignitaryCity ||
-              selectedDignitary.has_dignitary_met_gurudev !== data.dignitaryHasMetGurudev ||
-              selectedDignitary.gurudev_meeting_date !== data.dignitaryGurudevMeetingDate ||
-              selectedDignitary.gurudev_meeting_location !== data.dignitaryGurudevMeetingLocation ||
-              selectedDignitary.gurudev_meeting_notes !== data.dignitaryGurudevMeetingNotes ||
-              selectedDignitary.relationship_type !== data.pocRelationshipType
-            );
-
-            if (hasChanges) {
-              // Dignitary update data including poc_relationship_type
-              const dignitaryUpdateData = {
-                honorific_title: data.dignitaryHonorificTitle,
-                first_name: data.dignitaryFirstName,
-                last_name: data.dignitaryLastName,
-                email: data.dignitaryEmail,
-                phone: data.dignitaryPhone,
-                primary_domain: data.dignitaryPrimaryDomain,
-                title_in_organization: data.dignitaryTitleInOrganization,
-                organization: data.dignitaryOrganization,
-                bio_summary: data.dignitaryBioSummary,
-                linked_in_or_website: data.dignitaryLinkedInOrWebsite,
-                country: data.dignitaryCountry,
-                state: data.dignitaryState,
-                city: data.dignitaryCity,
-                has_dignitary_met_gurudev: data.dignitaryHasMetGurudev,
-                gurudev_meeting_date: data.dignitaryGurudevMeetingDate,
-                gurudev_meeting_location: data.dignitaryGurudevMeetingLocation,
-                gurudev_meeting_notes: data.dignitaryGurudevMeetingNotes,
-                poc_relationship_type: data.pocRelationshipType,
-              };
-
-              console.log('Updating dignitary with data:', JSON.stringify(dignitaryUpdateData, null, 2));
-              console.log('Specific field values:');
-              console.log('- honorific_title:', data.dignitaryHonorificTitle, typeof data.dignitaryHonorificTitle);
-              console.log('- primary_domain:', data.dignitaryPrimaryDomain, typeof data.dignitaryPrimaryDomain);
-              console.log('- poc_relationship_type:', data.pocRelationshipType, typeof data.pocRelationshipType);
-
-              // Convert empty strings to null for optional fields
-              const cleanedDignitaryUpdateData = Object.fromEntries(
-                Object.entries(dignitaryUpdateData).map(([key, value]) => {
-                  // If the value is an empty string, convert it to null
-                  if (value === '') {
-                    return [key, null];
-                  }
-                  return [key, value];
-                })
-              );
-
-              console.log('Cleaned dignitary update data:', JSON.stringify(cleanedDignitaryUpdateData, null, 2));
-
-              await updateDignitaryMutation.mutateAsync({ 
-                id: data.selectedDignitaryId, 
-                data: cleanedDignitaryUpdateData 
-              });
-            }
-          } else {
-            // Create new dignitary
-            const dignitaryCreateData = {
-              honorific_title: data.dignitaryHonorificTitle,
-              first_name: data.dignitaryFirstName,
-              last_name: data.dignitaryLastName,
-              email: data.dignitaryEmail,
-              phone: data.dignitaryPhone || null,
-              primary_domain: data.dignitaryPrimaryDomain,
-              title_in_organization: data.dignitaryTitleInOrganization,
-              organization: data.dignitaryOrganization,
-              bio_summary: data.dignitaryBioSummary,
-              linked_in_or_website: data.dignitaryLinkedInOrWebsite,
-              country: data.dignitaryCountry,
-              state: data.dignitaryState,
-              city: data.dignitaryCity,
-              poc_relationship_type: data.pocRelationshipType,
-              has_dignitary_met_gurudev: data.dignitaryHasMetGurudev,
-              gurudev_meeting_date: data.dignitaryGurudevMeetingDate,
-              gurudev_meeting_location: data.dignitaryGurudevMeetingLocation,
-              gurudev_meeting_notes: data.dignitaryGurudevMeetingNotes,
-            };
-
-            console.log('Creating dignitary with data:', dignitaryCreateData);
-
-            // Convert empty strings to null for optional fields
-            const cleanedDignitaryCreateData = Object.fromEntries(
-              Object.entries(dignitaryCreateData).map(([key, value]) => {
-                // If the value is an empty string, convert it to null
-                if (value === '') {
-                  return [key, null];
-                }
-                return [key, value];
-              })
-            );
-
-            console.log('Cleaned dignitary create data:', JSON.stringify(cleanedDignitaryCreateData, null, 2));
-
-            await createDignitaryMutation.mutateAsync(cleanedDignitaryCreateData);
-          }
-          
-          setActiveStep(2);
-        } catch (error) {
-          console.error('Error in dignitary form submission:', error);
-        }
-      })();
+      // Since dignitaries are already created/updated when added to the list,
+      // we just need to collect their IDs
+      const dignitaryIds = selectedDignitaries.map(d => d.id);
+      
+      // Store the list of dignitary IDs for appointment creation
+      sessionStorage.setItem('appointmentDignitaryIds', JSON.stringify(dignitaryIds));
+      
+      setActiveStep(2);
     } else if (activeStep === 2) {
       // Validate appointment form
       const isValid = await appointmentForm.trigger();
@@ -558,8 +708,16 @@ export const AppointmentRequestForm: React.FC = () => {
       
       const appointmentData = await appointmentForm.handleSubmit(async (data) => {
         try {
+          // Get dignitary IDs from storage
+          const dignitary_ids = JSON.parse(sessionStorage.getItem('appointmentDignitaryIds') || '[]');
+          
+          if (dignitary_ids.length === 0) {
+            enqueueSnackbar('No dignitaries selected for appointment', { variant: 'error' });
+            return;
+          }
+          
           const appointmentCreateData = {
-            dignitary_id: dignitaryForm.getValues().selectedDignitaryId,
+            dignitary_ids: dignitary_ids,
             purpose: data.purpose,
             preferred_date: data.preferredDate,
             preferred_time_of_day: data.preferredTimeOfDay,
@@ -689,11 +847,85 @@ export const AppointmentRequestForm: React.FC = () => {
 
       case 1:
         return (
-          <Box component="form" onSubmit={dignitaryForm.handleSubmit(() => handleNext(false))}>
+          <Box>
             <Grid container spacing={3}>
               <Grid item xs={12}>
                 <Typography variant="h6" gutterBottom>
                   Dignitary Information
+                </Typography>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  Add one or more dignitaries to this appointment request.
+                </Typography>
+              </Grid>
+
+              {/* List of selected dignitaries */}
+              {selectedDignitaries.length > 0 && (
+                <Grid item xs={12}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Selected Dignitaries ({selectedDignitaries.length})
+                  </Typography>
+                  <List>
+                    {selectedDignitaries.map((dignitary, index) => (
+                      <ListItem 
+                        key={index}
+                        component={Paper}
+                        elevation={1}
+                        sx={{ 
+                          mb: 1,
+                          borderRadius: 1,
+                          border: '1px solid',
+                          borderColor: 'divider',
+                        }}
+                      >
+                        <ListItemText
+                          primary={`${dignitary.honorific_title} ${dignitary.first_name} ${dignitary.last_name}`}
+                          secondary={
+                            <>
+                              <Typography component="span" variant="body2">
+                                {dignitary.title_in_organization}, {dignitary.organization}
+                              </Typography>
+                              <br />
+                              <Typography component="span" variant="body2" color="text.secondary">
+                                Relationship: {dignitary.relationship_type || dignitary.poc_relationship_type}
+                              </Typography>
+                              {dignitary.isNew && (
+                                <Chip 
+                                  size="small" 
+                                  label="New" 
+                                  color="primary" 
+                                  sx={{ ml: 1 }} 
+                                />
+                              )}
+                            </>
+                          }
+                        />
+                        <ListItemSecondaryAction>
+                          <IconButton 
+                            edge="end" 
+                            aria-label="edit"
+                            onClick={() => editDignitaryInList(index)}
+                            sx={{ mr: 1 }}
+                          >
+                            <EditIcon />
+                          </IconButton>
+                          <IconButton 
+                            edge="end" 
+                            aria-label="delete"
+                            onClick={() => removeDignitaryFromList(index)}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </ListItemSecondaryAction>
+                      </ListItem>
+                    ))}
+                  </List>
+                </Grid>
+              )}
+
+              <Grid item xs={12}>
+                <Divider sx={{ my: 2 }} />
+                <Typography variant="subtitle1" gutterBottom>
+                  {isEditMode ? 'Edit Dignitary' : 'Add a Dignitary'}
                 </Typography>
               </Grid>
 
@@ -753,6 +985,7 @@ export const AppointmentRequestForm: React.FC = () => {
                   </RadioGroup>
                 </FormControl>
               </Grid>
+              
               {dignitaryForm.watch('isExistingDignitary') ? (
                 <Grid item xs={12} md={6}>
                   <FormControl fullWidth>
@@ -1052,10 +1285,21 @@ export const AppointmentRequestForm: React.FC = () => {
                 </>
               )}
 
-
+              {/* Add button at the bottom of the form */}
+              <Grid item xs={12}>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    startIcon={isEditMode ? <EditIcon /> : <AddIcon />}
+                    onClick={addDignitaryToList}
+                  >
+                    {getButtonText()}
+                  </Button>
+                </Box>
+              </Grid>
             </Grid>
           </Box>
-
         );
 
       case 2:
@@ -1259,11 +1503,7 @@ export const AppointmentRequestForm: React.FC = () => {
   const renderConfirmationDialog = () => {
     if (!submittedAppointment) return null;
 
-    const dignitary = dignitaries.find(d => d.id === submittedAppointment.dignitary_id);
     const location = locations.find(l => l.id === submittedAppointment.location_id);
-    const dignitaryName = dignitary ? 
-      `${dignitary.honorific_title} ${dignitary.first_name} ${dignitary.last_name}` : 
-      'Selected Dignitary';
 
     return (
       <Dialog 
@@ -1291,7 +1531,9 @@ export const AppointmentRequestForm: React.FC = () => {
           <Grid container spacing={2}>
             <Grid item xs={12}>
               <Typography variant="body1">
-                <strong>Dignitary:</strong> {dignitaryName}
+                <strong>Dignitaries:</strong> {selectedDignitaries.map(d => 
+                  `${d.honorific_title} ${d.first_name} ${d.last_name}`
+                ).join(', ')}
               </Typography>
             </Grid>
             <Grid item xs={12}>
@@ -1426,6 +1668,17 @@ export const AppointmentRequestForm: React.FC = () => {
         </DialogActions>
       </Dialog>
     );
+  };
+
+  // Update the button text based on the current state
+  const getButtonText = () => {
+    if (isEditMode) {
+      return "Update Dignitary";
+    } else if (dignitaryForm.watch('isExistingDignitary') && isDignitaryModified) {
+      return "Update and Add Dignitary";
+    } else {
+      return "Add Dignitary";
+    }
   };
 
   return (

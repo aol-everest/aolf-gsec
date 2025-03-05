@@ -48,7 +48,7 @@ class Appointment(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     requester_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    dignitary_id = Column(Integer, ForeignKey("dignitaries.id"), nullable=False)
+    dignitary_id = Column(Integer, ForeignKey("dignitaries.id"), nullable=True)
     purpose = Column(Text, nullable=False)
     preferred_date = Column(Date, nullable=False)
     preferred_time_of_day = Column(Enum(AppointmentTimeOfDay), nullable=False)
@@ -77,6 +77,7 @@ class Appointment(Base):
         foreign_keys=[requester_id]
     )
     dignitary = relationship("Dignitary", back_populates="appointments", foreign_keys=[dignitary_id])
+    appointment_dignitaries = relationship("AppointmentDignitary", back_populates="appointment", cascade="all, delete-orphan")
     location = relationship("Location", back_populates="appointments")
     approved_by_user = relationship(
         "User",

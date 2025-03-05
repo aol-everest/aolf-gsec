@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from typing import Optional, List, Callable
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import jwt
 from google.oauth2 import id_token
 from google.auth.transport import requests
@@ -22,8 +22,9 @@ import io
 import tempfile
 from utils.business_card import extract_business_card_info, BusinessCardExtractionError
 import inspect
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, joinedload
 from sqlalchemy.orm import aliased
+from sqlalchemy import or_
 
 # Get environment variables
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
@@ -248,7 +249,6 @@ async def create_appointment(
         # Create appointment
         db_appointment = models.Appointment(
             requester_id=current_user.id,
-            dignitary_id=appointment.dignitary_id,
             status=models.AppointmentStatus.PENDING,
             purpose=appointment.purpose,
             preferred_date=appointment.preferred_date,
@@ -259,10 +259,20 @@ async def create_appointment(
         db.add(db_appointment)
         db.commit()
         db.refresh(db_appointment)
-        
+
+        # Associate dignitaries with the appointment
+        for dignitary_id in appointment.dignitary_ids:  # Assuming appointment.dignitary_ids is a list of IDs
+            appointment_dignitary = models.AppointmentDignitary(
+                appointment_id=db_appointment.id,
+                dignitary_id=dignitary_id
+            )
+            db.add(appointment_dignitary)
+
+        db.commit()  # Commit the changes for the appointment_dignitary records
+
         # Send email notifications
         notify_appointment_creation(db, db_appointment)
-        
+
         return db_appointment
     except Exception as e:
         print(f"Error creating appointment: {str(e)}")  # Debug log
@@ -413,11 +423,18 @@ async def get_my_appointments(
     db: Session = Depends(get_db)
 ):
     """Get all appointments requested by the current user"""
-    appointments = (
-        db.query(models.Appointment)
-        .filter(models.Appointment.requester_id == current_user.id)
-        .all()
+    query = db.query(models.Appointment).filter(
+        models.Appointment.requester_id == current_user.id
+    ).order_by(models.Appointment.id.asc())
+    
+    # Add options to eagerly load appointment_dignitaries and their associated dignitaries
+    query = query.options(
+        joinedload(models.Appointment.appointment_dignitaries).joinedload(models.AppointmentDignitary.dignitary),
+        joinedload(models.Appointment.requester)
     )
+
+    appointments = query.all()
+
     print(f"Appointments: {appointments}")
     return appointments 
 
@@ -427,14 +444,21 @@ async def get_my_appointments_for_dignitary(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get all appointments requested by the current user for a specific dignitary"""
+    """Get all appointments for a specific dignitary"""
     appointments = (
         db.query(models.Appointment)
-        .filter(models.Appointment.requester_id == current_user.id, models.Appointment.dignitary_id == dignitary_id)
+        .join(models.AppointmentDignitary)
+        .filter(
+            models.AppointmentDignitary.dignitary_id == dignitary_id,
+            models.Appointment.requester_id == current_user.id
+        )
+        .options(
+            joinedload(models.Appointment.appointment_dignitaries).joinedload(models.AppointmentDignitary.dignitary)
+        )
         .all()
     )
     print(f"Appointments: {appointments}")
-    return appointments 
+    return appointments
 
 @app.get("/admin/dignitaries/all", response_model=List[schemas.DignitaryAdmin])
 @requires_role(models.UserRole.SECRETARIAT)
@@ -459,10 +483,50 @@ async def get_all_appointments(
     
     if status:
         query = query.filter(models.Appointment.status == status)
-    
+
+    # Add options to eagerly load appointment_dignitaries and their associated dignitaries
+    query = query.options(
+        joinedload(models.Appointment.appointment_dignitaries).joinedload(models.AppointmentDignitary.dignitary),
+        joinedload(models.Appointment.requester)
+    )
+
     appointments = query.all()
     print(f"Appointments: {appointments}")
-    return appointments 
+    return appointments
+
+@app.get("/admin/appointments/upcoming", response_model=List[schemas.AppointmentAdmin])
+@requires_role(models.UserRole.SECRETARIAT)
+async def get_upcoming_appointments(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+    status: Optional[str] = None
+):
+    """Get all upcoming appointments (future appointment_date, not NULL)"""
+    query = db.query(models.Appointment).filter(
+        or_(
+            models.Appointment.appointment_date == None,
+            models.Appointment.appointment_date >= date.today()-timedelta(days=1),
+        ),
+        models.Appointment.status not in [
+            models.AppointmentStatus.CANCELLED, 
+            models.AppointmentStatus.REJECTED, 
+            models.AppointmentStatus.COMPLETED,
+        ],
+    ).order_by(models.Appointment.appointment_date.asc())
+    
+    if status:
+        query = query.filter(models.Appointment.status == status)
+    
+    # Add options to eagerly load appointment_dignitaries and their associated dignitaries
+    query = query.options(
+        joinedload(models.Appointment.appointment_dignitaries).joinedload(models.AppointmentDignitary.dignitary),
+        joinedload(models.Appointment.requester)
+    )
+    
+    appointments = query.all()
+    print(f"Upcoming appointments: {appointments}")
+    return appointments
+
 
 @app.get("/usher/appointments", response_model=List[schemas.AppointmentUsherView])
 @requires_any_role([models.UserRole.USHER, models.UserRole.SECRETARIAT])
@@ -511,6 +575,10 @@ async def get_appointment(
     appointment = (
         db.query(models.Appointment)
         .filter(models.Appointment.id == appointment_id)
+        .options(
+            joinedload(models.Appointment.appointment_dignitaries).joinedload(models.AppointmentDignitary.dignitary),
+            joinedload(models.Appointment.requester)
+        )
         .first()
     )
     print(f"Appointment: {appointment}")
@@ -1322,3 +1390,95 @@ async def health_check():
         "timestamp": datetime.now().isoformat(),
         "version": app.version,
     }
+
+@app.post("/appointments/{appointment_id}/dignitaries", response_model=List[schemas.AppointmentDignitary])
+async def add_dignitaries_to_appointment(
+    appointment_id: int,
+    dignitary_ids: List[int],
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Add dignitaries to an existing appointment"""
+    appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    for dignitary_id in dignitary_ids:
+        # Check if the association already exists
+        existing = (
+            db.query(models.AppointmentDignitary)
+            .filter(
+                models.AppointmentDignitary.appointment_id == appointment_id,
+                models.AppointmentDignitary.dignitary_id == dignitary_id
+            )
+            .first()
+        )
+        
+        if not existing:
+            appointment_dignitary = models.AppointmentDignitary(
+                appointment_id=appointment_id,
+                dignitary_id=dignitary_id
+            )
+            db.add(appointment_dignitary)
+
+    db.commit()
+
+    # Retrieve the updated list of dignitaries for the appointment
+    updated_dignitaries = db.query(models.AppointmentDignitary).filter(models.AppointmentDignitary.appointment_id == appointment_id).all()
+    
+    return updated_dignitaries
+
+@app.delete("/appointments/{appointment_id}/dignitaries/{dignitary_id}", status_code=204)
+async def remove_dignitary_from_appointment(
+    appointment_id: int,
+    dignitary_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Remove a dignitary from an appointment"""
+    appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    # Check if the dignitary is associated with the appointment
+    appointment_dignitary = (
+        db.query(models.AppointmentDignitary)
+        .filter(
+            models.AppointmentDignitary.appointment_id == appointment_id,
+            models.AppointmentDignitary.dignitary_id == dignitary_id
+        )
+        .first()
+    )
+    
+    if not appointment_dignitary:
+        raise HTTPException(status_code=404, detail="Dignitary not associated with this appointment")
+    
+    # Delete the association
+    db.delete(appointment_dignitary)
+    db.commit()
+    
+    return None
+
+@app.get("/appointments/{appointment_id}/dignitaries", response_model=List[schemas.Dignitary])
+async def get_appointment_dignitaries(
+    appointment_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Get all dignitaries associated with an appointment"""
+    appointment = db.query(models.Appointment).filter(
+        models.Appointment.id == appointment_id,
+        models.Appointment.requester_id == current_user.id,
+    ).first()
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    # Get all dignitaries associated with the appointment
+    dignitaries = (
+        db.query(models.Dignitary)
+        .join(models.AppointmentDignitary)
+        .filter(models.AppointmentDignitary.appointment_id == appointment_id)
+        .all()
+    )
+    
+    return dignitaries

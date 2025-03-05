@@ -71,6 +71,10 @@ class Token(BaseModel):
     user_id: int
     user: User
 
+class AppointmentDignitaryBase(BaseModel):
+    appointment_id: int
+    dignitary_id: int
+
 class DignitaryBase(BaseModel):
     honorific_title: Optional[HonorificTitle] = None
     first_name: str
@@ -111,10 +115,19 @@ class DignitaryUpdate(DignitaryBase):
     city: Optional[str] = None
     poc_relationship_type: Optional[RelationshipType] = None
 
+class AppointmentDignitaryWithAppointment(AppointmentDignitaryBase):
+    id: int
+    created_at: datetime
+    appointment: "Appointment"
+
+    class Config:
+        orm_mode = True
+
 class Dignitary(DignitaryBase):
     id: int
     created_by: int
     created_at: datetime
+    appointment_dignitaries: List[AppointmentDignitaryWithAppointment]
 
     class Config:
         orm_mode = True
@@ -125,10 +138,19 @@ class DignitaryWithRelationship(Dignitary):
     class Config:
         orm_mode = True
 
+class AppointmentDignitaryWithAppointmentAdmin(AppointmentDignitaryBase):
+    id: int
+    created_at: datetime
+    appointment: "AppointmentAdmin"
+
+    class Config:
+        orm_mode = True
+
 class DignitaryAdmin(DignitaryBase):
     id: int
     created_by: int
     created_at: datetime
+    appointment_dignitaries: List[AppointmentDignitaryWithAppointmentAdmin]
 
     class Config:
         orm_mode = True
@@ -186,13 +208,21 @@ class LocationAdmin(LocationBase):
     attachment_thumbnail_path: Optional[str] = None
 
 
+class AppointmentDignitaryWithDignitary(AppointmentDignitaryBase):
+    id: int
+    created_at: datetime
+    dignitary: Dignitary
+
+    class Config:
+        orm_mode = True
+
 class AppointmentBase(BaseModel):
     location_id: Optional[int] = None
     location: Optional[Location] = None
     status: Optional[AppointmentStatus] = None
 
 class AppointmentCreate(AppointmentBase):
-    dignitary_id: int
+    dignitary_ids: List[int]
     purpose: str
     preferred_date: date
     preferred_time_of_day: Optional[AppointmentTimeOfDay] = None
@@ -207,6 +237,7 @@ class Appointment(AppointmentBase):
     preferred_time_of_day: Optional[AppointmentTimeOfDay] = None
     requester_notes_to_secretariat: Optional[str] = None
     dignitary: Dignitary
+    appointment_dignitaries: List[AppointmentDignitaryWithDignitary]
     status: AppointmentStatus
     sub_status: AppointmentSubStatus
     appointment_type: Optional[AppointmentType] = None
@@ -224,6 +255,8 @@ class Appointment(AppointmentBase):
             date: lambda v: v.strftime("%Y-%m-%d")
         }
 
+
+
 class AppointmentAdminUpdate(AppointmentBase):
     appointment_date: Optional[date] = None
     appointment_time: Optional[str] = None
@@ -238,6 +271,14 @@ class AppointmentAdminUpdate(AppointmentBase):
     approved_by: Optional[int] = None
     last_updated_by: Optional[int] = None
 
+class AppointmentDignitaryWithDignitaryAdmin(AppointmentDignitaryBase):
+    id: int
+    created_at: datetime
+    dignitary: DignitaryAdmin
+
+    class Config:
+        orm_mode = True
+
 class AppointmentAdmin(AppointmentBase):
     id: int
     requester_id: int
@@ -246,7 +287,7 @@ class AppointmentAdmin(AppointmentBase):
     preferred_date: date
     preferred_time_of_day: Optional[AppointmentTimeOfDay] = None
     requester_notes_to_secretariat: Optional[str] = None
-    dignitary: DignitaryAdmin
+    appointment_dignitaries: List[AppointmentDignitaryWithDignitaryAdmin]
     requester: User
     status: AppointmentStatus
     sub_status: Optional[AppointmentSubStatus] = None
@@ -361,3 +402,11 @@ class AppointmentUsherView(BaseModel):
             date: lambda v: v.strftime("%Y-%m-%d")
         }
 
+class AppointmentDignitary(AppointmentDignitaryBase):
+    id: int
+    created_at: datetime
+    appointment: Appointment
+    dignitary: Dignitary
+
+    class Config:
+        orm_mode = True

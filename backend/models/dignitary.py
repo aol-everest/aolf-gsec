@@ -104,5 +104,6 @@ class Dignitary(Base):
     # Relationships
     creator = relationship("User", foreign_keys=[created_by])
     appointments = relationship("Appointment", back_populates="dignitary", foreign_keys="Appointment.dignitary_id")
+    appointment_dignitaries = relationship("AppointmentDignitary", back_populates="dignitary", cascade="all, delete-orphan")
     source_appointment = relationship("Appointment", foreign_keys=[source_appointment_id])
     point_of_contacts = relationship("DignitaryPointOfContact", back_populates="dignitary") 
