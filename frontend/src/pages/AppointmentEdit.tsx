@@ -33,7 +33,7 @@ import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AdminAppointmentsReviewRoute } from '../config/routes';
-import { Appointment, Location } from '../models/types';
+import { Appointment, Location, AppointmentDignitary } from '../models/types';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -442,14 +442,21 @@ const AppointmentEdit: React.FC = () => {
     }
   };
 
+  // This function will create a new dignitary from business card extraction
+  // and associate it with the appointment through the appointment_dignitaries structure
   const handleCreateDignitaryFromBusinessCard = async () => {
     if (!businessCardExtraction) return;
     
     try {
+      // The backend API should handle adding the new dignitary to the appointment_dignitaries array
+      // instead of replacing the deprecated dignitary field
       await api.post(`/appointments/${id}/business-card/create-dignitary`, businessCardExtraction.extraction);
       setDignitaryCreated(true);
       setBusinessCardExtraction(null);
+      // Make sure to invalidate both appointments and the specific appointment queries
+      // to ensure we get the updated appointment with the new dignitary in appointment_dignitaries
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['appointment', id] });
       enqueueSnackbar('Dignitary created successfully from business card', { variant: 'success' });
     } catch (error) {
       console.error('Error creating dignitary from business card:', error);
@@ -578,6 +585,72 @@ const AppointmentEdit: React.FC = () => {
     );
   };
 
+  // Helper function to render dignitary information
+  const renderDignitaryInfo = (appointment: Appointment) => {
+    // First check if appointment has appointment_dignitaries array
+    if (appointment.appointment_dignitaries && appointment.appointment_dignitaries.length > 0) {
+      return (
+        <>
+          <Typography variant="h6" gutterBottom color="primary">
+            Dignitaries ({appointment.appointment_dignitaries.length})
+          </Typography>
+          {appointment.appointment_dignitaries.map((appointmentDignitary: AppointmentDignitary, index: number) => {
+            const dig = appointmentDignitary.dignitary;
+            return (
+              <Box 
+                key={dig.id} 
+                sx={{ 
+                  mb: 2, 
+                  p: 2, 
+                  border: '1px solid', 
+                  borderColor: 'divider', 
+                  borderRadius: 1,
+                  backgroundColor: 'transparent'
+                }}
+              >
+                <Typography>
+                  {dig.honorific_title || ''} {dig.first_name} {dig.last_name}
+                </Typography>
+                <Typography color="text.secondary" sx={{ mt: 1 }}>
+                  {dig.organization} - {dig.title_in_organization} | {dig.email} | {dig.phone}
+                </Typography>
+              </Box>
+            );
+          })}
+        </>
+      );
+    } 
+    // Fall back to using the deprecated dignitary field for backward compatibility
+    else if (appointment.dignitary) {
+      return (
+        <>
+          <Typography variant="h6" gutterBottom color="primary">
+            Dignitary
+          </Typography>
+          <Typography>
+            {appointment.dignitary.honorific_title || ''} {appointment.dignitary.first_name} {appointment.dignitary.last_name}
+          </Typography>
+          <Typography color="text.secondary" sx={{ mt: 1 }}>
+            {appointment.dignitary.organization} - {appointment.dignitary.title_in_organization} | {appointment.dignitary.email} | {appointment.dignitary.phone}
+          </Typography>
+        </>
+      );
+    }
+    // No dignitary information available
+    else {
+      return (
+        <>
+          <Typography variant="h6" gutterBottom color="primary">
+            Dignitary
+          </Typography>
+          <Typography color="text.secondary">
+            No dignitary information available
+          </Typography>
+        </>
+      );
+    }
+  };
+
   if (isLoading || !appointment) {
     return (
       <Layout>
@@ -609,17 +682,9 @@ const AppointmentEdit: React.FC = () => {
               <Grid container spacing={3}>
                 {/* Dignitary Information (Read-only) */}
                 <Grid item xs={12} sx={{ pb: 1 }}>
-                  <Typography variant="h6" gutterBottom color="primary">
-                    Dignitary
-                  </Typography>
-                  <Typography>
-                    {appointment.dignitary.honorific_title} {appointment.dignitary.first_name} {appointment.dignitary.last_name}
-                  </Typography>
-                  <Typography color="text.secondary" sx={{ mt: 1 }}>
-                    {appointment.dignitary.organization} - {appointment.dignitary.title_in_organization} | {appointment.dignitary.email} | {appointment.dignitary.phone}
-                  </Typography>
-                  {appointment.requester_notes_to_secretariat && (
-                    <Grid item xs={12} sx={{ mt: 1 }}>
+                  {appointment && renderDignitaryInfo(appointment)}
+                  {appointment && appointment.requester_notes_to_secretariat && (
+                    <Grid item xs={12} sx={{ mt: 2 }}>
                       <Typography variant="subtitle2" color="text.secondary">Pre-meeting Notes</Typography>
                       <Typography>{appointment.requester_notes_to_secretariat}</Typography>
                     </Grid>
