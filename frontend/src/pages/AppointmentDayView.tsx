@@ -21,7 +21,7 @@ import { getStatusChipSx } from '../utils/formattingUtils';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { useQuery } from '@tanstack/react-query';
-import { Appointment } from '../models/types';
+import { Appointment, AppointmentDignitary } from '../models/types';
 import AppointmentCard from '../components/AppointmentCard';
 
 const AppointmentDayView: React.FC = () => {
@@ -59,6 +59,39 @@ const AppointmentDayView: React.FC = () => {
 
   const handleAppointmentClick = (appointmentId: number) => {
     setExpandedAppointmentId(expandedAppointmentId === appointmentId ? null : appointmentId);
+  };
+
+  // Helper function to get primary dignitary information for display
+  const renderDignitaryInfo = (appointment: Appointment) => {
+    // First check if appointment has appointment_dignitaries
+    if (appointment.appointment_dignitaries && appointment.appointment_dignitaries.length > 0) {
+      const primaryDignitary = appointment.appointment_dignitaries[0].dignitary;
+      const dignitaryCount = appointment.appointment_dignitaries.length;
+      
+      return (
+        <>
+          <Typography variant="h6" gutterBottom>
+            {primaryDignitary.honorific_title || ''} {primaryDignitary.first_name} {primaryDignitary.last_name}
+            {dignitaryCount > 1 && (
+              <Typography component="span" color="text.secondary" sx={{ ml: 1, fontSize: '0.8rem' }}>
+                (+{dignitaryCount - 1} more)
+              </Typography>
+            )}
+          </Typography>
+          <Typography color="text.secondary" gutterBottom>
+            Title: {primaryDignitary.title_in_organization}, Organization: {primaryDignitary.organization}
+          </Typography>
+        </>
+      );
+    }
+    // No dignitary information available
+    else {
+      return (
+        <Typography variant="h6" gutterBottom>
+          No dignitary information available
+        </Typography>
+      );
+    }
   };
 
   return (
@@ -136,12 +169,7 @@ const AppointmentDayView: React.FC = () => {
 
                       {/* Dignitary and Purpose */}
                       <Grid item xs={12} sm={9}>
-                        <Typography variant="h6" gutterBottom>
-                          {appointment.dignitary.honorific_title} {appointment.dignitary.first_name} {appointment.dignitary.last_name}
-                        </Typography>
-                        <Typography color="text.secondary" gutterBottom>
-                          Title: {appointment.dignitary.title_in_organization}, Organization: {appointment.dignitary.organization}
-                        </Typography>
+                        {renderDignitaryInfo(appointment)}
                         <Box sx={{ mt: 2 }}>
                           <Typography variant="body1">
                             <strong>Purpose:</strong> {appointment.purpose}

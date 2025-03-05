@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, ReactNode } from 'react';
 import {
   Container,
   Typography,
@@ -33,11 +33,17 @@ interface RequesterUsherView {
   phone_number?: string;
 }
 
+// Updated interface to support multiple dignitaries
+interface AppointmentDignitaryUsherView {
+  dignitary: DignitaryUsherView;
+}
+
 interface AppointmentUsherView {
   id: number;
   appointment_date?: string;
   appointment_time?: string;
-  dignitary: DignitaryUsherView;
+  dignitary?: DignitaryUsherView; // Keep for backward compatibility
+  appointment_dignitaries?: AppointmentDignitaryUsherView[];
   requester: RequesterUsherView;
   location?: {
     name: string;
@@ -111,10 +117,30 @@ const AppointmentUsherView: React.FC = () => {
     setSelectedDate(date);
   };
 
-  // Format dignitary name
-  const formatDignitaryName = (dignitary: DignitaryUsherView) => {
-    const honorific = dignitary.honorific_title || '';
-    return `${honorific} ${dignitary.first_name} ${dignitary.last_name}`.trim();
+  // Format dignitary name - updated to handle multiple dignitaries
+  const formatDignitaryName = (appointment: AppointmentUsherView): ReactNode => {
+    // First check for appointment_dignitaries
+    if (appointment.appointment_dignitaries && appointment.appointment_dignitaries.length > 0) {
+      const primaryDignitary = appointment.appointment_dignitaries[0].dignitary;
+      const honorific = primaryDignitary.honorific_title || '';
+      const primaryName = `${honorific} ${primaryDignitary.first_name} ${primaryDignitary.last_name}`.trim();
+      
+      // If there are additional dignitaries, show a count
+      if (appointment.appointment_dignitaries.length > 1) {
+        return (
+          <>
+            <span>{primaryName}</span>
+            <Typography variant="caption" sx={{ ml: 1, color: 'text.secondary' }}>
+              (+{appointment.appointment_dignitaries.length - 1} more)
+            </Typography>
+          </>
+        );
+      }
+      
+      return primaryName;
+    }
+    
+    return 'No dignitary information';
   };
 
   // Get a friendly label for the date
@@ -177,7 +203,7 @@ const AppointmentUsherView: React.FC = () => {
                   key={option.value}
                   label={option.isToday ? `Today (${option.label})` : option.label}
                   value={option.value}
-                  selectedValue={selectedDate}
+                  selectedValue={selectedDate || ''}
                   onToggle={handleDateChange}
                   sx={{ 
                     fontWeight: option.value === selectedDate ? 'bold' : 'normal',
@@ -241,7 +267,7 @@ const AppointmentUsherView: React.FC = () => {
                                 Dignitary
                               </Typography>
                               <Typography variant="body1" fontWeight="medium">
-                                {formatDignitaryName(appointment.dignitary)}
+                                {formatDignitaryName(appointment)}
                               </Typography>
                             </Grid>
                             
@@ -252,9 +278,11 @@ const AppointmentUsherView: React.FC = () => {
                               <Typography variant="body1">
                                 {appointment.requester.first_name} {appointment.requester.last_name}
                               </Typography>
-                              <Typography variant="body2" color="text.secondary">
-                                {appointment.requester.phone_number || 'No phone number'}
-                              </Typography>
+                              {appointment.requester.phone_number && (
+                                <Typography variant="body2" color="text.secondary">
+                                  {appointment.requester.phone_number}
+                                </Typography>
+                              )}
                             </Grid>
                           </Grid>
                         </Paper>
