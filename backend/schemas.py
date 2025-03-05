@@ -123,7 +123,7 @@ class AppointmentDignitaryWithAppointment(AppointmentDignitaryBase):
     class Config:
         orm_mode = True
 
-class Dignitary(DignitaryBase):
+class DignitaryWithAppointments(DignitaryBase):
     id: int
     created_by: int
     created_at: datetime
@@ -132,7 +132,15 @@ class Dignitary(DignitaryBase):
     class Config:
         orm_mode = True
 
-class DignitaryWithRelationship(Dignitary):
+class Dignitary(DignitaryBase):
+    id: int
+    created_by: int
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
+
+class DignitaryWithRelationship(DignitaryWithAppointments):
     relationship_type: str
 
     class Config:
@@ -146,11 +154,19 @@ class AppointmentDignitaryWithAppointmentAdmin(AppointmentDignitaryBase):
     class Config:
         orm_mode = True
 
-class DignitaryAdmin(DignitaryBase):
+class DignitaryAdminWithAppointments(DignitaryBase):
     id: int
     created_by: int
     created_at: datetime
     appointment_dignitaries: List[AppointmentDignitaryWithAppointmentAdmin]
+
+    class Config:
+        orm_mode = True
+
+class DignitaryAdmin(DignitaryBase):
+    id: int
+    created_by: int
+    created_at: datetime
 
     class Config:
         orm_mode = True
@@ -231,12 +247,10 @@ class AppointmentCreate(AppointmentBase):
 class Appointment(AppointmentBase):
     id: int
     requester_id: int
-    dignitary_id: int
     purpose: str
     preferred_date: date
     preferred_time_of_day: Optional[AppointmentTimeOfDay] = None
     requester_notes_to_secretariat: Optional[str] = None
-    dignitary: Dignitary
     appointment_dignitaries: List[AppointmentDignitaryWithDignitary]
     status: AppointmentStatus
     sub_status: AppointmentSubStatus
@@ -282,7 +296,6 @@ class AppointmentDignitaryWithDignitaryAdmin(AppointmentDignitaryBase):
 class AppointmentAdmin(AppointmentBase):
     id: int
     requester_id: int
-    dignitary_id: int
     purpose: str
     preferred_date: date
     preferred_time_of_day: Optional[AppointmentTimeOfDay] = None

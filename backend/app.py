@@ -460,7 +460,7 @@ async def get_my_appointments_for_dignitary(
     print(f"Appointments: {appointments}")
     return appointments
 
-@app.get("/admin/dignitaries/all", response_model=List[schemas.DignitaryAdmin])
+@app.get("/admin/dignitaries/all", response_model=List[schemas.DignitaryAdminWithAppointments])
 @requires_role(models.UserRole.SECRETARIAT)
 async def get_all_dignitaries(
     current_user: models.User = Depends(get_current_user),
