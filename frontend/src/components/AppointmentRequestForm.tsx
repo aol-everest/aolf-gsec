@@ -1128,7 +1128,7 @@ export const AppointmentRequestForm: React.FC = () => {
                   fullWidth
                   label="Title in Organization"
                   InputLabelProps={{ shrink: true }}
-                  {...dignitaryForm.register('dignitaryTitleInOrganization', { required: 'Title is required' })}
+                  {...dignitaryForm.register('dignitaryTitleInOrganization')}
                   error={!!dignitaryForm.formState.errors.dignitaryTitleInOrganization}
                   helperText={dignitaryForm.formState.errors.dignitaryTitleInOrganization?.message}
                 />
@@ -1139,7 +1139,7 @@ export const AppointmentRequestForm: React.FC = () => {
                   fullWidth
                   label="Organization"
                   InputLabelProps={{ shrink: true }}
-                  {...dignitaryForm.register('dignitaryOrganization', { required: 'Organization is required' })}
+                  {...dignitaryForm.register('dignitaryOrganization')}
                   error={!!dignitaryForm.formState.errors.dignitaryOrganization}
                   helperText={dignitaryForm.formState.errors.dignitaryOrganization?.message}
                 />
@@ -1164,7 +1164,7 @@ export const AppointmentRequestForm: React.FC = () => {
                   fullWidth
                   label="LinkedIn or Website URL"
                   InputLabelProps={{ shrink: true }}
-                  {...dignitaryForm.register('dignitaryLinkedInOrWebsite', { required: 'URL is required' })}
+                  {...dignitaryForm.register('dignitaryLinkedInOrWebsite')}
                   error={!!dignitaryForm.formState.errors.dignitaryLinkedInOrWebsite}
                   helperText={dignitaryForm.formState.errors.dignitaryLinkedInOrWebsite?.message}
                 />
@@ -1174,7 +1174,6 @@ export const AppointmentRequestForm: React.FC = () => {
                 <Controller
                   name="dignitaryCountry"
                   control={dignitaryForm.control}
-                  rules={{ required: 'Country is required' }}
                   render={({ field }) => (
                     <LocationAutocomplete
                       label="Country"
@@ -1188,6 +1187,7 @@ export const AppointmentRequestForm: React.FC = () => {
                       error={!!dignitaryForm.formState.errors.dignitaryCountry}
                       helperText={dignitaryForm.formState.errors.dignitaryCountry?.message}
                       types={['country']}
+                      autoComplete="off"
                       onPlaceSelect={(place) => {
                         if (!place?.address_components) return;
                         
@@ -1208,7 +1208,6 @@ export const AppointmentRequestForm: React.FC = () => {
                 <Controller
                   name="dignitaryState"
                   control={dignitaryForm.control}
-                  rules={{ required: 'State is required' }}
                   render={({ field }) => (
                     <LocationAutocomplete
                       label="State"
@@ -1219,6 +1218,7 @@ export const AppointmentRequestForm: React.FC = () => {
                       error={!!dignitaryForm.formState.errors.dignitaryState}
                       helperText={dignitaryForm.formState.errors.dignitaryState?.message}
                       types={['administrative_area_level_1']}
+                      autoComplete="off"
                       componentRestrictions={selectedCountryCode ? { country: selectedCountryCode } : undefined}
                     />
                   )}
@@ -1229,7 +1229,6 @@ export const AppointmentRequestForm: React.FC = () => {
                 <Controller
                   name="dignitaryCity"
                   control={dignitaryForm.control}
-                  rules={{ required: 'City is required' }}
                   render={({ field }) => (
                     <LocationAutocomplete
                       label="City"
@@ -1240,6 +1239,7 @@ export const AppointmentRequestForm: React.FC = () => {
                       error={!!dignitaryForm.formState.errors.dignitaryCity}
                       helperText={dignitaryForm.formState.errors.dignitaryCity?.message}
                       types={['locality', 'sublocality']}
+                      autoComplete="off"
                       componentRestrictions={selectedCountryCode ? { country: selectedCountryCode } : undefined}
                     />
                   )}
