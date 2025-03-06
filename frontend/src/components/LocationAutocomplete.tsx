@@ -101,6 +101,7 @@ interface LocationAutocompleteProps {
   types?: string[];
   componentRestrictions?: { country?: string | string[] };
   onPlaceSelect?: (place: Place) => void;
+  autoComplete?: string;
 }
 
 declare global {
@@ -134,6 +135,7 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   types = ['(cities)'],
   componentRestrictions,
   onPlaceSelect,
+  autoComplete,
 }) => {
 //   console.log(`[${label}] Rendering with:`, {
 //     value,
@@ -404,6 +406,7 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
         onChange={(e) => onChange(e.target.value)}
         error={error}
         helperText={helperText}
+        autoComplete={autoComplete}
       />
     );
   }
@@ -427,6 +430,7 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
           error={error}
           helperText={helperText}
           fullWidth
+          autoComplete={autoComplete}
           InputProps={{
             ...params.InputProps,
             endAdornment: (
