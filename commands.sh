@@ -334,3 +334,12 @@ PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-db-uat.cxg084kkue8o.us-east-2.rd
   -d aolf_gsec \
   -c "ALTER TABLE appointments ALTER COLUMN dignitary_id DROP NOT NULL;"
 
+PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-db-uat.cxg084kkue8o.us-east-2.rds.amazonaws.com \
+  -U aolf_gsec_user \
+  -d aolf_gsec \
+  -c "CREATE INDEX ix_appointment_dignitaries_appointment_id  ON appointment_dignitaries (appointment_id);"
+
+PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-db-uat.cxg084kkue8o.us-east-2.rds.amazonaws.com \
+  -U aolf_gsec_user \
+  -d aolf_gsec \
+  -c "CREATE INDEX ix_appointment_dignitaries_dignitary_id  ON appointment_dignitaries (dignitary_id);"
