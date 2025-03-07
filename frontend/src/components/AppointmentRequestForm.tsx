@@ -151,6 +151,9 @@ export const AppointmentRequestForm: React.FC = () => {
   // Add a state to track if the selected dignitary has been modified
   const [isDignitaryModified, setIsDignitaryModified] = useState<boolean>(false);
 
+  // Add a new state variable to track if the dignitary form is expanded
+  const [isDignitaryFormExpanded, setIsDignitaryFormExpanded] = useState<boolean>(false);
+
   // Fetch status options
   const { data: statusOptions = [] } = useQuery<string[]>({
     queryKey: ['status-options'],
@@ -576,6 +579,9 @@ export const AppointmentRequestForm: React.FC = () => {
       // Reset form for next dignitary
       resetDignitaryForm();
       
+      // Collapse the form after adding a dignitary
+      setIsDignitaryFormExpanded(false);
+      
       enqueueSnackbar(
         isEditMode 
           ? 'Dignitary updated successfully' 
@@ -605,18 +611,14 @@ export const AppointmentRequestForm: React.FC = () => {
 
   // Function to edit a dignitary in the list
   const editDignitaryInList = (index: number) => {
-    const dignitaryToEdit = selectedDignitaries[index];
     setIsEditMode(true);
     setEditingDignitaryIndex(index);
+    const dignitary = selectedDignitaries[index];
     
-    // Set form values based on the dignitary
-    dignitaryForm.setValue('isExistingDignitary', !dignitaryToEdit.isNew);
-    if (!dignitaryToEdit.isNew) {
-      dignitaryForm.setValue('selectedDignitaryId', dignitaryToEdit.id);
-    }
-    
-    // Populate the form with dignitary data
-    populateDignitaryForm(dignitaryToEdit as Dignitary);
+    // Need to type cast since SelectedDignitary has properties that Dignitary doesn't
+    setSelectedDignitary(dignitary as unknown as Dignitary);
+    populateDignitaryForm(dignitary as unknown as Dignitary);
+    setIsDignitaryFormExpanded(true); // Expand the form when editing
   };
 
   // Reset the dignitary form
@@ -638,11 +640,13 @@ export const AppointmentRequestForm: React.FC = () => {
       dignitaryState: '',
       dignitaryCity: '',
       dignitaryHasMetGurudev: false,
-      pocRelationshipType: '',
       dignitaryGurudevMeetingDate: '',
       dignitaryGurudevMeetingLocation: '',
       dignitaryGurudevMeetingNotes: '',
+      pocRelationshipType: '',
     });
+    setSelectedDignitary(null);
+    setIsDignitaryModified(false);
   };
 
   const handleNext = async (skipExistingCheck: boolean = false) => {
@@ -903,7 +907,10 @@ export const AppointmentRequestForm: React.FC = () => {
                           <IconButton 
                             edge="end" 
                             aria-label="edit"
-                            onClick={() => editDignitaryInList(index)}
+                            onClick={() => {
+                              editDignitaryInList(index);
+                              setIsDignitaryFormExpanded(true);
+                            }}
                             sx={{ mr: 1 }}
                           >
                             <EditIcon />
@@ -922,382 +929,405 @@ export const AppointmentRequestForm: React.FC = () => {
                 </Grid>
               )}
 
-              <Grid item xs={12}>
-                <Divider sx={{ my: 2 }} />
-                <Typography variant="subtitle1" gutterBottom>
-                  {isEditMode ? 'Edit Dignitary' : 'Add a Dignitary'}
-                </Typography>
-              </Grid>
-
-              <Grid item xs={12}>
-                <FormControl component="fieldset">
-                  <RadioGroup
-                    value={dignitaryForm.watch('isExistingDignitary').toString()}
-                    onChange={(e) => {
-                      const isExisting = e.target.value === 'true';
-                      dignitaryForm.setValue('isExistingDignitary', isExisting);
-                      if (!isExisting) {
-                        // Store the current selectedDignitaryId in the selectedDignitary object
-                        if (selectedDignitary) {
-                          setSelectedDignitary({
-                            ...selectedDignitary,
-                            previousId: dignitaryForm.getValues().selectedDignitaryId
-                          });
-                        }
-                        // Clear form when switching to new dignitary
-                        dignitaryForm.setValue('selectedDignitaryId', undefined);
-                        dignitaryForm.reset({
-                          ...dignitaryForm.getValues(),
-                          selectedDignitaryId: undefined,
-                          dignitaryHonorificTitle: '',
-                          dignitaryFirstName: '',
-                          dignitaryLastName: '',
-                          dignitaryEmail: '',
-                          dignitaryPhone: '',
-                          dignitaryPrimaryDomain: '',
-                          dignitaryTitleInOrganization: '',
-                          dignitaryOrganization: '',
-                          dignitaryBioSummary: '',
-                          dignitaryLinkedInOrWebsite: '',
-                          dignitaryCountry: '',
-                          dignitaryState: '',
-                          dignitaryCity: '',
-                          dignitaryHasMetGurudev: false,
-                        });
-                      } else if (selectedDignitary) {
-                        // Restore selected dignitary data and ID if switching back
-                        populateDignitaryForm(selectedDignitary);
-                        dignitaryForm.setValue('selectedDignitaryId', selectedDignitary.previousId || selectedDignitary.id);
-                      }
+              {/* Button to expand the dignitary form when it's collapsed */}
+              {!isDignitaryFormExpanded && (
+                <Grid item xs={12}>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    startIcon={<AddIcon />}
+                    onClick={() => {
+                      setIsDignitaryFormExpanded(true);
+                      resetDignitaryForm();
                     }}
+                    sx={{ mt: 2 }}
                   >
-                    <FormControlLabel 
-                      value="true" 
-                      control={<Radio />} 
-                      label="Select an existing dignitary"
-                      disabled={dignitaries.length === 0}
-                    />
-                    <FormControlLabel 
-                      value="false" 
-                      control={<Radio />} 
-                      label="Add a new dignitary" 
-                    />
-                  </RadioGroup>
-                </FormControl>
-              </Grid>
-              
-              {dignitaryForm.watch('isExistingDignitary') ? (
-                <Grid item xs={12} md={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>Select Dignitary</InputLabel>
-                    <Controller
-                      name="selectedDignitaryId"
-                      control={dignitaryForm.control}
-                      render={({ field }) => (
-                        <Select
-                          label="Select Dignitary"
-                          value={field.value || ''}
-                          onChange={(e) => {
-                            field.onChange(e.target.value);
-                            const selectedDignitary = dignitaries.find(d => d.id === e.target.value);
+                    Add a dignitary to Appointment
+                  </Button>
+                </Grid>
+              )}
+
+              {/* Only show the dignitary form when expanded */}
+              {isDignitaryFormExpanded && (
+                <>
+                  <Grid item xs={12}>
+                    <Divider sx={{ my: 2 }} />
+                    <Typography variant="subtitle1" gutterBottom>
+                      {isEditMode ? 'Edit Dignitary' : 'Add a Dignitary'}
+                    </Typography>
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <FormControl component="fieldset">
+                      <RadioGroup
+                        value={dignitaryForm.watch('isExistingDignitary').toString()}
+                        onChange={(e) => {
+                          const isExisting = e.target.value === 'true';
+                          dignitaryForm.setValue('isExistingDignitary', isExisting);
+                          if (!isExisting) {
+                            // Store the current selectedDignitaryId in the selectedDignitary object
                             if (selectedDignitary) {
-                              handleDignitarySelection(selectedDignitary);
+                              setSelectedDignitary({
+                                ...selectedDignitary,
+                                previousId: dignitaryForm.getValues().selectedDignitaryId
+                              });
                             }
-                          }}
-                        >
-                          {dignitaries.map((dignitary) => (
-                            <MenuItem key={dignitary.id} value={dignitary.id}>
-                              {`${dignitary.honorific_title} ${dignitary.first_name} ${dignitary.last_name}`}
-                            </MenuItem>
-                          ))}
-                        </Select>
+                            // Clear form when switching to new dignitary
+                            dignitaryForm.setValue('selectedDignitaryId', undefined);
+                            dignitaryForm.reset({
+                              ...dignitaryForm.getValues(),
+                              selectedDignitaryId: undefined,
+                              dignitaryHonorificTitle: '',
+                              dignitaryFirstName: '',
+                              dignitaryLastName: '',
+                              dignitaryEmail: '',
+                              dignitaryPhone: '',
+                              dignitaryPrimaryDomain: '',
+                              dignitaryTitleInOrganization: '',
+                              dignitaryOrganization: '',
+                              dignitaryBioSummary: '',
+                              dignitaryLinkedInOrWebsite: '',
+                              dignitaryCountry: '',
+                              dignitaryState: '',
+                              dignitaryCity: '',
+                              dignitaryHasMetGurudev: false,
+                            });
+                          } else if (selectedDignitary) {
+                            // Restore selected dignitary data and ID if switching back
+                            populateDignitaryForm(selectedDignitary);
+                            dignitaryForm.setValue('selectedDignitaryId', selectedDignitary.previousId || selectedDignitary.id);
+                          }
+                        }}
+                      >
+                        <FormControlLabel 
+                          value="true" 
+                          control={<Radio />} 
+                          label="Select an existing dignitary"
+                          disabled={dignitaries.length === 0}
+                        />
+                        <FormControlLabel 
+                          value="false" 
+                          control={<Radio />} 
+                          label="Add a new dignitary" 
+                        />
+                      </RadioGroup>
+                    </FormControl>
+                  </Grid>
+                  
+                  {dignitaryForm.watch('isExistingDignitary') ? (
+                    <Grid item xs={12} md={6}>
+                      <FormControl fullWidth>
+                        <InputLabel>Select Dignitary</InputLabel>
+                        <Controller
+                          name="selectedDignitaryId"
+                          control={dignitaryForm.control}
+                          render={({ field }) => (
+                            <Select
+                              label="Select Dignitary"
+                              value={field.value || ''}
+                              onChange={(e) => {
+                                field.onChange(e.target.value);
+                                const selectedDignitary = dignitaries.find(d => d.id === e.target.value);
+                                if (selectedDignitary) {
+                                  handleDignitarySelection(selectedDignitary);
+                                }
+                              }}
+                            >
+                              {dignitaries.map((dignitary) => (
+                                <MenuItem key={dignitary.id} value={dignitary.id}>
+                                  {`${dignitary.honorific_title} ${dignitary.first_name} ${dignitary.last_name}`}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          )}
+                        />
+                      </FormControl>
+                    </Grid>
+                  ) : null}
+
+                  <Grid item xs={12} md={6} lg={4}>
+                    <Controller
+                      name="pocRelationshipType"
+                      control={dignitaryForm.control}
+                      rules={{ required: 'Relationship type is required' }}
+                      render={({ field }) => (
+                        <EnumSelect
+                          enumType="relationshipType"
+                          label="Relationship Type"
+                          required
+                          error={!!dignitaryForm.formState.errors.pocRelationshipType}
+                          helperText={dignitaryForm.formState.errors.pocRelationshipType?.message}
+                          value={field.value}
+                          onChange={field.onChange}
+                        />
                       )}
                     />
-                  </FormControl>
-                </Grid>
-              ) : null}
+                  </Grid>
 
-              <Grid item xs={12} md={6}>
-                <Controller
-                  name="pocRelationshipType"
-                  control={dignitaryForm.control}
-                  rules={{ required: 'Relationship type is required' }}
-                  render={({ field }) => (
-                    <EnumSelect
-                      enumType="relationshipType"
-                      label="Relationship Type"
-                      required
-                      error={!!dignitaryForm.formState.errors.pocRelationshipType}
-                      helperText={dignitaryForm.formState.errors.pocRelationshipType?.message}
-                      value={field.value}
-                      onChange={field.onChange}
+                  <Grid item xs={12} sx={{ my: 2 }}>
+                    <Divider sx={{ my: 1 }} />
+                  </Grid>
+
+                  <Grid item xs={12} md={6} lg={4}>
+                    <Controller
+                      name="dignitaryHonorificTitle"
+                      control={dignitaryForm.control}
+                      rules={{ required: 'Honorific title is required' }}
+                      render={({ field }) => (
+                        <EnumSelect
+                          enumType="honorificTitle"
+                          label="Honorific Title"
+                          required
+                          error={!!dignitaryForm.formState.errors.dignitaryHonorificTitle}
+                          helperText={dignitaryForm.formState.errors.dignitaryHonorificTitle?.message}
+                          value={field.value}
+                          onChange={field.onChange}
+                        />
+                      )}
                     />
-                  )}
-                />
-              </Grid>
-
-              <Grid item xs={12} sx={{ my: 2 }}>
-                <Divider sx={{ my: 1 }} />
-              </Grid>
-
-              <Grid item xs={12} md={6} lg={4}>
-                <Controller
-                  name="dignitaryHonorificTitle"
-                  control={dignitaryForm.control}
-                  rules={{ required: 'Honorific title is required' }}
-                  render={({ field }) => (
-                    <EnumSelect
-                      enumType="honorificTitle"
-                      label="Honorific Title"
-                      required
-                      error={!!dignitaryForm.formState.errors.dignitaryHonorificTitle}
-                      helperText={dignitaryForm.formState.errors.dignitaryHonorificTitle?.message}
-                      value={field.value}
-                      onChange={field.onChange}
-                    />
-                  )}
-                />
-              </Grid>
-                            
-              <Grid item xs={12} md={6} lg={4}>
-                <TextField
-                  fullWidth
-                  label="First Name"
-                  InputLabelProps={{ shrink: true }}
-                  {...dignitaryForm.register('dignitaryFirstName', { required: 'First name is required' })}
-                  error={!!dignitaryForm.formState.errors.dignitaryFirstName}
-                  helperText={dignitaryForm.formState.errors.dignitaryFirstName?.message}
-                  required
-                />
-              </Grid>
-              
-              <Grid item xs={12} md={6} lg={4}>
-                <TextField
-                  fullWidth
-                  label="Last Name"
-                  InputLabelProps={{ shrink: true }}
-                  {...dignitaryForm.register('dignitaryLastName', { required: 'Last name is required' })}
-                  error={!!dignitaryForm.formState.errors.dignitaryLastName}
-                  helperText={dignitaryForm.formState.errors.dignitaryLastName?.message}
-                  required
-                />
-              </Grid>
-              
-              <Grid item xs={12} md={6} lg={4}>
-                <TextField
-                  fullWidth
-                  label="Email"
-                  type="email"
-                  InputLabelProps={{ shrink: true }}
-                  {...dignitaryForm.register('dignitaryEmail', { required: 'Email is required' })}
-                  error={!!dignitaryForm.formState.errors.dignitaryEmail}
-                  helperText={dignitaryForm.formState.errors.dignitaryEmail?.message}
-                  required
-                />
-              </Grid>
-              
-              <Grid item xs={12} md={6} lg={4}>
-                <TextField
-                  fullWidth
-                  label="Phone Number"
-                  InputLabelProps={{ shrink: true }}
-                  {...dignitaryForm.register('dignitaryPhone')}
-                  error={!!dignitaryForm.formState.errors.dignitaryPhone}
-                  helperText={dignitaryForm.formState.errors.dignitaryPhone?.message}
-                />
-              </Grid>
-              
-              <Grid item xs={12} md={6} lg={4}>
-                <Controller
-                  name="dignitaryPrimaryDomain"
-                  control={dignitaryForm.control}
-                  render={({ field }) => (
-                    <EnumSelect
-                      enumType="primaryDomain"
-                      label="Primary Domain"
-                      required
-                      value={field.value}
-                      onChange={field.onChange}
-                    />
-                  )}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={6} lg={4}>
-                <TextField
-                  fullWidth
-                  label="Title in Organization"
-                  InputLabelProps={{ shrink: true }}
-                  {...dignitaryForm.register('dignitaryTitleInOrganization')}
-                  error={!!dignitaryForm.formState.errors.dignitaryTitleInOrganization}
-                  helperText={dignitaryForm.formState.errors.dignitaryTitleInOrganization?.message}
-                />
-              </Grid>
-              
-              <Grid item xs={12} md={6} lg={4}>
-                <TextField
-                  fullWidth
-                  label="Organization"
-                  InputLabelProps={{ shrink: true }}
-                  {...dignitaryForm.register('dignitaryOrganization')}
-                  error={!!dignitaryForm.formState.errors.dignitaryOrganization}
-                  helperText={dignitaryForm.formState.errors.dignitaryOrganization?.message}
-                />
-              </Grid>
-
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  multiline
-                  rows={4}
-                  label="Bio Summary"
-                  InputLabelProps={{ shrink: true }}
-                  {...dignitaryForm.register('dignitaryBioSummary', { required: 'Bio summary is required' })}
-                  error={!!dignitaryForm.formState.errors.dignitaryBioSummary}
-                  helperText={dignitaryForm.formState.errors.dignitaryBioSummary?.message}
-                  required
-                />
-              </Grid>
-              
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="LinkedIn or Website URL"
-                  InputLabelProps={{ shrink: true }}
-                  {...dignitaryForm.register('dignitaryLinkedInOrWebsite')}
-                  error={!!dignitaryForm.formState.errors.dignitaryLinkedInOrWebsite}
-                  helperText={dignitaryForm.formState.errors.dignitaryLinkedInOrWebsite?.message}
-                />
-              </Grid>
-              
-              <Grid item xs={12} md={4}>
-                <Controller
-                  name="dignitaryCountry"
-                  control={dignitaryForm.control}
-                  render={({ field }) => (
-                    <LocationAutocomplete
-                      label="Country"
-                      value={field.value}
-                      onChange={(value) => {
-                        field.onChange(value);
-                        // Reset state and city when country changes
-                        dignitaryForm.setValue('dignitaryState', '');
-                        dignitaryForm.setValue('dignitaryCity', '');
-                      }}
-                      error={!!dignitaryForm.formState.errors.dignitaryCountry}
-                      helperText={dignitaryForm.formState.errors.dignitaryCountry?.message}
-                      types={['country']}
-                      autoComplete="off"
-                      onPlaceSelect={(place) => {
-                        if (!place?.address_components) return;
-                        
-                        const countryComponent = place.address_components.find(
-                          component => component.types.includes('country')
-                        );
-
-                        if (countryComponent) {
-                          setSelectedCountryCode(countryComponent.short_name);
-                        }
-                      }}
-                    />
-                  )}
-                />
-              </Grid>
-              
-              <Grid item xs={12} md={4}>
-                <Controller
-                  name="dignitaryState"
-                  control={dignitaryForm.control}
-                  render={({ field }) => (
-                    <LocationAutocomplete
-                      label="State"
-                      value={field.value}
-                      onChange={(value) => {
-                        field.onChange(value.split(',')[0]);
-                      }}
-                      error={!!dignitaryForm.formState.errors.dignitaryState}
-                      helperText={dignitaryForm.formState.errors.dignitaryState?.message}
-                      types={['administrative_area_level_1']}
-                      autoComplete="off"
-                      componentRestrictions={selectedCountryCode ? { country: selectedCountryCode } : undefined}
-                    />
-                  )}
-                />
-              </Grid>
-              
-              <Grid item xs={12} md={4}>
-                <Controller
-                  name="dignitaryCity"
-                  control={dignitaryForm.control}
-                  render={({ field }) => (
-                    <LocationAutocomplete
-                      label="City"
-                      value={field.value}
-                      onChange={(value) => {
-                        field.onChange(value.split(',')[0]);
-                      }}
-                      error={!!dignitaryForm.formState.errors.dignitaryCity}
-                      helperText={dignitaryForm.formState.errors.dignitaryCity?.message}
-                      types={['locality', 'sublocality']}
-                      autoComplete="off"
-                      componentRestrictions={selectedCountryCode ? { country: selectedCountryCode } : undefined}
-                    />
-                  )}
-                />
-              </Grid>                  
-
-              <Grid item xs={12} md={6} lg={4}>
-                <FormControlLabel
-                  control={<Checkbox checked={dignitaryForm.watch('dignitaryHasMetGurudev')} onChange={(e) => dignitaryForm.setValue('dignitaryHasMetGurudev', e.target.checked)} />}
-                  label="Has Dignitary Met Gurudev?"
-                />
-              </Grid>
-
-              {dignitaryForm.watch('dignitaryHasMetGurudev') && (
-                <>
+                  </Grid>
+                              
                   <Grid item xs={12} md={6} lg={4}>
                     <TextField
                       fullWidth
-                      type="date"
-                      label="When did they meet Gurudev?"
+                      label="First Name"
                       InputLabelProps={{ shrink: true }}
-                      {...dignitaryForm.register('dignitaryGurudevMeetingDate')}
+                      {...dignitaryForm.register('dignitaryFirstName', { required: 'First name is required' })}
+                      error={!!dignitaryForm.formState.errors.dignitaryFirstName}
+                      helperText={dignitaryForm.formState.errors.dignitaryFirstName?.message}
+                      required
                     />
                   </Grid>
+                  
                   <Grid item xs={12} md={6} lg={4}>
                     <TextField
                       fullWidth
-                      label="Where did they meet Gurudev?"
+                      label="Last Name"
                       InputLabelProps={{ shrink: true }}
-                      {...dignitaryForm.register('dignitaryGurudevMeetingLocation')}
+                      {...dignitaryForm.register('dignitaryLastName', { required: 'Last name is required' })}
+                      error={!!dignitaryForm.formState.errors.dignitaryLastName}
+                      helperText={dignitaryForm.formState.errors.dignitaryLastName?.message}
+                      required
                     />
                   </Grid>
+                  
+                  <Grid item xs={12} md={6} lg={4}>
+                    <TextField
+                      fullWidth
+                      label="Email"
+                      type="email"
+                      InputLabelProps={{ shrink: true }}
+                      {...dignitaryForm.register('dignitaryEmail', { required: 'Email is required' })}
+                      error={!!dignitaryForm.formState.errors.dignitaryEmail}
+                      helperText={dignitaryForm.formState.errors.dignitaryEmail?.message}
+                      required
+                    />
+                  </Grid>
+                  
+                  <Grid item xs={12} md={6} lg={4}>
+                    <TextField
+                      fullWidth
+                      label="Phone Number"
+                      InputLabelProps={{ shrink: true }}
+                      {...dignitaryForm.register('dignitaryPhone')}
+                      error={!!dignitaryForm.formState.errors.dignitaryPhone}
+                      helperText={dignitaryForm.formState.errors.dignitaryPhone?.message}
+                    />
+                  </Grid>
+                  
+                  <Grid item xs={12} md={6} lg={4}>
+                    <Controller
+                      name="dignitaryPrimaryDomain"
+                      control={dignitaryForm.control}
+                      render={({ field }) => (
+                        <EnumSelect
+                          enumType="primaryDomain"
+                          label="Primary Domain"
+                          required
+                          value={field.value}
+                          onChange={field.onChange}
+                        />
+                      )}
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} md={6} lg={4}>
+                    <TextField
+                      fullWidth
+                      label="Title in Organization"
+                      InputLabelProps={{ shrink: true }}
+                      {...dignitaryForm.register('dignitaryTitleInOrganization')}
+                      error={!!dignitaryForm.formState.errors.dignitaryTitleInOrganization}
+                      helperText={dignitaryForm.formState.errors.dignitaryTitleInOrganization?.message}
+                    />
+                  </Grid>
+                  
+                  <Grid item xs={12} md={6} lg={4}>
+                    <TextField
+                      fullWidth
+                      label="Organization"
+                      InputLabelProps={{ shrink: true }}
+                      {...dignitaryForm.register('dignitaryOrganization')}
+                      error={!!dignitaryForm.formState.errors.dignitaryOrganization}
+                      helperText={dignitaryForm.formState.errors.dignitaryOrganization?.message}
+                    />
+                  </Grid>
+
                   <Grid item xs={12}>
                     <TextField
                       fullWidth
                       multiline
                       rows={4}
-                      label="Additional notes from the meeting with Gurudev"
+                      label="Bio Summary"
                       InputLabelProps={{ shrink: true }}
-                      {...dignitaryForm.register('dignitaryGurudevMeetingNotes')}
+                      {...dignitaryForm.register('dignitaryBioSummary', { required: 'Bio summary is required' })}
+                      error={!!dignitaryForm.formState.errors.dignitaryBioSummary}
+                      helperText={dignitaryForm.formState.errors.dignitaryBioSummary?.message}
+                      required
                     />
+                  </Grid>
+                  
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="LinkedIn or Website URL"
+                      InputLabelProps={{ shrink: true }}
+                      {...dignitaryForm.register('dignitaryLinkedInOrWebsite')}
+                      error={!!dignitaryForm.formState.errors.dignitaryLinkedInOrWebsite}
+                      helperText={dignitaryForm.formState.errors.dignitaryLinkedInOrWebsite?.message}
+                    />
+                  </Grid>
+                  
+                  <Grid item xs={12} md={4}>
+                    <Controller
+                      name="dignitaryCountry"
+                      control={dignitaryForm.control}
+                      render={({ field }) => (
+                        <LocationAutocomplete
+                          label="Country"
+                          value={field.value}
+                          onChange={(value) => {
+                            field.onChange(value);
+                            // Reset state and city when country changes
+                            dignitaryForm.setValue('dignitaryState', '');
+                            dignitaryForm.setValue('dignitaryCity', '');
+                          }}
+                          error={!!dignitaryForm.formState.errors.dignitaryCountry}
+                          helperText={dignitaryForm.formState.errors.dignitaryCountry?.message}
+                          types={['country']}
+                          autoComplete="off"
+                          onPlaceSelect={(place) => {
+                            if (!place?.address_components) return;
+                            
+                            const countryComponent = place.address_components.find(
+                              component => component.types.includes('country')
+                            );
+
+                            if (countryComponent) {
+                              setSelectedCountryCode(countryComponent.short_name);
+                            }
+                          }}
+                        />
+                      )}
+                    />
+                  </Grid>
+                  
+                  <Grid item xs={12} md={4}>
+                    <Controller
+                      name="dignitaryState"
+                      control={dignitaryForm.control}
+                      render={({ field }) => (
+                        <LocationAutocomplete
+                          label="State"
+                          value={field.value}
+                          onChange={(value) => {
+                            field.onChange(value.split(',')[0]);
+                          }}
+                          error={!!dignitaryForm.formState.errors.dignitaryState}
+                          helperText={dignitaryForm.formState.errors.dignitaryState?.message}
+                          types={['administrative_area_level_1']}
+                          autoComplete="off"
+                          componentRestrictions={selectedCountryCode ? { country: selectedCountryCode } : undefined}
+                        />
+                      )}
+                    />
+                  </Grid>
+                  
+                  <Grid item xs={12} md={4}>
+                    <Controller
+                      name="dignitaryCity"
+                      control={dignitaryForm.control}
+                      render={({ field }) => (
+                        <LocationAutocomplete
+                          label="City"
+                          value={field.value}
+                          onChange={(value) => {
+                            field.onChange(value.split(',')[0]);
+                          }}
+                          error={!!dignitaryForm.formState.errors.dignitaryCity}
+                          helperText={dignitaryForm.formState.errors.dignitaryCity?.message}
+                          types={['locality', 'sublocality']}
+                          autoComplete="off"
+                          componentRestrictions={selectedCountryCode ? { country: selectedCountryCode } : undefined}
+                        />
+                      )}
+                    />
+                  </Grid>                  
+
+                  <Grid item xs={12} md={6} lg={4}>
+                    <FormControlLabel
+                      control={<Checkbox checked={dignitaryForm.watch('dignitaryHasMetGurudev')} onChange={(e) => dignitaryForm.setValue('dignitaryHasMetGurudev', e.target.checked)} />}
+                      label="Has Dignitary Met Gurudev?"
+                    />
+                  </Grid>
+
+                  {dignitaryForm.watch('dignitaryHasMetGurudev') && (
+                    <>
+                      <Grid item xs={12} md={6} lg={4}>
+                        <TextField
+                          fullWidth
+                          type="date"
+                          label="When did they meet Gurudev?"
+                          InputLabelProps={{ shrink: true }}
+                          {...dignitaryForm.register('dignitaryGurudevMeetingDate')}
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={6} lg={4}>
+                        <TextField
+                          fullWidth
+                          label="Where did they meet Gurudev?"
+                          InputLabelProps={{ shrink: true }}
+                          {...dignitaryForm.register('dignitaryGurudevMeetingLocation')}
+                        />
+                      </Grid>
+                      <Grid item xs={12}>
+                        <TextField
+                          fullWidth
+                          multiline
+                          rows={4}
+                          label="Additional notes from the meeting with Gurudev"
+                          InputLabelProps={{ shrink: true }}
+                          {...dignitaryForm.register('dignitaryGurudevMeetingNotes')}
+                        />
+                      </Grid>
+                    </>
+                  )}
+
+                  {/* Add button at the bottom of the form */}
+                  <Grid item xs={12}>
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        startIcon={isEditMode ? <EditIcon /> : <AddIcon />}
+                        onClick={addDignitaryToList}
+                      >
+                        {getButtonText()}
+                      </Button>
+                    </Box>
                   </Grid>
                 </>
               )}
-
-              {/* Add button at the bottom of the form */}
-              <Grid item xs={12}>
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    startIcon={isEditMode ? <EditIcon /> : <AddIcon />}
-                    onClick={addDignitaryToList}
-                  >
-                    {getButtonText()}
-                  </Button>
-                </Box>
-              </Grid>
             </Grid>
           </Box>
         );
@@ -1673,11 +1703,11 @@ export const AppointmentRequestForm: React.FC = () => {
   // Update the button text based on the current state
   const getButtonText = () => {
     if (isEditMode) {
-      return "Update Dignitary";
+      return "Update Dignitary Details";
     } else if (dignitaryForm.watch('isExistingDignitary') && isDignitaryModified) {
-      return "Update and Add Dignitary";
+      return "Update and Add Dignitary to Appointment";
     } else {
-      return "Add Dignitary";
+      return "Save and Add Dignitary to Appointment";
     }
   };
 
