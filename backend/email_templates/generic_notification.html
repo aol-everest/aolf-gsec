@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}{{ subject|default('AOLF GSEC Notification') }}{% endblock %}
+
+{% block content %}
+<h2>{{ subject|default('Notification') }}</h2>
+
+<p>Dear {{ user_name }},</p>
+
+<p>{{ message|default('You have a new notification from the AOLF Global Secretariat.') }}</p>
+
+{% if additional_content %}
+<div style="background-color: #f9fafb; padding: 15px; border-radius: 5px; margin: 15px 0;">
+    {{ additional_content|safe }}
+</div>
+{% endif %}
+
+{% if action_url %}
+<a href="{{ action_url }}" class="button">{{ action_text|default('View Details') }}</a>
+{% endif %}
+
+<p>If you have any questions, please contact the Global Secretariat Office.</p>
+
+<p>Best regards,<br>AOLF Global Secretariat Team</p>
+{% endblock %} 

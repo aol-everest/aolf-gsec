@@ -250,7 +250,7 @@ sudo yum install -y jq postgresql15
 
 # 3. Retrieve the master password from Secrets Manager
 # MASTER_PASSWORD=$(aws secretsmanager get-secret-value --secret-id 'arn:aws:secretsmanager:us-east-2:851725315788:secret:rds!db-f1759782-588f-413c-8d45-55675a2138bf-ZDATni' --query SecretString --output text | jq -r '.password')
-MASTER_PASSWORD="nnWV80:IT4U~q8Y-68~>BVpyryth"
+MASTER_PASSWORD=""
 
 # 4. Connect to PostgreSQL and create the application user
 APP_USER_NAME="aolf_gsec_app_user"
@@ -329,4 +329,8 @@ PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-db-uat.cxg084kkue8o.us-east-2.rd
   -d aolf_gsec \
   -c "INSERT INTO appointment_dignitaries (appointment_id, dignitary_id, created_at) SELECT id, dignitary_id, created_at FROM appointments WHERE dignitary_id IS NOT NULL;"
 
+PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-db-uat.cxg084kkue8o.us-east-2.rds.amazonaws.com \
+  -U aolf_gsec_user \
+  -d aolf_gsec \
+  -c "ALTER TABLE appointments ALTER COLUMN dignitary_id DROP NOT NULL;"
 

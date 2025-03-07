@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Appointment Request Created{% endblock %}
+
+{% block content %}
+<h2>Appointment Request Created</h2>
+
+<p>Dear {{ user_name }},</p>
+
+<p>Your appointment request has been successfully created with the following details:</p>
+
+<div style="background-color: #f9fafb; padding: 15px; border-radius: 5px; margin: 15px 0;">
+    <h3>Appointment Details</h3>
+    <p><strong>Request ID:</strong> {{ appointment.id }}</p>
+    
+    <p><strong>Dignitary/Dignitaries:</strong>
+    {% if appointment.appointment_dignitaries %}
+        {% set dignitaries = [] %}
+        {% for app_dignitary in appointment.appointment_dignitaries %}
+            {% set dignitary = app_dignitary.dignitary %}
+            {% do dignitaries.append(dignitary.honorific_title + " " + dignitary.first_name + " " + dignitary.last_name) %}
+        {% endfor %}
+        {{ dignitaries|join(", ") }}
+    {% elif appointment.dignitary %}
+        {{ appointment.dignitary.honorific_title }} {{ appointment.dignitary.first_name }} {{ appointment.dignitary.last_name }}
+    {% else %}
+        No dignitaries assigned
+    {% endif %}
+    </p>
+    
+    <p><strong>Purpose:</strong> {{ appointment.purpose }}</p>
+    <p><strong>Preferred Date:</strong> {{ appointment.preferred_date }}</p>
+    <p><strong>Preferred Time:</strong> {{ appointment.preferred_time_of_day or 'Not specified' }}</p>
+    
+    <p><strong>Location:</strong>
+    {% if appointment.location %}
+        {{ appointment.location.name }} - {{ appointment.location.city }}, {{ appointment.location.state }}
+    {% else %}
+        Not specified
+    {% endif %}
+    </p>
+    
+    <p><strong>Status:</strong> 
+        <span class="status {{ appointment.status|lower }}">{{ appointment.status }}</span>
+    </p>
+    
+    {% if appointment.requester_notes_to_secretariat %}
+    <p><strong>Your Notes to Secretariat:</strong> {{ appointment.requester_notes_to_secretariat }}</p>
+    {% endif %}
+</div>
+
+<p>You will be notified of any updates to your request. Our team will review your request and get back to you shortly.</p>
+
+<p>If you have any questions, please contact the Global Secretariat Office.</p>
+
+<p>Thank you for using our appointment system.</p>
+
+<p>Best regards,<br>AOLF Global Secretariat Team</p>
+{% endblock %} 

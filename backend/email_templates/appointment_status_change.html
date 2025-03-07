@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Appointment Status Changed{% endblock %}
+
+{% block content %}
+<h2>Appointment Status Changed</h2>
+
+<p>Dear {{ user_name }},</p>
+
+<p>The status of your appointment request (ID: {{ appointment.id }}) has been changed to <span class="status {{ appointment.status|lower }}">{{ appointment.status }}</span>.</p>
+
+{% if appointment.status == 'APPROVED' %}
+<div style="background-color: #d1fae5; padding: 15px; border-radius: 5px; margin: 15px 0;">
+    <h3>Your Appointment Has Been Approved!</h3>
+    <p>We are pleased to inform you that your appointment request has been approved with the following details:</p>
+    <p><strong>Appointment Date:</strong> {{ appointment.appointment_date }}</p>
+    <p><strong>Appointment Time:</strong> {{ appointment.appointment_time }}</p>
+    <p><strong>Location:</strong> 
+    {% if appointment.location %}
+        {{ appointment.location.name }} - {{ appointment.location.city }}, {{ appointment.location.state }}
+    {% else %}
+        To be determined
+    {% endif %}
+    </p>
+</div>
+{% elif appointment.status == 'REJECTED' %}
+<div style="background-color: #fee2e2; padding: 15px; border-radius: 5px; margin: 15px 0;">
+    <h3>Your Appointment Request Has Been Declined</h3>
+    <p>We regret to inform you that we are unable to accommodate your appointment request at this time.</p>
+    {% if appointment.secretariat_notes_to_requester %}
+    <p><strong>Reason:</strong> {{ appointment.secretariat_notes_to_requester }}</p>
+    {% endif %}
+    <p>If you have any questions or would like to discuss this further, please contact the Global Secretariat Office.</p>
+</div>
+{% elif appointment.status == 'PENDING' %}
+<div style="background-color: #fef3c7; padding: 15px; border-radius: 5px; margin: 15px 0;">
+    <h3>Your Appointment Request is Under Review</h3>
+    <p>Your appointment request is currently being reviewed by our team. We will notify you once a decision has been made.</p>
+    {% if appointment.secretariat_notes_to_requester %}
+    <p><strong>Note from Secretariat:</strong> {{ appointment.secretariat_notes_to_requester }}</p>
+    {% endif %}
+</div>
+{% else %}
+<div style="background-color: #f9fafb; padding: 15px; border-radius: 5px; margin: 15px 0;">
+    <h3>Appointment Details</h3>
+    <p><strong>Request ID:</strong> {{ appointment.id }}</p>
+    
+    <p><strong>Dignitary/Dignitaries:</strong>
+    {% if appointment.appointment_dignitaries %}
+        {% set dignitaries = [] %}
+        {% for app_dignitary in appointment.appointment_dignitaries %}
+            {% set dignitary = app_dignitary.dignitary %}
+            {% do dignitaries.append(dignitary.honorific_title + " " + dignitary.first_name + " " + dignitary.last_name) %}
+        {% endfor %}
+        {{ dignitaries|join(", ") }}
+    {% elif appointment.dignitary %}
+        {{ appointment.dignitary.honorific_title }} {{ appointment.dignitary.first_name }} {{ appointment.dignitary.last_name }}
+    {% else %}
+        No dignitaries assigned
+    {% endif %}
+    </p>
+    
+    <p><strong>Purpose:</strong> {{ appointment.purpose }}</p>
+    <p><strong>Status:</strong> 
+        <span class="status {{ appointment.status|lower }}">{{ appointment.status }}</span>
+    </p>
+    
+    {% if appointment.secretariat_notes_to_requester %}
+    <p><strong>Secretariat Notes:</strong> {{ appointment.secretariat_notes_to_requester }}</p>
+    {% endif %}
+</div>
+{% endif %}
+
+<p>If you have any questions, please contact the Global Secretariat Office.</p>
+
+<p>Thank you for using our appointment system.</p>
+
+<p>Best regards,<br>AOLF Global Secretariat Team</p>
+{% endblock %} 

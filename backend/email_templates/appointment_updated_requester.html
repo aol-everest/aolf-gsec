@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Appointment Request Updated{% endblock %}
+
+{% block content %}
+<h2>Appointment Request Updated</h2>
+
+<p>Dear {{ user_name }},</p>
+
+<p>Your appointment request (ID: {{ appointment.id }}) has been updated. Please review the changes below:</p>
+
+<div style="background-color: #f9fafb; padding: 15px; border-radius: 5px; margin: 15px 0;">
+    <h3>Changes Made</h3>
+    
+    {% set fields_to_check = [
+        ('status', 'Status'),
+        ('appointment_date', 'Appointment Date'),
+        ('appointment_time', 'Appointment Time'),
+        ('location', 'Location'),
+        ('secretariat_meeting_notes', 'Meeting Notes'),
+        ('secretariat_follow_up_actions', 'Follow-up Actions'),
+        ('secretariat_notes_to_requester', 'Secretariat Comments'),
+        ('dignitaries', 'Dignitaries')
+    ] %}
+    
+    {% set changes = [] %}
+    
+    {% for field, display_name in fields_to_check %}
+        {% set old_value = old_data.get(field) %}
+        {% set new_value = new_data.get(field) %}
+        
+        {% if field == 'dignitaries' %}
+            {% if old_value != new_value and new_value is not none %}
+                {% if old_value is iterable and new_value is iterable %}
+                    {% set old_ids = [] %}
+                    {% set new_ids = [] %}
+                    
+                    {% for d in old_value if d.get('id') %}
+                        {% do old_ids.append(d.get('id')) %}
+                    {% endfor %}
+                    
+                    {% for d in new_value if d.get('id') %}
+                        {% do new_ids.append(d.get('id')) %}
+                    {% endfor %}
+                    
+                    {% if old_ids != new_ids %}
+                        {% set old_names = [] %}
+                        {% for d in old_value %}
+                            {% do old_names.append(d.get('honorific_title', '') + ' ' + d.get('first_name', '') + ' ' + d.get('last_name', '')) %}
+                        {% endfor %}
+                        
+                        {% set new_names = [] %}
+                        {% for d in new_value %}
+                            {% do new_names.append(d.get('honorific_title', '') + ' ' + d.get('first_name', '') + ' ' + d.get('last_name', '')) %}
+                        {% endfor %}
+                        
+                        {% do changes.append('<p><strong>' + display_name + ':</strong> Changed from "' + (old_names|join(', ') or 'None') + '" to "' + (new_names|join(', ') or 'None') + '"</p>') %}
+                    {% endif %}
+                {% else %}
+                    {% do changes.append('<p><strong>' + display_name + ':</strong> Changed</p>') %}
+                {% endif %}
+            {% endif %}
+        {% else %}
+            {% if old_value != new_value and new_value is not none %}
+                {% do changes.append('<p><strong>' + display_name + ':</strong> Changed from "' + (old_value or 'Not set') + '" to "' + new_value + '"</p>') %}
+            {% endif %}
+        {% endif %}
+    {% endfor %}
+    
+    {% if changes %}
+        {{ changes|join('') }}
+    {% else %}
+        <p>No significant changes were made to the appointment details.</p>
+    {% endif %}
+</div>
+
+<div style="background-color: #f9fafb; padding: 15px; border-radius: 5px; margin: 15px 0;">
+    <h3>Current Appointment Details</h3>
+    <p><strong>Request ID:</strong> {{ appointment.id }}</p>
+    
+    <p><strong>Dignitary/Dignitaries:</strong>
+    {% if appointment.appointment_dignitaries %}
+        {% set dignitaries = [] %}
+        {% for app_dignitary in appointment.appointment_dignitaries %}
+            {% set dignitary = app_dignitary.dignitary %}
+            {% do dignitaries.append(dignitary.honorific_title + " " + dignitary.first_name + " " + dignitary.last_name) %}
+        {% endfor %}
+        {{ dignitaries|join(", ") }}
+    {% elif appointment.dignitary %}
+        {{ appointment.dignitary.honorific_title }} {{ appointment.dignitary.first_name }} {{ appointment.dignitary.last_name }}
+    {% else %}
+        No dignitaries assigned
+    {% endif %}
+    </p>
+    
+    <p><strong>Purpose:</strong> {{ appointment.purpose }}</p>
+    <p><strong>Preferred Date:</strong> {{ appointment.preferred_date }}</p>
+    <p><strong>Preferred Time:</strong> {{ appointment.preferred_time_of_day or 'Not specified' }}</p>
+    
+    <p><strong>Location:</strong>
+    {% if appointment.location %}
+        {{ appointment.location.name }} - {{ appointment.location.city }}, {{ appointment.location.state }}
+    {% else %}
+        Not specified
+    {% endif %}
+    </p>
+    
+    <p><strong>Status:</strong> 
+        <span class="status {{ appointment.status|lower }}">{{ appointment.status }}</span>
+    </p>
+    
+    {% if appointment.secretariat_notes_to_requester %}
+    <p><strong>Secretariat Notes to You:</strong> {{ appointment.secretariat_notes_to_requester }}</p>
+    {% endif %}
+</div>
+
+<p>If you have any questions about these changes, please contact the Global Secretariat Office.</p>
+
+<p>Thank you for using our appointment system.</p>
+
+<p>Best regards,<br>AOLF Global Secretariat Team</p>
+{% endblock %} 

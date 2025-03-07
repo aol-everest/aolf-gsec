@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AOLF GSEC Notification{% endblock %}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #1e3a8a;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .logo {
+            max-width: 200px;
+            height: auto;
+        }
+        .footer {
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+        }
+        h1, h2, h3 {
+            color: #1e3a8a;
+        }
+        .content {
+            padding: 10px 0;
+        }
+        .status {
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        .status.approved {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+        .status.pending {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+        .status.rejected {
+            background-color: #fee2e2;
+            color: #b91c1c;
+        }
+        .button {
+            display: inline-block;
+            background-color: #1e3a8a;
+            color: white !important;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <!-- <img src="https://aolf-gsec.org/logo.png" alt="AOLF GSEC Logo" class="logo"> -->
+        <h1>AOLF Global Secretariat</h1>
+    </div>
+    
+    <div class="content">
+        {% block content %}{% endblock %}
+    </div>
+    
+    <div class="footer">
+        <p>This is an automated message from the AOLF Global Secretariat. Please do not reply to this email.</p>
+        <p>© {% now 'Y' %} Art of Living Foundation. All rights reserved.</p>
+    </div>
+</body>
+</html> 
