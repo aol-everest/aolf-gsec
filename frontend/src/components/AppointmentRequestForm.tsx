@@ -50,6 +50,7 @@ import { useEnums } from '../hooks/useEnums';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
+import SaveIcon from '@mui/icons-material/Save';
 
 // Remove the hardcoded enum and add a state for time of day options
 // const AppointmentTimeOfDay = {
@@ -579,8 +580,14 @@ export const AppointmentRequestForm: React.FC = () => {
       // Reset form for next dignitary
       resetDignitaryForm();
       
-      // Collapse the form after adding a dignitary
-      setIsDignitaryFormExpanded(false);
+      // Collapse the form after adding a dignitary, but only if not in edit mode
+      if (!isEditMode) {
+        setIsDignitaryFormExpanded(false);
+      } else {
+        // If we were in edit mode, exit edit mode but keep the form expanded
+        setIsEditMode(false);
+        setEditingDignitaryIndex(null);
+      }
       
       enqueueSnackbar(
         isEditMode 
@@ -617,8 +624,19 @@ export const AppointmentRequestForm: React.FC = () => {
     
     // Need to type cast since SelectedDignitary has properties that Dignitary doesn't
     setSelectedDignitary(dignitary as unknown as Dignitary);
+    
+    // Set radio button to "select existing dignitary" (regardless if it's a new or existing dignitary)
+    // In edit mode, we treat all dignitaries as "existing" since they're already in the list
+    dignitaryForm.setValue('isExistingDignitary', true);
+    
+    // Set the selected dignitary ID in the dropdown
+    dignitaryForm.setValue('selectedDignitaryId', dignitary.id);
+    
+    // Now populate the form with the dignitary data
     populateDignitaryForm(dignitary as unknown as Dignitary);
-    setIsDignitaryFormExpanded(true); // Expand the form when editing
+    
+    // Expand the form when editing
+    setIsDignitaryFormExpanded(true);
   };
 
   // Reset the dignitary form
@@ -952,16 +970,40 @@ export const AppointmentRequestForm: React.FC = () => {
                 <>
                   <Grid item xs={12}>
                     <Divider sx={{ my: 2 }} />
-                    <Typography variant="subtitle1" gutterBottom>
-                      {isEditMode ? 'Edit Dignitary' : 'Add a Dignitary'}
-                    </Typography>
+                    <Box 
+                      sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        mb: 2,
+                        ...(isEditMode ? {
+                          bgcolor: 'rgba(33, 150, 243, 0.1)',
+                          p: 2,
+                          borderRadius: 1,
+                          border: '1px solid',
+                          borderColor: 'primary.main',
+                        } : {})
+                      }}
+                    >
+                      {isEditMode && <EditIcon color="primary" sx={{ mr: 1 }} />}
+                      <Typography variant="subtitle1" color={isEditMode ? 'primary' : 'inherit'}>
+                        {isEditMode ? 'Edit Dignitary Details' : 'Add a Dignitary'}
+                      </Typography>
+                      {isEditMode && selectedDignitaries.length > 0 && editingDignitaryIndex !== null && (
+                        <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
+                          Editing: {selectedDignitaries[editingDignitaryIndex].honorific_title} {selectedDignitaries[editingDignitaryIndex].first_name} {selectedDignitaries[editingDignitaryIndex].last_name}
+                        </Typography>
+                      )}
+                    </Box>
                   </Grid>
 
                   <Grid item xs={12}>
                     <FormControl component="fieldset">
+                      {/* Set disabled to true when in edit mode, since we don't want to allow changing between existing/new dignitary */}
                       <RadioGroup
                         value={dignitaryForm.watch('isExistingDignitary').toString()}
                         onChange={(e) => {
+                          if (isEditMode) return; // Don't allow changes in edit mode
+                          
                           const isExisting = e.target.value === 'true';
                           dignitaryForm.setValue('isExistingDignitary', isExisting);
                           if (!isExisting) {
@@ -1003,12 +1045,13 @@ export const AppointmentRequestForm: React.FC = () => {
                           value="true" 
                           control={<Radio />} 
                           label="Select an existing dignitary"
-                          disabled={dignitaries.length === 0}
+                          disabled={dignitaries.length === 0 || isEditMode}
                         />
                         <FormControlLabel 
                           value="false" 
                           control={<Radio />} 
                           label="Add a new dignitary" 
+                          disabled={isEditMode}
                         />
                       </RadioGroup>
                     </FormControl>
@@ -1032,6 +1075,7 @@ export const AppointmentRequestForm: React.FC = () => {
                                   handleDignitarySelection(selectedDignitary);
                                 }
                               }}
+                              disabled={isEditMode} // Disable dropdown when in edit mode
                             >
                               {dignitaries.map((dignitary) => (
                                 <MenuItem key={dignitary.id} value={dignitary.id}>
@@ -1315,15 +1359,31 @@ export const AppointmentRequestForm: React.FC = () => {
 
                   {/* Add button at the bottom of the form */}
                   <Grid item xs={12}>
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        startIcon={isEditMode ? <EditIcon /> : <AddIcon />}
-                        onClick={addDignitaryToList}
-                      >
-                        {getButtonText()}
-                      </Button>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+                      {isEditMode && (
+                        <Button
+                          variant="outlined"
+                          color="secondary"
+                          onClick={() => {
+                            setIsEditMode(false);
+                            setEditingDignitaryIndex(null);
+                            resetDignitaryForm();
+                            // Keep the form expanded so user can continue adding dignitaries
+                          }}
+                        >
+                          Cancel Edit
+                        </Button>
+                      )}
+                      <Box sx={{ ml: 'auto' }}>
+                        <Button
+                          variant="contained"
+                          color={isEditMode ? "info" : "primary"}
+                          startIcon={isEditMode ? <SaveIcon /> : <AddIcon />}
+                          onClick={addDignitaryToList}
+                        >
+                          {getButtonText()}
+                        </Button>
+                      </Box>
                     </Box>
                   </Grid>
                 </>
@@ -1703,11 +1763,11 @@ export const AppointmentRequestForm: React.FC = () => {
   // Update the button text based on the current state
   const getButtonText = () => {
     if (isEditMode) {
-      return "Update Dignitary Details";
+      return "Save Changes";
     } else if (dignitaryForm.watch('isExistingDignitary') && isDignitaryModified) {
-      return "Update and Add Dignitary to Appointment";
+      return "Update and Add Dignitary";
     } else {
-      return "Save and Add Dignitary to Appointment";
+      return "Add Dignitary";
     }
   };
 
