@@ -459,13 +459,15 @@ export const AppointmentRequestForm: React.FC = () => {
     }
 
     const formData = dignitaryForm.getValues();
+    // Store the current edit mode state to use later
+    const wasInEditMode = isEditMode;
     
     try {
       let dignitaryToAdd: SelectedDignitary;
       
       if (formData.isExistingDignitary && formData.selectedDignitaryId) {
-        // Check if dignitary is already in the list (for edit mode)
-        if (!isEditMode && selectedDignitaries.some(d => d.id === formData.selectedDignitaryId)) {
+        // Check if dignitary is already in the list (for non-edit mode)
+        if (!wasInEditMode && selectedDignitaries.some(d => d.id === formData.selectedDignitaryId)) {
           enqueueSnackbar('This dignitary is already added to the appointment', { variant: 'warning' });
           return;
         }
@@ -565,7 +567,7 @@ export const AppointmentRequestForm: React.FC = () => {
         };
       }
 
-      if (isEditMode && editingDignitaryIndex !== null) {
+      if (wasInEditMode && editingDignitaryIndex !== null) {
         // Update existing dignitary in the list
         const updatedDignitaries = [...selectedDignitaries];
         updatedDignitaries[editingDignitaryIndex] = dignitaryToAdd;
@@ -580,17 +582,11 @@ export const AppointmentRequestForm: React.FC = () => {
       // Reset form for next dignitary
       resetDignitaryForm();
       
-      // Collapse the form after adding a dignitary, but only if not in edit mode
-      if (!isEditMode) {
-        setIsDignitaryFormExpanded(false);
-      } else {
-        // If we were in edit mode, exit edit mode but keep the form expanded
-        setIsEditMode(false);
-        setEditingDignitaryIndex(null);
-      }
+      // Always collapse the form after successfully adding/updating a dignitary
+      setIsDignitaryFormExpanded(false);
       
       enqueueSnackbar(
-        isEditMode 
+        wasInEditMode 
           ? 'Dignitary updated successfully' 
           : isDignitaryModified && formData.isExistingDignitary
             ? 'Dignitary updated and added to appointment'
@@ -1368,7 +1364,8 @@ export const AppointmentRequestForm: React.FC = () => {
                             setIsEditMode(false);
                             setEditingDignitaryIndex(null);
                             resetDignitaryForm();
-                            // Keep the form expanded so user can continue adding dignitaries
+                            // Collapse the form when canceling edit
+                            setIsDignitaryFormExpanded(false);
                           }}
                         >
                           Cancel Edit
@@ -1765,9 +1762,9 @@ export const AppointmentRequestForm: React.FC = () => {
     if (isEditMode) {
       return "Save Changes";
     } else if (dignitaryForm.watch('isExistingDignitary') && isDignitaryModified) {
-      return "Update and Add Dignitary";
+      return "Update Dignitary Details and Add to Appointment";
     } else {
-      return "Add Dignitary";
+      return "Add Dignitary to Appointment";
     }
   };
 
