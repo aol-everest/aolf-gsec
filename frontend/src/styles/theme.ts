@@ -90,7 +90,7 @@ const typography = {
   h4: {
     fontWeight: 500,
     fontSize: '2rem',
-    lineHeight: 2,
+    lineHeight: 1.5,
     // letterSpacing: '0.009em',
     letterSpacing: '0em',
     marginBottom: '16px',

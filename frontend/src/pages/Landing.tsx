@@ -2,7 +2,6 @@ import React from 'react';
 import { Container, Typography, Button, Box, useTheme, Paper } from '@mui/material';
 import { useGoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../contexts/AuthContext';
-import GurudevLogo from '../components/Images';
 
 const Landing: React.FC = () => {
   const { login } = useAuth();
@@ -22,131 +21,103 @@ const Landing: React.FC = () => {
     <Box
       sx={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%)',
+        background: '#FFFAF5',
         animation: 'fadeIn 0.8s ease-in',
         '@keyframes fadeIn': {
           from: { opacity: 0, transform: 'translateY(20px)' },
           to: { opacity: 1, transform: 'translateY(0)' },
         },
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
       }}
     >
-      <Container 
-        maxWidth={false}
+      <Paper
+        elevation={3}
+        sx={{
+          padding: 4,
+          borderRadius: 2,
+          maxWidth: 536,
+          width: { xs: '90%', sm: '100%' },
+          backgroundColor: '#fff',
+          textAlign: 'center',
+          boxShadow: '0px -1px 6px -2px #514D4A08, 0px 4px 16px -4px #514D4A14',
+        }}
       >
-        <Box
+        <Box 
+          component="img"
+          src="/aolf-logo.png"
+          alt="The Art of Living"
           sx={{
-            minHeight: '100vh',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center',
-            gap: 6,
+            width: '180px',
+            height: 'auto',
+            mb: 3,
+          }}
+        />
+        
+        <Typography 
+          variant="h4" 
+          component="h1"
+          sx={{
+            fontWeight: 500,
+            color: '#333',
+            mb: 1,
           }}
         >
-          <Box
-            sx={{
-              backgroundImage: `url(${'/desktop-bg-1.png'})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              borderRadius: 4,
-              padding: 8,
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-              textAlign: 'center',
-              width: '100%',
-              maxWidth: 600,
-            }}
-          >
-            <img
-              src="/aolf-logo.png"
-              alt="AOLF Logo"
-              style={{ width: 200, height: 'auto', marginBottom: 24 }}
+          Welcome to the Appointment Request Portal
+        </Typography>
+        
+        <Typography 
+          variant="body1"
+          sx={{
+            color: '#666',
+            mb: 4,
+          }}
+        >
+          Schedule appointments with Gurudev Sri Sri Ravi Shankar
+        </Typography>
+        
+        <Button 
+          variant="contained" 
+          fullWidth
+          onClick={() => handleGoogleLogin()}
+          sx={{
+            padding: '12px',
+            borderRadius: 28,
+            textTransform: 'none',
+            fontSize: '1rem',
+            fontWeight: 500,
+            backgroundColor: '#fff',
+            color: '#757575',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+            '&:hover': {
+              backgroundColor: '#f5f5f5',
+              boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+            },
+            mb: 3,
+          }}
+          startIcon={
+            <img 
+              src="/Google__G__logo.svg"
+              alt="Google Logo" 
+              style={{ width: 20, height: 20 }} 
             />
-            <Typography 
-              variant="h2" 
-              component="h1" 
-              gutterBottom
-              sx={{
-                background: 'linear-gradient(45deg, #1a237e, #534bae)',
-                backgroundClip: 'text',
-                WebkitBackgroundClip: 'text',
-                color: theme.palette.text.primary,
-                marginBottom: 3,
-                fontFamily: 'Lato',
-                fontWeight: 400,
-                fontStyle: 'italic',
-              }}
-            >
-              Welcome to Art of Living GSEC
-            </Typography>
-            <Typography 
-              variant="h5" 
-              component="h2" 
-              gutterBottom
-              sx={{
-                color: theme.palette.text.secondary,
-                marginBottom: 4,
-                lineHeight: 1.5,
-                fontFamily: 'Lato',
-                fontWeight: 500,
-              }}
-            >
-              Schedule appointments with <br />
-              <Paper elevation={0} sx={{ 
-                display: 'inline-block', 
-                backgroundColor: 'rgba(206, 167, 11, 0.81)', 
-                boxShadow: 'none', 
-                width: '100%', 
-                margin: '0 auto',  
-                borderRadius: '23px',
-                p: 1,
-                mt: 2,
-                mb: 0,
-              }}>
-                <GurudevLogo 
-                  sx={{ 
-                    height: '100%', 
-                    maxHeight: '56px', 
-                    width: 'auto', 
-                    maxWidth: '70%',
-                    mt: 13, 
-                    mb: 8, 
-                    ml: 13, 
-                    mr: 13, 
-                  }}
-                />
-              </Paper>
-            </Typography>
-            <Button 
-              variant="contained" 
-              size="large" 
-              onClick={() => handleGoogleLogin()}
-              sx={{
-                padding: '12px 32px',
-                borderRadius: 28,
-                textTransform: 'none',
-                fontSize: '1.1rem',
-                fontWeight: 500,
-                backgroundColor: '#fff',
-                color: '#757575',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                '&:hover': {
-                  backgroundColor: '#f5f5f5',
-                  boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-                },
-              }}
-              startIcon={
-                <img 
-                  src="/Google__G__logo.svg"
-                  alt="Google Logo" 
-                  style={{ width: 24, height: 24 }} 
-                />
-              }
-            >
-              Sign in with Google
-            </Button>
-          </Box>
-        </Box>
-      </Container>
+          }
+        >
+          Sign in with Google
+        </Button>
+        
+        <Box
+          component="img"
+          src="/landing-gurudev.png"
+          alt="Gurudev Sri Sri Ravi Shankar"
+          sx={{
+            width: '100%',
+            borderRadius: 1,
+            mt: 1,
+          }}
+        />
+      </Paper>
     </Box>
   );
 };
