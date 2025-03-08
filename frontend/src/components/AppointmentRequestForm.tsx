@@ -35,6 +35,7 @@ import {
   IconButton,
   Card,
   CardContent,
+  FormLabel,
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import LocationAutocomplete from './LocationAutocomplete';
@@ -1380,10 +1381,27 @@ export const AppointmentRequestForm: React.FC = () => {
                   </Grid>                  
 
                   <Grid item xs={12} md={6} lg={4}>
-                    <FormControlLabel
-                      control={<Checkbox checked={dignitaryForm.watch('dignitaryHasMetGurudev')} onChange={(e) => dignitaryForm.setValue('dignitaryHasMetGurudev', e.target.checked)} />}
-                      label="Has Dignitary Met Gurudev?"
-                    />
+                    <FormControl component="fieldset">
+                      <FormLabel component="legend">Has Dignitary Met Gurudev?</FormLabel>
+                      <RadioGroup
+                        row
+                        value={dignitaryForm.watch('dignitaryHasMetGurudev').toString()}
+                        onChange={(e) => {
+                          const value = e.target.value === 'true';
+                          dignitaryForm.setValue('dignitaryHasMetGurudev', value);
+                          
+                          // Clear meeting details if changing from Yes to No
+                          if (!value) {
+                            dignitaryForm.setValue('dignitaryGurudevMeetingDate', '');
+                            dignitaryForm.setValue('dignitaryGurudevMeetingLocation', '');
+                            dignitaryForm.setValue('dignitaryGurudevMeetingNotes', '');
+                          }
+                        }}
+                      >
+                        <FormControlLabel value="true" control={<Radio />} label="Yes" />
+                        <FormControlLabel value="false" control={<Radio />} label="No" />
+                      </RadioGroup>
+                    </FormControl>
                   </Grid>
 
                   {dignitaryForm.watch('dignitaryHasMetGurudev') && (
