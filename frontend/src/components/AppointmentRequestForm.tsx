@@ -1438,8 +1438,17 @@ export const AppointmentRequestForm: React.FC = () => {
 
                   {/* Add button at the bottom of the form */}
                   <Grid item xs={12}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 2 }}>
-                      {/* Cancel button for all scenarios */}
+                    <Box 
+                      sx={{ 
+                        display: 'flex', 
+                        flexDirection: { xs: 'column', sm: 'row' }, // Stack vertically on mobile, horizontal on larger screens
+                        alignItems: { xs: 'stretch', sm: 'center' }, // Full width on mobile, centered on larger screens
+                        justifyContent: 'flex-end', // Position buttons on the right side
+                        gap: 2, // Space between buttons
+                        mt: 2 
+                      }}
+                    >
+                      {/* Cancel button */}
                       <Button
                         variant="contained"
                         color="primary"
@@ -1452,16 +1461,17 @@ export const AppointmentRequestForm: React.FC = () => {
                           resetDignitaryForm();
                           setIsDignitaryFormExpanded(false);
                         }}
+                        sx={{ width: { xs: '100%', sm: 'auto' } }} // Full width on mobile, auto width on larger screens
                       >
                         Cancel
                       </Button>
+                      {/* Save/Add button */}
                       <Button
                         variant="contained"
-                        // color={isEditMode ? "info" : "primary"}
                         startIcon={isEditMode ? <SaveIcon /> : <AddIcon />}
                         color="primary"
-                        // startIcon={<SaveIcon />}
                         onClick={addDignitaryToList}
+                        sx={{ width: { xs: '100%', sm: 'auto' } }} // Full width on mobile, auto width on larger screens
                       >
                         {getButtonText()}
                       </Button>
