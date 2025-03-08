@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from models.user import User, UserRole
 from models.appointment import Appointment
 from schemas import AppointmentAdminUpdate
-from utils.utils import str_to_bool
+from utils.utils import str_to_bool, as_dict, appointment_to_dict
 from models.dignitary import Dignitary
 from enum import Enum, auto
 import logging
@@ -82,6 +82,8 @@ def render_template(template_name: str, **context) -> str:
         template = template_env.get_template(template_name)
         return template.render(**context)
     except Exception as e:
+        import traceback
+        print(traceback.format_exc())  # Print full error stack
         logger.error(f"Error rendering template {template_name}: {str(e)}")
         return fallback_render_template(template_name, **context)
 
@@ -96,7 +98,10 @@ def fallback_render_template(template_name: str, **context) -> str:
             <p>Your appointment request has been successfully created.</p>
             {get_appointment_summary(context.get('appointment'))}
             <p>You will be notified of any updates to your request.</p>
-            <p>Best regards,<br>AOLF GSEC Team</p>
+            <p>
+                Best regards,<br>
+                Office of Gurudev Sri Sri Ravi Shankar, USA
+            </p>
         """
     elif template_name == EmailTemplate.APPOINTMENT_UPDATED_REQUESTER:
         return f"""
@@ -105,13 +110,16 @@ def fallback_render_template(template_name: str, **context) -> str:
             {get_appointment_changes_summary(context.get('old_data', {}), context.get('new_data', {}))}
             <p>Current Appointment Details:</p>
             {get_appointment_summary(context.get('appointment'))}
-            <p>Best regards,<br>AOLF GSEC Team</p>
+            <p>
+                Best regards,<br>
+                Office of Gurudev Sri Sri Ravi Shankar, USA
+            </p>
         """
     # Default generic template
     return f"""
         <p>Dear {context.get('user_name', '')},</p>
         <p>{context.get('message', 'You have a new notification.')}</p>
-        <p>Best regards,<br>AOLF GSEC Team</p>
+        <p>Best regards,<br>Office of Gurudev Sri Sri Ravi Shankar, USA</p>
     """
 
 def start_email_worker():
@@ -267,7 +275,7 @@ def send_notification_email(
     })
     
     # Send email using template
-    send_email_from_template(recipient.email, template_name, subject, context)
+    send_email_from_template(recipient.email, template_name.value, subject, context)
     logger.info(f"Notification email ({trigger_type.value}) queued for {recipient.email}")
 
 def get_appointment_summary(appointment: Appointment) -> str:
@@ -351,9 +359,12 @@ def notify_appointment_creation(db: Session, appointment: Appointment):
     # Notify the requesting user
     requester = appointment.requester
     subject = f"Appointment Request Created - ID: {appointment.id}"
+    
     context = {
-        'appointment': appointment
+        'appointment': appointment_to_dict(appointment)
     }
+    
+    # logger.info(f"context = {json.dumps(context, indent=4, sort_keys=True, default=str)}")
     send_notification_email(
         db=db,
         trigger_type=EmailTrigger.APPOINTMENT_CREATED,
@@ -371,7 +382,7 @@ def notify_appointment_creation(db: Session, appointment: Appointment):
     for user in secretariat_users:
         subject = f"New Appointment Request - ID: {appointment.id}"
         context = {
-            'appointment': appointment
+            'appointment': appointment_to_dict(appointment)
         }
         send_notification_email(
             db=db,
@@ -416,7 +427,7 @@ def notify_appointment_update(db: Session, appointment: Appointment, old_data: D
     requester = appointment.requester
     subject = f"Appointment Request Updated - ID: {appointment.id}"
     context = {
-        'appointment': appointment,
+        'appointment': appointment_to_dict(appointment),
         'old_data': old_data,
         'new_data': new_data
     }

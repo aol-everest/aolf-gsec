@@ -271,7 +271,10 @@ async def create_appointment(
         db.commit()  # Commit the changes for the appointment_dignitary records
 
         # Send email notifications
-        notify_appointment_creation(db, db_appointment)
+        try:
+            notify_appointment_creation(db, db_appointment)
+        except Exception as e:
+            print(f"Error sending email notifications: {str(e)}")
 
         return db_appointment
     except Exception as e:
@@ -632,7 +635,7 @@ async def update_appointment(
     db.refresh(appointment)
     
     # Send email notifications about the update
-    notify_appointment_update(db, appointment, old_data, update_data)
+    # notify_appointment_update(db, appointment, old_data, update_data)
     
     return appointment
 
