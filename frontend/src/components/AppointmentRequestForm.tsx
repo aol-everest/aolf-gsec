@@ -48,9 +48,10 @@ import { Location, Dignitary, Appointment } from '../models/types';
 import { EnumSelect } from './EnumSelect';
 import { useEnums } from '../hooks/useEnums';
 import DeleteIcon from '@mui/icons-material/Delete';
-import AddIcon from '@mui/icons-material/Add';
+import AddIcon from '@mui/icons-material/LibraryAdd';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
+import CancelIcon from '@mui/icons-material/Cancel';
 
 // Remove the hardcoded enum and add a state for time of day options
 // const AppointmentTimeOfDay = {
@@ -1355,32 +1356,33 @@ export const AppointmentRequestForm: React.FC = () => {
 
                   {/* Add button at the bottom of the form */}
                   <Grid item xs={12}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-                      {isEditMode && (
-                        <Button
-                          variant="outlined"
-                          color="secondary"
-                          onClick={() => {
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 2 }}>
+                      {/* Cancel button for all scenarios */}
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        startIcon={<CancelIcon />}
+                        onClick={() => {
+                          if (isEditMode) {
                             setIsEditMode(false);
                             setEditingDignitaryIndex(null);
-                            resetDignitaryForm();
-                            // Collapse the form when canceling edit
-                            setIsDignitaryFormExpanded(false);
-                          }}
-                        >
-                          Cancel Edit
-                        </Button>
-                      )}
-                      <Box sx={{ ml: 'auto' }}>
-                        <Button
-                          variant="contained"
-                          color={isEditMode ? "info" : "primary"}
-                          startIcon={isEditMode ? <SaveIcon /> : <AddIcon />}
-                          onClick={addDignitaryToList}
-                        >
-                          {getButtonText()}
-                        </Button>
-                      </Box>
+                          }
+                          resetDignitaryForm();
+                          setIsDignitaryFormExpanded(false);
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="contained"
+                        // color={isEditMode ? "info" : "primary"}
+                        startIcon={isEditMode ? <SaveIcon /> : <AddIcon />}
+                        color="primary"
+                        // startIcon={<SaveIcon />}
+                        onClick={addDignitaryToList}
+                      >
+                        {getButtonText()}
+                      </Button>
                     </Box>
                   </Grid>
                 </>
@@ -1764,7 +1766,7 @@ export const AppointmentRequestForm: React.FC = () => {
     } else if (dignitaryForm.watch('isExistingDignitary') && isDignitaryModified) {
       return "Update Dignitary Details and Add to Appointment";
     } else {
-      return "Add Dignitary to Appointment";
+      return "Save and Add Dignitary to Appointment";
     }
   };
 
@@ -1783,14 +1785,18 @@ export const AppointmentRequestForm: React.FC = () => {
         
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
           {activeStep !== 0 && (
-            <Button onClick={handleBack} sx={{ mr: 1 }}>
+            <Button 
+              onClick={handleBack} 
+              sx={{ mr: 1 }}
+              disabled={(activeStep === 1 && isDignitaryFormExpanded)}
+            >
               Back
             </Button>
           )}
           <Button
             variant="contained"
             onClick={() => handleNext(false)}
-            disabled={activeStep === steps.length}
+            disabled={activeStep === steps.length || (activeStep === 1 && isDignitaryFormExpanded)}
           >
             {activeStep === steps.length - 1 ? 'Submit' : 'Next'}
           </Button>
