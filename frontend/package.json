@@ -73,6 +73,7 @@
     "@types/axios": "^0.9.36",
     "@types/google.maps": "^3.58.1",
     "env-cmd": "^10.1.0",
-    "openapi-typescript-codegen": "^0.29.0"
+    "openapi-typescript-codegen": "^0.29.0",
+    "source-map": "^0.7.3"
   }
 }
