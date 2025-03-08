@@ -1888,7 +1888,14 @@ export const AppointmentRequestForm: React.FC = () => {
           <Button
             variant="contained"
             onClick={() => handleNext(false)}
-            disabled={activeStep === steps.length || (activeStep === 1 && isDignitaryFormExpanded)}
+            disabled={
+              // If the active step is the last step, disable the next button
+              activeStep === steps.length || 
+              // At step 2, if the dignitary form is expanded, disable the next button
+              (activeStep === 1 && isDignitaryFormExpanded) || 
+              // At step 2, if no dignitaries are selected, disable the next button
+              (activeStep === 1 && selectedDignitaries.length === 0)
+            }
           >
             {activeStep === steps.length - 1 ? 'Submit' : 'Next'}
           </Button>
