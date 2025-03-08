@@ -1385,7 +1385,7 @@ export const AppointmentRequestForm: React.FC = () => {
                       <FormLabel component="legend">Has Dignitary Met Gurudev?</FormLabel>
                       <RadioGroup
                         row
-                        value={dignitaryForm.watch('dignitaryHasMetGurudev').toString()}
+                        value={dignitaryForm.watch('dignitaryHasMetGurudev') ? dignitaryForm.watch('dignitaryHasMetGurudev').toString() : 'false'}
                         onChange={(e) => {
                           const value = e.target.value === 'true';
                           dignitaryForm.setValue('dignitaryHasMetGurudev', value);
@@ -1846,9 +1846,9 @@ export const AppointmentRequestForm: React.FC = () => {
     if (isEditMode) {
       return "Save Changes";
     } else if (dignitaryForm.watch('isExistingDignitary') && isDignitaryModified) {
-      return "Update Dignitary Details and Add to Appointment";
+      return "Save and Add";
     } else {
-      return "Save and Add Dignitary to Appointment";
+      return "Save and Add";
     }
   };
 
