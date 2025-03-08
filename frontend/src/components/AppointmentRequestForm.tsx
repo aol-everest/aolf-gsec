@@ -954,13 +954,23 @@ export const AppointmentRequestForm: React.FC = () => {
                     onClick={() => {
                       setIsDignitaryFormExpanded(true);
                       
-                      // If dignitaries exist, default to "select existing dignitary" and select the first one
+                      // If dignitaries exist, default to "select existing dignitary"
                       if (dignitaries.length > 0) {
-                        const defaultDignitary = dignitaries[0];
-                        dignitaryForm.setValue('isExistingDignitary', true);
-                        dignitaryForm.setValue('selectedDignitaryId', defaultDignitary.id);
-                        setSelectedDignitary(defaultDignitary as unknown as Dignitary);
-                        populateDignitaryForm(defaultDignitary);
+                        // Find the first dignitary that hasn't been added yet
+                        const availableDignitary = dignitaries.find(d => 
+                          !selectedDignitaries.some(sd => sd.id === d.id)
+                        );
+                        
+                        if (availableDignitary) {
+                          // If there's an available dignitary not yet added, select it
+                          dignitaryForm.setValue('isExistingDignitary', true);
+                          dignitaryForm.setValue('selectedDignitaryId', availableDignitary.id);
+                          setSelectedDignitary(availableDignitary as unknown as Dignitary);
+                          populateDignitaryForm(availableDignitary);
+                        } else {
+                          // If all dignitaries have been added, default to adding a new one
+                          resetDignitaryForm();
+                        }
                       } else {
                         // Otherwise reset to add a new dignitary
                         resetDignitaryForm();
@@ -1050,11 +1060,24 @@ export const AppointmentRequestForm: React.FC = () => {
                               populateDignitaryForm(selectedDignitary);
                               dignitaryForm.setValue('selectedDignitaryId', selectedDignitary.previousId || selectedDignitary.id);
                             } else if (dignitaries.length > 0) {
-                              // If no dignitary was previously selected, select the first one by default
-                              const defaultDignitary = dignitaries[0];
-                              dignitaryForm.setValue('selectedDignitaryId', defaultDignitary.id);
-                              setSelectedDignitary(defaultDignitary as unknown as Dignitary);
-                              populateDignitaryForm(defaultDignitary);
+                              // Find the first dignitary that hasn't been added yet
+                              const availableDignitary = dignitaries.find(d => 
+                                !selectedDignitaries.some(sd => sd.id === d.id)
+                              );
+                              
+                              if (availableDignitary) {
+                                // If there's an available dignitary not yet added, select it
+                                dignitaryForm.setValue('selectedDignitaryId', availableDignitary.id);
+                                setSelectedDignitary(availableDignitary as unknown as Dignitary);
+                                populateDignitaryForm(availableDignitary);
+                              } else {
+                                // If all dignitaries have been added, select the first one
+                                // (it will be disabled but still shown in the dropdown)
+                                const defaultDignitary = dignitaries[0];
+                                dignitaryForm.setValue('selectedDignitaryId', defaultDignitary.id);
+                                setSelectedDignitary(defaultDignitary as unknown as Dignitary);
+                                populateDignitaryForm(defaultDignitary);
+                              }
                             }
                           }
                         }}
@@ -1095,11 +1118,31 @@ export const AppointmentRequestForm: React.FC = () => {
                               }}
                               disabled={isEditMode} // Disable dropdown when in edit mode
                             >
-                              {dignitaries.map((dignitary) => (
-                                <MenuItem key={dignitary.id} value={dignitary.id}>
-                                  {`${dignitary.honorific_title} ${dignitary.first_name} ${dignitary.last_name}`}
-                                </MenuItem>
-                              ))}
+                              {dignitaries.map((dignitary) => {
+                                // Check if this dignitary has already been added to the appointment
+                                const isAlreadyAdded = !isEditMode && selectedDignitaries.some(d => d.id === dignitary.id);
+                                return (
+                                  <MenuItem 
+                                    key={dignitary.id} 
+                                    value={dignitary.id}
+                                    disabled={isAlreadyAdded}
+                                    sx={{
+                                      ...(isAlreadyAdded && {
+                                        opacity: 0.7,
+                                        '& .already-added': {
+                                          marginLeft: 1,
+                                          fontSize: '0.75rem',
+                                          color: 'text.secondary',
+                                          fontStyle: 'italic'
+                                        }
+                                      })
+                                    }}
+                                  >
+                                    {`${dignitary.honorific_title} ${dignitary.first_name} ${dignitary.last_name}`}
+                                    {isAlreadyAdded && <span className="already-added">(already added)</span>}
+                                  </MenuItem>
+                                );
+                              })}
                             </Select>
                           )}
                         />
