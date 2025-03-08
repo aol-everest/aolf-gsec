@@ -54,6 +54,9 @@ class HonorificTitle(str, enum.Enum):
     THE_REVEREND = "The Reverend"
     SHEIKH = "Sheikh"
 
+    def __str__(self):
+        return self.value
+
 class PrimaryDomain(str, enum.Enum):
     """Primary domain enum with proper case values"""
     BUSINESS = "Business"
@@ -64,10 +67,16 @@ class PrimaryDomain(str, enum.Enum):
     EDUCATION = "Education"
     HEALTHCARE = "Healthcare"
 
+    def __str__(self):
+        return self.value
+
 class DignitarySource(str, enum.Enum):
     """Source of dignitary record"""
     MANUAL = "manual"
     BUSINESS_CARD = "business_card"
+
+    def __str__(self):
+        return self.value
 
 class Dignitary(Base):
     __tablename__ = "dignitaries"

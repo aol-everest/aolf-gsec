@@ -10,6 +10,9 @@ class RelationshipType(str, enum.Enum):
     DIRECT = "Direct"
     INDIRECT = "Indirect"
 
+    def __str__(self):
+        return self.value
+
 class DignitaryPointOfContact(Base):
     __tablename__ = "dignitary_point_of_contacts"
 

@@ -16,6 +16,9 @@ class AppointmentStatus(str, enum.Enum):
     FOLLOW_UP = "To Be Rescheduled"
     CANCELLED = "Cancelled"
 
+    def __str__(self):
+        return self.value
+
 class AppointmentSubStatus(str, enum.Enum):
     """Appointment sub-status enum with proper case values"""
     CANCELLED = "Cancelled"
@@ -32,16 +35,25 @@ class AppointmentSubStatus(str, enum.Enum):
     UNSCHEDULED = "Unscheduled"
     SCHEDULED = "Scheduled"
 
+    def __str__(self):
+        return self.value
+
 class AppointmentType(str, enum.Enum):
     """Appointment type enum with proper case values"""
     PRIVATE = "Private"
     SMALL_GROUP = "Small group"
+
+    def __str__(self):
+        return self.value
 
 class AppointmentTimeOfDay(str, enum.Enum):
     """Appointment time enum with proper case values"""
     MORNING = "Morning"
     AFTERNOON = "Afternoon"
     EVENING = "Evening"
+
+    def __str__(self):
+        return self.value
 
 class Appointment(Base):
     __tablename__ = "appointments"

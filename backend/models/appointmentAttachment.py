@@ -7,6 +7,9 @@ class AttachmentType(str, enum.Enum):
     GENERAL = "general"
     BUSINESS_CARD = "business_card"
 
+    def __str__(self):
+        return self.value
+
 class AppointmentAttachment(Base):
     __tablename__ = "appointment_attachments"
 

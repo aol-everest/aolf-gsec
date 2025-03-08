@@ -10,6 +10,9 @@ class UserRole(str, enum.Enum):
     GENERAL = "GENERAL"
     USHER = "USHER"
 
+    def __str__(self):
+        return self.value
+
 # Define default notification preferences
 DEFAULT_EMAIL_NOTIFICATION_PREFERENCES = {
     "appointment_created": True,  # When user creates an appointment
