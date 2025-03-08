@@ -953,7 +953,18 @@ export const AppointmentRequestForm: React.FC = () => {
                     startIcon={<AddIcon />}
                     onClick={() => {
                       setIsDignitaryFormExpanded(true);
-                      resetDignitaryForm();
+                      
+                      // If dignitaries exist, default to "select existing dignitary" and select the first one
+                      if (dignitaries.length > 0) {
+                        const defaultDignitary = dignitaries[0];
+                        dignitaryForm.setValue('isExistingDignitary', true);
+                        dignitaryForm.setValue('selectedDignitaryId', defaultDignitary.id);
+                        setSelectedDignitary(defaultDignitary as unknown as Dignitary);
+                        populateDignitaryForm(defaultDignitary);
+                      } else {
+                        // Otherwise reset to add a new dignitary
+                        resetDignitaryForm();
+                      }
                     }}
                     sx={{ mt: 2 }}
                   >
@@ -1003,6 +1014,7 @@ export const AppointmentRequestForm: React.FC = () => {
                           
                           const isExisting = e.target.value === 'true';
                           dignitaryForm.setValue('isExistingDignitary', isExisting);
+                          
                           if (!isExisting) {
                             // Store the current selectedDignitaryId in the selectedDignitary object
                             if (selectedDignitary) {
@@ -1031,10 +1043,19 @@ export const AppointmentRequestForm: React.FC = () => {
                               dignitaryCity: '',
                               dignitaryHasMetGurudev: false,
                             });
-                          } else if (selectedDignitary) {
-                            // Restore selected dignitary data and ID if switching back
-                            populateDignitaryForm(selectedDignitary);
-                            dignitaryForm.setValue('selectedDignitaryId', selectedDignitary.previousId || selectedDignitary.id);
+                          } else {
+                            // When switching to "select existing dignitary"
+                            if (selectedDignitary) {
+                              // Restore selected dignitary data and ID if switching back
+                              populateDignitaryForm(selectedDignitary);
+                              dignitaryForm.setValue('selectedDignitaryId', selectedDignitary.previousId || selectedDignitary.id);
+                            } else if (dignitaries.length > 0) {
+                              // If no dignitary was previously selected, select the first one by default
+                              const defaultDignitary = dignitaries[0];
+                              dignitaryForm.setValue('selectedDignitaryId', defaultDignitary.id);
+                              setSelectedDignitary(defaultDignitary as unknown as Dignitary);
+                              populateDignitaryForm(defaultDignitary);
+                            }
                           }
                         }}
                       >
