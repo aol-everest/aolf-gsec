@@ -22,10 +22,13 @@ import {
   Select,
   MenuItem,
   SelectChangeEvent,
+  Theme,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import Layout from '../components/Layout';
 import { formatDate } from '../utils/dateUtils';
@@ -37,10 +40,104 @@ import { useQuery } from '@tanstack/react-query';
 import { useEnums } from '../hooks/useEnums';
 import { FilterChip, FilterChipGroup } from '../components/FilterChip';
 import { EnumFilterChipGroup } from '../components/EnumFilterChipGroup';
+import SwipeableViews from 'react-swipeable-views';
+import { virtualize, bindKeyboard } from 'react-swipeable-views-utils';
 
 import { Appointment, AppointmentDignitary } from '../models/types';
 
 import { AppointmentCard } from '../components/AppointmentCard';
+
+// Create enhanced SwipeableViews with keyboard navigation and virtualization
+const VirtualizedSwipeableViews = bindKeyboard(virtualize(SwipeableViews));
+
+// Define interface for slide renderer params to match react-swipeable-views types
+interface SlideRendererParams {
+  index: number;
+  key: number | string;
+}
+
+// Additional helper component for swipe indicators
+const SwipeIndicators: React.FC<{ 
+  currentIndex: number, 
+  totalCount: number 
+}> = ({ currentIndex, totalCount }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  
+  if (!isMobile) return null;
+  
+  return (
+    <>
+      {currentIndex > 0 && (
+        <Box sx={{
+          position: 'absolute',
+          left: 8,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          zIndex: 10,
+          backgroundColor: 'rgba(255,255,255,0.7)',
+          borderRadius: '50%',
+          width: 40,
+          height: 40,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: 0.7,
+        }}>
+          <ChevronLeftIcon />
+        </Box>
+      )}
+      {currentIndex < totalCount - 1 && (
+        <Box sx={{
+          position: 'absolute',
+          right: 8,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          zIndex: 10,
+          backgroundColor: 'rgba(255,255,255,0.7)',
+          borderRadius: '50%',
+          width: 40,
+          height: 40,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: 0.7,
+        }}>
+          <ChevronRightIcon />
+        </Box>
+      )}
+    </>
+  );
+};
+
+// Helper function for slide rendering with virtualization
+const slideRenderer = (
+  filteredAppointments: Appointment[], 
+  AppointmentTileComponent: React.FC<{ appointment: Appointment }>, 
+  theme: Theme,
+  currentIndex: number
+) => ({ index, key }: SlideRendererParams) => {
+  // Safety check for valid index
+  if (index < 0 || index >= filteredAppointments.length) {
+    return (
+      <div key={key} style={{ padding: '0 4px' }}>
+        <Paper sx={{ p: 3, textAlign: 'center' }}>
+          <Typography>No appointment found.</Typography>
+        </Paper>
+      </div>
+    );
+  }
+  
+  // Get appointment at current index
+  const appointment = filteredAppointments[index];
+  
+  return (
+    <div key={key} style={{ overflow: 'hidden', padding: '0 4px', position: 'relative' }}>
+      <SwipeIndicators currentIndex={index} totalCount={filteredAppointments.length} />
+      <AppointmentTileComponent appointment={appointment} />
+    </div>
+  );
+};
 
 // Interface for location data
 interface Location {
@@ -423,16 +520,50 @@ const AppointmentTiles: React.FC = () => {
               </Box>
             ) : filteredAppointments.length > 0 ? (
               <>
-                {/* Added safety check: only render if activeStep is valid */}
-                {activeStep < filteredAppointments.length ? (
-                  <AppointmentTile appointment={filteredAppointments[activeStep]} />
+                {/* For smaller number of items use regular SwipeableViews */}
+                {filteredAppointments.length <= 20 ? (
+                  <SwipeableViews
+                    index={activeStep}
+                    onChangeIndex={(index) => {
+                      debugLog(`Swipe detected, changing to index ${index}`);
+                      isManualNavigationRef.current = true;
+                      setActiveStep(index);
+                    }}
+                    enableMouseEvents
+                    resistance
+                    style={{ overflow: 'hidden' }}
+                    animateTransitions
+                    springConfig={{
+                      duration: '0.35s',
+                      easeFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+                      delay: '0s',
+                    }}
+                  >
+                    {filteredAppointments.map((appointment, index) => (
+                      <div key={appointment.id} style={{ overflow: 'hidden', padding: '0 4px', position: 'relative' }}>
+                        {/* Add swipe indicators for mobile devices */}
+                        <SwipeIndicators currentIndex={index} totalCount={filteredAppointments.length} />
+                        {Math.abs(activeStep - index) <= 1 ? (
+                          <AppointmentTile appointment={appointment} />
+                        ) : null}
+                      </div>
+                    ))}
+                  </SwipeableViews>
                 ) : (
-                  <Paper sx={{ p: 3, textAlign: 'center' }}>
-                    <Typography>Invalid appointment index.</Typography>
-                    <Button onClick={() => setActiveStep(0)} sx={{ mt: 2 }}>
-                      Go to first appointment
-                    </Button>
-                  </Paper>
+                  /* Use virtualized version for larger datasets */
+                  <VirtualizedSwipeableViews
+                    index={activeStep}
+                    onChangeIndex={(index) => {
+                      debugLog(`Virtualized swipe detected, changing to index ${index}`);
+                      isManualNavigationRef.current = true;
+                      setActiveStep(index);
+                    }}
+                    slideRenderer={slideRenderer(filteredAppointments, AppointmentTile, theme, activeStep)}
+                    slideCount={filteredAppointments.length}
+                    enableMouseEvents
+                    resistance
+                    style={{ overflow: 'hidden' }}
+                  />
                 )}
                 
                 <MobileStepper
