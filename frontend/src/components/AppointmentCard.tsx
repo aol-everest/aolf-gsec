@@ -16,6 +16,13 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
     const [loading, setLoading] = useState(false);
     const [attachments, setAttachments] = useState<AppointmentAttachment[]>(appointment.attachments || []);
     const api = useApi();
+    
+    // Debug log function
+    const debugLog = (message: string, data?: any) => {
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[AppointmentCard:${appointment.id}] ${message}`, data || '');
+      }
+    };
 
     // Separate attachments by type
     const businessCardAttachments = useMemo(() => {
@@ -28,27 +35,62 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
 
     // Fetch attachments if they're not already included in the appointment data
     useEffect(() => {
+        // Keep track of whether the component is mounted
+        let isMounted = true;
+        
         const fetchAttachments = async () => {
-            if (!appointment.attachments || appointment.attachments.length === 0) {
+            // Check if appointment exists and has an id
+            if (!appointment || !appointment.id) {
+                debugLog('Skipping attachment fetch - no appointment or id');
+                return;
+            }
+            
+            // Defensive check: don't fetch again if we already have attachments
+            if (Array.isArray(attachments) && attachments.length > 0) {
+                debugLog('Skipping attachment fetch - attachments already loaded');
+                return;
+            }
+            
+            // Only fetch if we don't have attachments
+            if ((!appointment.attachments || appointment.attachments.length === 0) && !loading) {
                 setLoading(true);
                 try {
+                    debugLog('Fetching attachments');
                     const response = await api.get<AppointmentAttachment[]>(`/appointments/${appointment.id}/attachments`);
-                    setAttachments(response.data);
-                    // Also update the appointment object for consistency
-                    appointment.attachments = response.data;
+                    
+                    // Only update state if the component is still mounted
+                    if (isMounted) {
+                        debugLog(`Fetched ${response.data.length} attachments`);
+                        setAttachments(response.data);
+                        // Create a new reference for the appointment object to avoid issues
+                        // We use a mutable approach because the appointment object might be 
+                        // shared between different component instances
+                        if (!appointment.attachments) {
+                            appointment.attachments = [];
+                        }
+                        appointment.attachments = [...response.data];
+                    }
                 } catch (error) {
-                    console.error("Error fetching attachments:", error);
+                    console.error(`Error fetching attachments for appointment ${appointment.id}:`, error);
                 } finally {
-                    setLoading(false);
+                    if (isMounted) {
+                        setLoading(false);
+                    }
                 }
-            } else {
-                // If attachments are already in the appointment, use those
+            } else if (appointment.attachments && appointment.attachments.length > 0) {
+                // Use existing attachments
+                debugLog('Using existing attachments from appointment object');
                 setAttachments(appointment.attachments);
             }
         };
         
         fetchAttachments();
-    }, [appointment, appointment.attachments, api]);
+        
+        // Cleanup function
+        return () => {
+            isMounted = false;
+        };
+    }, [appointment.id]); // Only depend on appointment.id, not the entire appointment object or api
 
     const handleEdit = (appointmentId: number) => {
         navigate(AdminAppointmentsEditRoute.path?.replace(':id', appointmentId.toString()) || '');
@@ -261,7 +303,7 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                 </Paper>
 
                 {/* Attachments Section */}
-                {attachments && attachments.length > 0 && (
+                {attachments && Array.isArray(attachments) && attachments.length > 0 && (
                     <>
                         {/* Business Card Attachments */}
                         {businessCardAttachments.length > 0 && (

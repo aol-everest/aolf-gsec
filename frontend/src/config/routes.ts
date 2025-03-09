@@ -128,6 +128,15 @@ export const AdminAppointmentsReviewRoute: RouteConfig = {
   component: AppointmentTiles
 }
 
+export const AdminAppointmentReviewWithIdRoute: RouteConfig = {
+  path: '/admin/appointments/review/:id',
+  label: 'Review Appointment',
+  icon: MemoCheckIconV2,
+  roles: [SECRETARIAT_ROLE],
+  showInSidebar: false,
+  component: AppointmentTiles
+}
+
 export const AdminAppointmentsCalendarRoute: RouteConfig = {
   path: '/admin/appointments/calendar',
   label: 'Daily Schedule',
@@ -205,6 +214,7 @@ export const adminRoutes: RouteConfig[] = [
   AdminLocationsRoute,
   AdminAppointmentsRoute,
   AdminAppointmentsReviewRoute,
+  AdminAppointmentReviewWithIdRoute,
   AdminAppointmentsCalendarRoute,
   AdminAppointmentsEditRoute,
 ];

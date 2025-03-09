@@ -127,56 +127,120 @@ const AttachmentSection: React.FC<AttachmentSectionProps> = ({ attachments }) =>
   const [loading, setLoading] = useState<Record<number, boolean>>({});
   const [modalLoading, setModalLoading] = useState(false);
   
+  // Create a cache reference that persists across renders
+  const thumbnailCache = React.useRef<Record<number, string>>({});
+  
   // Load thumbnails when component mounts or attachments change
   useEffect(() => {
+    let isMounted = true;
+    
     const loadThumbnails = async () => {
-      const newThumbnailUrls: Record<number, string> = {};
-      const newLoading: Record<number, boolean> = {};
+      // Skip if there are no image attachments
+      const imageAttachments = attachments.filter(attachment => attachment.is_image);
+      if (imageAttachments.length === 0) return;
       
-      // Initialize loading state for all image attachments
-      attachments.forEach(attachment => {
-        if (attachment.is_image) {
-          newLoading[attachment.id] = true;
+      // Initialize loading state
+      const newLoading: Record<number, boolean> = {};
+      const newThumbnailUrls: Record<number, string> = {...thumbnailUrls};
+      
+      // Check which thumbnails need to be loaded
+      const attachmentsToLoad = imageAttachments.filter(att => 
+        !thumbnailCache.current[att.id] && !thumbnailUrls[att.id]
+      );
+      
+      // If all thumbnails are cached, use the cached values
+      if (attachmentsToLoad.length === 0) {
+        // Use cached thumbnails
+        imageAttachments.forEach(att => {
+          // Use cached URL if available
+          if (thumbnailCache.current[att.id]) {
+            newThumbnailUrls[att.id] = thumbnailCache.current[att.id];
+          }
+        });
+        
+        if (isMounted) {
+          setThumbnailUrls(newThumbnailUrls);
         }
+        return;
+      }
+      
+      // Mark attachments that need loading
+      attachmentsToLoad.forEach(att => {
+        newLoading[att.id] = true;
       });
       
-      setLoading(newLoading);
+      if (isMounted) {
+        setLoading(newLoading);
+      }
       
-      // Load thumbnails for all image attachments
-      for (const attachment of attachments) {
-        if (attachment.is_image) {
+      // Load thumbnails in parallel using Promise.all
+      try {
+        const loadPromises = attachmentsToLoad.map(async attachment => {
           try {
+            console.log(`Loading thumbnail for attachment ${attachment.id}`);
             const response = await api.get(`/appointments/attachments/${attachment.id}/thumbnail`, {
               responseType: 'blob'
             });
             const url = URL.createObjectURL(response.data as Blob);
-            newThumbnailUrls[attachment.id] = url;
+            return { id: attachment.id, url };
           } catch (error) {
             console.error(`Error loading thumbnail for attachment ${attachment.id}:`, error);
-          } finally {
-            newLoading[attachment.id] = false;
+            return { id: attachment.id, url: null };
           }
+        });
+        
+        const results = await Promise.all(loadPromises);
+        
+        if (isMounted) {
+          // Update the URLs and loading state
+          const updatedUrls = {...newThumbnailUrls};
+          const updatedLoading = {...newLoading};
+          
+          results.forEach(result => {
+            if (result.url) {
+              updatedUrls[result.id] = result.url;
+              thumbnailCache.current[result.id] = result.url; // Cache the URL
+            }
+            updatedLoading[result.id] = false;
+          });
+          
+          setThumbnailUrls(updatedUrls);
+          setLoading(updatedLoading);
+        }
+      } catch (error) {
+        console.error("Error loading thumbnails:", error);
+        if (isMounted) {
+          // Mark all as not loading
+          const updatedLoading = {...newLoading};
+          Object.keys(updatedLoading).forEach(id => {
+            updatedLoading[Number(id)] = false;
+          });
+          setLoading(updatedLoading);
         }
       }
-      
-      setThumbnailUrls(newThumbnailUrls);
-      setLoading(newLoading);
     };
     
-    if (attachments && attachments.length > 0) {
-      loadThumbnails();
-    }
+    loadThumbnails();
     
-    // Cleanup function to revoke object URLs
+    // Cleanup function to revoke object URLs when component unmounts
     return () => {
+      isMounted = false;
+    };
+  }, [attachments, api]);
+  
+  // Cleanup URLs when component unmounts
+  useEffect(() => {
+    return () => {
+      // Revoke all URLs
       Object.values(thumbnailUrls).forEach(url => {
         URL.revokeObjectURL(url);
       });
+      
       if (fullImageUrl) {
         URL.revokeObjectURL(fullImageUrl);
       }
     };
-  }, [attachments, api]);
+  }, []);
   
   if (!attachments || attachments.length === 0) {
     return null;
