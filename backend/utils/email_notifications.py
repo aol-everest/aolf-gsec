@@ -28,10 +28,10 @@ logger = logging.getLogger(__name__)
 
 # Environment variables
 SENDGRID_API_KEY = os.getenv('SENDGRID_API_KEY')
-FROM_EMAIL = os.getenv('FROM_EMAIL', 'noreply@aolf-gsec.org')
+FROM_EMAIL = os.getenv('FROM_EMAIL', 'noreply@meetgurudev.aolf.app')
 ENABLE_EMAIL = str_to_bool(os.getenv('ENABLE_EMAIL'))
 EMAIL_TEMPLATES_DIR = os.getenv('EMAIL_TEMPLATES_DIR', os.path.join(os.path.dirname(__file__), '../email_templates'))
-APP_BASE_URL = os.getenv('APP_BASE_URL', 'https://aolf-gsec.org')
+APP_BASE_URL = os.getenv('APP_BASE_URL', 'https://meetgurudev.aolf.app')
 
 # Create email templates directory if it doesn't exist
 Path(EMAIL_TEMPLATES_DIR).mkdir(parents=True, exist_ok=True)
