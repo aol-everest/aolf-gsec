@@ -20,6 +20,7 @@ import threading
 import queue
 import time
 import atexit
+import re
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -30,6 +31,7 @@ SENDGRID_API_KEY = os.getenv('SENDGRID_API_KEY')
 FROM_EMAIL = os.getenv('FROM_EMAIL', 'noreply@aolf-gsec.org')
 ENABLE_EMAIL = str_to_bool(os.getenv('ENABLE_EMAIL'))
 EMAIL_TEMPLATES_DIR = os.getenv('EMAIL_TEMPLATES_DIR', os.path.join(os.path.dirname(__file__), '../email_templates'))
+APP_BASE_URL = os.getenv('APP_BASE_URL', 'https://aolf-gsec.org')
 
 # Create email templates directory if it doesn't exist
 Path(EMAIL_TEMPLATES_DIR).mkdir(parents=True, exist_ok=True)
@@ -74,6 +76,9 @@ class EmailTrigger(str, Enum):
 
 def render_template(template_name: str, **context) -> str:
     """Render a template with the given context."""
+    # Add global context variables
+    context['app_base_url'] = APP_BASE_URL
+    
     if not template_env:
         logger.error("Jinja2 environment not initialized. Using fallback template rendering.")
         return fallback_render_template(template_name, **context)
@@ -90,6 +95,10 @@ def render_template(template_name: str, **context) -> str:
 def fallback_render_template(template_name: str, **context) -> str:
     """Fallback template rendering when Jinja2 is not available or fails."""
     logger.warning(f"Using fallback template rendering for {template_name}")
+    
+    # Ensure app_base_url is set
+    if 'app_base_url' not in context:
+        context['app_base_url'] = APP_BASE_URL
     
     # Simple template mapping for fallback
     if template_name == EmailTemplate.APPOINTMENT_CREATED_REQUESTER:
