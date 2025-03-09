@@ -24,7 +24,72 @@ from utils.business_card import extract_business_card_info, BusinessCardExtracti
 import inspect
 from sqlalchemy.orm import selectinload, joinedload
 from sqlalchemy.orm import aliased
-from sqlalchemy import or_
+from sqlalchemy import or_, text
+import logging
+import uuid
+from logging.handlers import RotatingFileHandler
+import os.path
+import contextvars
+
+# Create a context variable to store request IDs
+request_id_var = contextvars.ContextVar('request_id', default='')
+
+# Custom log formatter that includes request ID when available
+class RequestIdFilter(logging.Filter):
+    def filter(self, record):
+        record.request_id = request_id_var.get() or ''
+        return True
+
+# Configure logging
+logger = logging.getLogger(__name__)
+# For AWS Elastic Beanstalk, configure logging to work well with EB's log collection
+# Default level is INFO, but can be overridden with environment variables
+log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+
+# Add request ID filter
+logger.addFilter(RequestIdFilter())
+
+# Create formatter with request ID
+log_format = '%(asctime)s - %(name)s - %(levelname)s - [%(request_id)s] - %(message)s'
+formatter = logging.Formatter(log_format)
+
+# Create handlers
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(formatter)
+log_handlers = [stream_handler]  # Always log to stdout/stderr for EBS to collect
+
+# In production-like environments, also log to a file with rotation
+log_file_path = os.getenv("LOG_FILE_PATH", "/var/log/app/application.log")
+log_file_enabled = os.getenv("LOG_FILE_ENABLED", "false").lower() == "true"
+
+if log_file_enabled:
+    try:
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
+        
+        # Create rotating file handler
+        file_handler = RotatingFileHandler(
+            log_file_path,
+            maxBytes=10*1024*1024,  # 10MB
+            backupCount=5
+        )
+        file_handler.setFormatter(formatter)
+        log_handlers.append(file_handler)
+        # Use print instead of logger.info to avoid circular initialization
+        print(f"File logging enabled: {log_file_path}")
+    except Exception as e:
+        print(f"Failed to setup file logging: {str(e)}")
+
+# Configure basic logging for all loggers
+logging.basicConfig(
+    level=getattr(logging, log_level),
+    handlers=log_handlers
+)
+
+# Now that logging is fully configured, use the logger
+logger.info(f"Application starting with log level: {log_level}")
+if log_file_enabled:
+    logger.info(f"Log files will be saved to: {log_file_path}")
 
 # Get environment variables
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
@@ -80,40 +145,94 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
+# Add request logging middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = datetime.utcnow()
+    
+    # Generate a request ID for tracking
+    request_id = str(uuid.uuid4())
+    # Store in context variable for logging
+    token = request_id_var.set(request_id)
+    
+    # Log the request
+    logger.debug(f"Request started: {request.method} {request.url.path}")
+    
+    # Process the request
+    try:
+        response = await call_next(request)
+        process_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+        
+        # Log the response
+        logger.debug(
+            f"Request completed: {request.method} {request.url.path} "
+            f"- Status: {response.status_code} - Time: {process_time:.2f}ms"
+        )
+        
+        # Add custom header with processing time
+        response.headers["X-Process-Time"] = f"{process_time:.2f}ms"
+        response.headers["X-Request-ID"] = request_id
+        
+        return response
+    except Exception as e:
+        logger.error(f"Request failed: {request.method} {request.url.path} - Error: {str(e)}")
+        raise
+    finally:
+        # Reset the context variable
+        request_id_var.reset(token)
+
 # Dependency to get database session
 def get_db():
     db = SessionLocal()
     try:
+        logger.debug("Database session created")
         yield db
     finally:
+        logger.debug("Database session closed")
         db.close()
 
+# Generate JWT token
 def create_access_token(data: dict) -> str:
     to_encode = data.copy()
-    # Increase expiration to 7 days
-    expire = datetime.utcnow() + timedelta(days=7)
+    expire = datetime.utcnow() + timedelta(days=30)
     to_encode.update({"exp": expire})
+    
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    logger.debug(f"Access token created for user: {data.get('sub', 'unknown')}")
+    
     return encoded_jwt
 
+# Role-based access control decorator
 def requires_role(required_role: models.UserRole):
     def decorator(func: Callable):
         @wraps(func)
         async def wrapper(*args, **kwargs):
             # Get the current user from the kwargs
-            current_user = kwargs.get('current_user')
+            current_user = kwargs.get("current_user")
             if not current_user:
+                # Try to get it from args - usually it would be the second argument after 'request'
+                for arg in args:
+                    if isinstance(arg, models.User):
+                        current_user = arg
+                        break
+            
+            if not current_user:
+                logger.warning("User not found in request for role-protected endpoint")
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Not authenticated"
+                    detail="Could not validate credentials",
+                    headers={"WWW-Authenticate": "Bearer"},
                 )
             
-            if current_user.role != required_role:
+            # Check if the user has the required role
+            if current_user.role != required_role and current_user.role != models.UserRole.SECRETARIAT:
+                logger.warning(f"User {current_user.email} with role {current_user.role} attempted to access {func.__name__} requiring role {required_role}")
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Not enough privileges"
+                    detail=f"Not authorized. Required role: {required_role}",
                 )
             
+            logger.debug(f"User {current_user.email} with role {current_user.role} authorized for {func.__name__}")
             return await func(*args, **kwargs)
         # Preserve the original function signature for dependency injection
         wrapper.__signature__ = inspect.signature(func)
@@ -159,18 +278,40 @@ async def get_current_user(
         detail="Token has expired",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    
     try:
+        logger.debug("Attempting to decode JWT token")
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
+            logger.warning("Token payload missing 'sub' claim")
             raise credentials_exception
+            
+        # Check token expiration
+        exp = payload.get("exp")
+        if exp is None or datetime.utcnow() > datetime.fromtimestamp(exp):
+            logger.warning(f"Token expired for user {email}")
+            raise token_expired_exception
+            
+        logger.debug(f"Token decoded successfully for user {email}")
+    except jwt.ExpiredSignatureError:
+        logger.warning("JWT token has expired signature")
+        raise token_expired_exception
+    except InvalidTokenError as e:
+        logger.warning(f"Invalid JWT token: {str(e)}")
+        raise credentials_exception
+        
+    # Look up the user in the database
+    try:
         user = db.query(models.User).filter(models.User.email == email).first()
         if user is None:
+            logger.warning(f"No user found with email {email}")
             raise credentials_exception
+            
+        logger.debug(f"User {email} authenticated successfully")
         return user
-    except jwt.ExpiredSignatureError:
-        raise token_expired_exception
-    except InvalidTokenError:
+    except Exception as e:
+        logger.error(f"Database error during user authentication: {str(e)}")
         raise credentials_exception
 
 @app.post("/verify-google-token", response_model=schemas.Token)
@@ -179,21 +320,33 @@ async def verify_google_token(
     db: Session = Depends(get_db)
 ):
     try:
-        print(f"Received token for verification: {token.token[:50]}...") # Debug log
+        logger.debug(f"Received token for verification: {token.token[:20]}...{token.token[-10:] if len(token.token) > 30 else ''}")
+        logger.debug(f"Using Google Client ID: {GOOGLE_CLIENT_ID[:10]}...")
         
+        # Verify the token with Google
+        logger.debug("Sending token to Google for verification")
         idinfo = id_token.verify_oauth2_token(
             token.token,
             requests.Request(),
             GOOGLE_CLIENT_ID
         )
-        print(f"Verified token info: {idinfo}") # Debug log
+        
+        # Log token verification success and basic info
+        logger.debug(f"Token verified successfully with Google for email: {idinfo.get('email')}")
+        
+        if 'email' not in idinfo:
+            logger.warning("Verified token missing email claim")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token: missing email"
+            )
         
         # Check if user exists
         user = db.query(models.User).filter(models.User.email == idinfo['email']).first()
-        print(f"Found user: {user}") # Debug log
+        logger.debug(f"Found user: {user}")
         
         if not user:
-            print("Creating new user") # Debug log
+            logger.info(f"Creating new user with email: {idinfo['email']}")
             # Create new user
             user = models.User(
                 google_id=idinfo['sub'],
@@ -206,8 +359,9 @@ async def verify_google_token(
             db.add(user)
             db.commit()
             db.refresh(user)
+            logger.info(f"New user created: ID={user.id}, Email={user.email}, Role={user.role}")
         else:
-            print(f"User already exists: {user.email}") # Debug log
+            logger.debug(f"Existing user found: ID={user.id}, Email={user.email}, Role={user.role}")
             # Update user first name, last name, and picture if they exist
             user.first_name = idinfo.get('given_name', user.first_name)
             user.last_name = idinfo.get('family_name', user.last_name)
@@ -216,13 +370,15 @@ async def verify_google_token(
             # Update google_id if it's not set (for pre-defined users)
             if not user.google_id:
                 user.google_id = idinfo.get('sub')
+                logger.info(f"Updated google_id for existing user: {user.email}")
             db.commit()
             db.refresh(user)
         
         # Generate JWT token
         access_token = create_access_token(data={"sub": user.email})
-        print(f"Generated access token: {access_token[:50]}...") # Debug log
+        logger.debug(f"Generated access token: {access_token[:50]}...")
         
+        logger.info(f"User logged in successfully: {user.email}")
         return {
             "access_token": access_token,
             "token_type": "bearer",
@@ -232,7 +388,7 @@ async def verify_google_token(
         }
         
     except Exception as e:
-        print(f"Error verifying token: {str(e)}") # Debug log
+        logger.error(f"Error verifying Google token: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Invalid Google token: {str(e)}"
@@ -244,8 +400,14 @@ async def create_appointment(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    print(f"Received appointment data: {appointment.dict()}")  # Debug log
+    start_time = datetime.utcnow()
+    logger.info(f"Creating new appointment for user {current_user.email} (ID: {current_user.id})")
+    logger.debug(f"Appointment data: {appointment.dict()}")
+    
     try:
+        # Log timing for database operations
+        db_start_time = datetime.utcnow()
+        
         # Create appointment
         db_appointment = models.Appointment(
             requester_id=current_user.id,
@@ -259,26 +421,47 @@ async def create_appointment(
         db.add(db_appointment)
         db.commit()
         db.refresh(db_appointment)
+        
+        # Calculate DB operation time
+        db_time = (datetime.utcnow() - db_start_time).total_seconds() * 1000
+        logger.debug(f"Database operation for creating appointment took {db_time:.2f}ms")
 
         # Associate dignitaries with the appointment
-        for dignitary_id in appointment.dignitary_ids:  # Assuming appointment.dignitary_ids is a list of IDs
+        dignitary_start_time = datetime.utcnow()
+        dignitary_count = 0
+        
+        for dignitary_id in appointment.dignitary_ids:
             appointment_dignitary = models.AppointmentDignitary(
                 appointment_id=db_appointment.id,
                 dignitary_id=dignitary_id
             )
             db.add(appointment_dignitary)
-
-        db.commit()  # Commit the changes for the appointment_dignitary records
+            dignitary_count += 1
+            
+        db.commit()
+        
+        # Calculate dignitary association time
+        dignitary_time = (datetime.utcnow() - dignitary_start_time).total_seconds() * 1000
+        logger.debug(f"Associated {dignitary_count} dignitaries with appointment in {dignitary_time:.2f}ms")
 
         # Send email notifications
+        notification_start_time = datetime.utcnow()
         try:
             notify_appointment_creation(db, db_appointment)
+            notification_time = (datetime.utcnow() - notification_start_time).total_seconds() * 1000
+            logger.debug(f"Email notifications sent in {notification_time:.2f}ms")
         except Exception as e:
-            print(f"Error sending email notifications: {str(e)}")
+            logger.error(f"Error sending email notifications: {str(e)}", exc_info=True)
 
+        # Calculate total operation time
+        total_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+        logger.info(f"Appointment created successfully (ID: {db_appointment.id}) in {total_time:.2f}ms")
+        
         return db_appointment
     except Exception as e:
-        print(f"Error creating appointment: {str(e)}")  # Debug log
+        logger.error(f"Error creating appointment: {str(e)}", exc_info=True)
+        # Log the full exception traceback in debug mode
+        logger.debug(f"Exception details:", exc_info=True)
         raise
 
 @app.post("/dignitaries/new", response_model=schemas.Dignitary)
@@ -322,21 +505,21 @@ async def update_dignitary(
     current_user: models.User = Depends(get_current_user)
 ):
     # Log the incoming request data
-    print(f"Updating dignitary {dignitary_id} with data: {dignitary.dict()}")
+    logger.info(f"Updating dignitary {dignitary_id} with data: {dignitary.dict()}")
     
     # Check if dignitary exists
     existing_dignitary = db.query(models.Dignitary).filter(models.Dignitary.id == dignitary_id).first()
     if not existing_dignitary:
-        print(f"Dignitary with ID {dignitary_id} not found")
+        logger.error(f"Dignitary with ID {dignitary_id} not found")
         raise HTTPException(status_code=404, detail="Dignitary not found")
     
     # Extract poc_relationship_type and create dignitary without it
     poc_relationship_type = dignitary.poc_relationship_type
     try:
         dignitary_data = dignitary.dict(exclude={'poc_relationship_type'}, exclude_unset=True)
-        print(f"Processed dignitary data for update: {dignitary_data}")
+        logger.debug(f"Processed dignitary data for update: {dignitary_data}")
     except Exception as e:
-        print(f"Error processing dignitary data: {str(e)}")
+        logger.error(f"Error processing dignitary data: {str(e)}")
         raise HTTPException(status_code=422, detail=f"Error processing dignitary data: {str(e)}")
 
     # Update dignitary  
@@ -347,7 +530,7 @@ async def update_dignitary(
         db.refresh(existing_dignitary)
     except Exception as e:
         db.rollback()
-        print(f"Error updating dignitary: {str(e)}")
+        logger.error(f"Error updating dignitary: {str(e)}")
         raise HTTPException(status_code=422, detail=f"Error updating dignitary: {str(e)}")
 
     # Update POC relationship
@@ -357,16 +540,16 @@ async def update_dignitary(
             models.DignitaryPointOfContact.poc_id == current_user.id
         ).first()
         if poc and poc_relationship_type and poc_relationship_type != poc.relationship_type:
-            print(f"Updating POC relationship type from {poc.relationship_type} to {poc_relationship_type}")
+            logger.info(f"Updating POC relationship type from {poc.relationship_type} to {poc_relationship_type}")
             poc.relationship_type = poc_relationship_type
             db.commit()
             db.refresh(poc)
     except Exception as e:
         db.rollback()
-        print(f"Error updating POC relationship: {str(e)}")
+        logger.error(f"Error updating POC relationship: {str(e)}")
         raise HTTPException(status_code=422, detail=f"Error updating POC relationship: {str(e)}")
 
-    print(f"Successfully updated dignitary {dignitary_id}")
+    logger.info(f"Successfully updated dignitary {dignitary_id}")
     return existing_dignitary
 
 
@@ -404,7 +587,7 @@ async def update_user(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    print(f"Received user update: {user_update.dict()}")
+    logger.info(f"Received user update: {user_update.dict()}")
     """Update current user's information"""
     for key, value in user_update.dict(exclude_unset=True).items():
         setattr(current_user, key, value)
@@ -438,7 +621,7 @@ async def get_my_appointments(
 
     appointments = query.all()
 
-    print(f"Appointments: {appointments}")
+    logger.debug(f"Appointments: {appointments}")
     return appointments 
 
 @app.get("/appointments/my/{dignitary_id}", response_model=List[schemas.Appointment])
@@ -460,7 +643,7 @@ async def get_my_appointments_for_dignitary(
         )
         .all()
     )
-    print(f"Appointments: {appointments}")
+    logger.debug(f"Appointments: {appointments}")
     return appointments
 
 @app.get("/admin/dignitaries/all", response_model=List[schemas.DignitaryAdminWithAppointments])
@@ -494,7 +677,7 @@ async def get_all_appointments(
     )
 
     appointments = query.all()
-    print(f"Appointments: {appointments}")
+    logger.debug(f"Appointments: {appointments}")
     return appointments
 
 @app.get("/admin/appointments/upcoming", response_model=List[schemas.AppointmentAdmin])
@@ -527,7 +710,7 @@ async def get_upcoming_appointments(
     )
     
     appointments = query.all()
-    print(f"Upcoming appointments: {appointments}")
+    logger.debug(f"Upcoming appointments: {appointments}")
     return appointments
 
 
@@ -587,7 +770,7 @@ async def get_appointment(
         )
         .first()
     )
-    print(f"Appointment: {appointment}")
+    logger.debug(f"Appointment: {appointment}")
     return appointment 
 
 
@@ -621,7 +804,7 @@ async def update_appointment(
     }
         
     if appointment.status != models.AppointmentStatus.APPROVED and appointment_update.status == models.AppointmentStatus.APPROVED:
-        print("Appointment is approved")
+        logger.info("Appointment is approved")
         appointment.approved_datetime = datetime.utcnow()
         appointment.approved_by = current_user.id
 
@@ -1065,8 +1248,8 @@ async def create_dignitary_from_business_card(
             honorific_title = models.HonorificTitle.MR
         
         # Debug logging
-        print(f"Creating dignitary with source={models.DignitarySource.BUSINESS_CARD}")
-        print(f"Appointment dignitary country: {appointment.dignitary.country if appointment.dignitary else 'None'}")
+        logger.info(f"Creating dignitary with source={models.DignitarySource.BUSINESS_CARD}")
+        logger.info(f"Appointment dignitary country: {appointment.dignitary.country if appointment.dignitary else 'None'}")
         
         # Create dignitary
         dignitary = models.Dignitary(
@@ -1099,8 +1282,8 @@ async def create_dignitary_from_business_card(
     except Exception as e:
         db.rollback()
         import traceback
-        print(f"Error creating dignitary: {str(e)}")
-        print(traceback.format_exc())
+        logger.error(f"Error creating dignitary: {str(e)}")
+        logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Failed to create dignitary: {str(e)}")
 
 @app.get("/appointments/{appointment_id}/attachments", response_model=List[schemas.AppointmentAttachment])
@@ -1488,3 +1671,56 @@ async def get_appointment_dignitaries(
     )
     
     return dignitaries
+
+# Configure app-wide exception handlers
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    # Get request ID for correlation
+    request_id = request_id_var.get()
+    
+    # Log the exception with traceback for server errors
+    logger.error(
+        f"Unhandled exception for request {request.method} {request.url.path}: {str(exc)}",
+        exc_info=True
+    )
+    
+    # Customize response based on exception type
+    if isinstance(exc, HTTPException):
+        # For HTTP exceptions, return as is (these are expected)
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.detail},
+        )
+    
+    # For other exceptions, return a generic 500 error
+    error_id = uuid.uuid4()
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "detail": "An unexpected error occurred",
+            "error_id": str(error_id),
+            "request_id": request_id
+        }
+    )
+
+# Add startup and shutdown event handlers
+@app.on_event("startup")
+async def startup_event():
+    logger.info("Application startup complete")
+    # Log important configuration information
+    logger.info(f"Environment: {os.getenv('ENV', 'dev')}")
+    logger.info(f"Database host: {os.getenv('POSTGRES_HOST')}")
+    
+    # Check database connection on startup
+    try:
+        db = SessionLocal()
+        # Use SQLAlchemy's text() function for raw SQL
+        db.execute(text("SELECT 1"))
+        logger.info("Database connection successful")
+        db.close()
+    except Exception as e:
+        logger.error(f"Database connection failed on startup: {str(e)}")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    logger.info("Application shutting down")
