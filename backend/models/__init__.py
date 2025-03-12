@@ -2,7 +2,7 @@ from .user import User, UserRole
 from .dignitary import Dignitary, HonorificTitle, PrimaryDomain, DignitarySource
 from .dignitaryPointOfContact import DignitaryPointOfContact, RelationshipType
 from .location import Location
-from .appointment import Appointment, AppointmentStatus, AppointmentTimeOfDay, AppointmentSubStatus, AppointmentType
+from .appointment import Appointment, AppointmentStatus, AppointmentTimeOfDay, AppointmentSubStatus, AppointmentType, STATUS_SUBSTATUS_MAPPING
 from .appointmentAttachment import AppointmentAttachment, AttachmentType
 from .appointmentDignitary import AppointmentDignitary
 from database import Base

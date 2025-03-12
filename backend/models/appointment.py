@@ -38,6 +38,48 @@ class AppointmentSubStatus(str, enum.Enum):
     def __str__(self):
         return self.value
 
+# Define mapping between status and valid sub-statuses
+STATUS_SUBSTATUS_MAPPING = {
+    AppointmentStatus.PENDING.value: {
+        "default_sub_status": AppointmentSubStatus.NOT_REVIEWED.value,
+        "valid_sub_statuses": [
+            AppointmentSubStatus.NOT_REVIEWED.value,
+            AppointmentSubStatus.UNDER_CONSIDERATION.value,
+            AppointmentSubStatus.SHORTLISTED.value,
+            AppointmentSubStatus.NEED_MORE_INFO.value
+        ]
+    },
+    AppointmentStatus.APPROVED.value: {
+        "default_sub_status": AppointmentSubStatus.SCHEDULED.value,
+        "valid_sub_statuses": [
+            AppointmentSubStatus.SCHEDULED.value,
+            AppointmentSubStatus.UNSCHEDULED.value,
+            AppointmentSubStatus.NEED_RESCHEDULE.value
+        ]
+    },
+    AppointmentStatus.REJECTED.value: {
+        "default_sub_status": AppointmentSubStatus.NO_FURTHER_ACTION.value,
+        "valid_sub_statuses": [
+            AppointmentSubStatus.NO_FURTHER_ACTION.value,
+            AppointmentSubStatus.LOW_PRIORITY.value,
+            AppointmentSubStatus.DARSHAN_LINE.value,
+            AppointmentSubStatus.MET_GURUDEV.value
+        ]
+    },
+    AppointmentStatus.COMPLETED.value: {
+        "default_sub_status": AppointmentSubStatus.FOLLOW_UP_REQUIRED.value,
+        "valid_sub_statuses": [
+            AppointmentSubStatus.FOLLOW_UP_REQUIRED.value,
+        ]
+    },
+    AppointmentStatus.CANCELLED.value: {
+        "default_sub_status": AppointmentSubStatus.CANCELLED.value,
+        "valid_sub_statuses": [
+            AppointmentSubStatus.CANCELLED.value,
+        ]
+    }
+}
+
 class AppointmentType(str, enum.Enum):
     """Appointment type enum with proper case values"""
     PRIVATE = "Private"

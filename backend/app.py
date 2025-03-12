@@ -947,8 +947,13 @@ async def get_appointment_time_of_day_options():
 
 @app.get("/admin/user-role-options", response_model=List[str])
 async def get_user_role_options():
-    """Get all possible user role options"""
+    """Get all possible user roles"""
     return [role.value for role in models.UserRole]
+
+@app.get("/appointments/status-substatus-mapping")
+async def get_status_substatus_mapping():
+    """Get mapping between appointment status and valid sub-statuses"""
+    return models.STATUS_SUBSTATUS_MAPPING
 
 @app.post("/admin/locations/new", response_model=schemas.LocationAdmin)
 @requires_role(models.UserRole.SECRETARIAT)

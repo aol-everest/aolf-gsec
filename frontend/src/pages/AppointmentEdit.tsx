@@ -117,6 +117,14 @@ interface ValidationErrors {
   secretariat_meeting_notes?: string;
 }
 
+// Status to substatus mapping
+interface StatusSubStatusMapping {
+  [key: string]: {
+    default_sub_status: string;
+    valid_sub_statuses: string[];
+  }
+}
+
 const AppointmentEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -154,6 +162,15 @@ const AppointmentEdit: React.FC = () => {
   const watchStatus = watch('status');
   const watchSubStatus = watch('sub_status');
 
+  // Fetch status-substatus mapping from the API
+  const { data: statusSubStatusMapping } = useQuery<StatusSubStatusMapping>({
+    queryKey: ['status-substatus-mapping'],
+    queryFn: async () => {
+      const { data } = await api.get<StatusSubStatusMapping>('/appointments/status-substatus-mapping');
+      return data;
+    },
+  });
+
   // Fetch locations
   const { data: locations = [] } = useQuery<Location[]>({
     queryKey: ['locations'],
@@ -174,6 +191,9 @@ const AppointmentEdit: React.FC = () => {
     refetchOnMount: true,
   });
 
+  // Fetch all substatus options
+  const { values: allSubStatusOptions = [] } = useEnums('appointmentSubStatus');
+
   // Add useEffect to reset form when appointment data is available
   useEffect(() => {
     if (appointment) {
@@ -191,6 +211,24 @@ const AppointmentEdit: React.FC = () => {
       });
     }
   }, [appointment, reset]);
+
+  // Set default substatus when status changes - simplified version
+  useEffect(() => {
+    if (watchStatus && statusSubStatusMapping && statusSubStatusMapping[watchStatus]) {
+      const { default_sub_status, valid_sub_statuses } = statusSubStatusMapping[watchStatus];
+      
+      // Only set default if current substatus is not valid for the new status
+      const currentSubStatus = getValues('sub_status');
+      if (!currentSubStatus || !valid_sub_statuses.includes(currentSubStatus)) {
+        // Update the form with the default substatus
+        reset({
+          ...getValues(),
+          sub_status: default_sub_status
+        }, { keepValues: true });
+      }
+    }
+    // Removed the else clause that was setting validSubStatuses
+  }, [watchStatus, statusSubStatusMapping, getValues, reset]);
 
   // Check if business card extraction is enabled
   useEffect(() => {
@@ -1014,16 +1052,38 @@ const AppointmentEdit: React.FC = () => {
                     defaultValue={appointment?.sub_status || ''}
                     render={({ field }) => (
                       <FormControl fullWidth error={!!validationErrors.sub_status}>
-                        <EnumSelect
-                          enumType="appointmentSubStatus"
-                          label="Sub-Status"
+                        <InputLabel>Sub-Status</InputLabel>
+                        <Select
                           {...field}
+                          label="Sub-Status"
+                          value={field.value || ''}
                           onChange={(e) => {
                             field.onChange(e);
                             // Clear validation errors when sub-status changes
                             setValidationErrors(prev => ({...prev, sub_status: undefined}));
                           }}
-                        />
+                        >
+                          {allSubStatusOptions.map((option) => {
+                            // Determine if this option should be disabled based on the API mapping
+                            const isDisabled = Boolean(
+                              watchStatus && 
+                              statusSubStatusMapping && 
+                              statusSubStatusMapping[watchStatus] && 
+                              statusSubStatusMapping[watchStatus].valid_sub_statuses.length > 0 && 
+                              !statusSubStatusMapping[watchStatus].valid_sub_statuses.includes(option)
+                            );
+                            
+                            return (
+                              <MenuItem 
+                                key={option} 
+                                value={option}
+                                disabled={isDisabled}
+                              >
+                                {option}
+                              </MenuItem>
+                            );
+                          })}
+                        </Select>
                         {validationErrors.sub_status && (
                           <FormHelperText error>{validationErrors.sub_status}</FormHelperText>
                         )}
