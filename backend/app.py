@@ -137,7 +137,8 @@ app.add_middleware(
         "http://localhost:3000", 
         "https://aolf-gsec-uat.appspot.com",
         "https://d2wxu2rjtgc6ou.cloudfront.net",
-        "https://aolfgsecuat.aolf.app"
+        "https://aolfgsecuat.aolf.app",
+        "https://meetgurudev.aolf.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],

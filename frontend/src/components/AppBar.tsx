@@ -77,7 +77,7 @@ export default function CustomAppBar({ handleDrawerToggle, drawerWidth, isDrawer
             }}
           /> */}
           <Typography variant="h1" noWrap component="div">
-            Art of Living GSEC
+            Gurudev Meeting Request Portal
           </Typography>
         </Box>
         <div>

@@ -64,7 +64,7 @@ const Landing: React.FC = () => {
             mb: 1,
           }}
         >
-          Welcome to the Appointment Request Portal
+          Welcome to the Gurudev Meeting Request Portal
         </Typography>
         
         <Typography 
