@@ -436,13 +436,15 @@ const AppointmentTiles: React.FC = () => {
             <Box sx={{ borderBottom: 1, borderColor: 'divider', width: '100%' }}>
               <Tabs 
                 value={selectedStatus || 'All'} 
-                onChange={(_, newValue) => {
-                  if (newValue === 'All') {
-                    handleStatusFilter(null);
-                  } else {
-                    handleStatusFilter(newValue);
-                  }
-                }}
+                // Commenting this out because it's handled by the Tab component
+                // Using below onChange event had issues when deploying to UAT
+                // onChange={(_, newValue) => {
+                //   if (newValue === 'All') {
+                //     handleStatusFilter(null);
+                //   } else {
+                //     handleStatusFilter(newValue);
+                //   }
+                // }}
                 variant="scrollable"
                 scrollButtons="auto"
                 allowScrollButtonsMobile
@@ -455,7 +457,9 @@ const AppointmentTiles: React.FC = () => {
                       label="All"
                       count={appointments.length}
                       isSelected={selectedStatus === null}
-                      onClick={() => {}}  // Empty function as Tab already handles clicks
+                      onClick={() => {
+                        handleStatusFilter(null);
+                      }}
                     />
                   }
                   value="All" 
@@ -469,7 +473,9 @@ const AppointmentTiles: React.FC = () => {
                         label={status}
                         count={getStatusAppointmentCount(status)}
                         isSelected={selectedStatus === status}
-                        onClick={() => {}}  // Empty function as Tab already handles clicks
+                        onClick={() => {
+                          handleStatusFilter(status);
+                        }}
                       />
                     }
                     value={status}
