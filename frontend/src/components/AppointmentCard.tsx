@@ -117,7 +117,7 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                     {appointment.appointment_dignitaries.map((appointmentDignitary: AppointmentDignitary, index: number) => {
                         const dig = appointmentDignitary.dignitary;
                         return (
-                            <Paper elevation={0} 
+                            <Paper elevation={0}
                                 sx={{ 
                                     p: 2, 
                                     mb: index < appointment.appointment_dignitaries!.length - 1 ? 2 : 0, 
@@ -130,7 +130,7 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                                 <Typography variant="subtitle1" gutterBottom color="primary" fontWeight="bold">
                                     {dig.honorific_title || ''} {dig.first_name} {dig.last_name}
                                 </Typography>
-                                <Grid container spacing={1} sx={{ color: theme.palette.text.secondary }}>
+                                <Grid container spacing={1}>
                                     <Grid item xs={12} sm={6}>
                                         <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
                                             <MailIconV2 />
@@ -174,23 +174,23 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                                         </Box>
                                     </Grid>
                                     <Grid item xs={12}>
-                                        <Typography sx={{ color: theme.palette.text.secondary, mr: 1, display: 'inline' }}>Bio:</Typography>
+                                        <Typography sx={{ fontWeight: 500, mr: 1, display: 'inline' }}>Bio:</Typography>
                                         <Typography sx={{ color: theme.palette.text.primary, display: 'inline' }}>{dig.bio_summary}</Typography>
                                     </Grid>
                                     <Grid item xs={12} sm={4}>
-                                        <Typography sx={{ color: theme.palette.text.secondary, mr: 1, display: 'inline' }}>Has Met Gurudev?</Typography>
+                                        <Typography sx={{ fontWeight: 500, mr: 1, display: 'inline' }}>Has Met Gurudev?</Typography>
                                         <Typography sx={{ fontWeight: 'bold', display: 'inline', color: dig.has_dignitary_met_gurudev ? theme.palette.success.main : theme.palette.error.main }}>{dig.has_dignitary_met_gurudev ? 'Yes' : 'No'}</Typography>
                                     </Grid>
                                     <Grid item xs={12} sm={4}>
-                                        <Typography sx={{ color: theme.palette.text.secondary, mr: 1, display: 'inline' }}>Gurudev Meeting Date:</Typography>
+                                        <Typography sx={{ fontWeight: 500, mr: 1, display: 'inline' }}>Gurudev Meeting Date:</Typography>
                                         <Typography sx={{ color: theme.palette.text.primary, display: 'inline' }}>{dig.gurudev_meeting_date ? formatDate(dig.gurudev_meeting_date, false) : 'N/A'}</Typography>
                                     </Grid>
                                     <Grid item xs={12} sm={4}>
-                                        <Typography sx={{ color: theme.palette.text.secondary, mr: 1, display: 'inline' }}>Gurudev Meeting Location:</Typography>
+                                        <Typography sx={{ fontWeight: 500, mr: 1, display: 'inline' }}>Gurudev Meeting Location:</Typography>
                                         <Typography sx={{ color: theme.palette.text.primary, display: 'inline' }}>{dig.gurudev_meeting_location || 'N/A'}</Typography>
                                     </Grid>
                                     <Grid item xs={12}>
-                                        <Typography sx={{ color: theme.palette.text.secondary, mr: 1, display: 'inline' }}>Gurudev Meeting Notes:</Typography>
+                                        <Typography sx={{ fontWeight: 500, mr: 1, display: 'inline' }}>Gurudev Meeting Notes:</Typography>
                                         <Typography sx={{ color: theme.palette.text.primary, display: 'inline' }}>{dig.gurudev_meeting_notes || 'N/A'}</Typography>
                                     </Grid>
                                 </Grid>
@@ -293,18 +293,12 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                     <Typography variant="h6" gutterBottom color="primary" fontWeight="medium">
                         Requested Appointment Details
                     </Typography>
-                    <Grid container spacing={2} sx={{ color: theme.palette.text.secondary }}>
+                    <Grid container spacing={2}>
                         <Grid item xs={12} md={6}>
                             <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                                 <Box component="span" sx={{ width: '150px', fontWeight: 'medium' }}>Preferred Date:</Box>
                                 <Typography component="span" sx={{ color: theme.palette.text.primary }}>
-                                    {formatDate(appointment.preferred_date, false)}
-                                </Typography>
-                            </Box>
-                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <Box component="span" sx={{ width: '150px', fontWeight: 'medium' }}>Preferred Time:</Box>
-                                <Typography component="span" sx={{ color: theme.palette.text.primary }}>
-                                    {appointment.preferred_time_of_day || 'N/A'}
+                                    {formatDate(appointment.preferred_date, false)} {appointment.preferred_time_of_day || ''}
                                 </Typography>
                             </Box>
                         </Grid>
