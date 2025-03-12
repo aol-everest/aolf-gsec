@@ -323,17 +323,8 @@ const AppointmentEdit: React.FC = () => {
     },
   });
 
-  // Helper function to get enum name from value
-  const getStatusEnumName = (statusValue: string): string | undefined => {
-    const entry = Object.entries(statusMap).find(([_, value]) => value.toLowerCase() === statusValue.toLowerCase());
-    return entry ? entry[0] : undefined;
-  };
 
-  const getSubStatusEnumName = (subStatusValue: string): string | undefined => {
-    const entry = Object.entries(subStatusMap).find(([_, value]) => value.toLowerCase() === subStatusValue.toLowerCase());
-    return entry ? entry[0] : undefined;
-  };
-
+  // ----------------------------------------------------------------------------------------------------------------------------------------------
   // VALIDATION RULES
   // ----------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -346,17 +337,13 @@ const AppointmentEdit: React.FC = () => {
       errors.status = 'Status is required';
     }
 
-    // Get enum names for status and substatus
-    const statusEnumName = getStatusEnumName(data.status);
-    const subStatusEnumName = getSubStatusEnumName(data.sub_status);
-    
     // Specific validation based on status and substatus combinations
-    if (statusEnumName === 'APPROVED') {
+    if (data.status === statusMap['APPROVED']) {
       if (!data.appointment_type) {
         errors.appointment_type = 'Appointment type is required for Approved status';
       }
       
-      if (subStatusEnumName === 'SCHEDULED') {
+      if (data.sub_status === subStatusMap['SCHEDULED']) {
         if (!data.appointment_date) {
           errors.appointment_date = 'Appointment date is required for Scheduled appointments';
         }
@@ -370,24 +357,24 @@ const AppointmentEdit: React.FC = () => {
         }
       }
       
-      if (subStatusEnumName === 'COMPLETED' || subStatusEnumName === 'NO_SHOW') {
+      if (data.sub_status === subStatusMap['COMPLETED'] || data.sub_status === subStatusMap['NO_SHOW']) {
         if (!data.secretariat_meeting_notes) {
           errors.secretariat_meeting_notes = 'Meeting notes are required for Completed or No Show appointments';
         }
       }
       
-      if (subStatusEnumName === 'COMPLETED') {
+      if (data.sub_status === subStatusMap['COMPLETED']) {
         if (!data.secretariat_follow_up_actions) {
           errors.secretariat_follow_up_actions = 'Follow-up actions are required for Completed appointments';
         }
       }
     }
     
-    if (statusEnumName === 'REJECTED' && (!data.secretariat_notes_to_requester || !data.secretariat_notes_to_requester.trim())) {
+    if (data.status === statusMap['REJECTED'] && (!data.secretariat_notes_to_requester || !data.secretariat_notes_to_requester.trim())) {
       errors.secretariat_notes_to_requester = 'Notes to requester are required when rejecting an appointment';
     }
     
-    if (subStatusEnumName === 'NEED_MORE_INFO' && (!data.secretariat_notes_to_requester || !data.secretariat_notes_to_requester.trim())) {
+    if (data.sub_status === subStatusMap['NEED_MORE_INFO'] && (!data.secretariat_notes_to_requester || !data.secretariat_notes_to_requester.trim())) {
       errors.secretariat_notes_to_requester = 'Notes to requester are required when requesting more information';
     }
     
