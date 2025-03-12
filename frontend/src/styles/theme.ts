@@ -115,7 +115,7 @@ const typography = {
   subtitle1: {
     fontSize: '1rem',
     lineHeight: 1.5,
-    letterSpacing: '0.00938em',
+    // letterSpacing: '0.00938em',
   },
   subtitle2: {
     fontSize: '0.875rem',

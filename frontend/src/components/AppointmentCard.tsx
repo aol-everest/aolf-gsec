@@ -131,7 +131,7 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                                 }} 
                                 key={dig.id}
                             >
-                                <Typography variant="subtitle1" gutterBottom color="primary" fontWeight="bold">
+                                <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600 }}>
                                     {dig.honorific_title || ''} {dig.first_name} {dig.last_name}
                                 </Typography>
                                 <Grid container spacing={1}>
