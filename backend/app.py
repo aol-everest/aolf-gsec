@@ -913,12 +913,17 @@ async def update_user(
 @app.get("/appointments/status-options", response_model=List[str])
 async def get_appointment_status_options():
     """Get all possible appointment status options"""
-    return [status.value for status in models.AppointmentStatus]
+    return models.VALID_STATUS_OPTIONS
 
 @app.get("/appointments/sub-status-options", response_model=List[str])
 async def get_appointment_sub_status_options():
     """Get all possible appointment sub-status options"""
-    return [sub_status.value for sub_status in models.AppointmentSubStatus]
+    return models.VALID_SUBSTATUS_OPTIONS
+
+@app.get("/appointments/status-substatus-mapping")
+async def get_status_substatus_mapping():
+    """Get mapping between appointment status and valid sub-statuses"""
+    return models.STATUS_SUBSTATUS_MAPPING
 
 @app.get("/appointments/type-options", response_model=List[str])
 async def get_appointment_type_options():
@@ -949,11 +954,6 @@ async def get_appointment_time_of_day_options():
 async def get_user_role_options():
     """Get all possible user roles"""
     return [role.value for role in models.UserRole]
-
-@app.get("/appointments/status-substatus-mapping")
-async def get_status_substatus_mapping():
-    """Get mapping between appointment status and valid sub-statuses"""
-    return models.STATUS_SUBSTATUS_MAPPING
 
 @app.post("/admin/locations/new", response_model=schemas.LocationAdmin)
 @requires_role(models.UserRole.SECRETARIAT)

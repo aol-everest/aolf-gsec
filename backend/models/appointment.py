@@ -32,7 +32,7 @@ class AppointmentSubStatus(str, enum.Enum):
     NOT_REVIEWED = "Not yet reviewed"
     SHORTLISTED = "Shortlisted"
     UNDER_CONSIDERATION = "Under consideration"
-    UNSCHEDULED = "Unscheduled"
+    UNSCHEDULED = "To be scheduled"
     SCHEDULED = "Scheduled"
 
     def __str__(self):
@@ -58,9 +58,8 @@ STATUS_SUBSTATUS_MAPPING = {
         ]
     },
     AppointmentStatus.REJECTED.value: {
-        "default_sub_status": AppointmentSubStatus.NO_FURTHER_ACTION.value,
+        "default_sub_status": AppointmentSubStatus.LOW_PRIORITY.value,
         "valid_sub_statuses": [
-            AppointmentSubStatus.NO_FURTHER_ACTION.value,
             AppointmentSubStatus.LOW_PRIORITY.value,
             AppointmentSubStatus.DARSHAN_LINE.value,
             AppointmentSubStatus.MET_GURUDEV.value
@@ -69,6 +68,7 @@ STATUS_SUBSTATUS_MAPPING = {
     AppointmentStatus.COMPLETED.value: {
         "default_sub_status": AppointmentSubStatus.FOLLOW_UP_REQUIRED.value,
         "valid_sub_statuses": [
+            AppointmentSubStatus.NO_FURTHER_ACTION.value,
             AppointmentSubStatus.FOLLOW_UP_REQUIRED.value,
         ]
     },
@@ -79,6 +79,9 @@ STATUS_SUBSTATUS_MAPPING = {
         ]
     }
 }
+
+VALID_STATUS_OPTIONS = [status for status in STATUS_SUBSTATUS_MAPPING.keys()]
+VALID_SUBSTATUS_OPTIONS = [substatus for status in STATUS_SUBSTATUS_MAPPING.values() for substatus in status["valid_sub_statuses"]]
 
 class AppointmentType(str, enum.Enum):
     """Appointment type enum with proper case values"""
