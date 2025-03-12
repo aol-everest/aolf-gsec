@@ -111,9 +111,13 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
             // If there are multiple dignitaries, display them all
             return (
                 <>
-                    <Typography variant="h6" gutterBottom color="primary">
-                        Dignitaries ({appointment.appointment_dignitaries.length})
-                    </Typography>
+                    <Grid container spacing={2} sx={{ mb: 2 }}>
+                        <Grid item xs={12}>
+                            <Typography variant="h5" gutterBottom>
+                                Dignitaries ({appointment.appointment_dignitaries.length})
+                            </Typography>
+                        </Grid>
+                    </Grid>
                     {appointment.appointment_dignitaries.map((appointmentDignitary: AppointmentDignitary, index: number) => {
                         const dig = appointmentDignitary.dignitary;
                         return (
@@ -212,14 +216,20 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
         <Card 
             elevation={1}
             sx={{ 
-                borderRadius: 2,
                 position: 'relative',
                 minHeight: isMobile ? 'auto' : '600px',
                 bgcolor: 'white',
                 mx: 'auto',
                 width: '100%',
                 // maxWidth: '900px', 
-                boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)'
+                border: '1px solid #E9E9E9',
+                boxShadow: '0px 4px 16px -4px rgba(81, 77, 74, 0.08), 0px -1px 6px -2px rgba(81, 77, 74, 0.03)',
+                borderRadius: '20px',
+                padding: '20px 0px 0px',
+                gap: '16px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'flex-start',
             }}
         >
             <CardContent sx={{ p: 3 }}>
@@ -231,7 +241,7 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                     mb: 3 
                 }}>
                     <Box>
-                        <Typography variant="h5" color="primary" fontWeight="medium">
+                        <Typography variant="h5" sx={{ fontSize: '1.25rem' }}>
                             Request #{appointment.id}
                         </Typography>
                     </Box>
@@ -252,7 +262,7 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
 
                 {/* Point of Contact Information */}
                 <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 2, bgcolor: 'grey.50' }}>
-                    <Typography variant="h6" color="primary" sx={{ fontWeight: 'medium' }}>
+                    <Typography variant="h5">
                         Point of Contact: {appointment.requester.first_name} {appointment.requester.last_name}
                     </Typography>
                     <Grid container spacing={2}>
@@ -290,12 +300,16 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
 
                 {/* Appointment Information */}
                 <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 2, bgcolor: 'grey.50' }}>
-                    <Typography variant="h6" gutterBottom color="primary" fontWeight="medium">
-                        Requested Appointment Details
-                    </Typography>
+                    <Grid container spacing={2} sx={{ mb: 2 }}>
+                        <Grid item xs={12}>
+                            <Typography variant="h5" gutterBottom>
+                                Requested Appointment Details
+                            </Typography>
+                        </Grid>
+                    </Grid>
                     <Grid container spacing={2}>
                         <Grid item xs={12} md={6}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                 <Box component="span" sx={{ width: '150px', fontWeight: 'medium' }}>Preferred Date:</Box>
                                 <Typography component="span" sx={{ color: theme.palette.text.primary }}>
                                     {formatDate(appointment.preferred_date, false)} {appointment.preferred_time_of_day || ''}
@@ -311,7 +325,7 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                             </Box>
                         </Grid>
                         <Grid item xs={12}>
-                            <Box sx={{ display: 'flex', mb: 1 }}>
+                            <Box sx={{ display: 'flex' }}>
                                 <Box component="span" sx={{ width: '150px', fontWeight: 'medium' }}>Purpose:</Box>
                                 <Typography component="span" sx={{ color: theme.palette.text.primary }}>
                                     {appointment.purpose}
@@ -333,15 +347,16 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
 
                 {/* Secretariat Notes */}
                 <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 2, bgcolor: 'grey.50' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                        <MemoCheckIconV2 />
-                        <Typography variant="h6" color="primary" sx={{ ml: 1, fontWeight: 'medium' }}>
-                            Secretariat Notes
-                        </Typography>
-                    </Box>
+                    <Grid container spacing={2} sx={{ mb: 2 }}>
+                        <Grid item xs={12}>
+                            <Typography variant="h5">
+                                Secretariat Notes
+                            </Typography>
+                        </Grid>
+                    </Grid>
                     <Grid container spacing={2}>
                         <Grid item xs={12}>
-                            <Box sx={{ display: 'flex', mb: 1 }}>
+                            <Box sx={{ display: 'flex' }}>
                                 <Box component="span" sx={{ width: '150px', fontWeight: 'medium' }}>Notes:</Box>
                                 <Typography component="span" sx={{ color: theme.palette.text.primary }}>
                                     {appointment.secretariat_notes_to_requester || 'N/A'}
@@ -350,7 +365,7 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                         </Grid>
                         {appointment.status === 'Approved' && appointment.appointment_date && new Date(appointment.appointment_date) >= new Date() && (
                             <Grid item xs={12}>
-                                <Box sx={{ display: 'flex', mb: 1 }}>
+                                <Box sx={{ display: 'flex' }}>
                                     <Box component="span" sx={{ width: '150px', fontWeight: 'medium' }}>Meeting Notes:</Box>
                                     <Typography component="span" sx={{ color: theme.palette.text.primary }}>
                                         {appointment.secretariat_meeting_notes || 'N/A'}
@@ -360,7 +375,7 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                         )}
                         {appointment.status === 'Approved' && appointment.appointment_date && new Date(appointment.appointment_date) >= new Date() && (
                             <Grid item xs={12}>
-                                <Box sx={{ display: 'flex', mb: 1 }}>
+                                <Box sx={{ display: 'flex' }}>
                                     <Box component="span" sx={{ width: '150px', fontWeight: 'medium' }}>Follow-up Actions:</Box>
                                     <Typography component="span" sx={{ color: theme.palette.text.primary }}>
                                         {appointment.secretariat_follow_up_actions || 'N/A'}

@@ -22,7 +22,7 @@ const colors = {
     main: 'rgba(255, 250, 245, 1)',
     light: 'rgba(255, 250, 245, 0.81)',
     // light: '#ba68c8',
-    dark: '#7b1fa2',
+    dark: '#333',
     contrastText: '#fff',
   },
   background: {
@@ -99,9 +99,11 @@ const typography = {
   },
   h5: {
     fontWeight: 600,
-    fontSize: '1.25rem',
+    fontSize: '1rem',
     lineHeight: 1.2,
     letterSpacing: '0em',
+    color: 'secondary.dark',
+    marginBottom: '16px',
   },
   h6: {
     fontWeight: 400,
