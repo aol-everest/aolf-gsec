@@ -915,10 +915,20 @@ async def get_appointment_status_options():
     """Get all possible appointment status options"""
     return models.VALID_STATUS_OPTIONS
 
+@app.get("/appointments/status-options-map")
+async def get_appointment_status_map():
+    """Get a dictionary mapping of appointment status enum names to their display values"""
+    return {status.name: status.value for status in models.AppointmentStatus}
+
 @app.get("/appointments/sub-status-options", response_model=List[str])
 async def get_appointment_sub_status_options():
     """Get all possible appointment sub-status options"""
     return models.VALID_SUBSTATUS_OPTIONS
+
+@app.get("/appointments/sub-status-options-map")
+async def get_appointment_sub_status_map():
+    """Get a dictionary mapping of appointment sub-status enum names to their display values"""
+    return {sub_status.name: sub_status.value for sub_status in models.AppointmentSubStatus}
 
 @app.get("/appointments/status-substatus-mapping")
 async def get_status_substatus_mapping():

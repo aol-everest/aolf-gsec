@@ -125,6 +125,15 @@ interface StatusSubStatusMapping {
   }
 }
 
+// Add interfaces for the new maps
+interface StatusMap {
+  [key: string]: string;
+}
+
+interface SubStatusMap {
+  [key: string]: string;
+}
+
 const AppointmentEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -161,6 +170,24 @@ const AppointmentEdit: React.FC = () => {
   // Watch status and sub_status for conditional validation
   const watchStatus = watch('status');
   const watchSubStatus = watch('sub_status');
+
+  // Fetch status map from the API
+  const { data: statusMap = {} } = useQuery<StatusMap>({
+    queryKey: ['status-map'],
+    queryFn: async () => {
+      const { data } = await api.get<StatusMap>('/appointments/status-options-map');
+      return data;
+    },
+  });
+
+  // Fetch substatus map from the API  
+  const { data: subStatusMap = {} } = useQuery<SubStatusMap>({
+    queryKey: ['sub-status-map'],
+    queryFn: async () => {
+      const { data } = await api.get<SubStatusMap>('/appointments/sub-status-options-map');
+      return data;
+    },
+  });
 
   // Fetch status-substatus mapping from the API
   const { data: statusSubStatusMapping } = useQuery<StatusSubStatusMapping>({
@@ -230,6 +257,17 @@ const AppointmentEdit: React.FC = () => {
     // Removed the else clause that was setting validSubStatuses
   }, [watchStatus, statusSubStatusMapping, getValues, reset]);
 
+  // // Add debug log for developers
+  // useEffect(() => {
+  //   if (statusMap && subStatusMap && statusSubStatusMapping) {
+  //     console.debug('Status/Substatus Mappings Loaded:', {
+  //       statusMap,
+  //       subStatusMap,
+  //       statusSubStatusMapping
+  //     });
+  //   }
+  // }, [statusMap, subStatusMap, statusSubStatusMapping]);
+
   // Check if business card extraction is enabled
   useEffect(() => {
     const checkExtractionStatus = async () => {
@@ -285,7 +323,17 @@ const AppointmentEdit: React.FC = () => {
     },
   });
 
-  // ----------------------------------------------------------------------------------------------------------------------------------------------
+  // Helper function to get enum name from value
+  const getStatusEnumName = (statusValue: string): string | undefined => {
+    const entry = Object.entries(statusMap).find(([_, value]) => value.toLowerCase() === statusValue.toLowerCase());
+    return entry ? entry[0] : undefined;
+  };
+
+  const getSubStatusEnumName = (subStatusValue: string): string | undefined => {
+    const entry = Object.entries(subStatusMap).find(([_, value]) => value.toLowerCase() === subStatusValue.toLowerCase());
+    return entry ? entry[0] : undefined;
+  };
+
   // VALIDATION RULES
   // ----------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -297,14 +345,18 @@ const AppointmentEdit: React.FC = () => {
     if (!data.status) {
       errors.status = 'Status is required';
     }
+
+    // Get enum names for status and substatus
+    const statusEnumName = getStatusEnumName(data.status);
+    const subStatusEnumName = getSubStatusEnumName(data.sub_status);
     
     // Specific validation based on status and substatus combinations
-    if (data.status.toLowerCase() === 'approved') {
+    if (statusEnumName === 'APPROVED') {
       if (!data.appointment_type) {
         errors.appointment_type = 'Appointment type is required for Approved status';
       }
       
-      if (data.sub_status.toLowerCase() === 'scheduled') {
+      if (subStatusEnumName === 'SCHEDULED') {
         if (!data.appointment_date) {
           errors.appointment_date = 'Appointment date is required for Scheduled appointments';
         }
@@ -318,24 +370,24 @@ const AppointmentEdit: React.FC = () => {
         }
       }
       
-      if (data.sub_status.toLowerCase() === 'completed' || data.sub_status.toLowerCase() === 'no show') {
+      if (subStatusEnumName === 'COMPLETED' || subStatusEnumName === 'NO_SHOW') {
         if (!data.secretariat_meeting_notes) {
           errors.secretariat_meeting_notes = 'Meeting notes are required for Completed or No Show appointments';
         }
       }
       
-      if (data.sub_status.toLowerCase() === 'completed') {
+      if (subStatusEnumName === 'COMPLETED') {
         if (!data.secretariat_follow_up_actions) {
           errors.secretariat_follow_up_actions = 'Follow-up actions are required for Completed appointments';
         }
       }
     }
     
-    if (data.status.toLowerCase() === 'rejected' && !data.secretariat_notes_to_requester) {
+    if (statusEnumName === 'REJECTED' && (!data.secretariat_notes_to_requester || !data.secretariat_notes_to_requester.trim())) {
       errors.secretariat_notes_to_requester = 'Notes to requester are required when rejecting an appointment';
     }
     
-    if (data.sub_status.toLowerCase() === 'need more info' && (!data.secretariat_notes_to_requester || !data.secretariat_notes_to_requester.trim())) {
+    if (subStatusEnumName === 'NEED_MORE_INFO' && (!data.secretariat_notes_to_requester || !data.secretariat_notes_to_requester.trim())) {
       errors.secretariat_notes_to_requester = 'Notes to requester are required when requesting more information';
     }
     
