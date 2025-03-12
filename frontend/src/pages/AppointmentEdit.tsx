@@ -26,6 +26,7 @@ import {
   Alert,
   Snackbar,
   Chip,
+  FormHelperText,
 } from '@mui/material';
 import Layout from '../components/Layout';
 import { useForm, Controller } from 'react-hook-form';
@@ -103,6 +104,19 @@ interface BusinessCardExtractionResponse {
   appointment_id: number;
 }
 
+// Define validation errors interface
+interface ValidationErrors {
+  appointment_date?: string;
+  appointment_time?: string;
+  location_id?: string;
+  status?: string;
+  sub_status?: string;
+  appointment_type?: string;
+  secretariat_notes_to_requester?: string;
+  secretariat_follow_up_actions?: string;
+  secretariat_meeting_notes?: string;
+}
+
 const AppointmentEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -127,8 +141,18 @@ const AppointmentEdit: React.FC = () => {
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const isMediumScreen = useMediaQuery(theme.breakpoints.between('sm', 'md'));
   const isLargeScreen = useMediaQuery(theme.breakpoints.up('md'));
+  
+  // Add state for validation errors
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
+  const [showValidationSummary, setShowValidationSummary] = useState(false);
 
-  const { control, handleSubmit, reset } = useForm<AppointmentFormData>();
+  const { control, handleSubmit, reset, watch, formState: { errors }, trigger, getValues } = useForm<AppointmentFormData>({
+    mode: 'onSubmit',
+  });
+
+  // Watch status and sub_status for conditional validation
+  const watchStatus = watch('status');
+  const watchSubStatus = watch('sub_status');
 
   // Fetch locations
   const { data: locations = [] } = useQuery<Location[]>({
@@ -223,7 +247,80 @@ const AppointmentEdit: React.FC = () => {
     },
   });
 
+  // ----------------------------------------------------------------------------------------------------------------------------------------------
+  // VALIDATION RULES
+  // ----------------------------------------------------------------------------------------------------------------------------------------------
+
+  // Validate form based on status and substatus combinations
+  const validateForm = (data: AppointmentFormData): ValidationErrors => {
+    const errors: ValidationErrors = {};
+    
+    // Common validation for all statuses
+    if (!data.status) {
+      errors.status = 'Status is required';
+    }
+    
+    // Specific validation based on status and substatus combinations
+    if (data.status.toLowerCase() === 'approved') {
+      if (!data.appointment_type) {
+        errors.appointment_type = 'Appointment type is required for Approved status';
+      }
+      
+      if (data.sub_status.toLowerCase() === 'scheduled') {
+        if (!data.appointment_date) {
+          errors.appointment_date = 'Appointment date is required for Scheduled appointments';
+        }
+        
+        if (!data.appointment_time) {
+          errors.appointment_time = 'Appointment time is required for Scheduled appointments';
+        }
+        
+        if (!data.location_id) {
+          errors.location_id = 'Location is required for Scheduled appointments';
+        }
+      }
+      
+      if (data.sub_status.toLowerCase() === 'completed' || data.sub_status.toLowerCase() === 'no show') {
+        if (!data.secretariat_meeting_notes) {
+          errors.secretariat_meeting_notes = 'Meeting notes are required for Completed or No Show appointments';
+        }
+      }
+      
+      if (data.sub_status.toLowerCase() === 'completed') {
+        if (!data.secretariat_follow_up_actions) {
+          errors.secretariat_follow_up_actions = 'Follow-up actions are required for Completed appointments';
+        }
+      }
+    }
+    
+    if (data.status.toLowerCase() === 'rejected' && !data.secretariat_notes_to_requester) {
+      errors.secretariat_notes_to_requester = 'Notes to requester are required when rejecting an appointment';
+    }
+    
+    if (data.sub_status.toLowerCase() === 'need more info' && (!data.secretariat_notes_to_requester || !data.secretariat_notes_to_requester.trim())) {
+      errors.secretariat_notes_to_requester = 'Notes to requester are required when requesting more information';
+    }
+    
+    return errors;
+  };
+
   const onSubmit = (data: AppointmentFormData) => {
+    // Validate form data based on status and substatus
+    const validationErrors = validateForm(data);
+    
+    // If there are validation errors, prevent submission
+    if (Object.keys(validationErrors).length > 0) {
+      setValidationErrors(validationErrors);
+      setShowValidationSummary(true);
+      
+      // Show error notification
+      enqueueSnackbar('Please fix the validation errors before submitting', { variant: 'error' });
+      return;
+    }
+    
+    // Clear validation errors and proceed with submission
+    setValidationErrors({});
+    setShowValidationSummary(false);
     updateAppointmentMutation.mutate(data);
   };
 
@@ -762,6 +859,25 @@ const AppointmentEdit: React.FC = () => {
                 </Typography>
               </Box>
             </Paper>
+            
+            {/* Validation Summary */}
+            {showValidationSummary && Object.keys(validationErrors).length > 0 && (
+              <Alert 
+                severity="error" 
+                sx={{ mb: 3 }}
+                onClose={() => setShowValidationSummary(false)}
+              >
+                <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
+                  Please fix the following errors:
+                </Typography>
+                <ul style={{ margin: 0, paddingLeft: '1.5rem' }}>
+                  {Object.entries(validationErrors).map(([field, error]) => (
+                    <li key={field}>{error}</li>
+                  ))}
+                </ul>
+              </Alert>
+            )}
+            
             <form onSubmit={handleSubmit(onSubmit)}>
               <Grid container spacing={3}>
                 {/* Dignitary Information (Read-only) */}
@@ -787,6 +903,8 @@ const AppointmentEdit: React.FC = () => {
                         label="Appointment Date"
                         type="date"
                         InputLabelProps={{ shrink: true }}
+                        error={!!validationErrors.appointment_date}
+                        helperText={validationErrors.appointment_date}
                       />
                     )}
                   />
@@ -815,6 +933,8 @@ const AppointmentEdit: React.FC = () => {
                               label="Appointment Time"
                               fullWidth
                               InputLabelProps={{ shrink: true }}
+                              error={!!validationErrors.appointment_time}
+                              helperText={validationErrors.appointment_time}
                             />
                           )}
                           renderOption={(props, option) => (
@@ -836,7 +956,7 @@ const AppointmentEdit: React.FC = () => {
                     control={control}
                     defaultValue={null}
                     render={({ field }) => (
-                      <FormControl fullWidth>
+                      <FormControl fullWidth error={!!validationErrors.location_id}>
                         <InputLabel>Location</InputLabel>
                         <Select
                           {...field}
@@ -852,6 +972,9 @@ const AppointmentEdit: React.FC = () => {
                             </MenuItem>
                           ))}
                         </Select>
+                        {validationErrors.location_id && (
+                          <FormHelperText error>{validationErrors.location_id}</FormHelperText>
+                        )}
                       </FormControl>
                     )}
                   />
@@ -864,11 +987,21 @@ const AppointmentEdit: React.FC = () => {
                     control={control}
                     defaultValue={appointment?.status || ''}
                     render={({ field }) => (
-                      <EnumSelect
-                        enumType="appointmentStatus"
-                        label="Status"
-                        {...field}
-                      />
+                      <FormControl fullWidth error={!!validationErrors.status}>
+                        <EnumSelect
+                          enumType="appointmentStatus"
+                          label="Status"
+                          {...field}
+                          onChange={(e) => {
+                            field.onChange(e);
+                            // Clear validation errors when status changes
+                            setValidationErrors(prev => ({...prev, status: undefined}));
+                          }}
+                        />
+                        {validationErrors.status && (
+                          <FormHelperText error>{validationErrors.status}</FormHelperText>
+                        )}
+                      </FormControl>
                     )}
                   />
                 </Grid>
@@ -880,11 +1013,21 @@ const AppointmentEdit: React.FC = () => {
                     control={control}
                     defaultValue={appointment?.sub_status || ''}
                     render={({ field }) => (
-                      <EnumSelect
-                        enumType="appointmentSubStatus"
-                        label="Sub-Status"
-                        {...field}
-                      />
+                      <FormControl fullWidth error={!!validationErrors.sub_status}>
+                        <EnumSelect
+                          enumType="appointmentSubStatus"
+                          label="Sub-Status"
+                          {...field}
+                          onChange={(e) => {
+                            field.onChange(e);
+                            // Clear validation errors when sub-status changes
+                            setValidationErrors(prev => ({...prev, sub_status: undefined}));
+                          }}
+                        />
+                        {validationErrors.sub_status && (
+                          <FormHelperText error>{validationErrors.sub_status}</FormHelperText>
+                        )}
+                      </FormControl>
                     )}
                   />
                 </Grid>
@@ -896,11 +1039,16 @@ const AppointmentEdit: React.FC = () => {
                     control={control}
                     defaultValue={appointment?.appointment_type || ''}
                     render={({ field }) => (
-                      <EnumSelect
-                        enumType="appointmentType"
-                        label="Appointment Type"
-                        {...field}
-                      />
+                      <FormControl fullWidth error={!!validationErrors.appointment_type}>
+                        <EnumSelect
+                          enumType="appointmentType"
+                          label="Appointment Type"
+                          {...field}
+                        />
+                        {validationErrors.appointment_type && (
+                          <FormHelperText error>{validationErrors.appointment_type}</FormHelperText>
+                        )}
+                      </FormControl>
                     )}
                   />
                 </Grid>
@@ -916,12 +1064,14 @@ const AppointmentEdit: React.FC = () => {
                         multiline
                         rows={4}
                         label="Notes to Point of Contact (shared with Point of Contact)"
+                        error={!!validationErrors.secretariat_notes_to_requester}
+                        helperText={validationErrors.secretariat_notes_to_requester}
                       />
                     )}
                   />
                 </Grid>
 
-                {appointment.status === 'Approved' && appointment.appointment_date && new Date(appointment.appointment_date) <= new Date() && (
+                {(watchStatus === 'Approved' || appointment.status === 'Approved') && appointment.appointment_date && new Date(appointment.appointment_date) <= new Date() && (
                   <Grid item xs={12}>
                     <Controller
                       name="secretariat_follow_up_actions"
@@ -933,13 +1083,15 @@ const AppointmentEdit: React.FC = () => {
                           multiline
                           rows={4}
                           label="Follow-up Actions (Secretariat Internal)"
+                          error={!!validationErrors.secretariat_follow_up_actions}
+                          helperText={validationErrors.secretariat_follow_up_actions}
                         />
                       )}
                     />
                   </Grid>
                 )}
 
-                {appointment.status === 'Approved' && appointment.appointment_date && new Date(appointment.appointment_date) <= new Date() && (
+                {(watchStatus === 'Approved' || appointment.status === 'Approved') && appointment.appointment_date && new Date(appointment.appointment_date) <= new Date() && (
                   <Grid item xs={12}>
                     <Controller
                       name="secretariat_meeting_notes"
@@ -951,6 +1103,8 @@ const AppointmentEdit: React.FC = () => {
                           multiline
                           rows={4}
                           label="Meeting Notes (Secretariat Internal)"
+                          error={!!validationErrors.secretariat_meeting_notes}
+                          helperText={validationErrors.secretariat_meeting_notes}
                         />  
                       )}
                     />
