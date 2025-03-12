@@ -23,6 +23,8 @@ import {
   MenuItem,
   SelectChangeEvent,
   Theme,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
@@ -33,7 +35,7 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import Layout from '../components/Layout';
 import { formatDate } from '../utils/dateUtils';
 import { getStatusChipSx, getStatusColor } from '../utils/formattingUtils';
-import { EmailIcon, ContactPhoneIcon, EmailIconSmall, ContactPhoneIconSmall, WorkIcon } from '../components/icons';
+import { EmailIcon, ContactPhoneIcon, EmailIconSmall, ContactPhoneIconSmall, WorkIcon, LocationIconV2 } from '../components/icons';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { useQuery } from '@tanstack/react-query';
@@ -42,6 +44,7 @@ import { FilterChip, FilterChipGroup } from '../components/FilterChip';
 import { EnumFilterChipGroup } from '../components/EnumFilterChipGroup';
 import SwipeableViews from 'react-swipeable-views';
 import { virtualize, bindKeyboard } from 'react-swipeable-views-utils';
+import ButtonWithBadge from '../components/ButtonWithBadge';
 
 import { Appointment, AppointmentDignitary } from '../models/types';
 
@@ -425,20 +428,57 @@ const AppointmentTiles: React.FC = () => {
             display: 'flex', 
             flexDirection: 'column',
             gap: 2,
-            mb: 2
+            mb: 4
           }}>
-            <Typography variant="h4">Appointment Details</Typography>
+            <Typography variant="h4" sx={{ mb: 2 }}>All Appointments</Typography>
             
-            {/* Status Filters */}
-            <Box>
-              <Typography variant="subtitle1" sx={{ mb: 1 }}>Filter by Status</Typography>
-              <EnumFilterChipGroup
-                enumType="appointmentStatus"
-                selectedValue={selectedStatus}
-                getCount={getStatusAppointmentCount}
-                getColor={(status, theme) => getStatusColor(status, theme)}
-                onToggle={handleStatusFilter}
+            {/* Status Filters as Tabs */}
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', width: '100%' }}>
+              <Tabs 
+                value={selectedStatus || 'All'} 
+                // onChange={(_, newValue) => {
+                //   if (newValue === 'All') {
+                //     // setSelectedStatus(null);
+                //     handleStatusFilter(null);
+                //   } else {
+                //     // setSelectedStatus(newValue);
+                //     handleStatusFilter(newValue);
+                //   }
+                // }}
+                variant="scrollable"
+                scrollButtons="auto"
+                allowScrollButtonsMobile
+                sx={{ minHeight: '48px' }}
+                TabIndicatorProps={{style: {backgroundColor: "#3D8BE8"}}}
+              >
+                <Tab 
+                  label={`All (${appointments.length})`} 
+                  value="All" 
+                  component={() => (
+                    <ButtonWithBadge
+                      label="All"
+                      count={appointments.length}
+                      isSelected={selectedStatus === null}
+                      onClick={() => handleStatusFilter(null)}
+                    />
+                  )}
               />
+                {statusOptions.map((status) => (
+                  <Tab 
+                    key={status} 
+                    label={`${status} (${getStatusAppointmentCount(status)})`} 
+                    value={status} 
+                    component={() => (
+                      <ButtonWithBadge
+                        label={status}
+                        count={getStatusAppointmentCount(status)}
+                        isSelected={selectedStatus === status}
+                        onClick={() => handleStatusFilter(status)}
+                      />
+                    )}
+                  />
+                ))}
+              </Tabs>
             </Box>
             
             {/* Location Filters */}
@@ -460,7 +500,7 @@ const AppointmentTiles: React.FC = () => {
                   getCount={(locationId) => getLocationAppointmentCount(locationId)}
                   getColor={(_, theme) => theme.palette.primary.main}
                   onToggle={handleLocationFilter}
-                  getIcon={() => <LocationOnIcon />}
+                  getIcon={() => <LocationIconV2 />}
                 />
               ) : (
                 <Typography variant="body2" color="text.secondary">
@@ -469,40 +509,26 @@ const AppointmentTiles: React.FC = () => {
               )}
             </Box>
             
-            {/* Active Filters Summary */}
-            {(selectedStatus || selectedLocation) && (
+            {/* Active Location Filters Summary - Only shown for location filters */}
+            {selectedLocation && (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Typography variant="body2">Active Filters:</Typography>
-                {selectedStatus && (
-                  <Chip 
-                    label={selectedStatus} 
-                    size="small" 
-                    onDelete={() => setSelectedStatus(null)}
-                    sx={{ 
-                      color: getStatusColor(selectedStatus, theme),
-                      borderColor: getStatusColor(selectedStatus, theme),
-                    }}
-                  />
-                )}
-                {selectedLocation && (
-                  <Chip 
-                    label={locations.find(l => l.id === selectedLocation)?.name || `Location ID: ${selectedLocation}`} 
-                    size="small" 
-                    onDelete={() => setSelectedLocation(null)}
-                    icon={<LocationOnIcon fontSize="small" />}
-                    sx={{ 
-                      color: theme.palette.primary.main,
-                    }}
-                  />
-                )}
+                <Chip 
+                  label={locations.find(l => l.id === selectedLocation)?.name || `Location ID: ${selectedLocation}`} 
+                  size="small" 
+                  onDelete={() => setSelectedLocation(null)}
+                  icon={<LocationOnIcon fontSize="small" />}
+                  sx={{ 
+                    color: theme.palette.primary.main,
+                  }}
+                />
                 <Button 
                   size="small" 
                   onClick={() => {
-                    setSelectedStatus(null);
                     setSelectedLocation(null);
                   }}
                 >
-                  Clear All
+                  Clear
                 </Button>
               </Box>
             )}
@@ -513,6 +539,9 @@ const AppointmentTiles: React.FC = () => {
             flexGrow: 1,
             position: 'relative',
             touchAction: 'pan-y pinch-zoom',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center'
           }}>
             {isLoading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
@@ -531,7 +560,7 @@ const AppointmentTiles: React.FC = () => {
                     }}
                     enableMouseEvents
                     resistance
-                    style={{ overflow: 'hidden' }}
+                    style={{ overflow: 'hidden', width: '100%' }}
                     animateTransitions
                     springConfig={{
                       duration: '0.35s',
@@ -562,7 +591,7 @@ const AppointmentTiles: React.FC = () => {
                     slideCount={filteredAppointments.length}
                     enableMouseEvents
                     resistance
-                    style={{ overflow: 'hidden' }}
+                    style={{ overflow: 'hidden', width: '100%' }}
                   />
                 )}
                 
@@ -576,7 +605,7 @@ const AppointmentTiles: React.FC = () => {
                     flexGrow: 1,
                     justifyContent: 'center',
                     background: 'transparent',
-                    mt: 2
+                    mt: 3
                   }}
                   nextButton={
                     <Button

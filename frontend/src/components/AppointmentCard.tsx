@@ -1,7 +1,6 @@
 import { Paper, Typography, Box, Chip, IconButton, Grid, Theme, CardContent, Card, useMediaQuery } from "@mui/material"
 import { formatDate } from "../utils/dateUtils"
 import { getStatusChipSx, getSubStatusChipSx } from "../utils/formattingUtils"
-import { EmailIconSmall, ContactPhoneIconSmall, WorkIcon } from "./icons"
 import EditIcon from "@mui/icons-material/Edit"
 import { Appointment, AppointmentAttachment, AppointmentDignitary } from "../models/types"
 import { useNavigate } from "react-router-dom";
@@ -9,6 +8,14 @@ import { AdminAppointmentsEditRoute } from "../config/routes";
 import { useEffect, useState, useMemo } from "react";
 import AttachmentSection from "./AttachmentSection";
 import { useApi } from "../hooks/useApi";
+import { 
+    MailIconV2, 
+    PhoneIconV2, 
+    ContactCardIconV2, 
+    LocationIconV2, 
+    MemoCheckIconV2,
+    WebsiteIconV2
+} from "./icons";
 
 export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme }> = ({ appointment, theme }) => {
     const navigate = useNavigate();
@@ -125,46 +132,66 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                                 </Typography>
                                 <Grid container spacing={1} sx={{ color: theme.palette.text.secondary }}>
                                     <Grid item xs={12} sm={6}>
-                                        <EmailIconSmall />
-                                        <Typography 
-                                            component="a" 
-                                            href={`mailto:${dig.email}`} 
-                                            sx={{ textDecoration: 'none', color: theme.palette.text.primary }}
-                                        >
-                                            {" " + dig.email}
-                                        </Typography>
-                                        <Box sx={{ color: 'text.secondary', display: 'inline-block', mx: 1 }}>|</Box>
-                                        <ContactPhoneIconSmall />
-                                        <Typography 
-                                            component="a" 
-                                            href={`tel:${dig.phone}`} 
-                                            sx={{ textDecoration: 'none', color: theme.palette.text.primary }}
-                                        >
-                                            {" " + dig.phone || 'N/A'}
-                                        </Typography>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
+                                            <MailIconV2 />
+                                            <Typography 
+                                                component="a" 
+                                                href={`mailto:${dig.email}`} 
+                                                sx={{ ml: 1, textDecoration: 'none', color: theme.palette.text.primary }}
+                                            >
+                                                {dig.email}
+                                            </Typography>
+                                        </Box>
                                     </Grid>
                                     <Grid item xs={12} sm={6}>
-                                        Title: <Typography component="span" sx={{ color: theme.palette.text.primary }}>{dig.title_in_organization}</Typography>    
-                                        <Box sx={{ color: 'text.secondary', display: 'inline-block', mx: 1 }}>|</Box>
-                                        Organization: <Typography component="span" sx={{ color: theme.palette.text.primary }}>{dig.organization}</Typography>
+                                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                            <PhoneIconV2 />
+                                            <Typography 
+                                                component="a" 
+                                                href={`tel:${dig.phone}`} 
+                                                sx={{ ml: 1, textDecoration: 'none', color: theme.palette.text.primary }}
+                                            >
+                                                {dig.phone || 'N/A'}
+                                            </Typography>
+                                        </Box>
                                     </Grid>
                                     <Grid item xs={12} sm={6}>
-                                        LinkedIn: <Typography component="a" href={`${dig.linked_in_or_website}`}  sx={{ color: theme.palette.text.primary, textDecoration: 'none' }}>{dig.linked_in_or_website}</Typography>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
+                                                <ContactCardIconV2 />
+                                                <Typography sx={{ color: theme.palette.text.primary, ml: 1 }}>
+                                                    {dig.title_in_organization}, {dig.organization}
+                                                </Typography>
+                                            </Box>
+                                        </Box>
                                     </Grid>
-                                    <Grid item xs={12} sm={12}>
-                                        Bio: <Typography component="span" sx={{ color: theme.palette.text.primary }}>{dig.bio_summary}</Typography>
+                                    <Grid item xs={12} sm={6}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                            <WebsiteIconV2 />
+                                            <Typography component="a" href={`${dig.linked_in_or_website}`} sx={{ color: theme.palette.text.primary, textDecoration: 'none', ml: 1, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {dig.linked_in_or_website}
+                                            </Typography>
+                                        </Box>
+                                    </Grid>
+                                    <Grid item xs={12}>
+                                        <Typography sx={{ color: theme.palette.text.secondary, mr: 1, display: 'inline' }}>Bio:</Typography>
+                                        <Typography sx={{ color: theme.palette.text.primary, display: 'inline' }}>{dig.bio_summary}</Typography>
                                     </Grid>
                                     <Grid item xs={12} sm={4}>
-                                        Has Met Gurudev? <Typography component="span" sx={{ fontWeight: 'bold', color: dig.has_dignitary_met_gurudev ? theme.palette.success.main : theme.palette.error.main }}>{dig.has_dignitary_met_gurudev ? 'Yes' : 'No'}</Typography>
+                                        <Typography sx={{ color: theme.palette.text.secondary, mr: 1, display: 'inline' }}>Has Met Gurudev?</Typography>
+                                        <Typography sx={{ fontWeight: 'bold', display: 'inline', color: dig.has_dignitary_met_gurudev ? theme.palette.success.main : theme.palette.error.main }}>{dig.has_dignitary_met_gurudev ? 'Yes' : 'No'}</Typography>
                                     </Grid>
                                     <Grid item xs={12} sm={4}>
-                                        Gurudev Meeting Date: <Typography component="span" sx={{ color: theme.palette.text.primary }}>{dig.gurudev_meeting_date ? formatDate(dig.gurudev_meeting_date, false) : 'N/A'}</Typography>
+                                        <Typography sx={{ color: theme.palette.text.secondary, mr: 1, display: 'inline' }}>Gurudev Meeting Date:</Typography>
+                                        <Typography sx={{ color: theme.palette.text.primary, display: 'inline' }}>{dig.gurudev_meeting_date ? formatDate(dig.gurudev_meeting_date, false) : 'N/A'}</Typography>
                                     </Grid>
                                     <Grid item xs={12} sm={4}>
-                                        Gurudev Meeting Location: <Typography component="span" sx={{ color: theme.palette.text.primary }}>{dig.gurudev_meeting_location || 'N/A'}</Typography>
+                                        <Typography sx={{ color: theme.palette.text.secondary, mr: 1, display: 'inline' }}>Gurudev Meeting Location:</Typography>
+                                        <Typography sx={{ color: theme.palette.text.primary, display: 'inline' }}>{dig.gurudev_meeting_location || 'N/A'}</Typography>
                                     </Grid>
-                                    <Grid item xs={12} sm={12}>
-                                        Gurudev Meeting Notes: <Typography component="span" sx={{ color: theme.palette.text.primary }}>{dig.gurudev_meeting_notes || 'N/A'}</Typography>
+                                    <Grid item xs={12}>
+                                        <Typography sx={{ color: theme.palette.text.secondary, mr: 1, display: 'inline' }}>Gurudev Meeting Notes:</Typography>
+                                        <Typography sx={{ color: theme.palette.text.primary, display: 'inline' }}>{dig.gurudev_meeting_notes || 'N/A'}</Typography>
                                     </Grid>
                                 </Grid>
                             </Paper>
@@ -183,122 +210,170 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
 
     return (
         <Card 
-            elevation={3}
+            elevation={1}
             sx={{ 
-            // m: 2,
-            pl: { xs: 0, sm: 2 },
-            pr: { xs: 0, sm: 2 },
-            pt: { xs: 0, sm: 0 },
-            pb: { xs: 1, sm: 1 },
-            borderRadius: 2,
-            position: 'relative',
-            minHeight: isMobile ? 'auto' : '600px',
-            bgcolor: 'grey.50', 
+                borderRadius: 2,
+                position: 'relative',
+                minHeight: isMobile ? 'auto' : '600px',
+                bgcolor: 'white',
+                mx: 'auto',
+                width: '100%',
+                // maxWidth: '900px', 
+                boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)'
             }}
         >
-            <CardContent>
-    
-                <Paper elevation={0} sx={{ p: 2, mb: 0, border: 'none', boxShadow: 'none', borderRadius: 0, bgcolor: 'transparent' }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="h5" gutterBottom color="primary">
-                        Request #: {appointment.id}
-                    </Typography>
+            <CardContent sx={{ p: 3 }}>
+                {/* Header with Request # and Status */}
+                <Box sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    mb: 3 
+                }}>
+                    <Box>
+                        <Typography variant="h5" color="primary" fontWeight="medium">
+                            Request #{appointment.id}
+                        </Typography>
                     </Box>
-                    <Box sx={{ position: 'absolute', top: 25, right: 25 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Chip 
                             label={appointment.status} 
                             sx={getStatusChipSx(appointment.status, theme)}
                         />
-                        <Chip 
-                            label={appointment.sub_status}
-                            sx={{ ml: 1, ...getSubStatusChipSx(appointment.sub_status, theme) }}
-                        />
                         <IconButton 
                             color="primary"
                             onClick={() => handleEdit(appointment.id)}
-                            sx={{ ml: 1, mt: 1 }}
+                            sx={{ ml: 1 }}
                         >
                             <EditIcon />
                         </IconButton>
                     </Box>          
-                </Paper>
+                </Box>
 
                 {/* Point of Contact Information */}
-                <Paper elevation={0} sx={{ p: 2, mb: 3, borderRadius: 1 }}>
-                    <Typography variant="h6" gutterBottom color="primary">
-                    Point of Contact: <span style={{ fontWeight: 'bold', color: theme.palette.primary.dark }}>{appointment.requester.first_name} {appointment.requester.last_name}</span>
+                <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 2, bgcolor: 'grey.50' }}>
+                    <Typography variant="h6" color="primary" sx={{ fontWeight: 'medium' }}>
+                        Point of Contact: {appointment.requester.first_name} {appointment.requester.last_name}
                     </Typography>
-                    <Typography sx={{ color: 'text.secondary', my: 0.5, }}>
-                    <EmailIconSmall />{' '}
-                    <Typography 
-                        component="a" 
-                        href={`mailto:${appointment.requester.email}`} 
-                        sx={{ textDecoration: 'none', color: theme.palette.text.primary }}
-                    >
-                        {appointment.requester.email}
-                    </Typography>
-                    <Box sx={{ color: 'text.secondary', display: 'inline-block', mx: 1 }}>|</Box>
-                    <ContactPhoneIconSmall />{' '}
-                    <Typography 
-                        component="a" 
-                        href={`tel:${appointment.requester.phone_number}`} 
-                        sx={{ textDecoration: 'none', color: theme.palette.text.primary }}
-                    >
-                        {appointment.requester.phone_number || 'N/A'}
-                    </Typography>
-                    </Typography>
+                    <Grid container spacing={2}>
+                        <Grid item xs={12} md={6}>
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <MailIconV2 />
+                                <Typography 
+                                    component="a" 
+                                    href={`mailto:${appointment.requester.email}`} 
+                                    sx={{ ml: 1, textDecoration: 'none', color: theme.palette.text.primary }}
+                                >
+                                    {appointment.requester.email}
+                                </Typography>
+                            </Box>
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <PhoneIconV2 />
+                                <Typography 
+                                    component="a" 
+                                    href={`tel:${appointment.requester.phone_number}`} 
+                                    sx={{ ml: 1, textDecoration: 'none', color: theme.palette.text.primary }}
+                                >
+                                    {appointment.requester.phone_number || 'N/A'}
+                                </Typography>
+                            </Box>
+                        </Grid>
+                    </Grid>
                 </Paper>
 
                 {/* Dignitary Information */}
-                <Paper elevation={0} sx={{ p: 2, mb: 3, borderRadius: 2 }}>
+                <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 2, bgcolor: 'grey.50' }}>
                     {renderDignitariesSection()}
                 </Paper>
 
                 {/* Appointment Information */}
-                <Paper elevation={0} sx={{ p: 2, mb: 3, borderRadius: 2 }}>
-                    <Typography variant="h6" gutterBottom color="primary">
+                <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 2, bgcolor: 'grey.50' }}>
+                    <Typography variant="h6" gutterBottom color="primary" fontWeight="medium">
                         Requested Appointment Details
                     </Typography>
-                    <Grid container spacing={1} sx={{ color: theme.palette.text.secondary }}>
-                        <Grid item xs={12} sm={6}>
-                            Preferred Date and Time: <Typography component="span" sx={{ color: theme.palette.text.primary }}>{formatDate(appointment.preferred_date, false)} {appointment.preferred_time_of_day || 'N/A'}</Typography>
+                    <Grid container spacing={2} sx={{ color: theme.palette.text.secondary }}>
+                        <Grid item xs={12} md={6}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                <Box component="span" sx={{ width: '150px', fontWeight: 'medium' }}>Preferred Date:</Box>
+                                <Typography component="span" sx={{ color: theme.palette.text.primary }}>
+                                    {formatDate(appointment.preferred_date, false)}
+                                </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <Box component="span" sx={{ width: '150px', fontWeight: 'medium' }}>Preferred Time:</Box>
+                                <Typography component="span" sx={{ color: theme.palette.text.primary }}>
+                                    {appointment.preferred_time_of_day || 'N/A'}
+                                </Typography>
+                            </Box>
                         </Grid>
-                        <Grid item xs={12} sm={6}>
-                            Location: <Typography component="span" sx={{ color: theme.palette.text.primary }}>{appointment.location ? (appointment.location.name + ' - ' + appointment.location.city + ', ' + appointment.location.state) : 'N/A'}</Typography>
+                        <Grid item xs={12} md={6}>
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <LocationIconV2 />
+                                <Typography component="span" sx={{ ml: 1, color: theme.palette.text.primary }}>
+                                    {appointment.location ? (appointment.location.name + ' - ' + appointment.location.city + ', ' + appointment.location.state) : 'N/A'}
+                                </Typography>
+                            </Box>
                         </Grid>
                         <Grid item xs={12}>
-                            Purpose: <Typography component="span" sx={{ color: theme.palette.text.primary }}>{appointment.purpose}</Typography>
+                            <Box sx={{ display: 'flex', mb: 1 }}>
+                                <Box component="span" sx={{ width: '150px', fontWeight: 'medium' }}>Purpose:</Box>
+                                <Typography component="span" sx={{ color: theme.palette.text.primary }}>
+                                    {appointment.purpose}
+                                </Typography>
+                            </Box>
                         </Grid>
                         {appointment.requester_notes_to_secretariat && (
                             <Grid item xs={12}>
-                                Notes from Point of Contact: <Typography component="span" sx={{ color: theme.palette.text.primary }}>{appointment.requester_notes_to_secretariat}</Typography>
+                                <Box sx={{ display: 'flex' }}>
+                                    <Box component="span" sx={{ width: '150px', fontWeight: 'medium' }}>Notes:</Box>
+                                    <Typography component="span" sx={{ color: theme.palette.text.primary }}>
+                                        {appointment.requester_notes_to_secretariat}
+                                    </Typography>
+                                </Box>
                             </Grid>
                         )}
                     </Grid>
                 </Paper>
 
                 {/* Secretariat Notes */}
-                <Paper elevation={0} sx={{ p: 2, mb: 3, borderRadius: 2 }}>
-                    <Typography variant="h6" gutterBottom color="primary">
-                    Secretariat Notes
-                    </Typography>
+                <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 2, bgcolor: 'grey.50' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                        <MemoCheckIconV2 />
+                        <Typography variant="h6" color="primary" sx={{ ml: 1, fontWeight: 'medium' }}>
+                            Secretariat Notes
+                        </Typography>
+                    </Box>
                     <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
-                        Notes to Point of Contact: 
-                        <Typography component="span" sx={{ color: theme.palette.text.primary }}>{' ' + (appointment.secretariat_notes_to_requester || 'N/A')}</Typography>
-                    </Grid>
-                    {appointment.status === 'Approved' && appointment.appointment_date && new Date(appointment.appointment_date) >= new Date() && (
-                        <Grid item xs={12} sm={6}>
-                            Meeting Notes: 
-                            <Typography component="span" sx={{ color: theme.palette.text.primary }}>{' ' + (appointment.secretariat_meeting_notes || 'N/A')}</Typography>
+                        <Grid item xs={12}>
+                            <Box sx={{ display: 'flex', mb: 1 }}>
+                                <Box component="span" sx={{ width: '150px', fontWeight: 'medium' }}>Notes:</Box>
+                                <Typography component="span" sx={{ color: theme.palette.text.primary }}>
+                                    {appointment.secretariat_notes_to_requester || 'N/A'}
+                                </Typography>
+                            </Box>
                         </Grid>
-                    )}
-                    {appointment.status === 'Approved' && appointment.appointment_date && new Date(appointment.appointment_date) >= new Date() && (
-                        <Grid item xs={12} sm={6}>
-                            Meeting Follow-up Actions: 
-                            <Typography component="span" sx={{ color: theme.palette.text.primary }}>{' ' + (appointment.secretariat_follow_up_actions || 'N/A')}</Typography>
-                        </Grid>
-                    )}
+                        {appointment.status === 'Approved' && appointment.appointment_date && new Date(appointment.appointment_date) >= new Date() && (
+                            <Grid item xs={12}>
+                                <Box sx={{ display: 'flex', mb: 1 }}>
+                                    <Box component="span" sx={{ width: '150px', fontWeight: 'medium' }}>Meeting Notes:</Box>
+                                    <Typography component="span" sx={{ color: theme.palette.text.primary }}>
+                                        {appointment.secretariat_meeting_notes || 'N/A'}
+                                    </Typography>
+                                </Box>
+                            </Grid>
+                        )}
+                        {appointment.status === 'Approved' && appointment.appointment_date && new Date(appointment.appointment_date) >= new Date() && (
+                            <Grid item xs={12}>
+                                <Box sx={{ display: 'flex', mb: 1 }}>
+                                    <Box component="span" sx={{ width: '150px', fontWeight: 'medium' }}>Follow-up Actions:</Box>
+                                    <Typography component="span" sx={{ color: theme.palette.text.primary }}>
+                                        {appointment.secretariat_follow_up_actions || 'N/A'}
+                                    </Typography>
+                                </Box>
+                            </Grid>
+                        )}
                     </Grid>
                 </Paper>
 
@@ -307,8 +382,8 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                     <>
                         {/* Business Card Attachments */}
                         {businessCardAttachments.length > 0 && (
-                            <Paper elevation={0} sx={{ p: 2, mb: 3, borderRadius: 2 }}>
-                                <Typography variant="h6" gutterBottom color="primary">
+                            <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 2, bgcolor: 'grey.50' }}>
+                                <Typography variant="h6" gutterBottom color="primary" fontWeight="medium">
                                     Business Cards
                                 </Typography>
                                 <AttachmentSection attachments={businessCardAttachments} />
@@ -317,8 +392,8 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                         
                         {/* General Attachments */}
                         {generalAttachments.length > 0 && (
-                            <Paper elevation={0} sx={{ p: 2, mb: 3, borderRadius: 2 }}>
-                                <Typography variant="h6" gutterBottom color="primary">
+                            <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 2, bgcolor: 'grey.50' }}>
+                                <Typography variant="h6" gutterBottom color="primary" fontWeight="medium">
                                     Other Attachments
                                 </Typography>
                                 <AttachmentSection attachments={generalAttachments} />
@@ -327,20 +402,25 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                     </>
                 )}
 
-                <Paper elevation={0} sx={{ p: 2, mb: 0, border: 'none', boxShadow: 'none', borderRadius: 0, bgcolor: 'transparent' }}>
-                    <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
-                        {appointment.last_updated_by_user && (
-                        <Typography> Last Updated by: {appointment.last_updated_by_user?.first_name} {appointment.last_updated_by_user?.last_name} at {formatDate(appointment.updated_at)}</Typography>
-                        )}
+                {/* Footer with update information */}
+                <Box sx={{ p: 2, mb: 0, border: 'none', borderRadius: 0, bgcolor: 'transparent' }}>
+                    <Grid container spacing={2} sx={{ color: theme.palette.text.secondary, fontSize: '0.875rem' }}>
+                        <Grid item xs={12} sm={6}>
+                            {appointment.last_updated_by_user && (
+                                <Typography variant="body2">
+                                    Last Updated by: {appointment.last_updated_by_user?.first_name} {appointment.last_updated_by_user?.last_name} at {formatDate(appointment.updated_at)}
+                                </Typography>
+                            )}
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                            {appointment.approved_by_user && (
+                                <Typography variant="body2">
+                                    Approved by: {appointment.approved_by_user?.first_name} {appointment.approved_by_user?.last_name} at {formatDate(appointment.approved_datetime)}
+                                </Typography>
+                            )}
+                        </Grid>
                     </Grid>
-                    <Grid item xs={12} sm={6}>
-                        {appointment.approved_by_user && (
-                        <Typography> Approved by: {appointment.approved_by_user?.first_name} {appointment.approved_by_user?.last_name} at {formatDate(appointment.approved_datetime)}</Typography>
-                        )}
-                    </Grid>
-                    </Grid>
-                </Paper>
+                </Box>
             </CardContent>
         </Card>
     );
