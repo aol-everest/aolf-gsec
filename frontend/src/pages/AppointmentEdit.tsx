@@ -314,7 +314,7 @@ const AppointmentEdit: React.FC = () => {
       setShowValidationSummary(true);
       
       // Show error notification
-      enqueueSnackbar('Please fix the validation errors before submitting', { variant: 'error' });
+      enqueueSnackbar('Please fix the errors before submitting', { variant: 'error' });
       return;
     }
     
