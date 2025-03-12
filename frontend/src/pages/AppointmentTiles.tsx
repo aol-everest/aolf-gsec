@@ -436,15 +436,13 @@ const AppointmentTiles: React.FC = () => {
             <Box sx={{ borderBottom: 1, borderColor: 'divider', width: '100%' }}>
               <Tabs 
                 value={selectedStatus || 'All'} 
-                // onChange={(_, newValue) => {
-                //   if (newValue === 'All') {
-                //     // setSelectedStatus(null);
-                //     handleStatusFilter(null);
-                //   } else {
-                //     // setSelectedStatus(newValue);
-                //     handleStatusFilter(newValue);
-                //   }
-                // }}
+                onChange={(_, newValue) => {
+                  if (newValue === 'All') {
+                    handleStatusFilter(null);
+                  } else {
+                    handleStatusFilter(newValue);
+                  }
+                }}
                 variant="scrollable"
                 scrollButtons="auto"
                 allowScrollButtonsMobile
@@ -452,30 +450,30 @@ const AppointmentTiles: React.FC = () => {
                 TabIndicatorProps={{style: {backgroundColor: "#3D8BE8"}}}
               >
                 <Tab 
-                  label={`All (${appointments.length})`} 
-                  value="All" 
-                  component={() => (
+                  label={
                     <ButtonWithBadge
                       label="All"
                       count={appointments.length}
                       isSelected={selectedStatus === null}
-                      onClick={() => handleStatusFilter(null)}
+                      onClick={() => {}}  // Empty function as Tab already handles clicks
                     />
-                  )}
-              />
+                  }
+                  value="All" 
+                  sx={{ padding: 0 }}
+                />
                 {statusOptions.map((status) => (
                   <Tab 
                     key={status} 
-                    label={`${status} (${getStatusAppointmentCount(status)})`} 
-                    value={status} 
-                    component={() => (
+                    label={
                       <ButtonWithBadge
                         label={status}
                         count={getStatusAppointmentCount(status)}
                         isSelected={selectedStatus === status}
-                        onClick={() => handleStatusFilter(status)}
+                        onClick={() => {}}  // Empty function as Tab already handles clicks
                       />
-                    )}
+                    }
+                    value={status}
+                    sx={{ padding: 0 }}
                   />
                 ))}
               </Tabs>
