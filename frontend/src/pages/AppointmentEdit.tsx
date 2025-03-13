@@ -363,26 +363,36 @@ const AppointmentEdit: React.FC = () => {
           errors.location_id = 'Location is required for Scheduled appointments';
         }
       }
-      
-      if (data.sub_status === subStatusMap['COMPLETED'] || data.sub_status === subStatusMap['NO_SHOW']) {
-        if (!data.secretariat_meeting_notes) {
-          errors.secretariat_meeting_notes = 'Meeting notes are required for Completed or No Show appointments';
-        }
+    }
+
+    if (data.status === statusMap['COMPLETED']) {
+      if (!data.secretariat_meeting_notes) {
+        errors.secretariat_meeting_notes = 'Meeting notes are required for Completed appointments';
       }
-      
-      if (data.sub_status === subStatusMap['COMPLETED']) {
-        if (!data.secretariat_follow_up_actions) {
-          errors.secretariat_follow_up_actions = 'Follow-up actions are required for Completed appointments';
-        }
+
+      if (!data.appointment_date) {
+        errors.appointment_date = 'Appointment date is required for Completed appointments';
+      }
+
+      if (!data.location_id) {
+        errors.location_id = 'Location is required for Completed appointments';
+      }
+
+      if (data.sub_status === subStatusMap['FOLLOW_UP_REQUIRED'] && !data.secretariat_follow_up_actions) {
+        errors.secretariat_follow_up_actions = 'Follow-up actions are required for Completed appointments';
       }
     }
     
-    if (data.status === statusMap['REJECTED'] && (!data.secretariat_notes_to_requester || !data.secretariat_notes_to_requester.trim())) {
-      errors.secretariat_notes_to_requester = 'Notes to requester are required when rejecting an appointment';
+    if (data.status === statusMap['REJECTED']) {
+      if (data.sub_status === subStatusMap['DARSHAN_LINE'] && (!data.secretariat_notes_to_requester || !data.secretariat_notes_to_requester.trim())) {
+        errors.secretariat_notes_to_requester = 'Please add notes about Darshan Line in the notes to requester input';
+      }
     }
     
-    if (data.sub_status === subStatusMap['NEED_MORE_INFO'] && (!data.secretariat_notes_to_requester || !data.secretariat_notes_to_requester.trim())) {
-      errors.secretariat_notes_to_requester = 'Notes to requester are required when requesting more information';
+    if (data.status === statusMap['PENDING']) {
+      if (data.sub_status === subStatusMap['NEED_MORE_INFO'] && (!data.secretariat_notes_to_requester || !data.secretariat_notes_to_requester.trim())) {
+        errors.secretariat_notes_to_requester = 'Notes to requester are required when requesting more information';
+      }
     }
     
     return errors;
