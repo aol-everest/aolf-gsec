@@ -25,6 +25,8 @@ import {
   Theme,
   Tabs,
   Tab,
+  TextField,
+  InputAdornment,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
@@ -32,6 +34,7 @@ import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
+import SearchIcon from '@mui/icons-material/Search';
 import Layout from '../components/Layout';
 import { formatDate } from '../utils/dateUtils';
 import { getStatusChipSx, getStatusColor } from '../utils/formattingUtils';
@@ -49,6 +52,38 @@ import ButtonWithBadge from '../components/ButtonWithBadge';
 import { Appointment, AppointmentDignitary } from '../models/types';
 
 import { AppointmentCard } from '../components/AppointmentCard';
+
+// Search configuration - customize this to include or exclude fields from search
+const SEARCH_CONFIG = {
+  // Fields directly on the appointment object
+  appointmentFields: [
+    'purpose',
+    'appointment_type',
+    'appointment_date',
+    'status',
+    'sub_status',
+    'internal_secretariat_notes',
+    'secretariat_meeting_notes'
+  ] as const,
+  
+  // Fields to search within the dignitary object
+  dignitaryFields: [
+    'first_name',
+    'last_name',
+    'email',
+    'organization',
+    'title_in_organization',
+    'primary_domain'
+  ] as const,
+  
+  // Fields to search within the location object
+  locationFields: [
+    'name',
+    'city',
+    'state',
+    'country'
+  ] as const
+};
 
 // Create enhanced SwipeableViews with keyboard navigation and virtualization
 const VirtualizedSwipeableViews = bindKeyboard(virtualize(SwipeableViews));
@@ -154,6 +189,7 @@ const AppointmentTiles: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
+  const [searchTerm, setSearchTerm] = useState<string>('');
   const [filteredAppointments, setFilteredAppointments] = useState<Appointment[]>([]);
   const theme = useTheme();
   const navigate = useNavigate();
@@ -165,6 +201,9 @@ const AppointmentTiles: React.FC = () => {
   const isNavigatingRef = useRef(false);
   const isFilteringRef = useRef(false);
   const isManualNavigationRef = useRef(false); // Track Next/Back button clicks
+  
+  // Define searchable fields based on the config
+  const searchableFields = SEARCH_CONFIG.appointmentFields as unknown as (keyof Appointment)[];
   
   // DEBUG: Add console logs for important state changes
   const debugLog = (message: string, data?: any) => {
@@ -239,15 +278,60 @@ const AppointmentTiles: React.FC = () => {
       );
     }
     
+    // Apply search filter if search term exists
+    if (searchTerm.trim()) {
+      console.log(`Filtering by search term: ${searchTerm}`);
+      const searchLower = searchTerm.toLowerCase().trim();
+      
+      filtered = filtered.filter(appointment => {
+        // Check each searchable field
+        const matchesSearchableFields = searchableFields.some(field => {
+          const value = appointment[field];
+          // Handle different types of fields
+          if (typeof value === 'string') {
+            return value.toLowerCase().includes(searchLower);
+          } else if (typeof value === 'number') {
+            return value.toString().includes(searchLower);
+          } else if (value && typeof value === 'object' && 'name' in value) {
+            // For objects with name property (like location)
+            return (value.name as string).toLowerCase().includes(searchLower);
+          }
+          return false;
+        });
+
+        // Also search in location name if available
+        const locationMatch = appointment.location && 
+          SEARCH_CONFIG.locationFields.some(field => 
+            appointment.location[field]?.toLowerCase().includes(searchLower)
+          );
+
+        // Search in dignitary information if available
+        const dignitaryMatch = appointment.dignitary && 
+          SEARCH_CONFIG.dignitaryFields.some(field => 
+            appointment.dignitary[field]?.toLowerCase().includes(searchLower)
+          );
+
+        // Search in appointment dignitaries if available
+        const appointmentDignitariesMatch = appointment.appointment_dignitaries && 
+          appointment.appointment_dignitaries.some(ad => 
+            ad.dignitary && SEARCH_CONFIG.dignitaryFields.some(field => 
+              ad.dignitary[field]?.toLowerCase().includes(searchLower)
+            )
+          );
+
+        return matchesSearchableFields || locationMatch || dignitaryMatch || appointmentDignitariesMatch;
+      });
+    }
+    
     return filtered;
-  }, [appointments, selectedStatus, selectedLocation]);
+  }, [appointments, selectedStatus, selectedLocation, searchTerm, searchableFields]);
 
   // Apply filters and handle URL ID
   useEffect(() => {
     if (appointments.length === 0) return;
     
     // isFilteringRef.current = true;
-    debugLog('Filtering appointments', { selectedStatus, selectedLocation });
+    debugLog('Filtering appointments', { selectedStatus, selectedLocation, searchTerm });
     
     const filtered = getFilteredAppointments();
     setFilteredAppointments(filtered);
@@ -320,7 +404,7 @@ const AppointmentTiles: React.FC = () => {
       isFilteringRef.current = false;
     }, 100);
     
-  }, [appointments, selectedStatus, selectedLocation, id, navigate, getFilteredAppointments]);
+  }, [appointments, selectedStatus, selectedLocation, searchTerm, id, navigate, getFilteredAppointments]);
 
   // Update URL when activeStep changes due to Next/Back button clicks
   useEffect(() => {
@@ -384,6 +468,13 @@ const AppointmentTiles: React.FC = () => {
     debugLog(`Setting location filter: ${locationId}`);
     isFilteringRef.current = true;
     setSelectedLocation(locationId);
+    setActiveStep(0);
+  };
+
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    debugLog(`Setting search term: ${event.target.value}`);
+    isFilteringRef.current = true;
+    setSearchTerm(event.target.value);
     setActiveStep(0);
   };
 
@@ -485,6 +576,47 @@ const AppointmentTiles: React.FC = () => {
               </Tabs>
             </Box>
             
+            {/* Search Bar */}
+            <Box>
+              <TextField
+                fullWidth
+                placeholder="Search appointments..."
+                variant="outlined"
+                value={searchTerm}
+                onChange={handleSearchChange}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                  endAdornment: searchTerm && (
+                    <InputAdornment position="end">
+                      <Button 
+                        onClick={() => setSearchTerm('')}
+                        size="small"
+                      >
+                        Clear
+                      </Button>
+                    </InputAdornment>
+                  )
+                }}
+                sx={{ mb: 1 }}
+              />
+              
+              {/* Show search results count when searching */}
+              {searchTerm && (
+                <Box sx={{ mb: 1 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Found {filteredAppointments.length} {filteredAppointments.length === 1 ? 'appointment' : 'appointments'} 
+                    {selectedStatus ? ` with status "${selectedStatus}"` : ''} 
+                    {selectedLocation ? ` at ${locations.find(l => l.id === selectedLocation)?.name || 'selected location'}` : ''}
+                    {searchTerm ? ` matching "${searchTerm}"` : ''}
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+
             {/* Location Filters */}
             <Box>
               <Typography variant="subtitle1" sx={{ mb: 1 }}>Filter by Location</Typography>
