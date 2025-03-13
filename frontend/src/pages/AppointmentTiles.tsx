@@ -62,18 +62,32 @@ const SEARCH_CONFIG = {
     'appointment_date',
     'status',
     'sub_status',
-    'internal_secretariat_notes',
-    'secretariat_meeting_notes'
+    'requester_notes_to_secretariat',
+    'secretariat_meeting_notes',
+    'secretariat_follow_up_actions',
+    'secretariat_notes_to_requester'
+  ] as const,
+
+  requesterFields: [
+    'first_name',
+    'last_name',
+    'email',
+    'phone_number'
   ] as const,
   
   // Fields to search within the dignitary object
   dignitaryFields: [
+    'honorific_title',
     'first_name',
     'last_name',
     'email',
+    'phone',
     'organization',
     'title_in_organization',
-    'primary_domain'
+    'primary_domain',
+    'country',
+    'state',
+    'city'
   ] as const,
   
   // Fields to search within the location object
@@ -306,9 +320,9 @@ const AppointmentTiles: React.FC = () => {
           );
 
         // Search in dignitary information if available
-        const dignitaryMatch = appointment.dignitary && 
-          SEARCH_CONFIG.dignitaryFields.some(field => 
-            appointment.dignitary[field]?.toLowerCase().includes(searchLower)
+        const requesterMatch = appointment.requester && 
+          SEARCH_CONFIG.requesterFields.some(field => 
+            appointment.requester[field]?.toLowerCase().includes(searchLower)
           );
 
         // Search in appointment dignitaries if available
@@ -319,7 +333,7 @@ const AppointmentTiles: React.FC = () => {
             )
           );
 
-        return matchesSearchableFields || locationMatch || dignitaryMatch || appointmentDignitariesMatch;
+        return matchesSearchableFields || locationMatch || requesterMatch || appointmentDignitariesMatch;
       });
     }
     
