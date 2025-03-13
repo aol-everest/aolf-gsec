@@ -882,7 +882,7 @@ export const AppointmentRequestForm: React.FC = () => {
                   type="number"
                   label="Number of Dignitaries"
                   InputLabelProps={{ shrink: true }}
-                  inputProps={{ min: 1, max: 6 }}
+                  inputProps={{ min: 1, max: 8 }}
                   {...pocForm.register('numberOfDignitaries', { 
                     required: 'Number of dignitaries is required',
                     min: {
@@ -890,8 +890,8 @@ export const AppointmentRequestForm: React.FC = () => {
                       message: 'At least 1 dignitary is required'
                     },
                     max: {
-                      value: 6,
-                      message: 'Maximum 6 dignitaries allowed'
+                      value: 8,
+                      message: 'Maximum 8 dignitaries allowed'
                     },
                     valueAsNumber: true
                   })}
