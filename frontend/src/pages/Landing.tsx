@@ -70,7 +70,7 @@ const Landing: React.FC = () => {
         <Typography 
           variant="body1"
           sx={{
-            color: '#666',
+            color: '#6F7283',
             mb: 4,
           }}
         >
@@ -115,9 +115,27 @@ const Landing: React.FC = () => {
             width: '100%',
             borderRadius: 1,
             mt: 1,
+            mb: 2,
           }}
         />
+
+      <Typography 
+        variant="body2"
+        sx={{
+          color: '#6F7283',
+          mt: 1,
+          textAlign: 'center',
+          fontSize: '0.9rem',
+        }}
+      >
+        Please use your Google email to log in.<br />
+        If you have an <Typography component="span" sx={{ fontWeight: 'bold' }}>@artofliving.org</Typography> or <Typography component="span" sx={{ fontWeight: 'bold' }}>@iahv.org</Typography> email, please use that.<br />
+        Otherwise, you may log in with any Gmail or other Google-based email address.<br />
+        Non-Google emails are not supported.
+      </Typography>
+
       </Paper>
+
     </Box>
   );
 };
