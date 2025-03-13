@@ -66,7 +66,7 @@ STATUS_SUBSTATUS_MAPPING = {
         ]
     },
     AppointmentStatus.COMPLETED.value: {
-        "default_sub_status": AppointmentSubStatus.FOLLOW_UP_REQUIRED.value,
+        "default_sub_status": AppointmentSubStatus.NO_FURTHER_ACTION.value,
         "valid_sub_statuses": [
             AppointmentSubStatus.NO_FURTHER_ACTION.value,
             AppointmentSubStatus.FOLLOW_UP_REQUIRED.value,

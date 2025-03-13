@@ -163,7 +163,16 @@ const AppointmentEdit: React.FC = () => {
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const [showValidationSummary, setShowValidationSummary] = useState(false);
 
-  const { control, handleSubmit, reset, watch, formState: { errors }, trigger, getValues } = useForm<AppointmentFormData>({
+  const { 
+    control, 
+    handleSubmit, 
+    reset, 
+    watch, 
+    setValue,
+    formState: { errors }, 
+    trigger, 
+    getValues 
+  } = useForm<AppointmentFormData>({
     mode: 'onSubmit',
   });
 
@@ -246,16 +255,14 @@ const AppointmentEdit: React.FC = () => {
       
       // Only set default if current substatus is not valid for the new status
       const currentSubStatus = getValues('sub_status');
+      
       if (!currentSubStatus || !valid_sub_statuses.includes(currentSubStatus)) {
-        // Update the form with the default substatus
-        reset({
-          ...getValues(),
-          sub_status: default_sub_status
-        }, { keepValues: true });
+        // Use setValue instead of reset to update just the sub_status field
+        console.log(`Setting sub_status to default: ${default_sub_status}`);
+        setValue('sub_status', default_sub_status);
       }
     }
-    // Removed the else clause that was setting validSubStatuses
-  }, [watchStatus, statusSubStatusMapping, getValues, reset]);
+  }, [watchStatus, statusSubStatusMapping, getValues, setValue]);
 
   // // Add debug log for developers
   // useEffect(() => {
@@ -1170,7 +1177,7 @@ const AppointmentEdit: React.FC = () => {
                   />
                 </Grid>
 
-                {(watchStatus === 'Approved' || appointment.status === 'Approved') && appointment.appointment_date && new Date(appointment.appointment_date) <= new Date() && (
+                {(watchStatus === statusMap['APPROVED'] || appointment.status === statusMap['APPROVED']) && appointment.appointment_date && new Date(appointment.appointment_date) <= new Date() && (
                   <Grid item xs={12}>
                     <Controller
                       name="secretariat_follow_up_actions"
@@ -1190,7 +1197,7 @@ const AppointmentEdit: React.FC = () => {
                   </Grid>
                 )}
 
-                {(watchStatus === 'Approved' || appointment.status === 'Approved') && appointment.appointment_date && new Date(appointment.appointment_date) <= new Date() && (
+                {(watchStatus === statusMap['APPROVED'] || appointment.status === statusMap['APPROVED']) && appointment.appointment_date && new Date(appointment.appointment_date) <= new Date() && (
                   <Grid item xs={12}>
                     <Controller
                       name="secretariat_meeting_notes"
@@ -1257,7 +1264,7 @@ const AppointmentEdit: React.FC = () => {
                   </Box>
                   
                   {/* Business Cards Section */}
-                  {appointment.status === 'Approved' && appointment.appointment_date && new Date(appointment.appointment_date) <= new Date() && (
+                  {(watchStatus === statusMap['APPROVED'] || appointment.status === statusMap['APPROVED']) && appointment.appointment_date && new Date(appointment.appointment_date) <= new Date() && (
                     <>
                       <Typography variant="h6" gutterBottom color="primary" sx={{ mt: 3, mb: 1 }}>
                         Business Cards
