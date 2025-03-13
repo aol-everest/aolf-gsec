@@ -72,6 +72,7 @@ interface PocFormData {
   pocLastName: string;
   pocEmail: string;
   pocPhone: string;
+  numberOfDignitaries: number;
 }
 
 // Step 2: Dignitary Information
@@ -132,10 +133,8 @@ export const AppointmentRequestForm: React.FC = () => {
   const [dignitaries, setDignitaries] = useState<Dignitary[]>([]);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [submittedAppointment, setSubmittedAppointment] = useState<AppointmentResponse | null>(null);
-  // Use any type to avoid TypeScript errors with the selectedDignitary state
-  const [selectedDignitary, setSelectedDignitary] = useState<any>(null);
-  // New state for multiple dignitaries
   const [selectedDignitaries, setSelectedDignitaries] = useState<SelectedDignitary[]>([]);
+  const [selectedDignitary, setSelectedDignitary] = useState<any>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingDignitaryIndex, setEditingDignitaryIndex] = useState<number | null>(null);
   const [showWarningDialog, setShowWarningDialog] = useState(false);
@@ -150,12 +149,15 @@ export const AppointmentRequestForm: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-
+  
+  // State to track the required number of dignitaries
+  const [requiredDignitariesCount, setRequiredDignitariesCount] = useState<number>(1);
+  
   // Add a state to track if the selected dignitary has been modified
-  const [isDignitaryModified, setIsDignitaryModified] = useState<boolean>(false);
+  const [isDignitaryModified, setIsDignitaryModified] = useState(false);
 
   // Add a new state variable to track if the dignitary form is expanded
-  const [isDignitaryFormExpanded, setIsDignitaryFormExpanded] = useState<boolean>(false);
+  const [isDignitaryFormExpanded, setIsDignitaryFormExpanded] = useState(false);
 
   // Fetch status options
   const { data: statusOptions = [] } = useQuery<string[]>({
@@ -199,6 +201,7 @@ export const AppointmentRequestForm: React.FC = () => {
       pocLastName: userInfo?.last_name || '',
       pocEmail: userInfo?.email || '',
       pocPhone: userInfo?.phone_number || '',
+      numberOfDignitaries: 0,
     }
   });
 
@@ -681,6 +684,8 @@ export const AppointmentRequestForm: React.FC = () => {
       const pocData = await pocForm.handleSubmit(async (data) => {
         try {
           await updateUserMutation.mutateAsync({ phone_number: data.pocPhone });
+          // Set the required number of dignitaries
+          setRequiredDignitariesCount(data.numberOfDignitaries);
           setActiveStep(1);
         } catch (error) {
           console.error('Error updating user:', error);
@@ -704,6 +709,15 @@ export const AppointmentRequestForm: React.FC = () => {
           });
           return;
         }
+      }
+      
+      // Check if we have added the required number of dignitaries
+      if (selectedDignitaries.length < requiredDignitariesCount) {
+        enqueueSnackbar(`Please add ${requiredDignitariesCount - selectedDignitaries.length} more dignitary(s). You specified ${requiredDignitariesCount} dignitary(s) in the previous step.`, { 
+          variant: 'error',
+          autoHideDuration: 5000
+        });
+        return;
       }
       
       // Since dignitaries are already created/updated when added to the list,
@@ -861,6 +875,27 @@ export const AppointmentRequestForm: React.FC = () => {
                   required
                 />
               </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="Number of Dignitaries"
+                  InputLabelProps={{ shrink: true }}
+                  inputProps={{ min: 1 }}
+                  {...pocForm.register('numberOfDignitaries', { 
+                    required: 'Number of dignitaries is required',
+                    min: {
+                      value: 1,
+                      message: 'At least 1 dignitary is required'
+                    },
+                    valueAsNumber: true
+                  })}
+                  error={!!pocForm.formState.errors.numberOfDignitaries}
+                  helperText={pocForm.formState.errors.numberOfDignitaries?.message}
+                  required
+                />
+              </Grid>
             </Grid>
           </Box>
         );
@@ -875,6 +910,9 @@ export const AppointmentRequestForm: React.FC = () => {
                 </Typography>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
                   Add one or more dignitaries to this appointment request.
+                  {requiredDignitariesCount > 0 && (
+                    <span> You need to add {requiredDignitariesCount} dignitary(s) in total.</span>
+                  )}
                 </Typography>
               </Grid>
 
@@ -882,7 +920,7 @@ export const AppointmentRequestForm: React.FC = () => {
               {selectedDignitaries.length > 0 && (
                 <Grid item xs={12}>
                   <Typography variant="subtitle1" gutterBottom>
-                    Selected Dignitaries ({selectedDignitaries.length})
+                    Selected Dignitaries ({selectedDignitaries.length} of {requiredDignitariesCount})
                   </Typography>
                   <List>
                     {selectedDignitaries.map((dignitary, index) => (
@@ -978,8 +1016,11 @@ export const AppointmentRequestForm: React.FC = () => {
                       }
                     }}
                     sx={{ mt: 2 }}
+                    disabled={selectedDignitaries.length >= requiredDignitariesCount}
                   >
-                    Add a dignitary to Appointment
+                    {selectedDignitaries.length < requiredDignitariesCount
+                      ? `Add Dignitary ${selectedDignitaries.length + 1} of ${requiredDignitariesCount}`
+                      : `All ${requiredDignitariesCount} dignitaries added`}
                   </Button>
                 </Grid>
               )}
@@ -1010,6 +1051,11 @@ export const AppointmentRequestForm: React.FC = () => {
                       {isEditMode && selectedDignitaries.length > 0 && editingDignitaryIndex !== null && (
                         <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
                           Editing: {selectedDignitaries[editingDignitaryIndex].honorific_title} {selectedDignitaries[editingDignitaryIndex].first_name} {selectedDignitaries[editingDignitaryIndex].last_name}
+                        </Typography>
+                      )}
+                      {!isEditMode && (
+                        <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
+                          Adding dignitary {selectedDignitaries.length + 1} of {requiredDignitariesCount}
                         </Typography>
                       )}
                     </Box>
@@ -1894,7 +1940,9 @@ export const AppointmentRequestForm: React.FC = () => {
               // At step 2, if the dignitary form is expanded, disable the next button
               (activeStep === 1 && isDignitaryFormExpanded) || 
               // At step 2, if no dignitaries are selected, disable the next button
-              (activeStep === 1 && selectedDignitaries.length === 0)
+              (activeStep === 1 && selectedDignitaries.length === 0) ||
+              // At step 2, if not enough dignitaries are added, disable the next button
+              (activeStep === 1 && selectedDignitaries.length < requiredDignitariesCount)
             }
           >
             {activeStep === steps.length - 1 ? 'Submit' : 'Next'}
