@@ -1,6 +1,7 @@
 import { Paper, Typography, Box, Chip, IconButton, Grid, Theme, CardContent, Card, useMediaQuery } from "@mui/material"
 import { formatDate } from "../utils/dateUtils"
 import { getStatusChipSx, getSubStatusChipSx } from "../utils/formattingUtils"
+import { validateUrl } from "../utils/urlUtils"
 import EditIcon from "@mui/icons-material/Edit"
 import { Appointment, AppointmentAttachment, AppointmentDignitary } from "../models/types"
 import { useNavigate } from "react-router-dom";
@@ -172,9 +173,18 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                                     <Grid item xs={12} sm={6}>
                                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                                             <WebsiteIconV2 />
-                                            <Typography component="a" href={`${dig.linked_in_or_website}`} sx={{ color: theme.palette.text.primary, textDecoration: 'none', ml: 1, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                {dig.linked_in_or_website}
-                                            </Typography>
+                                            {(() => {
+                                                const { isValid, url } = validateUrl(dig.linked_in_or_website);
+                                                return isValid ? (
+                                                    <Typography component="a" href={url} target="_blank" rel="noopener noreferrer" sx={{ color: theme.palette.text.primary, textDecoration: 'none', ml: 1, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                        {dig.linked_in_or_website}
+                                                    </Typography>
+                                                ) : (
+                                                    <Typography sx={{ color: theme.palette.text.primary, ml: 1, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                        {dig.linked_in_or_website || 'N/A'}
+                                                    </Typography>
+                                                );
+                                            })()}
                                         </Box>
                                     </Grid>
                                     <Grid item xs={12}>
