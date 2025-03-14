@@ -1,6 +1,6 @@
 import { Paper, Typography, Box, Chip, IconButton, Grid, Theme, CardContent, Card, useMediaQuery } from "@mui/material"
 import { formatDate } from "../utils/dateUtils"
-import { formatHonorificTitle, getStatusChipSx, getSubStatusChipSx } from "../utils/formattingUtils"
+import { formatHonorificTitle, getStatusChipSx, getSubStatusChipSx, formatPrimaryDomain } from "../utils/formattingUtils"
 import { validateUrl } from "../utils/urlUtils"
 import EditIcon from "@mui/icons-material/Edit"
 import { Appointment, AppointmentAttachment, AppointmentDignitary } from "../models/types"
@@ -187,6 +187,22 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                                             })()}
                                         </Box>
                                     </Grid>
+                                    <Grid item xs={12} sm={6}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
+                                                <LocationIconV2 />
+                                                <Typography sx={{ color: theme.palette.text.primary, ml: 1 }}>
+                                                    {dig.country}{dig.state ? ', ' + dig.state : ''}{dig.city ? ', ' + dig.city : ''}
+                                                </Typography>
+                                            </Box>
+                                        </Box>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6}>
+                                        <Typography sx={{ color: theme.palette.text.primary }}>
+                                            <Typography sx={{ fontWeight: 500, color: theme.palette.secondary.dark, display: 'inline', mr: 1 }}>Domain:</Typography> 
+                                            {formatPrimaryDomain(dig.primary_domain, dig.primary_domain_other)}
+                                        </Typography>
+                                    </Grid>
                                     <Grid item xs={12}>
                                         <Typography sx={{ fontWeight: 500, mr: 1, display: 'inline' }}>Bio:</Typography>
                                         <Typography sx={{ color: theme.palette.text.primary, display: 'inline' }}>{dig.bio_summary}</Typography>
@@ -313,16 +329,16 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                     <Grid container spacing={2} sx={{ mb: 2 }}>
                         <Grid item xs={12}>
                             <Typography variant="h5" gutterBottom>
-                                Requested Appointment Details
+                                {appointment.status.toLowerCase() === 'approved' ? 'Approved Appointment Details' : 'Requested Appointment Details'}
                             </Typography>
                         </Grid>
                     </Grid>
                     <Grid container spacing={2}>
                         <Grid item xs={12} md={6}>
                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <Box component="span" sx={{ width: '150px', fontWeight: 'medium' }}>Preferred Date:</Box>
+                                <Box component="span" sx={{ width: '150px', fontWeight: 'medium' }}>Date & Time:</Box>
                                 <Typography component="span" sx={{ color: theme.palette.text.primary }}>
-                                    {formatDate(appointment.preferred_date, false)} {appointment.preferred_time_of_day || ''}
+                                    {appointment.status.toLowerCase() === 'approved' && appointment.appointment_date ? formatDate(appointment.appointment_date, false) + ' ' + (appointment.appointment_time || '') : formatDate(appointment.preferred_date, false) + ' ' + (appointment.preferred_time_of_day || '')}
                                 </Typography>
                             </Box>
                         </Grid>
@@ -339,6 +355,14 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                                 <Box component="span" sx={{ width: '150px', fontWeight: 'medium' }}>Purpose:</Box>
                                 <Typography component="span" sx={{ color: theme.palette.text.primary }}>
                                     {appointment.purpose}
+                                </Typography>
+                            </Box>
+                        </Grid>
+                        <Grid item xs={12}>
+                            <Box sx={{ display: 'flex' }}>
+                                <Box component="span" sx={{ width: '150px', fontWeight: 'medium' }}>Note to Secretariat:</Box>
+                                <Typography component="span" sx={{ color: theme.palette.text.primary }}>
+                                    {appointment.requester_notes_to_secretariat}
                                 </Typography>
                             </Box>
                         </Grid>
