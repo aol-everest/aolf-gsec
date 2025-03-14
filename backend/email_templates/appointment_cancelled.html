@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Cancellation of Your Scheduled Appointment with Gurudev{% endblock %}
+{% block content %}
+<div class="content">
+    <p>Dear {{ user_name }},</p>
+
+    <p>We regret to inform you that, due to unforeseen changes in Gurudev's schedule, we are unable to proceed with your scheduled appointment.</p>
+
+    <p>Please find the details of your appointment below for reference:</p>
+    <ul>
+        <li>Meeting Request ID: {{ appointment.id }}</li>
+        <li>Appointment Requested For: 
+            {% for app_dignitary in appointment.appointment_dignitaries %}
+                {% set dignitary = app_dignitary.dignitary %}
+                {{ dignitary.honorific_title }} {{ dignitary.first_name }} {{ dignitary.last_name }}{% if not loop.last %}{% if loop.index == appointment.appointment_dignitaries|length - 1 %} and {% else %}, {% endif %}{% endif %}
+            {% endfor %}
+        </li>
+        <li>Scheduled Date & Time: {% if appointment.appointment_date %}{{ appointment.appointment_date }} {% if appointment.appointment_time %}{{ appointment.appointment_time }}{% endif %}{% else %}Not scheduled{% endif %}</li>
+        <li>Location: {% if appointment.location %}{{ appointment.location.name }} - {{ appointment.location.city }}, {{ appointment.location.state }}{% else %}Not specified{% endif %}</li>
+    </ul>
+
+    {% if appointment.secretariat_notes_to_requester %}
+    <p>Message from Secretariat:</p>
+        <div style="background-color: #f9fafb; padding: 15px; border-radius: 5px; margin: 8px 0;">
+            {{ appointment.secretariat_notes_to_requester | replace('\n', '<br>') | safe }}
+        </div>
+    </p>
+    {% endif %}
+    <p>We sincerely apologize for any inconvenience this may cause and understand the impact of this change. At this time, we are unable to reschedule your meeting.</p>
+
+    <p>If you have any questions or require further assistance, please feel free to reach out.</p>
+
+    <p>Thank you for your understanding, and we hope to have the opportunity to connect with you in the future.</p>
+
+    <p>Warm regards,</p>
+    <p>Office of Gurudev Sri Sri Ravi Shankar, USA</p>
+</div>
+{% endblock %} 
