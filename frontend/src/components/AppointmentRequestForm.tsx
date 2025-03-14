@@ -40,7 +40,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import LocationAutocomplete from './LocationAutocomplete';
 import { useNavigate } from 'react-router-dom';
-import { getStatusChipSx } from '../utils/formattingUtils';
+import { formatHonorificTitle, getStatusChipSx } from '../utils/formattingUtils';
 import { useTheme } from '@mui/material/styles';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../hooks/useApi';
@@ -608,7 +608,7 @@ export const AppointmentRequestForm: React.FC = () => {
       enqueueSnackbar('Failed to process dignitary', { variant: 'error' });
     }
   };
-
+  
   // Function to remove a dignitary from the list
   const removeDignitaryFromList = (index: number) => {
     const updatedDignitaries = [...selectedDignitaries];
@@ -952,7 +952,7 @@ export const AppointmentRequestForm: React.FC = () => {
                         }}
                       >
                         <ListItemText
-                          primary={`${dignitary.honorific_title} ${dignitary.first_name} ${dignitary.last_name}`}
+                          primary={`${formatHonorificTitle(dignitary.honorific_title || '')} ${dignitary.first_name} ${dignitary.last_name}`}
                           secondary={
                             <>
                               <Typography component="span" variant="body2">
@@ -1066,7 +1066,7 @@ export const AppointmentRequestForm: React.FC = () => {
                       </Typography>
                       {isEditMode && selectedDignitaries.length > 0 && editingDignitaryIndex !== null && (
                         <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
-                          Editing: {selectedDignitaries[editingDignitaryIndex].honorific_title} {selectedDignitaries[editingDignitaryIndex].first_name} {selectedDignitaries[editingDignitaryIndex].last_name}
+                          Editing: {formatHonorificTitle(selectedDignitaries[editingDignitaryIndex].honorific_title || '')} {selectedDignitaries[editingDignitaryIndex].first_name} {selectedDignitaries[editingDignitaryIndex].last_name}
                         </Typography>
                       )}
                       {!isEditMode && (
@@ -1202,7 +1202,7 @@ export const AppointmentRequestForm: React.FC = () => {
                                       })
                                     }}
                                   >
-                                    {`${dignitary.honorific_title} ${dignitary.first_name} ${dignitary.last_name}`}
+                                    {`${formatHonorificTitle(dignitary.honorific_title || '')} ${dignitary.first_name} ${dignitary.last_name}`}
                                     {isAlreadyAdded && <span className="already-added">(already added)</span>}
                                   </MenuItem>
                                 );
@@ -1796,7 +1796,7 @@ export const AppointmentRequestForm: React.FC = () => {
             <Grid item xs={12}>
               <Typography variant="body1">
                 <strong>Dignitaries:</strong> {selectedDignitaries.map(d => 
-                  `${d.honorific_title} ${d.first_name} ${d.last_name}`
+                  `${formatHonorificTitle(d.honorific_title || '')} ${d.first_name} ${d.last_name}`
                 ).join(', ')}
               </Typography>
             </Grid>
@@ -1870,7 +1870,7 @@ export const AppointmentRequestForm: React.FC = () => {
         <DialogContent>
           <Typography gutterBottom>
             You have the following pending appointment requests for{' '}
-            {`${selectedDignitary.honorific_title} ${selectedDignitary.first_name} ${selectedDignitary.last_name}`}:
+            {`${formatHonorificTitle(selectedDignitary.honorific_title || '')} ${selectedDignitary.first_name} ${selectedDignitary.last_name}`}:
           </Typography>
           
           <Box sx={{ mt: 2 }}>
@@ -1911,7 +1911,8 @@ export const AppointmentRequestForm: React.FC = () => {
           </Box>
 
           <Typography sx={{ mt: 2 }}>
-            Would you like to create another appointment request?
+            Would you like to create another appointment request for{' '}
+            {`${formatHonorificTitle(selectedDignitary.honorific_title || '')} ${selectedDignitary.first_name} ${selectedDignitary.last_name}`}?
           </Typography>
         </DialogContent>
         <DialogActions>

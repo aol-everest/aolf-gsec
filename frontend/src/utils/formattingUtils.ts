@@ -43,3 +43,11 @@ export const getSubStatusChipSx = (subStatus: string, theme: Theme) => {
         fontSize: 'inherit',
     };
 };
+
+export const formatHonorificTitle = (honorificTitle: string) => {
+    return honorificTitle.toLowerCase().includes('not applicable') ? '' : honorificTitle;
+};
+
+export const formatPrimaryDomain = (primaryDomain: string, otherDomain: string) => {
+    return primaryDomain.toLowerCase().includes('other') ? otherDomain : primaryDomain;
+};
