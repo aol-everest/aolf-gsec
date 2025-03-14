@@ -10,6 +10,7 @@ import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { useQuery } from '@tanstack/react-query';
 import GenericDataGrid from '../components/GenericDataGrid';
+import { formatHonorificTitle } from '../utils/formattingUtils';
 
 interface Dignitary {
   id: number;
@@ -52,7 +53,7 @@ const DignitaryListAll: React.FC = () => {
       headerName: 'Name', 
       width: 200,
       flex: 1.5,
-      renderCell: (params) => `${params.row.honorific_title} ${params.row.first_name} ${params.row.last_name}`
+      renderCell: (params) => `${formatHonorificTitle(params.row.honorific_title)} ${params.row.first_name} ${params.row.last_name}`
     },
     { field: 'email', headerName: 'Email', width: 200, flex: 1 },
     { field: 'phone', headerName: 'Phone', width: 130, flex: 1 },

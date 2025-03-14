@@ -14,7 +14,7 @@ import {
   GridRenderCellParams,
 } from '@mui/x-data-grid';
 import Layout from '../components/Layout';
-import { getStatusChipSx, getStatusColor } from '../utils/formattingUtils';
+import { formatHonorificTitle, getStatusChipSx, getStatusColor } from '../utils/formattingUtils';
 import { useTheme } from '@mui/material/styles';
 import { useQuery } from '@tanstack/react-query';
 import { useApi } from '../hooks/useApi';
@@ -139,7 +139,7 @@ const AppointmentStatus: React.FC = () => {
         if (params.row.appointment_dignitaries?.length > 0) {
           const dignitariesNames = params.row.appointment_dignitaries.map((ad: any) => {
             const dig = ad.dignitary;
-            return `${dig.honorific_title || ''} ${dig.first_name} ${dig.last_name}`;
+            return `${formatHonorificTitle(dig.honorific_title)} ${dig.first_name} ${dig.last_name}`;
           });
           
           // Display only first dignitary with count if there are multiple

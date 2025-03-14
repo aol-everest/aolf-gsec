@@ -17,7 +17,7 @@ import isToday from 'date-fns/isToday';
 import parseISO from 'date-fns/parseISO';
 import Layout from '../components/Layout';
 import { getLocalDate, formatTime } from '../utils/dateUtils';
-import { getStatusChipSx } from '../utils/formattingUtils';
+import { formatHonorificTitle, getStatusChipSx } from '../utils/formattingUtils';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { useQuery } from '@tanstack/react-query';
@@ -71,7 +71,7 @@ const AppointmentDayView: React.FC = () => {
       return (
         <>
           <Typography variant="h6" gutterBottom>
-            {primaryDignitary.honorific_title || ''} {primaryDignitary.first_name} {primaryDignitary.last_name}
+            {formatHonorificTitle(primaryDignitary.honorific_title)} {primaryDignitary.first_name} {primaryDignitary.last_name}
             {dignitaryCount > 1 && (
               <Typography component="span" color="text.secondary" sx={{ ml: 1, fontSize: '0.8rem' }}>
                 (+{dignitaryCount - 1} more)

@@ -23,6 +23,7 @@ import { USHER_DISPLAY_DAYS } from '../constants/formConstants';
 import { FilterChip } from '../components/FilterChip';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import { formatHonorificTitle } from '../utils/formattingUtils';
 
 // Define interfaces for the USHER view
 interface DignitaryUsherView {
@@ -185,8 +186,7 @@ const AppointmentUsherView: React.FC = () => {
     
     // Fall back to dignitary field for backward compatibility
     if (appointment.dignitary) {
-      const honorific = appointment.dignitary.honorific_title || '';
-      return <Typography variant="body1" fontWeight="medium">{`${honorific} ${appointment.dignitary.first_name} ${appointment.dignitary.last_name}`.trim()}</Typography>;
+      return <Typography variant="body1" fontWeight="medium">{`${formatHonorificTitle(appointment.dignitary.honorific_title || '')} ${appointment.dignitary.first_name} ${appointment.dignitary.last_name}`.trim()}</Typography>;
     }
     
     return <Typography variant="body1">No dignitary information</Typography>;

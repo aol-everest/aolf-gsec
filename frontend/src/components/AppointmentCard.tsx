@@ -1,6 +1,6 @@
 import { Paper, Typography, Box, Chip, IconButton, Grid, Theme, CardContent, Card, useMediaQuery } from "@mui/material"
 import { formatDate } from "../utils/dateUtils"
-import { getStatusChipSx, getSubStatusChipSx } from "../utils/formattingUtils"
+import { formatHonorificTitle, getStatusChipSx, getSubStatusChipSx } from "../utils/formattingUtils"
 import { validateUrl } from "../utils/urlUtils"
 import EditIcon from "@mui/icons-material/Edit"
 import { Appointment, AppointmentAttachment, AppointmentDignitary } from "../models/types"
@@ -133,7 +133,7 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                                 key={dig.id}
                             >
                                 <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600 }}>
-                                    {dig.honorific_title || ''} {dig.first_name} {dig.last_name}
+                                    {formatHonorificTitle(dig.honorific_title)} {dig.first_name} {dig.last_name}
                                 </Typography>
                                 <Grid container spacing={1}>
                                     <Grid item xs={12} sm={6}>

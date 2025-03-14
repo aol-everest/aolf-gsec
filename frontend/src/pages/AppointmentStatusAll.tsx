@@ -34,7 +34,7 @@ import CancelIcon from '@mui/icons-material/Close';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import Layout from '../components/Layout';
-import { getStatusChipSx, getSubStatusChipSx, getStatusColor } from '../utils/formattingUtils';
+import { getStatusChipSx, getSubStatusChipSx, getStatusColor, formatHonorificTitle } from '../utils/formattingUtils';
 import { useTheme } from '@mui/material/styles';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
@@ -290,7 +290,7 @@ const AppointmentStatusAll: React.FC = () => {
         if (params.row.appointment_dignitaries && params.row.appointment_dignitaries.length > 0) {
           const dignitariesNames = params.row.appointment_dignitaries.map((ad: any) => {
             const dig = ad.dignitary;
-            return `${dig.honorific_title || ''} ${dig.first_name} ${dig.last_name}`;
+            return `${formatHonorificTitle(dig.honorific_title)} ${dig.first_name} ${dig.last_name}`;
           });
           
           // Display only first dignitary with count if there are multiple
