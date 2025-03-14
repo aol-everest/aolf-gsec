@@ -62,6 +62,7 @@ class EmailTemplate(str, Enum):
     APPOINTMENT_STATUS_CHANGE = "appointment_status_change.html"
     APPOINTMENT_MORE_INFO_NEEDED = "appointment_more_info_needed.html"
     APPOINTMENT_CANCELLED = "appointment_cancelled.html"
+    APPOINTMENT_CONFIRMED = "appointment_confirmed.html"
     GENERIC_NOTIFICATION = "generic_notification.html"
 
     def __str__(self):
@@ -74,6 +75,7 @@ class EmailTrigger(str, Enum):
     APPOINTMENT_STATUS_CHANGED = "appointment_status_changed"
     APPOINTMENT_MORE_INFO_NEEDED = "appointment_more_info_needed"
     APPOINTMENT_CANCELLED = "appointment_cancelled"
+    APPOINTMENT_CONFIRMED = "appointment_confirmed"
     GENERIC_NOTIFICATION = "generic_notification"
 
     def __str__(self):
@@ -136,6 +138,11 @@ NOTIFICATION_CONFIGS = {
         trigger=EmailTrigger.APPOINTMENT_CANCELLED,
         requester_template=EmailTemplate.APPOINTMENT_CANCELLED,
         subject_template="Cancellation of Your Scheduled Appointment with Gurudev (ID: {appointment_id})"
+    ),
+    EmailTrigger.APPOINTMENT_CONFIRMED: NotificationConfig(
+        trigger=EmailTrigger.APPOINTMENT_CONFIRMED,
+        requester_template=EmailTemplate.APPOINTMENT_CONFIRMED,
+        subject_template="Confirmation of Your Appointment with Gurudev (ID: {appointment_id})"
     ),
     EmailTrigger.GENERIC_NOTIFICATION: NotificationConfig(
         trigger=EmailTrigger.GENERIC_NOTIFICATION,
@@ -523,6 +530,13 @@ def notify_appointment_update(db: Session, appointment: Appointment, old_data: D
         appointment.sub_status == AppointmentSubStatus.CANCELLED
     )
     
+    # Check if this is a "Confirmed" case (Approved + Scheduled)
+    is_confirmed = (
+        appointment.status == AppointmentStatus.APPROVED and
+        appointment.sub_status == AppointmentSubStatus.SCHEDULED and
+        appointment.appointment_date is not None  # Ensure we have a date
+    )
+    
     # Notify the requester
     requester = appointment.requester
     
@@ -545,6 +559,15 @@ def notify_appointment_update(db: Session, appointment: Appointment, old_data: D
         send_notification_email(
             db=db,
             trigger_type=EmailTrigger.APPOINTMENT_CANCELLED,
+            recipient=requester,
+            context=context,
+            appointment_id=appointment.id
+        )
+    elif is_confirmed:
+        # Special handling for "Confirmed" case
+        send_notification_email(
+            db=db,
+            trigger_type=EmailTrigger.APPOINTMENT_CONFIRMED,
             recipient=requester,
             context=context,
             appointment_id=appointment.id

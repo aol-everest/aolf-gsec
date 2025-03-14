@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Confirmation of Your Appointment with Gurudev{% endblock %}
+{% block content %}
+<div class="content">
+    <p>Dear {{ user_name }},</p>
+
+    <p>We are pleased to confirm your meeting request with Gurudev. Please find the appointment details below:</p>
+    
+    <ul>
+        <li><strong>Meeting Request ID:</strong> {{ appointment.id }}</li>
+        <li><strong>Appointment Requested For:</strong> 
+            {% for app_dignitary in appointment.appointment_dignitaries %}
+                {% set dignitary = app_dignitary.dignitary %}
+                {{ dignitary.honorific_title }} {{ dignitary.first_name }} {{ dignitary.last_name }}{% if not loop.last %}{% if loop.index == appointment.appointment_dignitaries|length - 1 %} and {% else %}, {% endif %}{% endif %}
+            {% endfor %}
+            {% if appointment.appointment_dignitaries|length > 1 %}Group of {{ appointment.appointment_dignitaries|length }}{% endif %}
+        </li>
+        <li><strong>Date & Time:</strong> {% if appointment.appointment_date %}{{ appointment.appointment_date }} {% if appointment.appointment_time %}{{ appointment.appointment_time }}{% endif %}{% else %}To be determined{% endif %}</li>
+        <li><strong>Location:</strong> {% if appointment.location %}{{ appointment.location.name }} - {{ appointment.location.city }}, {{ appointment.location.state }}{% else %}To be determined{% endif %}</li>
+    </ul>
+
+    <p><strong>Logistics:</strong></p>
+    <ul>
+        <li><strong>Arrival Time:</strong> {% if appointment.appointment_time %}{{ appointment.appointment_time }}{% else %}To be determined{% endif %}</li>
+        <li><strong>Location:</strong> {% if appointment.location %}{{ appointment.location.name }} - {{ appointment.location.street_address }}, {{ appointment.location.city }}, {{ appointment.location.state }} {{ appointment.location.zip_code }}{% else %}To be determined{% endif %}</li>
+        <li><strong>Parking:</strong> {% if appointment.location.parking_info %}{{ appointment.location.parking_info }}{% else %}N/A{% endif %}</li>
+        <li><strong>Driving Directions:</strong> {% if appointment.location.driving_directions %}{{ appointment.location.driving_directions }}{% else %}N/A{% endif %}</li>
+        {% if appointment.location.attachment_path %}
+            <li><strong>Additional Information:</strong> <a href="{{ appointment.location.attachment_path }}" target="_blank">View Attachment</a></li>
+        {% endif %}
+    </ul>
+
+    {% if appointment.secretariat_notes_to_requester %}
+    <p>Message from Secretariat:</p>
+        <div style="background-color: #f9fafb; padding: 15px; border-radius: 5px; margin: 8px 0;">
+            {{ appointment.secretariat_notes_to_requester | replace('\n', '<br>') | safe }}
+        </div>
+    </p>
+    {% endif %}
+
+    <p>If you have any questions or need to make changes to your appointment, please contact us as soon as possible.</p>
+
+    <p>Warm regards,</p>
+    <p>Office of Gurudev Sri Sri Ravi Shankar, USA</p>
+</div>
+{% endblock %} 
