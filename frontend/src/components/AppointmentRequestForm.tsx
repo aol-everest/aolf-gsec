@@ -237,7 +237,7 @@ export const AppointmentRequestForm: React.FC = () => {
       purpose: '',
       preferredDate: '',
       preferredTimeOfDay: '',
-      location_id: 0,
+      location_id: undefined,  // Changed from 0 to undefined
       requesterNotesToSecretariat: '',
     }
   });
@@ -1636,12 +1636,19 @@ export const AppointmentRequestForm: React.FC = () => {
                   <Controller
                     name="location_id"
                     control={appointmentForm.control}
-                    rules={{ required: 'Location is required' }}
+                    rules={{ 
+                      required: 'Location is required',
+                      validate: value => (value && value > 0) || 'Please select a location'
+                    }}
                     render={({ field }) => (
                       <Select
                         label="Location *"
                         {...field}
+                        displayEmpty
                       >
+                        <MenuItem value="" disabled>
+                          Select a location
+                        </MenuItem>
                         {locations.map((location) => (
                           <MenuItem key={location.id} value={location.id}>
                             {`${location.name} - ${location.city}, ${location.state}, ${location.country}`}
