@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Additional Information Needed for Your Meeting Request{% endblock %}
+{% block content %}
+<div class="content">
+    <p>Dear {{ user_name }},</p>
+
+    <p>Thank you for your request to meet with Gurudev. As we review your submission (Meeting Request ID: {{ appointment.id }}) for 
+    {% for app_dignitary in appointment.appointment_dignitaries %}
+        {% set dignitary = app_dignitary.dignitary %}
+        {{ dignitary.honorific_title }} {{ dignitary.first_name }} {{ dignitary.last_name }}{% if not loop.last %}{% if loop.index == appointment.appointment_dignitaries|length - 1 %} and {% else %}, {% endif %}{% endif %}
+    {% endfor %}, we kindly request some additional details to proceed further.</p>
+
+    <p>Please provide the following information:</p>
+    <p>{{ appointment.secretariat_notes_to_requester }}</p>
+
+    <p>Once you have the requested details, kindly contact us with this additional information.</p>
+
+    <p>We appreciate your cooperation and will review your updated submission as soon as we receive it.</p>
+
+    <p>
+        <strong>Meeting Request Details:</strong>
+        <ul>
+            <li><strong>Meeting ID:</strong> {{ appointment.id }}</li>
+            <li><strong>Requested Date:</strong> {{ appointment.preferred_date }} {{ appointment.preferred_time_of_day or '' }}</li>
+            <li><strong>Location:</strong> {{ appointment.location.name }} - {{ appointment.location.city }}, {{ appointment.location.state }}</li>
+        </ul>
+    </p>
+
+    <p>Warm regards,</p>
+    <p>Office of Gurudev Sri Sri Ravi Shankar, USA</p>
+</div>
+{% endblock %} 

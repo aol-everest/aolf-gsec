@@ -8,7 +8,7 @@ import asyncio
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy.orm import Session
 from models.user import User, UserRole
-from models.appointment import Appointment
+from models.appointment import Appointment, AppointmentStatus, AppointmentSubStatus
 from schemas import AppointmentAdminUpdate
 from utils.utils import str_to_bool, as_dict, appointment_to_dict
 from models.dignitary import Dignitary
@@ -59,6 +59,7 @@ class EmailTemplate(str, Enum):
     APPOINTMENT_UPDATED_REQUESTER = "appointment_updated_requester.html"
     APPOINTMENT_UPDATED_SECRETARIAT = "appointment_updated_secretariat.html"
     APPOINTMENT_STATUS_CHANGE = "appointment_status_change.html"
+    APPOINTMENT_MORE_INFO_NEEDED = "appointment_more_info_needed.html"
     GENERIC_NOTIFICATION = "generic_notification.html"
 
     def __str__(self):
@@ -69,6 +70,7 @@ class EmailTrigger(str, Enum):
     APPOINTMENT_CREATED = "appointment_created"
     APPOINTMENT_UPDATED = "appointment_updated"
     APPOINTMENT_STATUS_CHANGED = "appointment_status_changed"
+    APPOINTMENT_MORE_INFO_NEEDED = "appointment_more_info_needed"
     GENERIC_NOTIFICATION = "generic_notification"
 
     def __str__(self):
@@ -276,6 +278,9 @@ def send_notification_email(
     elif trigger_type == EmailTrigger.APPOINTMENT_STATUS_CHANGED:
         template_name = EmailTemplate.APPOINTMENT_STATUS_CHANGE
     
+    elif trigger_type == EmailTrigger.APPOINTMENT_MORE_INFO_NEEDED:
+        template_name = EmailTemplate.APPOINTMENT_MORE_INFO_NEEDED
+    
     # Add recipient name to context
     context.update({
         'user_name': recipient.first_name,
@@ -432,25 +437,42 @@ def notify_appointment_update(db: Session, appointment: Appointment, old_data: D
     # Check if status has changed - this might need special notification
     status_changed = old_data.get('status') != new_data.get('status') and new_data.get('status') is not None
     
+    # Check if this is a "Need more info" case
+    need_more_info = (
+        appointment.status == AppointmentStatus.PENDING and 
+        appointment.sub_status == AppointmentSubStatus.NEED_MORE_INFO and
+        appointment.secretariat_notes_to_requester
+    )
+    
     # Notify the requester
     requester = appointment.requester
-    subject = f"Appointment Request Updated - ID: {appointment.id}"
-    context = {
-        'appointment': appointment_to_dict(appointment),
-        'old_data': old_data,
-        'new_data': new_data
-    }
     
-    # Use status change trigger if status changed, otherwise use update trigger
-    trigger_type = EmailTrigger.APPOINTMENT_STATUS_CHANGED if status_changed else EmailTrigger.APPOINTMENT_UPDATED
-    
-    send_notification_email(
-        db=db,
-        trigger_type=trigger_type,
-        recipient=requester,
-        subject=subject,
-        context=context
-    )
+    if need_more_info:
+        # Special handling for "Need more info" case
+        subject = f"Additional Information Needed for Your Meeting Request (ID: {appointment.id})"
+        context = {
+            'appointment': appointment_to_dict(appointment)
+        }
+        trigger_type = EmailTrigger.APPOINTMENT_MORE_INFO_NEEDED
+    # else:
+    #     # Regular update notification
+    #     subject = f"Appointment Request Updated - ID: {appointment.id}"
+    #     context = {
+    #         'appointment': appointment_to_dict(appointment),
+    #         'old_data': old_data,
+    #         'new_data': new_data
+    #     }
+    #     # Use status change trigger if status changed, otherwise use update trigger
+    #     trigger_type = EmailTrigger.APPOINTMENT_STATUS_CHANGED if status_changed else EmailTrigger.APPOINTMENT_UPDATED
+
+    if trigger_type:
+        send_notification_email(
+            db=db,
+            trigger_type=trigger_type,
+            recipient=requester,
+            subject=subject,
+            context=context
+        )
 
 # Initialize the email worker when module is imported
 start_email_worker()

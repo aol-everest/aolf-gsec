@@ -793,6 +793,11 @@ async def update_appointment(
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
     
+    # Save old data for notifications
+    old_data = {}
+    for key, value in appointment_update.dict(exclude_unset=True).items():
+        old_data[key] = getattr(appointment, key)
+    
     if appointment.status != models.AppointmentStatus.APPROVED and appointment_update.status == models.AppointmentStatus.APPROVED:
         logger.info("Appointment is approved")
         appointment.approved_datetime = datetime.utcnow()
@@ -808,7 +813,7 @@ async def update_appointment(
     db.refresh(appointment)
     
     # Send email notifications about the update
-    # notify_appointment_update(db, appointment, old_data, update_data)
+    notify_appointment_update(db, appointment, old_data, update_data)
     
     return appointment
 
