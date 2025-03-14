@@ -13,6 +13,8 @@ npm set audit false
 # Install frontend dependencies
 npm install
 # npm install react-hook-form @mui/material @emotion/react @emotion/styled @react-oauth/google react-router-dom
+# Clean install frontend dependencies
+npm ci --legacy-peer-deps
 
 # Start the frontend
 npm start

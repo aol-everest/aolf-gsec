@@ -124,7 +124,7 @@ interface AppointmentFormData {
   requesterNotesToSecretariat: string;
 }
 
-const steps = ['Point of Contact Information', 'Dignitary Information', 'Appointment Details'];
+const steps = ['Initial Information', 'Add Dignitary Information', 'Appointment Details'];
 
 export const AppointmentRequestForm: React.FC = () => {
   const { userInfo, updateUserInfo } = useAuth();
@@ -876,6 +876,12 @@ export const AppointmentRequestForm: React.FC = () => {
                 />
               </Grid>
               
+              <Grid item xs={12}>
+                <Typography variant="h6" gutterBottom>
+                  Appointment Information
+                </Typography>
+              </Grid>
+
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
