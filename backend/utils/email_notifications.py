@@ -64,6 +64,7 @@ class EmailTemplate(str, Enum):
     APPOINTMENT_CANCELLED = "appointment_cancelled.html"
     APPOINTMENT_CONFIRMED = "appointment_confirmed.html"
     APPOINTMENT_REJECTED_LOW_PRIORITY = "appointment_rejected_low_priority.html"
+    APPOINTMENT_REJECTED_MET_ALREADY = "appointment_rejected_met_already.html"
     GENERIC_NOTIFICATION = "generic_notification.html"
 
     def __str__(self):
@@ -78,6 +79,7 @@ class EmailTrigger(str, Enum):
     APPOINTMENT_CANCELLED = "appointment_cancelled"
     APPOINTMENT_CONFIRMED = "appointment_confirmed"
     APPOINTMENT_REJECTED_LOW_PRIORITY = "appointment_rejected_low_priority"
+    APPOINTMENT_REJECTED_MET_ALREADY = "appointment_rejected_met_already"
     GENERIC_NOTIFICATION = "generic_notification"
 
     def __str__(self):
@@ -149,6 +151,11 @@ NOTIFICATION_CONFIGS = {
     EmailTrigger.APPOINTMENT_REJECTED_LOW_PRIORITY: NotificationConfig(
         trigger=EmailTrigger.APPOINTMENT_REJECTED_LOW_PRIORITY,
         requester_template=EmailTemplate.APPOINTMENT_REJECTED_LOW_PRIORITY,
+        subject_template="Appointment Request Status (ID: {appointment_id})"
+    ),
+    EmailTrigger.APPOINTMENT_REJECTED_MET_ALREADY: NotificationConfig(
+        trigger=EmailTrigger.APPOINTMENT_REJECTED_MET_ALREADY,
+        requester_template=EmailTemplate.APPOINTMENT_REJECTED_MET_ALREADY,
         subject_template="Appointment Request Status (ID: {appointment_id})"
     ),
     EmailTrigger.GENERIC_NOTIFICATION: NotificationConfig(
@@ -545,9 +552,15 @@ def notify_appointment_update(db: Session, appointment: Appointment, old_data: D
     )
     
     # Check if this is a "Rejected" case with "Low priority" substatus
-    is_rejected = (
+    is_rejected_low_priority = (
         appointment.status == AppointmentStatus.REJECTED and
         appointment.sub_status == AppointmentSubStatus.LOW_PRIORITY
+    )
+    
+    # Check if this is a "Rejected" case with "Met Gurudev already" substatus
+    is_rejected_met_already = (
+        appointment.status == AppointmentStatus.REJECTED and
+        appointment.sub_status == AppointmentSubStatus.MET_GURUDEV
     )
     
     # Notify the requester
@@ -585,11 +598,20 @@ def notify_appointment_update(db: Session, appointment: Appointment, old_data: D
             context=context,
             appointment_id=appointment.id
         )
-    elif is_rejected:
-        # Special handling for "Rejected" case
+    elif is_rejected_low_priority:
+        # Special handling for "Rejected - Low priority" case
         send_notification_email(
             db=db,
             trigger_type=EmailTrigger.APPOINTMENT_REJECTED_LOW_PRIORITY,
+            recipient=requester,
+            context=context,
+            appointment_id=appointment.id
+        )
+    elif is_rejected_met_already:
+        # Special handling for "Rejected - Met Gurudev already" case
+        send_notification_email(
+            db=db,
+            trigger_type=EmailTrigger.APPOINTMENT_REJECTED_MET_ALREADY,
             recipient=requester,
             context=context,
             appointment_id=appointment.id
