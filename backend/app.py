@@ -1459,11 +1459,24 @@ async def get_location_attachment(
     
     try:
         file_data = get_file(location.attachment_path)
+        
+        # Determine content disposition based on file type
+        content_disposition = 'attachment'
+        # For PDFs and images, display inline in the browser
+        if location.attachment_file_type in [
+            'application/pdf', 
+            'image/jpeg', 
+            'image/png', 
+            'image/gif', 
+            'image/svg+xml'
+        ]:
+            content_disposition = 'inline'
+        
         return StreamingResponse(
             io.BytesIO(file_data['file_data']),
             media_type=location.attachment_file_type,
             headers={
-                'Content-Disposition': f'attachment; filename="{location.attachment_name}"'
+                'Content-Disposition': f'{content_disposition}; filename="{location.attachment_name}"'
             }
         )
     except Exception as e:
