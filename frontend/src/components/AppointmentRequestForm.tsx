@@ -962,6 +962,11 @@ export const AppointmentRequestForm: React.FC = () => {
                               <Typography component="span" variant="body2" color="text.secondary">
                                 Relationship: {dignitary.relationship_type || dignitary.poc_relationship_type}
                               </Typography>
+                              {dignitary.bio_summary && (
+                                <Typography component="div" variant="body2" sx={{whiteSpace: 'pre-line'}} mt={1}>
+                                  <strong>Bio:</strong> {dignitary.bio_summary}
+                                </Typography>
+                              )}
                               {dignitary.isNew && (
                                 <Chip 
                                   size="small" 
@@ -1827,13 +1832,13 @@ export const AppointmentRequestForm: React.FC = () => {
               </Grid>
             )}
             <Grid item xs={12}>
-              <Typography variant="body1">
+              <Typography variant="body1" sx={{whiteSpace: 'pre-line'}}>
                 <strong>Purpose:</strong> {submittedAppointment.purpose}
               </Typography>
             </Grid>
             {submittedAppointment.requester_notes_to_secretariat && (
               <Grid item xs={12}>
-                <Typography variant="body1">
+                <Typography variant="body1" sx={{whiteSpace: 'pre-line'}}>
                   <strong>Notes to Secretariat:</strong> {submittedAppointment.requester_notes_to_secretariat}
                 </Typography>
               </Grid>

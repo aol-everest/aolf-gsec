@@ -205,7 +205,7 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                                     </Grid>
                                     <Grid item xs={12}>
                                         <Typography sx={{ fontWeight: 500, mr: 1, display: 'inline' }}>Bio:</Typography>
-                                        <Typography sx={{ color: theme.palette.text.primary, display: 'inline' }}>{dig.bio_summary}</Typography>
+                                        <Typography sx={{ color: theme.palette.text.primary, display: 'inline', whiteSpace: 'pre-line' as const }}>{dig.bio_summary}</Typography>
                                     </Grid>
                                     <Grid item xs={12} sm={4}>
                                         <Typography sx={{ fontWeight: 500, mr: 1, display: 'inline' }}>Has Met Gurudev?</Typography>
@@ -221,7 +221,7 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                                     </Grid>
                                     <Grid item xs={12}>
                                         <Typography sx={{ fontWeight: 500, mr: 1, display: 'inline' }}>Gurudev Meeting Notes:</Typography>
-                                        <Typography sx={{ color: theme.palette.text.primary, display: 'inline' }}>{dig.gurudev_meeting_notes || 'N/A'}</Typography>
+                                        <Typography sx={{ color: theme.palette.text.primary, display: 'inline', whiteSpace: 'pre-line' as const }}>{dig.gurudev_meeting_notes || 'N/A'}</Typography>
                                     </Grid>
                                 </Grid>
                             </Paper>
@@ -353,7 +353,7 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                         <Grid item xs={12}>
                             <Box sx={{ display: 'flex' }}>
                                 <Box component="span" sx={{ width: '150px', fontWeight: 'medium' }}>Purpose:</Box>
-                                <Typography component="span" sx={{ color: theme.palette.text.primary }}>
+                                <Typography component="span" sx={{ color: theme.palette.text.primary, whiteSpace: 'pre-line' as const }}>
                                     {appointment.purpose}
                                 </Typography>
                             </Box>
@@ -361,7 +361,7 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                         <Grid item xs={12}>
                             <Box sx={{ display: 'flex' }}>
                                 <Box component="span" sx={{ width: '150px', fontWeight: 'medium' }}>Note to Secretariat:</Box>
-                                <Typography component="span" sx={{ color: theme.palette.text.primary }}>
+                                <Typography component="span" sx={{ color: theme.palette.text.primary, whiteSpace: 'pre-line' as const }}>
                                     {appointment.requester_notes_to_secretariat}
                                 </Typography>
                             </Box>
@@ -370,7 +370,7 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                             <Grid item xs={12}>
                                 <Box sx={{ display: 'flex' }}>
                                     <Box component="span" sx={{ width: '150px', fontWeight: 'medium' }}>Notes:</Box>
-                                    <Typography component="span" sx={{ color: theme.palette.text.primary }}>
+                                    <Typography component="span" sx={{ color: theme.palette.text.primary, whiteSpace: 'pre-line' as const }}>
                                         {appointment.requester_notes_to_secretariat}
                                     </Typography>
                                 </Box>
@@ -392,7 +392,7 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                         <Grid item xs={12}>
                             <Box sx={{ display: 'flex' }}>
                                 <Box component="span" sx={{ width: '150px', fontWeight: 'medium' }}>Notes:</Box>
-                                <Typography component="span" sx={{ color: theme.palette.text.primary }}>
+                                <Typography component="span" sx={{ color: theme.palette.text.primary, whiteSpace: 'pre-line' as const }}>
                                     {appointment.secretariat_notes_to_requester || 'N/A'}
                                 </Typography>
                             </Box>
@@ -401,7 +401,7 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                             <Grid item xs={12}>
                                 <Box sx={{ display: 'flex' }}>
                                     <Box component="span" sx={{ width: '150px', fontWeight: 'medium' }}>Meeting Notes:</Box>
-                                    <Typography component="span" sx={{ color: theme.palette.text.primary }}>
+                                    <Typography component="span" sx={{ color: theme.palette.text.primary, whiteSpace: 'pre-line' as const }}>
                                         {appointment.secretariat_meeting_notes || 'N/A'}
                                     </Typography>
                                 </Box>
@@ -411,7 +411,7 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                             <Grid item xs={12}>
                                 <Box sx={{ display: 'flex' }}>
                                     <Box component="span" sx={{ width: '150px', fontWeight: 'medium' }}>Follow-up Actions:</Box>
-                                    <Typography component="span" sx={{ color: theme.palette.text.primary }}>
+                                    <Typography component="span" sx={{ color: theme.palette.text.primary, whiteSpace: 'pre-line' as const }}>
                                         {appointment.secretariat_follow_up_actions || 'N/A'}
                                     </Typography>
                                 </Box>
