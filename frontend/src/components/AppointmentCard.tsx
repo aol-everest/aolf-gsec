@@ -358,18 +358,10 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                                 </Typography>
                             </Box>
                         </Grid>
-                        <Grid item xs={12}>
-                            <Box sx={{ display: 'flex' }}>
-                                <Box component="span" sx={{ width: '150px', fontWeight: 'medium' }}>Note to Secretariat:</Box>
-                                <Typography component="span" sx={{ color: theme.palette.text.primary, whiteSpace: 'pre-line' as const }}>
-                                    {appointment.requester_notes_to_secretariat}
-                                </Typography>
-                            </Box>
-                        </Grid>
                         {appointment.requester_notes_to_secretariat && (
                             <Grid item xs={12}>
                                 <Box sx={{ display: 'flex' }}>
-                                    <Box component="span" sx={{ width: '150px', fontWeight: 'medium' }}>Notes:</Box>
+                                    <Box component="span" sx={{ width: '150px', fontWeight: 'medium' }}>Note to Secretariat:</Box>
                                     <Typography component="span" sx={{ color: theme.palette.text.primary, whiteSpace: 'pre-line' as const }}>
                                         {appointment.requester_notes_to_secretariat}
                                     </Typography>
