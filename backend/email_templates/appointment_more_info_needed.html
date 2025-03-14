@@ -11,20 +11,13 @@
     {% endfor %}, we kindly request some additional details to proceed further.</p>
 
     <p>Please provide the following information:</p>
-    <p>{{ appointment.secretariat_notes_to_requester }}</p>
+    <div style="background-color: #f9fafb; padding: 15px; border-radius: 5px; margin: 8px 0;">
+        {{ appointment.secretariat_notes_to_requester | replace('\n', '<br>') | safe }}
+    </div>
 
     <p>Once you have the requested details, kindly contact us with this additional information.</p>
 
     <p>We appreciate your cooperation and will review your updated submission as soon as we receive it.</p>
-
-    <p>
-        <strong>Meeting Request Details:</strong>
-        <ul>
-            <li><strong>Meeting ID:</strong> {{ appointment.id }}</li>
-            <li><strong>Requested Date:</strong> {{ appointment.preferred_date }} {{ appointment.preferred_time_of_day or '' }}</li>
-            <li><strong>Location:</strong> {{ appointment.location.name }} - {{ appointment.location.city }}, {{ appointment.location.state }}</li>
-        </ul>
-    </p>
 
     <p>Warm regards,</p>
     <p>Office of Gurudev Sri Sri Ravi Shankar, USA</p>
