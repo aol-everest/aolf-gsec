@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional, Union, Callable, Type, TypeVar
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Email, To, Content
 from datetime import datetime
@@ -21,6 +21,7 @@ import queue
 import time
 import atexit
 import re
+from dataclasses import dataclass, field
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -75,6 +76,66 @@ class EmailTrigger(str, Enum):
 
     def __str__(self):
         return self.value
+
+@dataclass
+class NotificationConfig:
+    """Configuration class for email notifications."""
+    trigger: EmailTrigger
+    requester_template: Optional[EmailTemplate] = None
+    secretariat_template: Optional[EmailTemplate] = None
+    subject_template: str = "Notification from Office of Gurudev"
+    preference_key: Optional[str] = None  # For user email preferences
+    
+    def get_template_for_role(self, role: UserRole) -> EmailTemplate:
+        """Get the appropriate template based on user role."""
+        if role == UserRole.SECRETARIAT and self.secretariat_template:
+            return self.secretariat_template
+        elif self.requester_template:
+            return self.requester_template
+        return EmailTemplate.GENERIC_NOTIFICATION
+    
+    def format_subject(self, **kwargs) -> str:
+        """Format the subject template with provided kwargs."""
+        try:
+            return self.subject_template.format(**kwargs)
+        except Exception as e:
+            logger.error(f"Error formatting subject '{self.subject_template}': {str(e)}")
+            return self.subject_template
+    
+    def get_preference_key(self) -> str:
+        """Get the preference key for this notification type."""
+        return self.preference_key or self.trigger.value
+
+# Notification configurations
+NOTIFICATION_CONFIGS = {
+    EmailTrigger.APPOINTMENT_CREATED: NotificationConfig(
+        trigger=EmailTrigger.APPOINTMENT_CREATED,
+        requester_template=EmailTemplate.APPOINTMENT_CREATED_REQUESTER,
+        secretariat_template=EmailTemplate.APPOINTMENT_CREATED_SECRETARIAT,
+        subject_template="Appointment Request Created - ID: {appointment_id}"
+    ),
+    EmailTrigger.APPOINTMENT_UPDATED: NotificationConfig(
+        trigger=EmailTrigger.APPOINTMENT_UPDATED,
+        requester_template=EmailTemplate.APPOINTMENT_UPDATED_REQUESTER,
+        secretariat_template=EmailTemplate.APPOINTMENT_UPDATED_SECRETARIAT,
+        subject_template="Appointment Request Updated - ID: {appointment_id}"
+    ),
+    EmailTrigger.APPOINTMENT_STATUS_CHANGED: NotificationConfig(
+        trigger=EmailTrigger.APPOINTMENT_STATUS_CHANGED,
+        requester_template=EmailTemplate.APPOINTMENT_STATUS_CHANGE,
+        subject_template="Appointment Status Updated - ID: {appointment_id}"
+    ),
+    EmailTrigger.APPOINTMENT_MORE_INFO_NEEDED: NotificationConfig(
+        trigger=EmailTrigger.APPOINTMENT_MORE_INFO_NEEDED,
+        requester_template=EmailTemplate.APPOINTMENT_MORE_INFO_NEEDED,
+        subject_template="Additional Information Needed for Your Meeting Request (ID: {appointment_id})"
+    ),
+    EmailTrigger.GENERIC_NOTIFICATION: NotificationConfig(
+        trigger=EmailTrigger.GENERIC_NOTIFICATION,
+        requester_template=EmailTemplate.GENERIC_NOTIFICATION,
+        subject_template="{subject}"
+    )
+}
 
 def render_template(template_name: str, **context) -> str:
     """Render a template with the given context."""
@@ -250,43 +311,53 @@ def send_notification_email(
     db: Session,
     trigger_type: EmailTrigger,
     recipient: User,
-    subject: str,
-    context: Dict[str, Any]
+    subject: Optional[str] = None,
+    context: Dict[str, Any] = None,
+    **kwargs
 ):
-    """Universal function to send a notification email based on trigger type."""
-    # Check if user has enabled this notification type
-    notification_preference_key = trigger_type.value
-    if not recipient.email_notification_preferences.get(notification_preference_key, True):
-        logger.info(f"User {recipient.email} has disabled {trigger_type.value} notifications")
+    """Universal function to send a notification email based on trigger type.
+    
+    Args:
+        db: Database session
+        trigger_type: Type of notification trigger
+        recipient: User to send the notification to
+        subject: Optional custom subject (overrides the template)
+        context: Optional context dict for email rendering
+        **kwargs: Additional parameters to format the subject template
+    """
+    if context is None:
+        context = {}
+    
+    # Get the configuration for this notification type
+    config = NOTIFICATION_CONFIGS.get(trigger_type)
+    if not config:
+        logger.error(f"No configuration found for trigger type {trigger_type}")
         return
     
-    # Determine which template to use based on trigger type and user role
-    template_name = EmailTemplate.GENERIC_NOTIFICATION
+    # Check if user has enabled this notification type
+    preference_key = config.get_preference_key()
+    if not recipient.email_notification_preferences.get(preference_key, True):
+        logger.info(f"User {recipient.email} has disabled {preference_key} notifications")
+        return
     
-    if trigger_type == EmailTrigger.APPOINTMENT_CREATED:
-        if recipient.role == UserRole.SECRETARIAT:
-            template_name = EmailTemplate.APPOINTMENT_CREATED_SECRETARIAT
-        else:
-            template_name = EmailTemplate.APPOINTMENT_CREATED_REQUESTER
+    # Get the appropriate template based on user role
+    template_name = config.get_template_for_role(recipient.role)
     
-    elif trigger_type == EmailTrigger.APPOINTMENT_UPDATED:
-        if recipient.role == UserRole.SECRETARIAT:
-            template_name = EmailTemplate.APPOINTMENT_UPDATED_SECRETARIAT
-        else:
-            template_name = EmailTemplate.APPOINTMENT_UPDATED_REQUESTER
-    
-    elif trigger_type == EmailTrigger.APPOINTMENT_STATUS_CHANGED:
-        template_name = EmailTemplate.APPOINTMENT_STATUS_CHANGE
-    
-    elif trigger_type == EmailTrigger.APPOINTMENT_MORE_INFO_NEEDED:
-        template_name = EmailTemplate.APPOINTMENT_MORE_INFO_NEEDED
-    
-    # Add recipient name to context
+    # Add recipient info to context
     context.update({
         'user_name': recipient.first_name,
         'user_email': recipient.email,
         'user_role': recipient.role.value
     })
+    
+    # Get subject from parameter or format it from the template
+    if subject is None:
+        # Add context values to kwargs for subject formatting
+        format_kwargs = {**kwargs}
+        # Add any appointment_id from context if present
+        if 'appointment' in context and isinstance(context['appointment'], dict) and 'id' in context['appointment']:
+            format_kwargs.setdefault('appointment_id', context['appointment']['id'])
+        subject = config.format_subject(**format_kwargs)
     
     # Send email using template
     send_email_from_template(recipient.email, template_name.value, subject, context)
@@ -372,19 +443,18 @@ def notify_appointment_creation(db: Session, appointment: Appointment):
     """Send notifications when a new appointment is created."""
     # Notify the requesting user
     requester = appointment.requester
-    subject = f"Appointment Request Created - ID: {appointment.id}"
     
     context = {
         'appointment': appointment_to_dict(appointment)
     }
     
-    # logger.info(f"context = {json.dumps(context, indent=4, sort_keys=True, default=str)}")
+    # Notify the requester
     send_notification_email(
         db=db,
         trigger_type=EmailTrigger.APPOINTMENT_CREATED,
         recipient=requester,
-        subject=subject,
-        context=context
+        context=context,
+        appointment_id=appointment.id
     )
 
     # Notify all SECRETARIAT users who have enabled new appointment notifications
@@ -394,16 +464,12 @@ def notify_appointment_creation(db: Session, appointment: Appointment):
     ).all()
 
     for user in secretariat_users:
-        subject = f"New Appointment Request - ID: {appointment.id}"
-        context = {
-            'appointment': appointment_to_dict(appointment)
-        }
         send_notification_email(
             db=db,
             trigger_type=EmailTrigger.APPOINTMENT_CREATED,
             recipient=user,
-            subject=subject,
-            context=context
+            context=context,
+            appointment_id=appointment.id
         )
 
 def notify_appointment_update(db: Session, appointment: Appointment, old_data: Dict[str, Any], new_data: Dict[str, Any]):
@@ -447,32 +513,36 @@ def notify_appointment_update(db: Session, appointment: Appointment, old_data: D
     # Notify the requester
     requester = appointment.requester
     
+    # Prepare base context
+    context = {
+        'appointment': appointment_to_dict(appointment)
+    }
+    
     if need_more_info:
         # Special handling for "Need more info" case
-        subject = f"Additional Information Needed for Your Meeting Request (ID: {appointment.id})"
-        context = {
-            'appointment': appointment_to_dict(appointment)
-        }
-        trigger_type = EmailTrigger.APPOINTMENT_MORE_INFO_NEEDED
-    # else:
-    #     # Regular update notification
-    #     subject = f"Appointment Request Updated - ID: {appointment.id}"
-    #     context = {
-    #         'appointment': appointment_to_dict(appointment),
-    #         'old_data': old_data,
-    #         'new_data': new_data
-    #     }
-    #     # Use status change trigger if status changed, otherwise use update trigger
-    #     trigger_type = EmailTrigger.APPOINTMENT_STATUS_CHANGED if status_changed else EmailTrigger.APPOINTMENT_UPDATED
-
-    if trigger_type:
         send_notification_email(
             db=db,
-            trigger_type=trigger_type,
+            trigger_type=EmailTrigger.APPOINTMENT_MORE_INFO_NEEDED,
             recipient=requester,
-            subject=subject,
-            context=context
+            context=context,
+            appointment_id=appointment.id
         )
+    # elif status_changed:
+    #     # Add change data to context
+    #     context.update({
+    #         'old_data': old_data,
+    #         'new_data': new_data
+    #     })
+        
+    #     send_notification_email(
+    #         db=db,
+    #         trigger_type=EmailTrigger.APPOINTMENT_STATUS_CHANGED,
+    #         recipient=requester,
+    #         context=context,
+    #         appointment_id=appointment.id
+    #     )
+    else:
+        logger.info(f"Skipped sending email for appointment update (ID: {appointment.id})")
 
 # Initialize the email worker when module is imported
 start_email_worker()

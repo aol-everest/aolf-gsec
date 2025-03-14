@@ -45,9 +45,15 @@ export const getSubStatusChipSx = (subStatus: string, theme: Theme) => {
 };
 
 export const formatHonorificTitle = (honorificTitle: string) => {
+    if (!honorificTitle) {
+        return '';
+    }
     return honorificTitle.toLowerCase().includes('not applicable') ? '' : honorificTitle;
 };
 
 export const formatPrimaryDomain = (primaryDomain: string, otherDomain: string) => {
-    return primaryDomain.toLowerCase().includes('other') ? otherDomain : primaryDomain;
+    if (!primaryDomain) {
+        return '';
+    }
+    return primaryDomain.toLowerCase().includes('other') ? (otherDomain || '') : primaryDomain;
 };

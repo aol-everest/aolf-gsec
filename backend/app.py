@@ -813,7 +813,10 @@ async def update_appointment(
     db.refresh(appointment)
     
     # Send email notifications about the update
-    notify_appointment_update(db, appointment, old_data, update_data)
+    try:
+        notify_appointment_update(db, appointment, old_data, update_data)
+    except Exception as e:
+        logger.error(f"Error sending email notifications: {str(e)}")
     
     return appointment
 
