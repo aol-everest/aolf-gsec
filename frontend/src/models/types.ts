@@ -33,6 +33,7 @@ interface Dignitary {
   email: string;
   phone: string;
   primary_domain: string;
+  primary_domain_other: string;
   title_in_organization: string;
   organization: string;
   bio_summary: string;

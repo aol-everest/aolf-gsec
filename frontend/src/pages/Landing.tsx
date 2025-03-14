@@ -128,7 +128,6 @@ const Landing: React.FC = () => {
           fontSize: '0.9rem',
         }}
       >
-        Please use your Google email to log in.<br />
         If you have an <Typography component="span" sx={{ fontWeight: 'bold' }}>@artofliving.org</Typography> or <Typography component="span" sx={{ fontWeight: 'bold' }}>@iahv.org</Typography> email, please use that.<br />
         Otherwise, you may log in with any Gmail or other Google-based email address.<br />
         Non-Google emails are not supported.

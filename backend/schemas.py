@@ -82,6 +82,7 @@ class DignitaryBase(BaseModel):
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
     primary_domain: Optional[PrimaryDomain] = None
+    primary_domain_other: Optional[str] = None
     title_in_organization: Optional[str] = None
     organization: Optional[str] = None
     bio_summary: Optional[str] = None
@@ -106,6 +107,7 @@ class DignitaryUpdate(DignitaryBase):
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
     primary_domain: Optional[PrimaryDomain] = None
+    primary_domain_other: Optional[str] = None
     title_in_organization: Optional[str] = None
     organization: Optional[str] = None
     bio_summary: Optional[str] = None

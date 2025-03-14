@@ -7,6 +7,7 @@ import enum
 
 class HonorificTitle(str, enum.Enum):
     """Honorific title enum with proper case values"""
+    NA = "(Not Applicable)"
     MR = "Mr."
     MRS = "Mrs."
     MS = "Ms."
@@ -66,6 +67,7 @@ class PrimaryDomain(str, enum.Enum):
     ENTERTAINMENT_MEDIA = "Entertainment & Media"
     EDUCATION = "Education"
     HEALTHCARE = "Healthcare"
+    OTHER = "Other"
 
     def __str__(self):
         return self.value
@@ -88,6 +90,7 @@ class Dignitary(Base):
     email = Column(String, nullable=True)
     phone = Column(String, nullable=True)
     primary_domain = Column(Enum(PrimaryDomain), nullable=True)
+    primary_domain_other = Column(String, nullable=True)
     title_in_organization = Column(String, nullable=True)
     organization = Column(String, nullable=True)
     bio_summary = Column(Text, nullable=True)

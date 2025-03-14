@@ -85,6 +85,7 @@ interface DignitaryFormData {
   dignitaryEmail: string;
   dignitaryPhone: string;
   dignitaryPrimaryDomain: string;
+  dignitaryPrimaryDomainOther: string;
   dignitaryTitleInOrganization: string;
   dignitaryOrganization: string;
   dignitaryBioSummary: string;
@@ -209,12 +210,13 @@ export const AppointmentRequestForm: React.FC = () => {
     defaultValues: {
       isExistingDignitary: false,
       selectedDignitaryId: undefined,
-      dignitaryHonorificTitle: '',
+      dignitaryHonorificTitle: '(Not Applicable)',
       dignitaryFirstName: '',
       dignitaryLastName: '',
       dignitaryEmail: '',
       dignitaryPhone: '',
       dignitaryPrimaryDomain: '',
+      dignitaryPrimaryDomainOther: '',
       dignitaryTitleInOrganization: '',
       dignitaryOrganization: '',
       dignitaryBioSummary: '',
@@ -261,6 +263,7 @@ export const AppointmentRequestForm: React.FC = () => {
     dignitaryForm.setValue('dignitaryEmail', dignitary.email);
     dignitaryForm.setValue('dignitaryPhone', dignitary.phone || '');
     dignitaryForm.setValue('dignitaryPrimaryDomain', dignitary.primary_domain);
+    dignitaryForm.setValue('dignitaryPrimaryDomainOther', dignitary.primary_domain_other || '');
     dignitaryForm.setValue('dignitaryTitleInOrganization', dignitary.title_in_organization);
     dignitaryForm.setValue('dignitaryOrganization', dignitary.organization);
     dignitaryForm.setValue('dignitaryBioSummary', dignitary.bio_summary);
@@ -487,6 +490,7 @@ export const AppointmentRequestForm: React.FC = () => {
             email: formData.dignitaryEmail,
             phone: formData.dignitaryPhone,
             primary_domain: formData.dignitaryPrimaryDomain,
+            primary_domain_other: formData.dignitaryPrimaryDomain.toLowerCase() === 'other' ? formData.dignitaryPrimaryDomainOther : null,
             title_in_organization: formData.dignitaryTitleInOrganization,
             organization: formData.dignitaryOrganization,
             bio_summary: formData.dignitaryBioSummary,
@@ -541,6 +545,7 @@ export const AppointmentRequestForm: React.FC = () => {
           email: formData.dignitaryEmail,
           phone: formData.dignitaryPhone || null,
           primary_domain: formData.dignitaryPrimaryDomain,
+          primary_domain_other: formData.dignitaryPrimaryDomain.toLowerCase() === 'other' ? formData.dignitaryPrimaryDomainOther : null,
           title_in_organization: formData.dignitaryTitleInOrganization,
           organization: formData.dignitaryOrganization,
           bio_summary: formData.dignitaryBioSummary,
@@ -645,12 +650,13 @@ export const AppointmentRequestForm: React.FC = () => {
     dignitaryForm.reset({
       isExistingDignitary: false,
       selectedDignitaryId: undefined,
-      dignitaryHonorificTitle: '',
+      dignitaryHonorificTitle: '(Not Applicable)',
       dignitaryFirstName: '',
       dignitaryLastName: '',
       dignitaryEmail: '',
       dignitaryPhone: '',
       dignitaryPrimaryDomain: '',
+      dignitaryPrimaryDomainOther: '',
       dignitaryTitleInOrganization: '',
       dignitaryOrganization: '',
       dignitaryBioSummary: '',
@@ -1095,12 +1101,13 @@ export const AppointmentRequestForm: React.FC = () => {
                             dignitaryForm.reset({
                               ...dignitaryForm.getValues(),
                               selectedDignitaryId: undefined,
-                              dignitaryHonorificTitle: '',
+                              dignitaryHonorificTitle: '(Not Applicable)',
                               dignitaryFirstName: '',
                               dignitaryLastName: '',
                               dignitaryEmail: '',
                               dignitaryPhone: '',
                               dignitaryPrimaryDomain: '',
+                              dignitaryPrimaryDomainOther: '',
                               dignitaryTitleInOrganization: '',
                               dignitaryOrganization: '',
                               dignitaryBioSummary: '',
@@ -1298,18 +1305,13 @@ export const AppointmentRequestForm: React.FC = () => {
                   </Grid>
                   
                   <Grid item xs={12} md={6} lg={4}>
-                    <Controller
-                      name="dignitaryPrimaryDomain"
-                      control={dignitaryForm.control}
-                      render={({ field }) => (
-                        <EnumSelect
-                          enumType="primaryDomain"
-                          label="Primary Domain"
-                          required
-                          value={field.value}
-                          onChange={field.onChange}
-                        />
-                      )}
+                    <TextField
+                      fullWidth
+                      label="Organization"
+                      InputLabelProps={{ shrink: true }}
+                      {...dignitaryForm.register('dignitaryOrganization')}
+                      error={!!dignitaryForm.formState.errors.dignitaryOrganization}
+                      helperText={dignitaryForm.formState.errors.dignitaryOrganization?.message}
                     />
                   </Grid>
 
@@ -1325,15 +1327,40 @@ export const AppointmentRequestForm: React.FC = () => {
                   </Grid>
                   
                   <Grid item xs={12} md={6} lg={4}>
-                    <TextField
-                      fullWidth
-                      label="Organization"
-                      InputLabelProps={{ shrink: true }}
-                      {...dignitaryForm.register('dignitaryOrganization')}
-                      error={!!dignitaryForm.formState.errors.dignitaryOrganization}
-                      helperText={dignitaryForm.formState.errors.dignitaryOrganization?.message}
+                    <Controller
+                      name="dignitaryPrimaryDomain"
+                      control={dignitaryForm.control}
+                      render={({ field }) => (
+                        <EnumSelect
+                          enumType="primaryDomain"
+                          label="Primary Domain"
+                          required
+                          value={field.value}
+                          onChange={field.onChange}
+                        />
+                      )}
                     />
                   </Grid>
+
+                  {/* Show "Other" text field only when "Other" is selected as Primary Domain */}
+                  {dignitaryForm.watch('dignitaryPrimaryDomain')?.toLowerCase() === 'other' && (
+                    <Grid item xs={12} md={6} lg={4}>
+                      <TextField
+                        fullWidth
+                        label="Please specify domain"
+                        InputLabelProps={{ shrink: true }}
+                        {...dignitaryForm.register('dignitaryPrimaryDomainOther', { 
+                          required: 'Please specify the domain' 
+                        })}
+                        error={!!dignitaryForm.formState.errors.dignitaryPrimaryDomainOther}
+                        helperText={dignitaryForm.formState.errors.dignitaryPrimaryDomainOther?.message}
+                        required
+                        inputProps={{
+                          maxLength: 255
+                        }}
+                      />
+                    </Grid>
+                  )}
 
                   <Grid item xs={12}>
                     <TextField

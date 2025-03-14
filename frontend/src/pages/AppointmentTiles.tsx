@@ -85,6 +85,7 @@ const SEARCH_CONFIG = {
     'organization',
     'title_in_organization',
     'primary_domain',
+    'primary_domain_other',
     'country',
     'state',
     'city'

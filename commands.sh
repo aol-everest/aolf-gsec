@@ -345,3 +345,28 @@ PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-db-uat.cxg084kkue8o.us-east-2.rd
   -U aolf_gsec_user \
   -d aolf_gsec \
   -c "CREATE INDEX ix_appointment_dignitaries_dignitary_id  ON appointment_dignitaries (dignitary_id);"
+
+PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-db-uat.cxg084kkue8o.us-east-2.rds.amazonaws.com \
+  -U aolf_gsec_user \
+  -d aolf_gsec \
+  -c "ALTER TABLE dignitaries ADD COLUMN IF NOT EXISTS primary_domain_other VARCHAR(255);"
+
+PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-db-uat.cxg084kkue8o.us-east-2.rds.amazonaws.com \
+  -U aolf_gsec_user \
+  -d aolf_gsec \
+  -c "select typname from pg_type where oid IN (select enumtypid from pg_enum where enumlabel = 'BUSINESS');"
+
+PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-db-uat.cxg084kkue8o.us-east-2.rds.amazonaws.com \
+  -U aolf_gsec_user \
+  -d aolf_gsec \
+  -c "set role aolf_gsec_app_user; ALTER TYPE primarydomain ADD VALUE 'OTHER';"
+
+PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-db-uat.cxg084kkue8o.us-east-2.rds.amazonaws.com \
+  -U aolf_gsec_user \
+  -d aolf_gsec \
+  -c "select typname from pg_type where oid IN (select enumtypid from pg_enum where enumlabel = 'AIR_CHIEF_MARSHAL')"
+
+PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-db-uat.cxg084kkue8o.us-east-2.rds.amazonaws.com \
+  -U aolf_gsec_user \
+  -d aolf_gsec \
+  -c "set role aolf_gsec_app_user; ALTER TYPE honorifictitle ADD VALUE 'NA';"
