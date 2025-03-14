@@ -12,6 +12,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 // Pages
 import Landing from './pages/Landing';
 import Unauthorized from './pages/Unauthorized';
+import LocationAttachmentView from './pages/LocationAttachmentView';
 
 // Components
 import PrivateRoute from './components/PrivateRoute';
@@ -49,6 +50,16 @@ function App() {
                 <Routes>
                   <Route path="/" element={<AuthRedirect />} />
                   <Route path="/unauthorized" element={<Unauthorized />} />
+                  
+                  {/* Add our custom attachment view route */}
+                  <Route 
+                    path="/locations/view-attachment/:locationId" 
+                    element={
+                      <PrivateRoute>
+                        <LocationAttachmentView />
+                      </PrivateRoute>
+                    } 
+                  />
                   
                   {/* Regular authenticated routes */}
                   {userRoutes.filter(route => route.path && route.component).map((route) => (

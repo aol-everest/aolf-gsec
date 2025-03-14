@@ -2,6 +2,7 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import TableRowsIcon from '@mui/icons-material/TableRows';
 import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import AdminIcon from '@mui/icons-material/AdminPanelSettings';
+import FileCopyIcon from '@mui/icons-material/FileCopy';
 
 // Page imports
 import Home from '../pages/Home';
@@ -17,6 +18,7 @@ import AppointmentEdit from '../pages/AppointmentEdit';
 import AppointmentDayView from '../pages/AppointmentDayView';
 import LocationsManage from '../pages/LocationsManage';
 import AppointmentUsherView from '../pages/AppointmentUsherView';
+import LocationAttachmentView from '../pages/LocationAttachmentView';
 
 import { 
     AddIcon, 
@@ -99,6 +101,15 @@ export const ProfileRoute: RouteConfig = {
   showInSidebar: true,
   component: Profile
 }
+
+// Add the new route for viewing location attachments
+export const LocationAttachmentViewRoute: RouteConfig = {
+  path: '/locations/view-attachment/:locationId',
+  label: 'View Attachment',
+  icon: FileCopyIcon,
+  showInSidebar: false,
+  component: LocationAttachmentView
+} 
 
 // Admin (Secretariat) routes ---------------------------------------------------------------------------
 export const AdminLocationsRoute: RouteConfig = {
@@ -204,6 +215,7 @@ export const userRoutes: RouteConfig[] = [
   AppointmentsRoute,
   DignitariesRoute,
   ProfileRoute,
+  LocationAttachmentViewRoute,
 ];
 
 // Admin (Secretariat) routes --------------------------------------------------------------------------
@@ -241,4 +253,4 @@ export const getSidebarItems = (userRole: string | null) => {
   }
   
   return items;
-}; 
+};

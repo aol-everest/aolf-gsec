@@ -182,6 +182,9 @@ class LocationBase(BaseModel):
     zip_code: str
     driving_directions: Optional[str] = None
     parking_info: Optional[str] = None
+    attachment_name: Optional[str] = None
+    attachment_file_type: Optional[str] = None
+    attachment_thumbnail_path: Optional[str] = None
 
 class Location(LocationBase):
     id: int
