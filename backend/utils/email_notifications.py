@@ -63,6 +63,7 @@ class EmailTemplate(str, Enum):
     APPOINTMENT_MORE_INFO_NEEDED = "appointment_more_info_needed.html"
     APPOINTMENT_CANCELLED = "appointment_cancelled.html"
     APPOINTMENT_CONFIRMED = "appointment_confirmed.html"
+    APPOINTMENT_REJECTED_LOW_PRIORITY = "appointment_rejected_low_priority.html"
     GENERIC_NOTIFICATION = "generic_notification.html"
 
     def __str__(self):
@@ -76,6 +77,7 @@ class EmailTrigger(str, Enum):
     APPOINTMENT_MORE_INFO_NEEDED = "appointment_more_info_needed"
     APPOINTMENT_CANCELLED = "appointment_cancelled"
     APPOINTMENT_CONFIRMED = "appointment_confirmed"
+    APPOINTMENT_REJECTED_LOW_PRIORITY = "appointment_rejected_low_priority"
     GENERIC_NOTIFICATION = "generic_notification"
 
     def __str__(self):
@@ -143,6 +145,11 @@ NOTIFICATION_CONFIGS = {
         trigger=EmailTrigger.APPOINTMENT_CONFIRMED,
         requester_template=EmailTemplate.APPOINTMENT_CONFIRMED,
         subject_template="Confirmation of Your Appointment with Gurudev (ID: {appointment_id})"
+    ),
+    EmailTrigger.APPOINTMENT_REJECTED_LOW_PRIORITY: NotificationConfig(
+        trigger=EmailTrigger.APPOINTMENT_REJECTED_LOW_PRIORITY,
+        requester_template=EmailTemplate.APPOINTMENT_REJECTED_LOW_PRIORITY,
+        subject_template="Appointment Request Status (ID: {appointment_id})"
     ),
     EmailTrigger.GENERIC_NOTIFICATION: NotificationConfig(
         trigger=EmailTrigger.GENERIC_NOTIFICATION,
@@ -537,6 +544,12 @@ def notify_appointment_update(db: Session, appointment: Appointment, old_data: D
         appointment.appointment_date is not None  # Ensure we have a date
     )
     
+    # Check if this is a "Rejected" case with "Low priority" substatus
+    is_rejected = (
+        appointment.status == AppointmentStatus.REJECTED and
+        appointment.sub_status == AppointmentSubStatus.LOW_PRIORITY
+    )
+    
     # Notify the requester
     requester = appointment.requester
     
@@ -568,6 +581,15 @@ def notify_appointment_update(db: Session, appointment: Appointment, old_data: D
         send_notification_email(
             db=db,
             trigger_type=EmailTrigger.APPOINTMENT_CONFIRMED,
+            recipient=requester,
+            context=context,
+            appointment_id=appointment.id
+        )
+    elif is_rejected:
+        # Special handling for "Rejected" case
+        send_notification_email(
+            db=db,
+            trigger_type=EmailTrigger.APPOINTMENT_REJECTED_LOW_PRIORITY,
             recipient=requester,
             context=context,
             appointment_id=appointment.id

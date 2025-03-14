@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Status Update on Your Appointment Request{% endblock %}
+{% block content %}
+<div class="content">
+    <p>Dear {{ user_name }},</p>
+
+    <p>Thank you for your request for a meeting with Gurudev for 
+    {% for app_dignitary in appointment.appointment_dignitaries %}
+        {% set dignitary = app_dignitary.dignitary %}
+        {{ dignitary.honorific_title }} {{ dignitary.first_name }} {{ dignitary.last_name }}{% if not loop.last %}{% if loop.index == appointment.appointment_dignitaries|length - 1 %} and {% else %}, {% endif %}{% endif %}
+    {% endfor %}.
+    </p>
+
+    <p>At this time, we regret to inform you that we are unable to accommodate your meeting request due to Gurudev's packed schedule and limited availability.</p>
+
+    <p>As of now, an appointment cannot be scheduled. For your reference, the details of your meeting request are as follows:</p>
+    
+    <ul>
+        <li>Meeting Request ID: {{ appointment.id }}</li>
+        <li>Appointment Requested For: 
+            {% for app_dignitary in appointment.appointment_dignitaries %}
+                {% set dignitary = app_dignitary.dignitary %}
+                {{ dignitary.honorific_title }} {{ dignitary.first_name }} {{ dignitary.last_name }}{% if not loop.last %}{% if loop.index == appointment.appointment_dignitaries|length - 1 %} and {% else %}, {% endif %}{% endif %}
+            {% endfor %}
+            {% if appointment.appointment_dignitaries|length > 1 %}Group of {{ appointment.appointment_dignitaries|length }}{% endif %}
+        </li>
+    </ul>
+
+    {% if appointment.secretariat_notes_to_requester %}
+    <p>Message from Secretariat:</p>
+        <div style="background-color: #f9fafb; padding: 15px; border-radius: 5px; margin: 8px 0;">
+            {{ appointment.secretariat_notes_to_requester | replace('\n', '<br>') | safe }}
+        </div>
+    {% endif %}
+
+    <p>Should you have any further questions or require additional assistance, please feel free to reach out.</p>
+
+    <p>Warm regards,</p>
+    <p>Office of Gurudev Sri Sri Ravi Shankar, USA</p>
+</div>
+{% endblock %} 
