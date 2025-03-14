@@ -793,17 +793,6 @@ async def update_appointment(
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
     
-    # Store old data for comparison
-    old_data = {
-        'status': appointment.status.value,
-        'appointment_date': appointment.appointment_date.isoformat() if appointment.appointment_date else None,
-        'appointment_time': appointment.appointment_time,
-        'location_id': appointment.location_id,
-        'secretariat_meeting_notes': appointment.secretariat_meeting_notes,
-        'secretariat_follow_up_actions': appointment.secretariat_follow_up_actions,
-        'secretariat_notes_to_requester': appointment.secretariat_notes_to_requester,
-    }
-        
     if appointment.status != models.AppointmentStatus.APPROVED and appointment_update.status == models.AppointmentStatus.APPROVED:
         logger.info("Appointment is approved")
         appointment.approved_datetime = datetime.utcnow()

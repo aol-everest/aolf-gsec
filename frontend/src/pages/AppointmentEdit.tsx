@@ -65,7 +65,7 @@ interface AppointmentFormData {
   location_id: number | null;
   status: string;
   sub_status: string;
-  appointment_type: string;
+  appointment_type: string | null;
   requester_notes_to_secretariat: string;
   secretariat_follow_up_actions: string;
   secretariat_meeting_notes: string;
@@ -239,7 +239,7 @@ const AppointmentEdit: React.FC = () => {
         location_id: appointment.location_id || null,
         status: appointment.status || '',
         sub_status: appointment.sub_status || '',
-        appointment_type: appointment.appointment_type || '',
+        appointment_type: appointment.appointment_type || null,
         requester_notes_to_secretariat: appointment.requester_notes_to_secretariat,
         secretariat_follow_up_actions: appointment.secretariat_follow_up_actions,
         secretariat_meeting_notes: appointment.secretariat_meeting_notes,
@@ -401,6 +401,8 @@ const AppointmentEdit: React.FC = () => {
   const onSubmit = (data: AppointmentFormData) => {
     // Validate form data based on status and substatus
     const validationErrors = validateForm(data);
+
+    console.log('data', data);
     
     // If there are validation errors, prevent submission
     if (Object.keys(validationErrors).length > 0) {
