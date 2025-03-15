@@ -17,7 +17,7 @@ from database import WriteSessionLocal, ReadSessionLocal, write_engine, read_eng
 import models
 import schemas
 from utils.email_notifications import notify_appointment_creation, notify_appointment_update
-from utils.s3 import upload_file, get_file
+from utils.s3 import upload_file, get_file, BUCKET_NAME
 import io
 import tempfile
 from utils.business_card import extract_business_card_info, BusinessCardExtractionError
@@ -1540,38 +1540,6 @@ async def remove_location_attachment(
     db.commit()
     db.refresh(location)
     return location
-
-# Deprecated - Use /admin/locations/{location_id}/attachment instead
-@app.post("/admin/upload", response_model=dict, deprecated=True)
-@requires_role(models.UserRole.SECRETARIAT)
-async def upload_file_endpoint(
-    file: UploadFile = File(...),
-    current_user: models.User = Depends(get_current_user)
-):
-    """Upload a file to S3 and return its URL (DEPRECATED - Use /admin/locations/{location_id}/attachment instead)"""
-    try:
-        # Read file content
-        file_content = await file.read()
-        
-        # Generate a unique path for the file
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        unique_id = f"{current_user.id}_{timestamp}"
-        
-        # Upload to S3
-        result = upload_file(
-            file_data=file_content,
-            file_name=f"general/{unique_id}/{file.filename}",
-            content_type=file.content_type,
-            entity_type="general"
-        )
-        
-        # Return the file URL and name
-        return {
-            "url": f"https://{BUCKET_NAME}.s3.amazonaws.com/{result['s3_path']}",
-            "filename": file.filename
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to upload file: {str(e)}")
 
 @app.delete("/appointments/attachments/{attachment_id}", status_code=204)
 async def delete_attachment(
