@@ -13,7 +13,7 @@ from jwt.exceptions import InvalidTokenError
 from functools import wraps
 import json
 from config import environment  # Import the centralized environment module
-from database import SessionLocal, engine
+from database import WriteSessionLocal, ReadSessionLocal, write_engine, read_engine
 import models
 import schemas
 from utils.email_notifications import notify_appointment_creation, notify_appointment_update
@@ -100,8 +100,8 @@ GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 if not GOOGLE_CLIENT_ID:
     raise ValueError("GOOGLE_CLIENT_ID is not set")
 
-# Create database tables
-models.Base.metadata.create_all(bind=engine)
+# Create database tables on the write database
+models.Base.metadata.create_all(bind=write_engine)
 
 app = FastAPI(
     title="AOLF GSEC API",
@@ -182,15 +182,29 @@ async def log_requests(request: Request, call_next):
         # Reset the context variable
         request_id_var.reset(token)
 
-# Dependency to get database session
+# Dependency to get database session for write operations
 def get_db():
-    db = SessionLocal()
+    db = WriteSessionLocal()
     try:
-        logger.debug("Database session created")
+        logger.debug("Write database session created")
         yield db
     finally:
-        logger.debug("Database session closed")
+        logger.debug("Write database session closed")
         db.close()
+
+# Dependency to get database session for read-only operations
+def get_read_db():
+    db = ReadSessionLocal()
+    try:
+        logger.debug("Read database session created")
+        yield db
+    finally:
+        logger.debug("Read database session closed")
+        db.close()
+
+# For compatibility with existing code
+SessionLocal = WriteSessionLocal
+engine = write_engine
 
 # Generate JWT token
 def create_access_token(data: dict) -> str:
@@ -266,7 +280,7 @@ def requires_any_role(required_roles: List[models.UserRole]):
 
 # Dependency to get current user from token
 async def get_current_user(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_read_db),
     token: str = Security(oauth2_scheme),
 ) -> models.User:
     credentials_exception = HTTPException(
@@ -557,7 +571,7 @@ async def update_dignitary(
 @app.get("/dignitaries/assigned", response_model=List[schemas.DignitaryWithRelationship])
 async def get_assigned_dignitaries(
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_read_db)
 ):
     """Get all dignitaries assigned to the current user as POC with their relationship type"""
     # Query dignitaries and their relationship types in one go
@@ -599,7 +613,7 @@ async def update_user(
 @app.get("/users/me", response_model=schemas.User)
 async def get_current_user_info(
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_read_db)
 ):
     """Get current user's information"""
     return current_user
@@ -607,7 +621,7 @@ async def get_current_user_info(
 @app.get("/appointments/my", response_model=List[schemas.Appointment])
 async def get_my_appointments(
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_read_db)
 ):
     """Get all appointments requested by the current user"""
     query = db.query(models.Appointment).filter(
@@ -629,7 +643,7 @@ async def get_my_appointments(
 async def get_my_appointments_for_dignitary(
     dignitary_id: int,
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_read_db)
 ):
     """Get all appointments for a specific dignitary"""
     appointments = (
@@ -651,7 +665,7 @@ async def get_my_appointments_for_dignitary(
 @requires_role(models.UserRole.SECRETARIAT)
 async def get_all_dignitaries(
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_read_db)
 ):
     """Get all dignitaries"""
     dignitaries = db.query(models.Dignitary).all()
@@ -661,7 +675,7 @@ async def get_all_dignitaries(
 @app.get("/admin/appointments/all", response_model=List[schemas.AppointmentAdmin])
 @requires_role(models.UserRole.SECRETARIAT)
 async def get_all_appointments(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_read_db),
     current_user: models.User = Depends(get_current_user),
     status: Optional[str] = None
 ):
@@ -684,7 +698,7 @@ async def get_all_appointments(
 @app.get("/admin/appointments/upcoming", response_model=List[schemas.AppointmentAdmin])
 @requires_role(models.UserRole.SECRETARIAT)
 async def get_upcoming_appointments(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_read_db),
     current_user: models.User = Depends(get_current_user),
     status: Optional[str] = None
 ):
@@ -718,7 +732,7 @@ async def get_upcoming_appointments(
 @app.get("/usher/appointments", response_model=List[schemas.AppointmentUsherView])
 @requires_any_role([models.UserRole.USHER, models.UserRole.SECRETARIAT])
 async def get_usher_appointments(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_read_db),
     current_user: models.User = Depends(get_current_user),
     date: Optional[str] = None,
 ):
@@ -759,7 +773,7 @@ async def get_usher_appointments(
 async def get_appointment(
     appointment_id: int,
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_read_db)
 ):
     """Get an appointment"""
     appointment = (
@@ -825,7 +839,7 @@ async def update_appointment(
 @requires_role(models.UserRole.SECRETARIAT)
 async def get_all_users(
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_read_db)
 ):
     """Get all users with creator and updater information via joins"""
     # Create aliases for the User table for creator and updater
@@ -987,7 +1001,7 @@ async def create_location(
 @requires_role(models.UserRole.SECRETARIAT)
 async def get_all_locations(
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_read_db)
 ):
     """Get all locations with creator and updater information"""
     # Create aliases for the User table for creator and updater
@@ -1018,7 +1032,7 @@ async def get_all_locations(
 async def get_location(
     location_id: int,
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_read_db)
 ):
     """Get a specific location with creator and updater information"""
     # Create aliases for the User table for creator and updater
@@ -1081,7 +1095,7 @@ async def update_location(
 @app.get("/locations/all", response_model=List[schemas.Location])
 async def get_locations_for_users(
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_read_db)
 ):
     """Get all locations - accessible by all users"""
     locations = db.query(models.Location).all()
@@ -1091,7 +1105,7 @@ async def get_locations_for_users(
 async def get_location_for_user(
     location_id: int,
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_read_db)
 ):
     """Get a specific location - accessible by all users"""
     location = db.query(models.Location).filter(models.Location.id == location_id).first()
@@ -1303,7 +1317,7 @@ async def create_dignitary_from_business_card(
 async def get_appointment_attachments(
     appointment_id: int,
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_read_db)
 ):
     """Get all attachments for an appointment"""
     appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
@@ -1329,7 +1343,7 @@ async def get_appointment_attachments(
 async def get_attachment_file(
     attachment_id: int,
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_read_db)
 ):
     """Get a specific attachment file"""
     # Base query
@@ -1365,7 +1379,7 @@ async def get_attachment_file(
 async def get_attachment_thumbnail(
     attachment_id: int,
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_read_db)
 ):
     """Get a thumbnail for an image attachment"""
     # Base query
@@ -1447,7 +1461,7 @@ async def upload_location_attachment(
 @app.get("/locations/{location_id}/attachment")
 async def get_location_attachment(
     location_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_read_db)
 ):
     """Get a location's attachment - accessible to all users"""
     location = db.query(models.Location).filter(models.Location.id == location_id).first()
@@ -1485,7 +1499,7 @@ async def get_location_attachment(
 @app.get("/locations/{location_id}/thumbnail")
 async def get_location_thumbnail(
     location_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_read_db)
 ):
     """Get a location's attachment thumbnail - accessible to all users"""
     location = db.query(models.Location).filter(models.Location.id == location_id).first()
@@ -1677,7 +1691,7 @@ async def remove_dignitary_from_appointment(
 @app.get("/appointments/{appointment_id}/dignitaries", response_model=List[schemas.Dignitary])
 async def get_appointment_dignitaries(
     appointment_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_read_db),
     current_user: models.User = Depends(get_current_user)
 ):
     """Get all dignitaries associated with an appointment"""
