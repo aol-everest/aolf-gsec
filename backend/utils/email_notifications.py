@@ -11,7 +11,7 @@ from models.user import User, UserRole
 from models.appointment import Appointment, AppointmentStatus, AppointmentSubStatus
 from schemas import AppointmentAdminUpdate
 from utils.utils import str_to_bool, as_dict, appointment_to_dict
-from models.dignitary import Dignitary
+from models.dignitary import Dignitary, HonorificTitle
 from enum import Enum, auto
 import logging
 from contextlib import contextmanager
@@ -43,6 +43,8 @@ try:
         loader=FileSystemLoader(EMAIL_TEMPLATES_DIR),
         autoescape=select_autoescape(['html', 'xml'])
     )
+    # Add custom filters to Jinja2 environment
+    template_env.filters['format_honorific_title'] = HonorificTitle.format_honorific_title
     logger.info(f"Initialized Jinja2 environment with templates from {EMAIL_TEMPLATES_DIR}")
 except Exception as e:
     logger.error(f"Failed to initialize Jinja2 environment: {str(e)}")
@@ -400,13 +402,13 @@ def get_appointment_summary(appointment: Appointment) -> str:
         dignitaries_list = []
         for app_dignitary in appointment.appointment_dignitaries:
             dignitary = app_dignitary.dignitary
-            dignitaries_list.append(f"{dignitary.honorific_title} {dignitary.first_name} {dignitary.last_name}")
+            dignitaries_list.append(f"{HonorificTitle.format_honorific_title(dignitary.honorific_title)} {dignitary.first_name} {dignitary.last_name}".strip())
         
         if dignitaries_list:
             dignitaries_info = ", ".join(dignitaries_list)
     # Fallback to legacy dignitary relationship if no dignitaries in the new relationship
     elif appointment.dignitary:
-        dignitaries_info = f"{appointment.dignitary.honorific_title} {appointment.dignitary.first_name} {appointment.dignitary.last_name}"
+        dignitaries_info = f"{HonorificTitle.format_honorific_title(appointment.dignitary.honorific_title)} {appointment.dignitary.first_name} {appointment.dignitary.last_name}".strip()
     else:
         dignitaries_info = "No dignitaries assigned"
     
@@ -449,10 +451,14 @@ def get_appointment_changes_summary(old_data: Dict[str, Any], new_data: Dict[str
                     new_ids = set(d.get('id') for d in new_value if d.get('id'))
                     
                     if old_ids != new_ids:
-                        old_names = ", ".join(f"{d.get('honorific_title', '')} {d.get('first_name', '')} {d.get('last_name', '')}" 
-                                             for d in old_value) or "None"
-                        new_names = ", ".join(f"{d.get('honorific_title', '')} {d.get('first_name', '')} {d.get('last_name', '')}" 
-                                             for d in new_value) or "None"
+                        old_names = ", ".join(
+                            f"{HonorificTitle.format_honorific_title(d.get('honorific_title', ''))} {d.get('first_name', '')} {d.get('last_name', '')}".strip() 
+                            for d in old_value
+                        ) or "None"
+                        new_names = ", ".join(
+                            f"{HonorificTitle.format_honorific_title(d.get('honorific_title', ''))} {d.get('first_name', '')} {d.get('last_name', '')}".strip() 
+                            for d in new_value
+                        ) or "None"
                         changes.append(f"<p><strong>{display_name}:</strong> Changed from '{old_names}' to '{new_names}'</p>")
                 else:
                     changes.append(f"<p><strong>{display_name}:</strong> Changed</p>")

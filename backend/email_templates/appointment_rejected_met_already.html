@@ -7,14 +7,14 @@
     <p>Thank you for your request to meet with Gurudev for 
     {% for app_dignitary in appointment.appointment_dignitaries %}
         {% set dignitary = app_dignitary.dignitary %}
-        {{ dignitary.honorific_title }} {{ dignitary.first_name }} {{ dignitary.last_name }}{% if not loop.last %}{% if loop.index == appointment.appointment_dignitaries|length - 1 %} and {% else %}, {% endif %}{% endif %}
+        {{ dignitary.honorific_title|format_honorific_title }} {{ dignitary.first_name }} {{ dignitary.last_name }}{% if not loop.last %}{% if loop.index == appointment.appointment_dignitaries|length - 1 %} and {% else %}, {% endif %}{% endif %}
     {% endfor %}.
     </p>
 
     <p>Your appointment request was processed earlier, and at this time, we are unable to schedule a new meeting as 
     {% for app_dignitary in appointment.appointment_dignitaries %}
         {% set dignitary = app_dignitary.dignitary %}
-        {{ dignitary.honorific_title }} {{ dignitary.first_name }} {{ dignitary.last_name }}{% if not loop.last %}{% if loop.index == appointment.appointment_dignitaries|length - 1 %} and {% else %}, {% endif %}{% endif %}
+        {{ dignitary.honorific_title|format_honorific_title }} {{ dignitary.first_name }} {{ dignitary.last_name }}{% if not loop.last %}{% if loop.index == appointment.appointment_dignitaries|length - 1 %} and {% else %}, {% endif %}{% endif %}
     {% endfor %} 
     {% if appointment.appointment_dignitaries|length > 1 %}have{% else %}has{% endif %} already had the opportunity to meet with Gurudev.</p>
 
@@ -25,7 +25,7 @@
         <li>Appointment Requested For: 
             {% for app_dignitary in appointment.appointment_dignitaries %}
                 {% set dignitary = app_dignitary.dignitary %}
-                {{ dignitary.honorific_title }} {{ dignitary.first_name }} {{ dignitary.last_name }}{% if not loop.last %}{% if loop.index == appointment.appointment_dignitaries|length - 1 %} and {% else %}, {% endif %}{% endif %}
+                {{ dignitary.honorific_title|format_honorific_title }} {{ dignitary.first_name }} {{ dignitary.last_name }}{% if not loop.last %}{% if loop.index == appointment.appointment_dignitaries|length - 1 %} and {% else %}, {% endif %}{% endif %}
             {% endfor %}
         </li>
     </ul>

@@ -1,79 +1,66 @@
 {% extends "base.html" %}
 
-{% block title %}Appointment Status Changed{% endblock %}
+{% block title %}Update on Your Appointment Request{% endblock %}
 
 {% block content %}
-<h2>Appointment Status Changed</h2>
+<div class="content">
+    <p>Dear {{ user_name }},</p>
 
-<p>Dear {{ user_name }},</p>
+    <p>We would like to provide an update on your appointment request with Gurudev.</p>
 
-<p>The status of your appointment request (ID: {{ appointment.id }}) has been changed to <span class="status {{ appointment.status|lower }}">{{ appointment.status }}</span>.</p>
+    <p><strong>Status Update:</strong> Your appointment request (ID: {{ appointment.id }}) status has been changed to <strong>{{ appointment.status }}</strong>.</p>
 
-{% if appointment.status == 'APPROVED' %}
-<div style="background-color: #d1fae5; padding: 15px; border-radius: 5px; margin: 15px 0;">
-    <h3>Your Appointment Has Been Approved!</h3>
-    <p>We are pleased to inform you that your appointment request has been approved with the following details:</p>
-    <p><strong>Appointment Date:</strong> {{ appointment.appointment_date }}</p>
-    <p><strong>Appointment Time:</strong> {{ appointment.appointment_time }}</p>
-    <p><strong>Location:</strong> 
-    {% if appointment.location %}
-        {{ appointment.location.name }} - {{ appointment.location.city }}, {{ appointment.location.state }}
-    {% else %}
-        To be determined
+    {% if appointment.status == "Approved" %}
+        <p>Congratulations! Your request to meet with Gurudev has been approved.</p>
+        
+        {% if appointment.appointment_date and appointment.appointment_time %}
+            <p><strong>Scheduled Date and Time:</strong> {{ appointment.appointment_date }} at {{ appointment.appointment_time }}</p>
+        {% else %}
+            <p>The specific date and time will be communicated to you shortly.</p>
+        {% endif %}
+        
+        {% if appointment.location %}
+            <p><strong>Location:</strong> {{ appointment.location.name }} - {{ appointment.location.street_address }}, {{ appointment.location.city }}, {{ appointment.location.state }} {{ appointment.location.zip_code }}</p>
+            
+            {% if appointment.location.parking_info %}
+                <p><strong>Parking Information:</strong> {{ appointment.location.parking_info }}</p>
+            {% endif %}
+            
+            {% if appointment.location.driving_directions %}
+                <p><strong>Driving Directions:</strong> {{ appointment.location.driving_directions }}</p>
+            {% endif %}
+        {% else %}
+            <p>The location details will be shared with you once finalized.</p>
+        {% endif %}
+    {% elif appointment.status == "Rejected" %}
+        <p>We regret to inform you that we are unable to accommodate your meeting request at this time. This could be due to various factors including Gurudev's limited availability during his visit.</p>
     {% endif %}
-    </p>
-</div>
-{% elif appointment.status == 'REJECTED' %}
-<div style="background-color: #fee2e2; padding: 15px; border-radius: 5px; margin: 15px 0;">
-    <h3>Your Appointment Request Has Been Declined</h3>
-    <p>We regret to inform you that we are unable to accommodate your appointment request at this time.</p>
-    {% if appointment.secretariat_notes_to_requester %}
-    <p><strong>Reason:</strong> {{ appointment.secretariat_notes_to_requester }}</p>
-    {% endif %}
-    <p>If you have any questions or would like to discuss this further, please contact the Global Secretariat Office.</p>
-</div>
-{% elif appointment.status == 'PENDING' %}
-<div style="background-color: #fef3c7; padding: 15px; border-radius: 5px; margin: 15px 0;">
-    <h3>Your Appointment Request is Under Review</h3>
-    <p>Your appointment request is currently being reviewed by our team. We will notify you once a decision has been made.</p>
-    {% if appointment.secretariat_notes_to_requester %}
-    <p><strong>Note from Secretariat:</strong> {{ appointment.secretariat_notes_to_requester }}</p>
-    {% endif %}
-</div>
-{% else %}
-<div style="background-color: #f9fafb; padding: 15px; border-radius: 5px; margin: 15px 0;">
-    <h3>Appointment Details</h3>
-    <p><strong>Request ID:</strong> {{ appointment.id }}</p>
-    
-    <p><strong>Dignitary/Dignitaries:</strong>
-    {% if appointment.appointment_dignitaries %}
-        {% set dignitaries = [] %}
-        {% for app_dignitary in appointment.appointment_dignitaries %}
-            {% set dignitary = app_dignitary.dignitary %}
-            {% do dignitaries.append(dignitary.honorific_title + " " + dignitary.first_name + " " + dignitary.last_name) %}
-        {% endfor %}
-        {{ dignitaries|join(", ") }}
-    {% elif appointment.dignitary %}
-        {{ appointment.dignitary.honorific_title }} {{ appointment.dignitary.first_name }} {{ appointment.dignitary.last_name }}
-    {% else %}
-        No dignitaries assigned
-    {% endif %}
-    </p>
-    
-    <p><strong>Purpose:</strong> {{ appointment.purpose }}</p>
-    <p><strong>Status:</strong> 
-        <span class="status {{ appointment.status|lower }}">{{ appointment.status }}</span>
-    </p>
+
+    <p><strong>Details of your request:</strong></p>
+    <ul>
+        <li><strong>Meeting Request ID:</strong> {{ appointment.id }}</li>
+        <li><strong>Requested for:</strong>
+            {% for app_dignitary in appointment.appointment_dignitaries %}
+                {% set dignitary = app_dignitary.dignitary %}
+                {{ dignitary.honorific_title|format_honorific_title }} {{ dignitary.first_name }} {{ dignitary.last_name }}{% if not loop.last %}{% if loop.index == appointment.appointment_dignitaries|length - 1 %} and {% else %}, {% endif %}{% endif %}
+            {% endfor %}
+            {% if appointment.appointment_dignitaries|length > 1 %}(Group of {{ appointment.appointment_dignitaries|length }}){% endif %}
+        </li>
+        <li><strong>Purpose:</strong> {{ appointment.purpose }}</li>
+        <li><strong>Status:</strong> {{ appointment.status }}</li>
+    </ul>
     
     {% if appointment.secretariat_notes_to_requester %}
-    <p><strong>Secretariat Notes:</strong> {{ appointment.secretariat_notes_to_requester }}</p>
+        <p>Message from the Secretariat:
+            <div style="background-color: #f9fafb; padding: 15px; border-radius: 5px; margin: 8px 0;">
+                {{ appointment.secretariat_notes_to_requester | replace('\n', '<br>') | safe }}
+            </div>
+        </p>
     {% endif %}
+
+    <p>If you have any questions or need further information, please don't hesitate to contact us.</p>
+
+    <p>Warm regards,</p>
+    <p>Office of Gurudev Sri Sri Ravi Shankar, USA</p>
 </div>
-{% endif %}
-
-<p>If you have any questions, please contact the Global Secretariat Office.</p>
-
-<p>Thank you for using our appointment system.</p>
-
-<p>Best regards,<br>AOLF Global Secretariat Team</p>
 {% endblock %} 
