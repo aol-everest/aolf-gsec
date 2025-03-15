@@ -1,6 +1,6 @@
 from typing import List, Dict, Any, Optional, Union, Callable, Type, TypeVar
 from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail, Email, To, Content
+from sendgrid.helpers.mail import Mail, Email, To, Content, Bcc
 from datetime import datetime
 import os
 import json
@@ -260,9 +260,10 @@ def email_worker():
                 to_email = email_data.get('to_email')
                 subject = email_data.get('subject')
                 content = email_data.get('content')
+                bcc_emails = email_data.get('bcc_emails')
                 
                 if all([to_email, subject, content]):
-                    _send_email_sync(to_email, subject, content)
+                    _send_email_sync(to_email, subject, content, bcc_emails)
                 else:
                     logger.error(f"Invalid email data: {email_data}")
             except Exception as e:
@@ -277,7 +278,7 @@ def email_worker():
     
     logger.info("Email worker stopped")
 
-def _send_email_sync(to_email: str, subject: str, content: str):
+def _send_email_sync(to_email: str, subject: str, content: str, bcc_emails: List[str] = None):
     """Internal synchronous function to send an email using SendGrid."""
     if not ENABLE_EMAIL:
         logger.warning(f"Email notifications are disabled. Email to {to_email} not sent.")
@@ -289,6 +290,7 @@ def _send_email_sync(to_email: str, subject: str, content: str):
     else:
         logger.info("SENDGRID_API_KEY is set. Email will be sent.")
 
+    # Create the message
     message = Mail(
         from_email=FROM_EMAIL,
         to_emails=to_email,
@@ -296,10 +298,17 @@ def _send_email_sync(to_email: str, subject: str, content: str):
         html_content=content
     )
 
+    # Add BCC recipients if provided
+    if bcc_emails and len(bcc_emails) > 0:
+        for bcc_email in bcc_emails:
+            if bcc_email and bcc_email.strip():  # Ensure it's not empty
+                bcc = Bcc(bcc_email)
+                message.add_bcc(bcc)
+
     try:
         sg = SendGridAPIClient(SENDGRID_API_KEY)
         response = sg.send(message)
-        logger.info(f"Email sent to {to_email}. Status: {response.status_code}")
+        logger.info(f"Email sent to {to_email}. BCCs: {bcc_emails or 'None'}. Status: {response.status_code}")
     except Exception as e:
         error_message = str(e)
         logger.error(f"Error sending email: {error_message}")
@@ -313,7 +322,7 @@ def _send_email_sync(to_email: str, subject: str, content: str):
         if hasattr(e, 'headers') and e.headers:
             logger.error(f"SendGrid Error Headers: {e.headers}")
 
-def send_email(to_email: str, subject: str, content: str):
+def send_email(to_email: str, subject: str, content: str, bcc_emails: List[str] = None):
     """Queue an email to be sent asynchronously."""
     # Ensure the email worker is running
     if not email_worker_running:
@@ -323,19 +332,21 @@ def send_email(to_email: str, subject: str, content: str):
     email_queue.put({
         'to_email': to_email,
         'subject': subject,
-        'content': content
+        'content': content,
+        'bcc_emails': bcc_emails
     })
-    logger.info(f"Email to {to_email} queued for sending")
+    logger.info(f"Email to {to_email} queued for sending. BCCs: {bcc_emails or 'None'}")
 
 def send_email_from_template(
     to_email: str, 
     template_name: str, 
     subject: str, 
-    context: Dict[str, Any]
+    context: Dict[str, Any],
+    bcc_emails: List[str] = None
 ):
     """Send an email using a template."""
     content = render_template(template_name, **context)
-    send_email(to_email, subject, content)
+    send_email(to_email, subject, content, bcc_emails)
 
 def send_notification_email(
     db: Session,
@@ -389,8 +400,27 @@ def send_notification_email(
             format_kwargs.setdefault('appointment_id', context['appointment']['id'])
         subject = config.format_subject(**format_kwargs)
     
+    # Collect BCC emails
+    bcc_emails = []
+    
+    # Always BCC the sender email to keep record of all communications
+    if FROM_EMAIL:
+        bcc_emails.append(FROM_EMAIL)
+    
+    # If this is not an email to a secretariat user, find secretariat users to BCC
+    if recipient.role != UserRole.SECRETARIAT:
+        # Find all secretariat users who have opted into BCC for all emails
+        secretariat_bccs = db.query(User).filter(
+            User.role == UserRole.SECRETARIAT,
+            User.email_notification_preferences['bcc_on_all_emails'].as_boolean() == True
+        ).all()
+        
+        for secretariat_user in secretariat_bccs:
+            if secretariat_user.email and secretariat_user.email not in bcc_emails and secretariat_user.email != recipient.email:
+                bcc_emails.append(secretariat_user.email)
+    
     # Send email using template
-    send_email_from_template(recipient.email, template_name.value, subject, context)
+    send_email_from_template(recipient.email, template_name.value, subject, context, bcc_emails)
     logger.info(f"Notification email ({trigger_type.value}) queued for {recipient.email}")
 
 def get_appointment_summary(appointment: Appointment) -> str:

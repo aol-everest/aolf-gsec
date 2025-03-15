@@ -25,6 +25,7 @@ interface NotificationPreferences {
   appointment_created: boolean;
   appointment_updated: boolean;
   new_appointment_request: boolean;
+  bcc_on_all_emails: boolean;
 }
 
 interface UserUpdateData {
@@ -36,6 +37,7 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
   appointment_created: true,
   appointment_updated: true,
   new_appointment_request: false,
+  bcc_on_all_emails: false,
 };
 
 const Profile: React.FC = () => {
@@ -65,15 +67,22 @@ const Profile: React.FC = () => {
   });
 
   const [phoneNumber, setPhoneNumber] = useState(userData?.phone_number || '');
-  const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>(
-    userData?.email_notification_preferences || DEFAULT_PREFERENCES
-  );
+  const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>(DEFAULT_PREFERENCES);
 
   // Update local state when userData changes
   useEffect(() => {
     if (userData) {
       setPhoneNumber(userData.phone_number || '');
-      setNotificationPreferences(userData.email_notification_preferences || DEFAULT_PREFERENCES);
+      // Cast the empty object as a partial NotificationPreferences
+      const userPrefs = (userData.email_notification_preferences || {}) as Partial<NotificationPreferences>;
+      
+      // Ensure all necessary properties are present
+      setNotificationPreferences({
+        appointment_created: userPrefs.appointment_created ?? DEFAULT_PREFERENCES.appointment_created,
+        appointment_updated: userPrefs.appointment_updated ?? DEFAULT_PREFERENCES.appointment_updated,
+        new_appointment_request: userPrefs.new_appointment_request ?? DEFAULT_PREFERENCES.new_appointment_request,
+        bcc_on_all_emails: userPrefs.bcc_on_all_emails ?? DEFAULT_PREFERENCES.bcc_on_all_emails,
+      });
     }
   }, [userData]);
 
@@ -105,7 +114,16 @@ const Profile: React.FC = () => {
   const handleCancel = () => {
     setIsEditing(false);
     setPhoneNumber(userData?.phone_number || '');
-    setNotificationPreferences(userData?.email_notification_preferences || DEFAULT_PREFERENCES);
+    
+    // Cast the empty object as a partial NotificationPreferences
+    const userPrefs = (userData?.email_notification_preferences || {}) as Partial<NotificationPreferences>;
+    
+    setNotificationPreferences({
+      appointment_created: userPrefs.appointment_created ?? DEFAULT_PREFERENCES.appointment_created,
+      appointment_updated: userPrefs.appointment_updated ?? DEFAULT_PREFERENCES.appointment_updated,
+      new_appointment_request: userPrefs.new_appointment_request ?? DEFAULT_PREFERENCES.new_appointment_request,
+      bcc_on_all_emails: userPrefs.bcc_on_all_emails ?? DEFAULT_PREFERENCES.bcc_on_all_emails,
+    });
   };
 
   const handleNotificationChange = (key: keyof NotificationPreferences) => (
@@ -125,6 +143,8 @@ const Profile: React.FC = () => {
         return 'When my appointment request is updated';
       case 'new_appointment_request':
         return 'When new appointment requests are created (Secretariat only)';
+      case 'bcc_on_all_emails':
+        return 'Receive BCC copies of all appointment-related emails sent to users (Secretariat only)';
       default:
         return key;
     }
@@ -200,8 +220,8 @@ const Profile: React.FC = () => {
               
               <FormGroup>
                 {Object.keys(notificationPreferences).map((key) => {
-                  // Only show new_appointment_request to secretariat users
-                  if (key === 'new_appointment_request' && userData?.role !== 'SECRETARIAT') {
+                  // Only show new_appointment_request and bcc_on_all_emails to secretariat users
+                  if ((key === 'new_appointment_request' || key === 'bcc_on_all_emails') && userData?.role !== 'SECRETARIAT') {
                     return null;
                   }
                   

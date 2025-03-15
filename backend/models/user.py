@@ -18,6 +18,7 @@ DEFAULT_EMAIL_NOTIFICATION_PREFERENCES = {
     "appointment_created": True,  # When user creates an appointment
     "appointment_updated": True,  # When an appointment's status/details are updated
     "new_appointment_request": False,  # For secretariat - when new appointments are created
+    "bcc_on_all_emails": False,  # For secretariat - to receive BCCs of all appointment-related emails
 }
 
 class User(Base):
