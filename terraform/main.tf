@@ -6,7 +6,7 @@ provider "aws" {
 resource "aws_vpc" "main" {
   cidr_block = "10.0.0.0/16"
   tags = {
-    Name = "aolf-gsec-vpc"
+    Name = "aolf-gsec-prod-vpc"
   }
 }
 
@@ -17,7 +17,7 @@ resource "aws_subnet" "public_subnet_1" {
   map_public_ip_on_launch = true
   availability_zone = "us-east-2a"
   tags = {
-    Name = "public-subnet-1"
+    Name = "aolf-gsec-prod-public-subnet-1"
   }
 }
 
@@ -27,7 +27,7 @@ resource "aws_subnet" "public_subnet_2" {
   map_public_ip_on_launch = true
   availability_zone = "us-east-2b"
   tags = {
-    Name = "public-subnet-2"
+    Name = "aolf-gsec-prod-public-subnet-2"
   }
 }
 
@@ -38,7 +38,7 @@ resource "aws_subnet" "private_subnet_1" {
   map_public_ip_on_launch = false
   availability_zone = "us-east-2a"
   tags = {
-    Name = "private-subnet-1"
+    Name = "aolf-gsec-prod-private-subnet-1"
   }
 }
 
@@ -48,7 +48,7 @@ resource "aws_subnet" "private_subnet_2" {
   map_public_ip_on_launch = false
   availability_zone = "us-east-2b"
   tags = {
-    Name = "private-subnet-2"
+    Name = "aolf-gsec-prod-private-subnet-2"
   }
 }
 
@@ -56,7 +56,7 @@ resource "aws_subnet" "private_subnet_2" {
 resource "aws_internet_gateway" "gw" {
   vpc_id = aws_vpc.main.id
   tags = {
-    Name = "main-igw"
+    Name = "aolf-gsec-prod-igw"
   }
 }
 
@@ -64,7 +64,7 @@ resource "aws_internet_gateway" "gw" {
 resource "aws_route_table" "public_rt" {
   vpc_id = aws_vpc.main.id
   tags = {
-    Name = "public-route-table"
+    Name = "aolf-gsec-prod-public-route-table"
   }
 }
 
@@ -88,7 +88,7 @@ resource "aws_route_table_association" "public_assoc_2" {
 resource "aws_eip" "nat_eip" {
   domain = "vpc"
   tags = {
-    Name = "nat-eip"
+    Name = "aolf-gsec-prod-nat-eip"
   }
 }
 
@@ -96,14 +96,14 @@ resource "aws_nat_gateway" "nat" {
   allocation_id = aws_eip.nat_eip.id
   subnet_id     = aws_subnet.public_subnet_1.id
   tags = {
-    Name = "main-nat-gateway"
+    Name = "aolf-gsec-prod-nat-gateway"
   }
 }
 
 resource "aws_route_table" "private_rt" {
   vpc_id = aws_vpc.main.id
   tags = {
-    Name = "private-route-table"
+    Name = "aolf-gsec-prod-private-route-table"
   }
 }
 
@@ -123,12 +123,10 @@ resource "aws_route_table_association" "private_assoc_2" {
   route_table_id = aws_route_table.private_rt.id
 }
 
----
-
 ### 🚀 Security Groups
 ### 📌 Security Group for Load Balancer (Allows HTTPS Access Only)
 resource "aws_security_group" "lb_sg" {
-  name        = "lb-security-group"
+  name        = "aolf-gsec-prod-lb-sg"
   description = "Security group for load balancer"
   vpc_id      = aws_vpc.main.id
 
@@ -149,13 +147,13 @@ resource "aws_security_group" "lb_sg" {
   }
 
   tags = {
-    Name = "lb-security-group"
+    Name = "aolf-gsec-prod-lb-sg"
   }
 }
 
 ### 📌 Security Group for Backend (Only Allows Load Balancer)
 resource "aws_security_group" "backend_sg" {
-  name        = "backend-security-group"
+  name        = "aolf-gsec-prod-backend-sg"
   description = "Security group for Elastic Beanstalk backend"
   vpc_id      = aws_vpc.main.id
 
@@ -176,13 +174,13 @@ resource "aws_security_group" "backend_sg" {
   }
 
   tags = {
-    Name = "backend-security-group"
+    Name = "aolf-gsec-prod-backend-sg"
   }
 }
 
 ### 📌 Security Group for RDS (Only Allows Backend)
 resource "aws_security_group" "rds_sg" {
-  name        = "rds-security-group"
+  name        = "aolf-gsec-prod-rds-sg"
   description = "Security group for Aurora PostgreSQL"
   vpc_id      = aws_vpc.main.id
 
@@ -203,20 +201,18 @@ resource "aws_security_group" "rds_sg" {
   }
 
   tags = {
-    Name = "rds-security-group"
+    Name = "aolf-gsec-prod-rds-sg"
   }
 }
 
----
-
 ### 🚀 Elastic Beanstalk with High Availability
 resource "aws_elastic_beanstalk_application" "backend_app" {
-  name        = "aolf-gsec-backend"
+  name        = "aolf-gsec-prod-backend"
   description = "FastAPI Backend"
 }
 
 resource "aws_elastic_beanstalk_environment" "backend_env" {
-  name                = "aolf-gsec-backend-env"
+  name                = "aolf-gsec-prod-backend-env"
   application         = aws_elastic_beanstalk_application.backend_app.name
   solution_stack_name = "64bit Amazon Linux 2023 v4.0.3 running Python 3.12"
   tier                = "WebServer"
@@ -257,7 +253,7 @@ resource "aws_elastic_beanstalk_environment" "backend_env" {
   setting {
     namespace = "aws:autoscaling:asg"
     name      = "MinSize"
-    value     = "2"
+    value     = "1"
   }
 
   setting {
@@ -325,21 +321,13 @@ resource "aws_elastic_beanstalk_environment" "backend_env" {
 }
 
 ### 🚀 Load Balancer (HTTPS Only)
-resource "aws_acm_certificate" "cert" {
-  domain_name       = "api.meetgurudev.aolf.app"  # Replace with your actual domain
-  validation_method = "DNS"
-
-  lifecycle {
-    create_before_destroy = true
-  }
-
-  tags = {
-    Name = "aolf-gsec-certificate"
-  }
+# Use existing certificate instead of creating a new one
+data "aws_acm_certificate" "existing_cert" {
+  id = "30bd8db1-3110-4505-a815-b6ab4cf97373"
 }
 
 resource "aws_lb" "backend_lb" {
-  name               = "backend-lb"
+  name               = "aolf-gsec-prod-backend-lb"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.lb_sg.id]
@@ -348,12 +336,12 @@ resource "aws_lb" "backend_lb" {
   enable_deletion_protection = true
 
   tags = {
-    Name = "backend-load-balancer"
+    Name = "aolf-gsec-prod-backend-lb"
   }
 }
 
 resource "aws_lb_target_group" "backend_tg" {
-  name     = "backend-tg"
+  name     = "aolf-gsec-prod-backend-tg"
   port     = 8000
   protocol = "HTTP"
   vpc_id   = aws_vpc.main.id
@@ -369,7 +357,7 @@ resource "aws_lb_target_group" "backend_tg" {
   }
 
   tags = {
-    Name = "backend-target-group"
+    Name = "aolf-gsec-prod-backend-tg"
   }
 }
 
@@ -378,7 +366,7 @@ resource "aws_lb_listener" "https" {
   port              = 443
   protocol          = "HTTPS"
   ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
-  certificate_arn   = aws_acm_certificate.cert.arn
+  certificate_arn   = data.aws_acm_certificate.existing_cert.arn
 
   default_action {
     type             = "forward"
@@ -386,13 +374,41 @@ resource "aws_lb_listener" "https" {
   }
 }
 
+### 🚀 AWS Secrets Manager for Database Credentials
+resource "random_password" "db_password" {
+  length           = 16
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}<>:?"
+}
+
+resource "aws_secretsmanager_secret" "db_credentials" {
+  name        = "aolf-gsec-prod-db-credentials"
+  description = "Aurora PostgreSQL database credentials"
+  
+  tags = {
+    Name = "aolf-gsec-prod-db-credentials"
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "db_credentials" {
+  secret_id     = aws_secretsmanager_secret.db_credentials.id
+  secret_string = jsonencode({
+    username = "admin"
+    password = random_password.db_password.result
+    engine   = "aurora-postgresql"
+    host     = aws_rds_cluster.aurora.endpoint
+    port     = 5432
+    dbname   = "gsecdb"
+  })
+}
+
 ### 🚀 Aurora RDS PostgreSQL with High Availability
 resource "aws_db_subnet_group" "aurora_subnet" {
-  name       = "aurora-subnet-group"
+  name       = "aolf-gsec-prod-aurora-subnet-group"
   subnet_ids = [aws_subnet.private_subnet_1.id, aws_subnet.private_subnet_2.id]
 
   tags = {
-    Name = "Aurora DB Subnet Group"
+    Name = "aolf-gsec-prod-aurora-db-subnet-group"
   }
 }
 
@@ -401,8 +417,8 @@ resource "aws_rds_cluster" "aurora" {
   engine                  = "aurora-postgresql"
   engine_version          = "15.3"
   database_name           = "gsecdb"
-  master_username         = "admin"
-  master_password         = "securepassword123"  # Consider using AWS Secrets Manager in production
+  master_username         = jsondecode(aws_secretsmanager_secret_version.db_credentials.secret_string)["username"]
+  master_password         = jsondecode(aws_secretsmanager_secret_version.db_credentials.secret_string)["password"]
   vpc_security_group_ids  = [aws_security_group.rds_sg.id]
   db_subnet_group_name    = aws_db_subnet_group.aurora_subnet.name
   backup_retention_period = 7
@@ -416,7 +432,7 @@ resource "aws_rds_cluster" "aurora" {
   availability_zones      = ["us-east-2a", "us-east-2b"]
 
   tags = {
-    Name = "Aurora PostgreSQL Cluster"
+    Name = "aolf-gsec-prod-aurora-postgresql-cluster"
   }
 }
 
@@ -430,6 +446,6 @@ resource "aws_rds_cluster_instance" "aurora_instances" {
   db_subnet_group_name = aws_db_subnet_group.aurora_subnet.name
 
   tags = {
-    Name = "Aurora PostgreSQL Instance ${count.index}"
+    Name = "aolf-gsec-prod-aurora-postgresql-instance-${count.index}"
   }
 }
