@@ -1,17 +1,32 @@
 ### 🚀 Frontend Infrastructure
 
-# S3 bucket for frontend static files
-resource "aws_s3_bucket" "frontend" {
+# Reference existing data bucket
+data "aws_s3_bucket" "data" {
   bucket = "aolf-gsec-prod"
+}
+
+# Create a new bucket specifically for frontend code
+resource "aws_s3_bucket" "frontend_code" {
+  bucket = "aolf-gsec-prod-frontend"
   
   tags = {
-    Name = "aolf-gsec-prod-frontend"
+    Name = "aolf-gsec-prod-frontend-code"
+    Purpose = "Frontend application code"
   }
 }
 
-# S3 bucket policy to allow CloudFront access
-resource "aws_s3_bucket_policy" "frontend" {
-  bucket = aws_s3_bucket.frontend.id
+# Enable versioning for the frontend code bucket
+resource "aws_s3_bucket_versioning" "frontend_code" {
+  bucket = aws_s3_bucket.frontend_code.id
+  
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+# S3 bucket policy to allow CloudFront access to frontend code
+resource "aws_s3_bucket_policy" "frontend_code" {
+  bucket = aws_s3_bucket.frontend_code.id
   
   policy = jsonencode({
     Version = "2012-10-17"
@@ -22,7 +37,7 @@ resource "aws_s3_bucket_policy" "frontend" {
           Service = "cloudfront.amazonaws.com"
         }
         Action = "s3:GetObject"
-        Resource = "${aws_s3_bucket.frontend.arn}/*"
+        Resource = "${aws_s3_bucket.frontend_code.arn}/*"
         Condition = {
           StringEquals = {
             "AWS:SourceArn" = aws_cloudfront_distribution.frontend.arn
@@ -34,8 +49,8 @@ resource "aws_s3_bucket_policy" "frontend" {
 }
 
 # S3 bucket configuration for website hosting
-resource "aws_s3_bucket_website_configuration" "frontend" {
-  bucket = aws_s3_bucket.frontend.id
+resource "aws_s3_bucket_website_configuration" "frontend_code" {
+  bucket = aws_s3_bucket.frontend_code.id
   
   index_document {
     suffix = "index.html"
@@ -65,21 +80,29 @@ resource "aws_cloudfront_origin_access_control" "frontend" {
 resource "aws_cloudfront_distribution" "frontend" {
   enabled             = true
   is_ipv6_enabled     = true
-  default_root_object = "prod/frontend/index.html"
+  default_root_object = "index.html"
   price_class         = "PriceClass_100"  # Use only North America and Europe edge locations
   
-  # S3 origin
+  # Frontend code origin
   origin {
-    domain_name              = aws_s3_bucket.frontend.bucket_regional_domain_name
-    origin_id                = "S3-${aws_s3_bucket.frontend.bucket}"
+    domain_name              = aws_s3_bucket.frontend_code.bucket_regional_domain_name
+    origin_id                = "S3-Frontend-Code"
     origin_access_control_id = aws_cloudfront_origin_access_control.frontend.id
   }
   
-  # Default cache behavior
+  # Data bucket origin
+  origin {
+    domain_name              = data.aws_s3_bucket.data.bucket_regional_domain_name
+    origin_id                = "S3-Data"
+    origin_path              = "/prod/data"
+    origin_access_control_id = aws_cloudfront_origin_access_control.frontend.id
+  }
+  
+  # Default cache behavior for frontend code
   default_cache_behavior {
     allowed_methods        = ["GET", "HEAD", "OPTIONS"]
     cached_methods         = ["GET", "HEAD"]
-    target_origin_id       = "S3-${aws_s3_bucket.frontend.bucket}"
+    target_origin_id       = "S3-Frontend-Code"
     viewer_protocol_policy = "redirect-to-https"
     
     forwarded_values {
@@ -95,18 +118,39 @@ resource "aws_cloudfront_distribution" "frontend" {
     compress               = true
   }
   
+  # Cache behavior for data access
+  ordered_cache_behavior {
+    path_pattern           = "/data/*"
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "S3-Data"
+    viewer_protocol_policy = "redirect-to-https"
+    
+    forwarded_values {
+      query_string = true
+      cookies {
+        forward = "none"
+      }
+    }
+    
+    min_ttl                = 0
+    default_ttl            = 300  # Shorter TTL for data
+    max_ttl                = 1800
+    compress               = true
+  }
+  
   # Custom error response for SPA routing
   custom_error_response {
     error_code            = 403
     response_code         = 200
-    response_page_path    = "/prod/frontend/index.html"
+    response_page_path    = "/index.html"
     error_caching_min_ttl = 10
   }
   
   custom_error_response {
     error_code            = 404
     response_code         = 200
-    response_page_path    = "/prod/frontend/index.html"
+    response_page_path    = "/index.html"
     error_caching_min_ttl = 10
   }
   
@@ -146,6 +190,11 @@ output "cloudfront_domain_name" {
 output "frontend_website_endpoint" {
   value       = "https://meetgurudev.aolf.app"
   description = "The custom domain for the frontend"
+}
+
+output "frontend_code_bucket" {
+  value       = aws_s3_bucket.frontend_code.bucket
+  description = "The S3 bucket name for frontend code"
 }
 
 # Provider configuration for us-east-1 region (required for CloudFront certificates)

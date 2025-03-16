@@ -11,7 +11,7 @@ log() {
 
 # Default environment
 DEPLOY_ENV="prod"
-S3_BUCKET="aolf-gsec-prod"
+S3_BUCKET="aolf-gsec-prod-frontend"
 CLOUDFRONT_DISTRIBUTION_ID=""  # Will be set during deployment if needed
 
 # Display help
@@ -95,33 +95,30 @@ main() {
   log "Building the application for $DEPLOY_ENV environment..."
   npm run build:$DEPLOY_ENV
   
-  # Set the deployment path based on environment
-  DEPLOY_PATH="$DEPLOY_ENV/frontend"
-  
-  # Deploy to S3
-  log "Deploying to S3 bucket: $S3_BUCKET in path /$DEPLOY_PATH/..."
-  aws s3 sync build/ s3://$S3_BUCKET/$DEPLOY_PATH/ --delete
+  # Deploy to S3 - directly to the root of the frontend code bucket
+  log "Deploying to S3 bucket: $S3_BUCKET..."
+  aws s3 sync build/ s3://$S3_BUCKET/ --delete
   
   # Invalidate CloudFront cache if a distribution ID is provided
   if [[ -n "$CLOUDFRONT_DISTRIBUTION_ID" ]]; then
     log "Invalidating CloudFront cache for distribution: $CLOUDFRONT_DISTRIBUTION_ID..."
-    aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_DISTRIBUTION_ID --paths "/$DEPLOY_PATH/*"
+    aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_DISTRIBUTION_ID --paths "/*"
   fi
   
   # Verify deployment
   log "Verifying deployment..."
-  if aws s3 ls s3://$S3_BUCKET/$DEPLOY_PATH/index.html &> /dev/null; then
+  if aws s3 ls s3://$S3_BUCKET/index.html &> /dev/null; then
     log "index.html found in S3 bucket."
   else
     log "Warning: index.html not found in S3 bucket."
   fi
   
   log "Deployment completed successfully."
-  log "Frontend should be accessible at http://$S3_BUCKET.s3-website-us-east-2.amazonaws.com/$DEPLOY_PATH/"
+  log "Frontend should be accessible at http://$S3_BUCKET.s3-website-us-east-2.amazonaws.com/"
   
   if [[ -n "$CLOUDFRONT_DISTRIBUTION_ID" ]]; then
     CF_DOMAIN=$(aws cloudfront get-distribution --id $CLOUDFRONT_DISTRIBUTION_ID --query "Distribution.DomainName" --output text)
-    log "Or via CloudFront at https://$CF_DOMAIN/$DEPLOY_PATH/"
+    log "Or via CloudFront at https://$CF_DOMAIN/"
   fi
   
   log "Note: For the production domain (meetgurudev.aolf.app), ensure CloudFront is configured with the certificate ID: fd300d8e-b4f9-4de8-9e5f-23c6c639ccde"
