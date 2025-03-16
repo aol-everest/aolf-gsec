@@ -268,3 +268,7 @@ temp_venv/
 .elasticbeanstalk/*
 !.elasticbeanstalk/*.cfg.yml
 !.elasticbeanstalk/*.global.yml
+
+# Terraform
+terraform/.terraform/
+terraform/.terraform.lock.hcl
