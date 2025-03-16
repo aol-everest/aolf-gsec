@@ -572,14 +572,17 @@ def notify_appointment_update(db: Session, appointment: Appointment, old_data: D
         new_data['dignitaries'] = dignitaries_data
     
     # Check if appointment date, time, or location has changed (rescheduling case)
-    is_rescheduled = False
-    if (old_data.get('appointment_date') != new_data.get('appointment_date') or 
-        old_data.get('appointment_time') != new_data.get('appointment_time')):
-        # Only consider it rescheduled if it was previously approved and scheduled
-        if (appointment.status == AppointmentStatus.APPROVED and 
+    is_rescheduled = (
+        (
+            old_data.get('appointment_date') != new_data.get('appointment_date') or 
+            old_data.get('appointment_time') != new_data.get('appointment_time')
+        )
+        and (
+            appointment.status == AppointmentStatus.APPROVED and 
             appointment.sub_status == AppointmentSubStatus.SCHEDULED and
-            appointment.appointment_date is not None):
-            is_rescheduled = True
+            appointment.appointment_date is not None
+        )
+    )
     
     # Check if status has changed - this might need special notification
     status_changed = old_data.get('status') != new_data.get('status') and new_data.get('status') is not None
