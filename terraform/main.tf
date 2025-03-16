@@ -211,10 +211,36 @@ resource "aws_elastic_beanstalk_application" "backend_app" {
   description = "FastAPI Backend"
 }
 
+# Create application database user password
+resource "random_password" "app_db_password" {
+  length           = 16
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}<>:?"
+}
+
+# Add application database user credentials to Secrets Manager
+resource "aws_secretsmanager_secret" "app_db_credentials" {
+  name        = "aolf-gsec-prod-db-app-credentials"
+  description = "Aurora PostgreSQL application database user credentials"
+  
+  tags = {
+    Name = "aolf-gsec-prod-db-app-credentials"
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "app_db_credentials" {
+  secret_id     = aws_secretsmanager_secret.app_db_credentials.id
+  secret_string = jsonencode({
+    username = "aolf_gsec_app_user"
+    password = random_password.app_db_password.result
+    dbname   = "aolf_gsec"
+  })
+}
+
 resource "aws_elastic_beanstalk_environment" "backend_env" {
   name                = "aolf-gsec-prod-backend-env"
   application         = aws_elastic_beanstalk_application.backend_app.name
-  platform_arn        = "arn:aws:elasticbeanstalk:us-east-2::platform/Python 3.12 running on 64bit Amazon Linux 2023"
+  platform_arn        = "arn:aws:elasticbeanstalk:us-east-2::platform/Python 3.12 running on 64bit Amazon Linux 2023/4.4.1"
   tier                = "WebServer"
 
   # VPC Configuration
@@ -324,6 +350,112 @@ resource "aws_elastic_beanstalk_environment" "backend_env" {
     namespace = "aws:elasticbeanstalk:command"
     name      = "BatchSize"
     value     = "25"
+  }
+
+  # Environment variables
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "ENVIRONMENT"
+    value     = "prod"
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "PORT"
+    value     = "8000"
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "POSTGRES_DB"
+    value     = "aolf_gsec"
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "POSTGRES_WRITE_HOST"
+    value     = aws_rds_cluster.aurora.endpoint
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "POSTGRES_READ_HOST"
+    value     = aws_rds_cluster.aurora.reader_endpoint
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "POSTGRES_PASSWORD"
+    value     = random_password.app_db_password.result
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "POSTGRES_PORT"
+    value     = "5432"
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "POSTGRES_USER"
+    value     = "aolf_gsec_app_user"
+  }
+
+  # Python configuration
+  setting {
+    namespace = "aws:elasticbeanstalk:container:python"
+    name      = "WSGIPath"
+    value     = "application:application"
+  }
+
+  # Add these new settings for better Python configuration and logging
+  setting {
+    namespace = "aws:elasticbeanstalk:container:python"
+    name      = "NumProcesses"
+    value     = "1"
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:container:python"
+    name      = "NumThreads"
+    value     = "15"
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:cloudwatch:logs"
+    name      = "StreamLogs"
+    value     = "true"
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:cloudwatch:logs"
+    name      = "DeleteOnTerminate"
+    value     = "false"
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:cloudwatch:logs"
+    name      = "RetentionInDays"
+    value     = "7"
+  }
+
+  # Environment variables
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "PYTHONPATH"
+    value     = "/var/app/current"
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "PYTHONUNBUFFERED"
+    value     = "1"
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "DEBUG"
+    value     = "true"
   }
 }
 
@@ -439,9 +571,6 @@ resource "aws_rds_cluster" "aurora" {
   skip_final_snapshot     = false
   final_snapshot_identifier = "aolf-gsec-prod-database-final-snapshot"
   
-  # Enable high availability
-  availability_zones      = ["us-east-2a", "us-east-2b"]
-  
   # Enable Serverless v2 scaling configuration
   serverlessv2_scaling_configuration {
     min_capacity = 1.0
@@ -480,5 +609,24 @@ resource "aws_rds_cluster_instance" "aurora_instances" {
 
   tags = {
     Name = "aolf-gsec-prod-aurora-postgresql-instance-${count.index}"
+  }
+}
+
+# Add RDS cluster post-creation configuration
+resource "null_resource" "setup_db_user" {
+  depends_on = [aws_rds_cluster_instance.aurora_instances]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      PGPASSWORD="${jsondecode(aws_secretsmanager_secret_version.db_credentials_initial.secret_string)["password"]}" psql \
+      -h ${aws_rds_cluster.aurora.endpoint} \
+      -U ${jsondecode(aws_secretsmanager_secret_version.db_credentials_initial.secret_string)["username"]} \
+      -d ${jsondecode(aws_secretsmanager_secret_version.db_credentials_initial.secret_string)["dbname"]} \
+      -c "CREATE USER ${jsondecode(aws_secretsmanager_secret_version.app_db_credentials.secret_string)["username"]} WITH PASSWORD '${jsondecode(aws_secretsmanager_secret_version.app_db_credentials.secret_string)["password"]}';" \
+      -c "GRANT CONNECT ON DATABASE ${jsondecode(aws_secretsmanager_secret_version.db_credentials_initial.secret_string)["dbname"]} TO ${jsondecode(aws_secretsmanager_secret_version.app_db_credentials.secret_string)["username"]};" \
+      -c "GRANT USAGE ON SCHEMA public TO ${jsondecode(aws_secretsmanager_secret_version.app_db_credentials.secret_string)["username"]};" \
+      -c "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${jsondecode(aws_secretsmanager_secret_version.app_db_credentials.secret_string)["username"]};" \
+      -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ${jsondecode(aws_secretsmanager_secret_version.app_db_credentials.secret_string)["username"]};"
+    EOT
   }
 }

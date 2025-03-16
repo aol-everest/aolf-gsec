@@ -135,12 +135,12 @@ cd backend
 ./deploy-eb.sh --env=prod --update
 
 # View Elastic Beanstalk logs
-eb logs -e aolf-gsec-backend-uat
-eb logs -e aolf-gsec-backend-prod
+eb logs aolf-gsec-backend-uat
+eb logs aolf-gsec-prod-backend-env
 
 # SSH into Elastic Beanstalk instance
-eb ssh -e aolf-gsec-backend-uat
-eb ssh -e aolf-gsec-backend-prod
+eb ssh aolf-gsec-backend-uat
+eb ssh aolf-gsec-prod-backend-env
 
 # Frontend Deployment to AWS S3 and CloudFront
 cd frontend
@@ -376,14 +376,21 @@ PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-db-uat.cxg084kkue8o.us-east-2.rd
 # Initialize Terraform
 terraform init
 
+# Upgrade Terraform
+terraform init -upgrade
+
 # Plan the changes
 terraform plan
 
 # Apply the changes
 terraform apply
 
+# Show the state of the Aurora RDS cluster
+terraform state show aws_rds_cluster.aurora
+
 # Deploy the frontend
 ./deploy-frontend.sh --cloudfront-id=$(terraform -chdir=../terraform output -raw cloudfront_distribution_id)
 
 # Deploy the backend
 cd backend; eb deploy
+
