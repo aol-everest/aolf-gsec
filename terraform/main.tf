@@ -321,9 +321,11 @@ resource "aws_elastic_beanstalk_environment" "backend_env" {
 }
 
 ### 🚀 Load Balancer (HTTPS Only)
-# Use existing certificate instead of creating a new one
+# Use existing certificate by domain name
 data "aws_acm_certificate" "existing_cert" {
-  id = "30bd8db1-3110-4505-a815-b6ab4cf97373"
+  domain      = "api.meetgurudev.aolf.app"
+  statuses    = ["ISSUED"]
+  most_recent = true
 }
 
 resource "aws_lb" "backend_lb" {
@@ -381,6 +383,7 @@ resource "random_password" "db_password" {
   override_special = "!#$%&*()-_=+[]{}<>:?"
 }
 
+# Create initial secret without the host information
 resource "aws_secretsmanager_secret" "db_credentials" {
   name        = "aolf-gsec-prod-db-credentials"
   description = "Aurora PostgreSQL database credentials"
@@ -390,13 +393,13 @@ resource "aws_secretsmanager_secret" "db_credentials" {
   }
 }
 
-resource "aws_secretsmanager_secret_version" "db_credentials" {
+# Initial secret version with just username and password
+resource "aws_secretsmanager_secret_version" "db_credentials_initial" {
   secret_id     = aws_secretsmanager_secret.db_credentials.id
   secret_string = jsonencode({
     username = "admin"
     password = random_password.db_password.result
     engine   = "aurora-postgresql"
-    host     = aws_rds_cluster.aurora.endpoint
     port     = 5432
     dbname   = "gsecdb"
   })
@@ -417,8 +420,8 @@ resource "aws_rds_cluster" "aurora" {
   engine                  = "aurora-postgresql"
   engine_version          = "15.3"
   database_name           = "gsecdb"
-  master_username         = jsondecode(aws_secretsmanager_secret_version.db_credentials.secret_string)["username"]
-  master_password         = jsondecode(aws_secretsmanager_secret_version.db_credentials.secret_string)["password"]
+  master_username         = jsondecode(aws_secretsmanager_secret_version.db_credentials_initial.secret_string)["username"]
+  master_password         = jsondecode(aws_secretsmanager_secret_version.db_credentials_initial.secret_string)["password"]
   vpc_security_group_ids  = [aws_security_group.rds_sg.id]
   db_subnet_group_name    = aws_db_subnet_group.aurora_subnet.name
   backup_retention_period = 7
@@ -436,11 +439,27 @@ resource "aws_rds_cluster" "aurora" {
   }
 }
 
+# Update the secret with the host information after the cluster is created
+resource "aws_secretsmanager_secret_version" "db_credentials_updated" {
+  secret_id     = aws_secretsmanager_secret.db_credentials.id
+  secret_string = jsonencode({
+    username = "admin"
+    password = random_password.db_password.result
+    engine   = "aurora-postgresql"
+    host     = aws_rds_cluster.aurora.endpoint
+    port     = 5432
+    dbname   = "gsecdb"
+  })
+  
+  # Ensure this only happens after the initial secret version is created
+  depends_on = [aws_secretsmanager_secret_version.db_credentials_initial]
+}
+
 resource "aws_rds_cluster_instance" "aurora_instances" {
   count                = 2
   identifier           = "aolf-gsec-prod-db-${count.index}"
   cluster_identifier   = aws_rds_cluster.aurora.id
-  instance_class       = "db.r5.large"
+  instance_class       = "db.t3.medium"
   engine               = "aurora-postgresql"
   engine_version       = "15.3"
   db_subnet_group_name = aws_db_subnet_group.aurora_subnet.name
