@@ -12,7 +12,7 @@ log() {
 # Default environment
 DEPLOY_ENV="prod"
 S3_BUCKET="aolf-gsec-prod-frontend"
-CLOUDFRONT_DISTRIBUTION_ID=""  # Will be set during deployment if needed
+CLOUDFRONT_DISTRIBUTION_ID="E1ICM14TKMJ7I6"  # Will be set during deployment if needed
 
 # Display help
 show_help() {
