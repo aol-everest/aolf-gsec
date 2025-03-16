@@ -578,9 +578,13 @@ def notify_appointment_update(db: Session, appointment: Appointment, old_data: D
             old_data.get('appointment_time') != new_data.get('appointment_time')
         )
         and (
+            # Ensure the appointment is approved and scheduled before sending a rescheduled notification
             appointment.status == AppointmentStatus.APPROVED and 
             appointment.sub_status == AppointmentSubStatus.SCHEDULED and
-            appointment.appointment_date is not None
+            appointment.appointment_date is not None and
+            # Ensure the appointment was previously approved and scheduled before sending a rescheduled notification
+            old_data.get("status") == AppointmentStatus.APPROVED and
+            old_data.get("sub_status") == AppointmentSubStatus.SCHEDULED
         )
     )
     
@@ -591,32 +595,55 @@ def notify_appointment_update(db: Session, appointment: Appointment, old_data: D
     need_more_info = (
         appointment.status == AppointmentStatus.PENDING and 
         appointment.sub_status == AppointmentSubStatus.NEED_MORE_INFO and
-        appointment.secretariat_notes_to_requester
+        appointment.secretariat_notes_to_requester and
+        (
+            # Ensure the appointment was previously not pending and need more info or 
+            # the secretariat notes to requester have changed before sending a need more info notification
+            not (
+                old_data.get('status') == AppointmentStatus.PENDING and
+                old_data.get('sub_status') == AppointmentSubStatus.NEED_MORE_INFO
+            )
+            or (
+                old_data.get('secretariat_notes_to_requester').strip() != appointment.secretariat_notes_to_requester.strip()
+            )
+        )
     )
     
     # Check if this is a "Cancelled" case
     is_cancelled = (
         appointment.status == AppointmentStatus.CANCELLED and
-        appointment.sub_status == AppointmentSubStatus.CANCELLED
+        appointment.sub_status == AppointmentSubStatus.CANCELLED and
+        # Ensure the appointment was previously not cancelled before sending a cancelled notification
+        old_data.get('status') != AppointmentStatus.CANCELLED and 
+        old_data.get('sub_status') != AppointmentSubStatus.CANCELLED
     )
     
     # Check if this is a "Confirmed" case (Approved + Scheduled)
     is_confirmed = (
         appointment.status == AppointmentStatus.APPROVED and
         appointment.sub_status == AppointmentSubStatus.SCHEDULED and
-        appointment.appointment_date is not None  # Ensure we have a date
+        appointment.appointment_date is not None and
+        # Ensure the appointment was previously not approved and scheduled before sending a confirmed notification
+        old_data.get('status') != AppointmentStatus.APPROVED and
+        old_data.get('sub_status') != AppointmentSubStatus.SCHEDULED
     )
     
     # Check if this is a "Rejected" case with "Low priority" substatus
     is_rejected_low_priority = (
         appointment.status == AppointmentStatus.REJECTED and
-        appointment.sub_status == AppointmentSubStatus.LOW_PRIORITY
+        appointment.sub_status == AppointmentSubStatus.LOW_PRIORITY and
+        # Ensure the appointment was previously not rejected and low priority before sending a rejected low priority notification
+        old_data.get('status') != AppointmentStatus.REJECTED and
+        old_data.get('sub_status') != AppointmentSubStatus.LOW_PRIORITY
     )
     
     # Check if this is a "Rejected" case with "Met Gurudev already" substatus
     is_rejected_met_already = (
         appointment.status == AppointmentStatus.REJECTED and
-        appointment.sub_status == AppointmentSubStatus.MET_GURUDEV
+        appointment.sub_status == AppointmentSubStatus.MET_GURUDEV and
+        # Ensure the appointment was previously not rejected and met Gurudev already before sending a rejected met Gurudev already notification
+        old_data.get('status') != AppointmentStatus.REJECTED and
+        old_data.get('sub_status') != AppointmentSubStatus.MET_GURUDEV
     )
     
     # Notify the requester
