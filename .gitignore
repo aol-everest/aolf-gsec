@@ -270,8 +270,8 @@ temp_venv/
 !.elasticbeanstalk/*.global.yml
 
 # Terraform
-terraform/.terraform/
-terraform/.terraform.lock.hcl
+terraform*/.terraform/
+terraform*/.terraform.lock.hcl
 # Ignore Terraform state files
-terraform/terraform.tfstate
-terraform/terraform.tfstate.backup
+terraform*/terraform.tfstate
+terraform*/terraform.tfstate.backup
