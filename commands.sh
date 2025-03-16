@@ -370,3 +370,20 @@ PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-db-uat.cxg084kkue8o.us-east-2.rd
   -U aolf_gsec_user \
   -d aolf_gsec \
   -c "set role aolf_gsec_app_user; ALTER TYPE honorifictitle ADD VALUE 'NA';"
+
+# -- Terraform ----------------------------------------------------------------
+
+# Initialize Terraform
+terraform init
+
+# Plan the changes
+terraform plan
+
+# Apply the changes
+terraform apply
+
+# Deploy the frontend
+./deploy-frontend.sh --cloudfront-id=$(terraform -chdir=../terraform output -raw cloudfront_distribution_id)
+
+# Deploy the backend
+cd backend; eb deploy
