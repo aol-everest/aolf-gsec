@@ -87,7 +87,7 @@ resource "aws_s3_bucket_website_configuration" "frontend_code" {
 
 # Use existing ACM certificate for CloudFront
 data "aws_acm_certificate" "frontend" {
-  provider    = aws.us-east-1
+  provider    = aws.us-east-1  # CloudFront requires certificates in us-east-1
   domain      = "meetgurudev.aolf.app"
   statuses    = ["ISSUED"]
   most_recent = true
@@ -228,8 +228,14 @@ output "data_bucket" {
   description = "The S3 bucket name for application data"
 }
 
-# Provider configuration for us-east-2 region (required for CloudFront certificates)
+# Provider configuration for us-east-2 region (main region)
 provider "aws" {
   alias  = "us-east-2"
   region = "us-east-2"
+}
+
+# Provider configuration for us-east-1 region (required for CloudFront certificates)
+provider "aws" {
+  alias  = "us-east-1"
+  region = "us-east-1"
 } 
