@@ -214,7 +214,7 @@ resource "aws_elastic_beanstalk_application" "backend_app" {
 resource "aws_elastic_beanstalk_environment" "backend_env" {
   name                = "aolf-gsec-prod-backend-env"
   application         = aws_elastic_beanstalk_application.backend_app.name
-  solution_stack_name = "64bit Amazon Linux 2023 v4.0.3 running Python 3.12"
+  platform_arn        = "arn:aws:elasticbeanstalk:us-east-2::platform/Python 3.12 running on 64bit Amazon Linux 2023"
   tier                = "WebServer"
 
   # VPC Configuration
@@ -279,6 +279,13 @@ resource "aws_elastic_beanstalk_environment" "backend_env" {
     namespace = "aws:autoscaling:launchconfiguration"
     name      = "InstanceType"
     value     = "t3.small"
+  }
+
+  # Add EC2 key pair configuration
+  setting {
+    namespace = "aws:autoscaling:launchconfiguration"
+    name      = "EC2KeyName"
+    value     = "aolf-gsec-prod-backend-key-pair"
   }
 
   # Health Check Configuration
@@ -419,6 +426,7 @@ resource "aws_rds_cluster" "aurora" {
   cluster_identifier      = "aolf-gsec-prod-db"
   engine                  = "aurora-postgresql"
   engine_version          = "15.3"
+  engine_mode             = "provisioned"
   database_name           = "gsecdb"
   master_username         = jsondecode(aws_secretsmanager_secret_version.db_credentials_initial.secret_string)["username"]
   master_password         = jsondecode(aws_secretsmanager_secret_version.db_credentials_initial.secret_string)["password"]
@@ -433,6 +441,12 @@ resource "aws_rds_cluster" "aurora" {
   
   # Enable high availability
   availability_zones      = ["us-east-2a", "us-east-2b"]
+  
+  # Enable Serverless v2 scaling configuration
+  serverlessv2_scaling_configuration {
+    min_capacity = 1.0
+    max_capacity = 4.0
+  }
 
   tags = {
     Name = "aolf-gsec-prod-aurora-postgresql-cluster"
@@ -459,9 +473,9 @@ resource "aws_rds_cluster_instance" "aurora_instances" {
   count                = 2
   identifier           = "aolf-gsec-prod-db-${count.index}"
   cluster_identifier   = aws_rds_cluster.aurora.id
-  instance_class       = "db.t3.medium"
+  instance_class       = "db.serverless"
   engine               = "aurora-postgresql"
-  engine_version       = "15.3"
+  engine_version       = "16.6"
   db_subnet_group_name = aws_db_subnet_group.aurora_subnet.name
 
   tags = {
