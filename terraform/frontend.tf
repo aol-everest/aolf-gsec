@@ -87,8 +87,10 @@ resource "aws_s3_bucket_website_configuration" "frontend_code" {
 
 # Use existing ACM certificate for CloudFront
 data "aws_acm_certificate" "frontend" {
-  provider = aws.us-east-2  # CloudFront requires certificates in us-east-2
-  id       = "fd300d8e-b4f9-4de8-9e5f-23c6c639ccde"
+  provider    = aws.us-east-1
+  domain      = "meetgurudev.aolf.app"
+  statuses    = ["ISSUED"]
+  most_recent = true
 }
 
 # CloudFront origin access control for S3
