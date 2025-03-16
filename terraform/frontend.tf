@@ -48,6 +48,30 @@ resource "aws_s3_bucket_policy" "frontend_code" {
   })
 }
 
+# S3 bucket policy for the data bucket to allow CloudFront access
+resource "aws_s3_bucket_policy" "data" {
+  bucket = data.aws_s3_bucket.data.id
+  
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "cloudfront.amazonaws.com"
+        }
+        Action = "s3:GetObject"
+        Resource = "${data.aws_s3_bucket.data.arn}/prod/attachments/*"
+        Condition = {
+          StringEquals = {
+            "AWS:SourceArn" = aws_cloudfront_distribution.frontend.arn
+          }
+        }
+      }
+    ]
+  })
+}
+
 # S3 bucket configuration for website hosting
 resource "aws_s3_bucket_website_configuration" "frontend_code" {
   bucket = aws_s3_bucket.frontend_code.id
@@ -94,7 +118,7 @@ resource "aws_cloudfront_distribution" "frontend" {
   origin {
     domain_name              = data.aws_s3_bucket.data.bucket_regional_domain_name
     origin_id                = "S3-Data"
-    origin_path              = "/prod/data"
+    origin_path              = "/prod/attachments"
     origin_access_control_id = aws_cloudfront_origin_access_control.frontend.id
   }
   
@@ -118,9 +142,9 @@ resource "aws_cloudfront_distribution" "frontend" {
     compress               = true
   }
   
-  # Cache behavior for data access
+  # Cache behavior for attachments access
   ordered_cache_behavior {
-    path_pattern           = "/data/*"
+    path_pattern           = "/attachments/*"
     allowed_methods        = ["GET", "HEAD", "OPTIONS"]
     cached_methods         = ["GET", "HEAD"]
     target_origin_id       = "S3-Data"
@@ -195,6 +219,11 @@ output "frontend_website_endpoint" {
 output "frontend_code_bucket" {
   value       = aws_s3_bucket.frontend_code.bucket
   description = "The S3 bucket name for frontend code"
+}
+
+output "data_bucket" {
+  value       = data.aws_s3_bucket.data.bucket
+  description = "The S3 bucket name for application data"
 }
 
 # Provider configuration for us-east-1 region (required for CloudFront certificates)
