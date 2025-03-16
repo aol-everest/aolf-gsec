@@ -404,11 +404,11 @@ resource "aws_secretsmanager_secret" "db_credentials" {
 resource "aws_secretsmanager_secret_version" "db_credentials_initial" {
   secret_id     = aws_secretsmanager_secret.db_credentials.id
   secret_string = jsonencode({
-    username = "admin"
+    username = "aolf_gsec_admin"
     password = random_password.db_password.result
     engine   = "aurora-postgresql"
     port     = 5432
-    dbname   = "gsecdb"
+    dbname   = "aolf_gsec"
   })
 }
 
@@ -423,11 +423,11 @@ resource "aws_db_subnet_group" "aurora_subnet" {
 }
 
 resource "aws_rds_cluster" "aurora" {
-  cluster_identifier      = "aolf-gsec-prod-db"
+  cluster_identifier      = "aolf-gsec-prod-database"
   engine                  = "aurora-postgresql"
-  engine_version          = "15.3"
+  engine_version          = "16.6"
   engine_mode             = "provisioned"
-  database_name           = "gsecdb"
+  database_name           = "aolf_gsec"
   master_username         = jsondecode(aws_secretsmanager_secret_version.db_credentials_initial.secret_string)["username"]
   master_password         = jsondecode(aws_secretsmanager_secret_version.db_credentials_initial.secret_string)["password"]
   vpc_security_group_ids  = [aws_security_group.rds_sg.id]
@@ -437,7 +437,7 @@ resource "aws_rds_cluster" "aurora" {
   storage_encrypted       = true
   deletion_protection     = true
   skip_final_snapshot     = false
-  final_snapshot_identifier = "aolf-gsec-prod-db-final-snapshot"
+  final_snapshot_identifier = "aolf-gsec-prod-database-final-snapshot"
   
   # Enable high availability
   availability_zones      = ["us-east-2a", "us-east-2b"]
@@ -457,12 +457,12 @@ resource "aws_rds_cluster" "aurora" {
 resource "aws_secretsmanager_secret_version" "db_credentials_updated" {
   secret_id     = aws_secretsmanager_secret.db_credentials.id
   secret_string = jsonencode({
-    username = "admin"
+    username = "aolf_gsec_admin"
     password = random_password.db_password.result
     engine   = "aurora-postgresql"
     host     = aws_rds_cluster.aurora.endpoint
     port     = 5432
-    dbname   = "gsecdb"
+    dbname   = "aolf_gsec"
   })
   
   # Ensure this only happens after the initial secret version is created
@@ -471,7 +471,7 @@ resource "aws_secretsmanager_secret_version" "db_credentials_updated" {
 
 resource "aws_rds_cluster_instance" "aurora_instances" {
   count                = 2
-  identifier           = "aolf-gsec-prod-db-${count.index}"
+  identifier           = "aolf-gsec-prod-database-${count.index}"
   cluster_identifier   = aws_rds_cluster.aurora.id
   instance_class       = "db.serverless"
   engine               = "aurora-postgresql"
