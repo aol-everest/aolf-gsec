@@ -10,10 +10,15 @@
         {{ dignitary.honorific_title|format_honorific_title }} {{ dignitary.first_name }} {{ dignitary.last_name }}{% if not loop.last %}{% if loop.index == appointment.appointment_dignitaries|length - 1 %} and {% else %}, {% endif %}{% endif %}
     {% endfor %}, we kindly request some additional details to proceed further.</p>
 
-    <p>Please provide the following information:</p>
-    <div style="background-color: #f9fafb; padding: 15px; border-radius: 5px; margin: 8px 0;">
-        {{ appointment.secretariat_notes_to_requester | replace('\n', '<br>') | safe }}
-    </div>
+    {% if appointment.secretariat_notes_to_requester %}
+        <p><strong>Please provide the following information:</strong>
+            <div style="background-color: #f9fafb; padding: 15px; border-radius: 5px; margin: 8px 0;">
+                {{ appointment.secretariat_notes_to_requester | replace('\n', '<br>') | safe }}
+            </div>
+        </p>
+    {% else %}
+        <p>Please reach out to the secretariat at <a href="mailto:secretariat@artofliving.org">secretariat@artofliving.org</a> for more details.</p>
+    {% endif %}
 
     <p>Once you have the requested details, kindly contact us with this additional information.</p>
 

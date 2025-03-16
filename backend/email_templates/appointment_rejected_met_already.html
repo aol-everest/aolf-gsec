@@ -21,8 +21,8 @@
     <p>For your reference, the details of your meeting request are:</p>
     
     <ul>
-        <li>Meeting Request ID: {{ appointment.id }}</li>
-        <li>Appointment Requested For: 
+        <li><strong>Meeting Request ID:</strong> {{ appointment.id }}</li>
+        <li><strong>Appointment Requested For:</strong> 
             {% for app_dignitary in appointment.appointment_dignitaries %}
                 {% set dignitary = app_dignitary.dignitary %}
                 {{ dignitary.honorific_title|format_honorific_title }} {{ dignitary.first_name }} {{ dignitary.last_name }}{% if not loop.last %}{% if loop.index == appointment.appointment_dignitaries|length - 1 %} and {% else %}, {% endif %}{% endif %}
@@ -31,7 +31,7 @@
     </ul>
 
     {% if appointment.secretariat_notes_to_requester %}
-    <p>Message from Secretariat:</p>
+    <p><strong>Message from Secretariat:</strong>
         <div style="background-color: #f9fafb; padding: 15px; border-radius: 5px; margin: 8px 0;">
             {{ appointment.secretariat_notes_to_requester | replace('\n', '<br>') | safe }}
         </div>

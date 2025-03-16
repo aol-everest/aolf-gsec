@@ -19,16 +19,18 @@
         <li><strong>Location:</strong> {% if appointment.location %}{{ appointment.location.name }} - {{ appointment.location.city }}, {{ appointment.location.state }}{% else %}To be determined{% endif %}</li>
     </ul>
 
-    <p><strong>Logistics:</strong></p>
-    <ul>
-        <li><strong>Arrival Time:</strong> {% if appointment.appointment_time %}{{ appointment.appointment_time }}{% else %}To be determined{% endif %}</li>
-        <li><strong>Location:</strong> {% if appointment.location %}{{ appointment.location.name }} - {{ appointment.location.street_address }}, {{ appointment.location.city }}, {{ appointment.location.state }} {{ appointment.location.zip_code }}{% else %}To be determined{% endif %}</li>
-        <li><strong>Parking:</strong> {% if appointment.location.parking_info %}{{ appointment.location.parking_info }}{% else %}N/A{% endif %}</li>
-        <li><strong>Driving Directions:</strong> {% if appointment.location.driving_directions %}{{ appointment.location.driving_directions }}{% else %}N/A{% endif %}</li>
-        {% if appointment.location.attachment_path %}
-            <li><strong>Additional Information:</strong> <a href="{{ app_base_url }}/locations/view-attachment/{{ appointment.location.id }}" target="_blank">View Attachment</a></li>
-        {% endif %}
-    </ul>
+    <p>
+        <strong>Logistics:</strong>
+        <ul>
+            <li><strong>Arrival Time:</strong> {% if appointment.appointment_time %}{{ appointment.appointment_time }}{% else %}To be determined{% endif %}</li>
+            <li><strong>Location:</strong> {% if appointment.location %}{{ appointment.location.name }} - {{ appointment.location.street_address }}, {{ appointment.location.city }}, {{ appointment.location.state }} {{ appointment.location.zip_code }}{% else %}To be determined{% endif %}</li>
+            <li><strong>Parking:</strong> {% if appointment.location.parking_info %}{{ appointment.location.parking_info }}{% else %}N/A{% endif %}</li>
+            <li><strong>Driving Directions:</strong> {% if appointment.location.driving_directions %}{{ appointment.location.driving_directions }}{% else %}N/A{% endif %}</li>
+            {% if appointment.location.attachment_path %}
+                <li><strong>Additional Information:</strong> <a href="{{ app_base_url }}/locations/view-attachment/{{ appointment.location.id }}" target="_blank">View Attachment</a></li>
+            {% endif %}
+        </ul>
+    </p>
 
     {% if appointment.secretariat_notes_to_requester %}
     <p>Message from Secretariat:</p>

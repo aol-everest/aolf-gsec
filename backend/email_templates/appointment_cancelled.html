@@ -8,19 +8,20 @@
 
     <p>Please find the details of your appointment below for reference:</p>
     <ul>
-        <li>Meeting Request ID: {{ appointment.id }}</li>
-        <li>Appointment Requested For: 
+        <li><strong>Meeting Request ID:</strong> {{ appointment.id }}</li>
+        <li><strong>Appointment Requested For:</strong> 
             {% for app_dignitary in appointment.appointment_dignitaries %}
                 {% set dignitary = app_dignitary.dignitary %}
                 {{ dignitary.honorific_title|format_honorific_title }} {{ dignitary.first_name }} {{ dignitary.last_name }}{% if not loop.last %}{% if loop.index == appointment.appointment_dignitaries|length - 1 %} and {% else %}, {% endif %}{% endif %}
             {% endfor %}
         </li>
-        <li>Scheduled Date & Time: {% if appointment.appointment_date %}{{ appointment.appointment_date }} {% if appointment.appointment_time %}{{ appointment.appointment_time }}{% endif %}{% else %}Not scheduled{% endif %}</li>
-        <li>Location: {% if appointment.location %}{{ appointment.location.name }} - {{ appointment.location.city }}, {{ appointment.location.state }}{% else %}Not specified{% endif %}</li>
+        <li><strong>Scheduled Date & Time:</strong> {% if appointment.appointment_date %}{{ appointment.appointment_date }} {% if appointment.appointment_time %}{{ appointment.appointment_time }}{% endif %}{% else %}Not scheduled{% endif %}</li>
+        <li><strong>Location:</strong> {% if appointment.location %}{{ appointment.location.name }} - {{ appointment.location.city }}, {{ appointment.location.state }}{% else %}Not specified{% endif %}</li>
     </ul>
 
     {% if appointment.secretariat_notes_to_requester %}
-    <p>Message from Secretariat:</p>
+    <p>
+        <strong>Message from Secretariat:</strong>
         <div style="background-color: #f9fafb; padding: 15px; border-radius: 5px; margin: 8px 0;">
             {{ appointment.secretariat_notes_to_requester | replace('\n', '<br>') | safe }}
         </div>

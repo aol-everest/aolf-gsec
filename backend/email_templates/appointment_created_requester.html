@@ -10,21 +10,23 @@
 
     <p>We have received your meeting request and it is currently under review. Please note that this is not a confirmation of the appointment. Our team is carefully considering the request and will provide an update as soon as possible.</p>
 
-    <p><strong>Below are the details of your request:</strong></p>
-    <ul>
-        <li><strong>Meeting ID:</strong> {{ appointment.id }}</li>
-        <li><strong>Requested Date:</strong> {{ appointment.preferred_date }} {{ appointment.preferred_time_of_day or '' }}</li>
-        <li><strong>Location:</strong> {{ appointment.location.name }} - {{ appointment.location.city }}, {{ appointment.location.state }}</li>
-        <li><strong>Group Size:</strong> {{ appointment.appointment_dignitaries | length }} attendee(s)</li>
-        <li><strong>Dignitary(ies):</strong>
-            <ul>
-            {% for app_dignitary in appointment.appointment_dignitaries %}
-                {% set dignitary = app_dignitary.dignitary %}
-                <li>{{ dignitary.honorific_title|format_honorific_title }} {{ dignitary.first_name }} {{ dignitary.last_name }}</li>
-            {% endfor %}
-            </ul>
-        </li>
-    </ul>
+    <p>
+        <strong>Below are the details of your request:</strong>
+        <ul>
+            <li><strong>Meeting ID:</strong> {{ appointment.id }}</li>
+            <li><strong>Requested Date:</strong> {{ appointment.preferred_date }} {{ appointment.preferred_time_of_day or '' }}</li>
+            <li><strong>Location:</strong> {{ appointment.location.name }} - {{ appointment.location.city }}, {{ appointment.location.state }}</li>
+            <li><strong>Group Size:</strong> {{ appointment.appointment_dignitaries | length }} attendee(s)</li>
+            <li><strong>Dignitary(ies):</strong>
+                <ul>
+                {% for app_dignitary in appointment.appointment_dignitaries %}
+                    {% set dignitary = app_dignitary.dignitary %}
+                    <li>{{ dignitary.honorific_title|format_honorific_title }} {{ dignitary.first_name }} {{ dignitary.last_name }}</li>
+                {% endfor %}
+                </ul>
+            </li>
+        </ul>
+    </p>
 
     <p>If we require any additional information, we will reach out to you.</p>
 

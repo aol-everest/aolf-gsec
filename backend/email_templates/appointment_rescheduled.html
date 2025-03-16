@@ -13,30 +13,34 @@
     {% endfor %}
     has been rescheduled. Please find the updated details below:</p>
     
-    <p>Date: {% if appointment.appointment_date %}{{ appointment.appointment_date }}{% else %}To be determined{% endif %}</p>
-    <p>Time: {% if appointment.appointment_time %}{{ appointment.appointment_time }}{% else %}To be determined{% endif %}</p>
-    <p>Appointment Requested For:
+    <p>
+        <strong>Date:</strong> {% if appointment.appointment_date %}{{ appointment.appointment_date }}{% else %}To be determined{% endif %}<br>
+        <strong>Time:</strong> {% if appointment.appointment_time %}{{ appointment.appointment_time }}{% else %}To be determined{% endif %}<br>
+        <strong>Appointment Requested For:</strong>
         {% for app_dignitary in appointment.appointment_dignitaries %}
             {% set dignitary = app_dignitary.dignitary %}
             {{ dignitary.honorific_title|format_honorific_title }} {{ dignitary.first_name }} {{ dignitary.last_name }}{% if not loop.last %}{% if loop.index == appointment.appointment_dignitaries|length - 1 %} and {% else %}, {% endif %}{% endif %}
         {% endfor %}
         {% if appointment.appointment_dignitaries|length > 1 %} (Group of {{ appointment.appointment_dignitaries|length }}){% endif %}
+        <br>
+        <strong>Location:</strong> {% if appointment.location %}{{ appointment.location.name }} - {{ appointment.location.city }}, {{ appointment.location.state }}{% else %}To be determined{% endif %}
     </p>
-    <p>Location: {% if appointment.location %}{{ appointment.location.name }} - {{ appointment.location.city }}, {{ appointment.location.state }}{% else %}To be determined{% endif %}</p>
 
-    <p>Further Details</p>
-    <ul>
-        <li>Arrival Time: {% if appointment.appointment_time %}{{ appointment.appointment_time }}{% else %}To be determined{% endif %}</li>
-        <li>Address: {% if appointment.location %}{{ appointment.location.street_address }}, {{ appointment.location.city }}, {{ appointment.location.state }} {{ appointment.location.zip_code }}{% else %}To be determined{% endif %}</li>
-        <li>Parking: {% if appointment.location and appointment.location.parking_info %}{{ appointment.location.parking_info }}{% else %}N/A{% endif %}</li>
-        <li>Driving Directions: {% if appointment.location and appointment.location.driving_directions %}{{ appointment.location.driving_directions }}{% else %}N/A{% endif %}</li>
-        {% if appointment.location and appointment.location.attachment_path %}
-            <li>Additional Information: <a href="{{ app_base_url }}/locations/view-attachment/{{ appointment.location.id }}" target="_blank">View Attachment</a></li>
-        {% endif %}
-    </ul>
+    <p><strong>Further Details:</strong>
+        <ul>
+            <li><strong>Arrival Time:</strong> {% if appointment.appointment_time %}{{ appointment.appointment_time }}{% else %}To be determined{% endif %}</li>
+            <li><strong>Address:</strong> {% if appointment.location %}{{ appointment.location.street_address }}, {{ appointment.location.city }}, {{ appointment.location.state }} {{ appointment.location.zip_code }}{% else %}To be determined{% endif %}</li>
+            <li><strong>Parking:</strong> {% if appointment.location and appointment.location.parking_info %}{{ appointment.location.parking_info }}{% else %}N/A{% endif %}</li>
+            <li><strong>Driving Directions:</strong> {% if appointment.location and appointment.location.driving_directions %}{{ appointment.location.driving_directions }}{% else %}N/A{% endif %}</li>
+            {% if appointment.location and appointment.location.attachment_path %}
+                <li><strong>Additional Information:</strong> <a href="{{ app_base_url }}/locations/view-attachment/{{ appointment.location.id }}" target="_blank">View Attachment</a></li>
+            {% endif %}
+        </ul>
+    </p>
 
     {% if appointment.secretariat_notes_to_requester %}
-    <p>Special Instructions:
+    <p>
+        <strong>Special Instructions:</strong>
         <div style="background-color: #f9fafb; padding: 15px; border-radius: 5px; margin: 8px 0;">
             {{ appointment.secretariat_notes_to_requester | replace('\n', '<br>') | safe }}
         </div>
