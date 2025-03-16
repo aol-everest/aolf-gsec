@@ -87,7 +87,7 @@ resource "aws_s3_bucket_website_configuration" "frontend_code" {
 
 # Use existing ACM certificate for CloudFront
 data "aws_acm_certificate" "frontend" {
-  provider = aws.us-east-1  # CloudFront requires certificates in us-east-1
+  provider = aws.us-east-2  # CloudFront requires certificates in us-east-2
   id       = "fd300d8e-b4f9-4de8-9e5f-23c6c639ccde"
 }
 
@@ -226,8 +226,8 @@ output "data_bucket" {
   description = "The S3 bucket name for application data"
 }
 
-# Provider configuration for us-east-1 region (required for CloudFront certificates)
+# Provider configuration for us-east-2 region (required for CloudFront certificates)
 provider "aws" {
-  alias  = "us-east-1"
-  region = "us-east-1"
+  alias  = "us-east-2"
+  region = "us-east-2"
 } 
