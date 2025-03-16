@@ -604,11 +604,17 @@ async def update_user(
 ):
     logger.info(f"Received user update: {user_update.dict()}")
     """Update current user's information"""
+    # Fetch the user in the current write session
+    user = db.query(models.User).filter(models.User.id == current_user.id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    # Apply updates to the user fetched in the current session
     for key, value in user_update.dict(exclude_unset=True).items():
-        setattr(current_user, key, value)
+        setattr(user, key, value)
     db.commit()
-    db.refresh(current_user)
-    return current_user
+    db.refresh(user)
+    return user
 
 @app.get("/users/me", response_model=schemas.User)
 async def get_current_user_info(
