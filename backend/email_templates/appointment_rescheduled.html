@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Rescheduled Appointment with Gurudev{% endblock %}
+
+{% block content %}
+<div class="content">
+    <p>Dear {{ user_name }},</p>
+
+    <p>This is to inform you that your appointment request (Meeting Request ID: {{ appointment.id }}) for
+    {% for app_dignitary in appointment.appointment_dignitaries %}
+        {% set dignitary = app_dignitary.dignitary %}
+        {{ dignitary.honorific_title|format_honorific_title }} {{ dignitary.first_name }} {{ dignitary.last_name }}{% if not loop.last %}{% if loop.index == appointment.appointment_dignitaries|length - 1 %} and {% else %}, {% endif %}{% endif %}
+    {% endfor %}
+    has been rescheduled. Please find the updated details below:</p>
+    
+    <div style="background-color: #f9fafb; padding: 15px; border-radius: 5px; margin: 15px 0;">
+        <h3>Updated Appointment Details</h3>
+        <p>Date: {% if appointment.appointment_date %}{{ appointment.appointment_date }}{% else %}To be determined{% endif %}</p>
+        <p>Time: {% if appointment.appointment_time %}{{ appointment.appointment_time }}{% else %}To be determined{% endif %}</p>
+        <p>Appointment Requested For:
+            {% for app_dignitary in appointment.appointment_dignitaries %}
+                {% set dignitary = app_dignitary.dignitary %}
+                {{ dignitary.honorific_title|format_honorific_title }} {{ dignitary.first_name }} {{ dignitary.last_name }}{% if not loop.last %}{% if loop.index == appointment.appointment_dignitaries|length - 1 %} and {% else %}, {% endif %}{% endif %}
+            {% endfor %}
+            {% if appointment.appointment_dignitaries|length > 1 %} (Group of {{ appointment.appointment_dignitaries|length }}){% endif %}
+        </p>
+        <p>Location: {% if appointment.location %}{{ appointment.location.name }} - {{ appointment.location.city }}, {{ appointment.location.state }}{% else %}To be determined{% endif %}</p>
+    </div>
+
+    <div style="background-color: #f9fafb; padding: 15px; border-radius: 5px; margin: 15px 0;">
+        <h3>Further Details</h3>
+        <p>Arrival Time: {% if appointment.appointment_time %}{{ appointment.appointment_time }}{% else %}To be determined{% endif %}</p>
+        <p>Address: {% if appointment.location %}{{ appointment.location.street_address }}, {{ appointment.location.city }}, {{ appointment.location.state }} {{ appointment.location.zip_code }}{% else %}To be determined{% endif %}</p>
+        <p>Parking: {% if appointment.location and appointment.location.parking_info %}{{ appointment.location.parking_info }}{% else %}N/A{% endif %}</p>
+        <p>Driving Directions: {% if appointment.location and appointment.location.driving_directions %}{{ appointment.location.driving_directions }}{% else %}N/A{% endif %}</p>
+        {% if appointment.location and appointment.location.attachment_path %}
+            <p>Additional Information: <a href="{{ app_base_url }}/locations/view-attachment/{{ appointment.location.id }}" target="_blank">View Attachment</a></p>
+        {% endif %}
+    </div>
+
+    {% if appointment.secretariat_notes_to_requester %}
+    <p>Special Instructions:
+        <div style="background-color: #f9fafb; padding: 15px; border-radius: 5px; margin: 8px 0;">
+            {{ appointment.secretariat_notes_to_requester | replace('\n', '<br>') | safe }}
+        </div>
+    </p>
+    {% endif %}
+
+    <p>If you have any questions about this change, please contact the Global Secretariat Office.</p>
+
+    <p>Warm regards,</p>
+    <p>Office of Gurudev Sri Sri Ravi Shankar, USA</p>
+</div>
+{% endblock %} 

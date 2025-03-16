@@ -67,6 +67,7 @@ class EmailTemplate(str, Enum):
     APPOINTMENT_CONFIRMED = "appointment_confirmed.html"
     APPOINTMENT_REJECTED_LOW_PRIORITY = "appointment_rejected_low_priority.html"
     APPOINTMENT_REJECTED_MET_ALREADY = "appointment_rejected_met_already.html"
+    APPOINTMENT_RESCHEDULED = "appointment_rescheduled.html"
     GENERIC_NOTIFICATION = "generic_notification.html"
 
     def __str__(self):
@@ -82,6 +83,7 @@ class EmailTrigger(str, Enum):
     APPOINTMENT_CONFIRMED = "appointment_confirmed"
     APPOINTMENT_REJECTED_LOW_PRIORITY = "appointment_rejected_low_priority"
     APPOINTMENT_REJECTED_MET_ALREADY = "appointment_rejected_met_already"
+    APPOINTMENT_RESCHEDULED = "appointment_rescheduled"
     GENERIC_NOTIFICATION = "generic_notification"
 
     def __str__(self):
@@ -159,6 +161,11 @@ NOTIFICATION_CONFIGS = {
         trigger=EmailTrigger.APPOINTMENT_REJECTED_MET_ALREADY,
         requester_template=EmailTemplate.APPOINTMENT_REJECTED_MET_ALREADY,
         subject_template="Appointment Request Status (ID: {appointment_id})"
+    ),
+    EmailTrigger.APPOINTMENT_RESCHEDULED: NotificationConfig(
+        trigger=EmailTrigger.APPOINTMENT_RESCHEDULED,
+        requester_template=EmailTemplate.APPOINTMENT_RESCHEDULED,
+        subject_template="Rescheduled Appointment with Gurudev (ID: {appointment_id})"
     ),
     EmailTrigger.GENERIC_NOTIFICATION: NotificationConfig(
         trigger=EmailTrigger.GENERIC_NOTIFICATION,
@@ -564,6 +571,16 @@ def notify_appointment_update(db: Session, appointment: Appointment, old_data: D
             })
         new_data['dignitaries'] = dignitaries_data
     
+    # Check if appointment date, time, or location has changed (rescheduling case)
+    is_rescheduled = False
+    if (old_data.get('appointment_date') != new_data.get('appointment_date') or 
+        old_data.get('appointment_time') != new_data.get('appointment_time')):
+        # Only consider it rescheduled if it was previously approved and scheduled
+        if (appointment.status == AppointmentStatus.APPROVED and 
+            appointment.sub_status == AppointmentSubStatus.SCHEDULED and
+            appointment.appointment_date is not None):
+            is_rescheduled = True
+    
     # Check if status has changed - this might need special notification
     status_changed = old_data.get('status') != new_data.get('status') and new_data.get('status') is not None
     
@@ -621,6 +638,16 @@ def notify_appointment_update(db: Session, appointment: Appointment, old_data: D
         send_notification_email(
             db=db,
             trigger_type=EmailTrigger.APPOINTMENT_CANCELLED,
+            recipient=requester,
+            context=context,
+            appointment_id=appointment.id
+        )
+    elif is_rescheduled:
+        # Special handling for "Rescheduled" case
+        logger.info(f"Sending rescheduled notification for appointment ID: {appointment.id}")
+        send_notification_email(
+            db=db,
+            trigger_type=EmailTrigger.APPOINTMENT_RESCHEDULED,
             recipient=requester,
             context=context,
             appointment_id=appointment.id
