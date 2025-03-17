@@ -295,7 +295,7 @@ resource "aws_elastic_beanstalk_environment" "backend_env" {
   application         = aws_elastic_beanstalk_application.backend_app.name
   platform_arn        = "arn:aws:elasticbeanstalk:us-east-2::platform/Python 3.12 running on 64bit Amazon Linux 2023/4.4.1"
   tier                = "WebServer"
-  version_label       = aws_elastic_beanstalk_application_version.app_version.version_label
+  version_label       = aws_elastic_beanstalk_application_version.app_version.name
 
   # VPC Configuration
   setting {
@@ -463,13 +463,6 @@ resource "aws_elastic_beanstalk_environment" "backend_env" {
     value     = "application:application"
   }
 
-  # Add custom initialization command to create virtual environment
-  setting {
-    namespace = "aws:elasticbeanstalk:application:environment"
-    name      = "CREATE_VENV_COMMAND"
-    value     = "python3.12 -m venv /var/app/staging/.venv"
-  }
-
   # Add these new settings for better Python configuration and logging
   setting {
     namespace = "aws:elasticbeanstalk:container:python"
@@ -518,20 +511,6 @@ resource "aws_elastic_beanstalk_environment" "backend_env" {
     namespace = "aws:elasticbeanstalk:application:environment"
     name      = "DEBUG"
     value     = "true"
-  }
-
-  # Add container commands to create virtual environment (from 02_python.config)
-  setting {
-    namespace = "aws:elasticbeanstalk:container:python"
-    name      = "SetupPythonVirtualenv"
-    value     = "true"
-  }
-
-  # Add command to create virtual environment
-  setting {
-    namespace = "aws:elasticbeanstalk:container:python:staticfiles"
-    name      = "create_venv"
-    value     = "/var/app/staging/.venv"
   }
 }
 
@@ -706,3 +685,9 @@ resource "aws_rds_cluster_instance" "aurora_instances" {
 #     EOT
 #   }
 # }
+
+# Add SSM Session Manager access to the EC2 instance profile
+resource "aws_iam_role_policy_attachment" "ssm_policy" {
+  role       = "aws-elasticbeanstalk-ec2-role"  # This is the default EB role
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
