@@ -285,11 +285,17 @@ PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-prod-database.cluster-cxg084kkue
   -U aolf_gsec_admin \
   -d postgres \
   -c "GRANT CONNECT ON DATABASE aolf_gsec TO $APP_USER_NAME;" \
-  -c "GRANT CREATE ON DATABASE aolf_gsec TO $APP_USER_NAME;" \
+  -c "GRANT CREATE ON DATABASE aolf_gsec TO $APP_USER_NAME;"
+
+PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-prod-database.cluster-cxg084kkue8o.us-east-2.rds.amazonaws.com \
+  -U aolf_gsec_admin \
+  -d aolf_gsec \
+  -c "GRANT ALL ON SCHEMA public TO $APP_USER_NAME;" \
   -c "GRANT USAGE ON SCHEMA public TO $APP_USER_NAME;" \
   -c "GRANT CREATE ON SCHEMA public TO $APP_USER_NAME;" \
   -c "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO $APP_USER_NAME;" \
   -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO $APP_USER_NAME;"
+
 
 # Insert a SECRETARIAT user record for Amit Nair
 PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-prod-database.cluster-cxg084kkue8o.us-east-2.rds.amazonaws.com \

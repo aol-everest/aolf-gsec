@@ -271,7 +271,7 @@ resource "aws_elastic_beanstalk_application" "backend_app" {
 
 # Elastic Beanstalk Application Version linking to the S3 package
 resource "aws_elastic_beanstalk_application_version" "app_version" {
-  name             = "v5.2 (improved DB handling and relationships)"
+  name             = "v5.3 (refreshing code)"
   application      = aws_elastic_beanstalk_application.backend_app.name
   description      = "FastAPI Backend"
   bucket           = aws_s3_bucket.app_bucket.id
@@ -694,7 +694,7 @@ resource "aws_rds_cluster_instance" "aurora_instances" {
   }
 }
 
-# Add RDS cluster post-creation configuration
+# # Add RDS cluster post-creation configuration
 # resource "null_resource" "setup_db_user" {
 #   depends_on = [aws_rds_cluster_instance.aurora_instances]
 
@@ -706,9 +706,13 @@ resource "aws_rds_cluster_instance" "aurora_instances" {
 #       -d ${jsondecode(aws_secretsmanager_secret_version.db_credentials_initial.secret_string)["dbname"]} \
 #       -c "CREATE USER ${jsondecode(aws_secretsmanager_secret_version.app_db_credentials.secret_string)["username"]} WITH PASSWORD '${jsondecode(aws_secretsmanager_secret_version.app_db_credentials.secret_string)["password"]}';" \
 #       -c "GRANT CONNECT ON DATABASE ${jsondecode(aws_secretsmanager_secret_version.db_credentials_initial.secret_string)["dbname"]} TO ${jsondecode(aws_secretsmanager_secret_version.app_db_credentials.secret_string)["username"]};" \
-#       -c "GRANT USAGE ON SCHEMA public TO ${jsondecode(aws_secretsmanager_secret_version.app_db_credentials.secret_string)["username"]};" \
+#       -c "CREATE SCHEMA IF NOT EXISTS aolf_gsec_app;" \
+#       -c "GRANT USAGE, CREATE ON SCHEMA public TO ${jsondecode(aws_secretsmanager_secret_version.app_db_credentials.secret_string)["username"]};" \
+#       -c "GRANT USAGE, CREATE ON SCHEMA aolf_gsec_app TO ${jsondecode(aws_secretsmanager_secret_version.app_db_credentials.secret_string)["username"]};" \
 #       -c "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${jsondecode(aws_secretsmanager_secret_version.app_db_credentials.secret_string)["username"]};" \
-#       -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ${jsondecode(aws_secretsmanager_secret_version.app_db_credentials.secret_string)["username"]};"
+#       -c "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA aolf_gsec_app TO ${jsondecode(aws_secretsmanager_secret_version.app_db_credentials.secret_string)["username"]};" \
+#       -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ${jsondecode(aws_secretsmanager_secret_version.app_db_credentials.secret_string)["username"]};" \
+#       -c "ALTER DEFAULT PRIVILEGES IN SCHEMA aolf_gsec_app GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ${jsondecode(aws_secretsmanager_secret_version.app_db_credentials.secret_string)["username"]};"
 #     EOT
 #   }
 # }
