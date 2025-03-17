@@ -1,4 +1,3 @@
-
 aolf-gsec-backend-uat-key-pair.pem
 backend/deployment/*.zip
 commands.sh
@@ -276,3 +275,9 @@ terraform*/.terraform.tfstate.lock.info
 # Ignore Terraform state files
 terraform*/terraform.tfstate
 terraform*/terraform.tfstate.backup
+# Ignore Terraform variables files that may contain secrets
+terraform*/terraform.tfvars
+terraform*/*.tfvars
+# Keep example files
+!terraform*/terraform.tfvars.example
+!terraform*/*.tfvars.example

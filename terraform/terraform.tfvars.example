@@ -1,0 +1,18 @@
+# Copy this file to terraform.tfvars and fill in your real values
+# Make sure terraform.tfvars is NOT committed to git
+
+# SendGrid API key for email notifications
+sendgrid_api_key = "SG.xxxxxxxxxxxxxxxxxxxx"
+
+# AWS credentials
+aws_access_key_id = "AKIAxxxxxxxxxxxxxxxx"
+aws_secret_access_key = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+# OpenAI API key
+openai_api_key = "sk-proj-xxxxxxxxxxxxxxxx"
+
+# Google OAuth client ID
+google_client_id = "xxxxxxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com"
+
+# JWT secret key for authentication
+jwt_secret_key = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" 

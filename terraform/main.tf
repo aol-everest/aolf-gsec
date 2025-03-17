@@ -1,3 +1,40 @@
+# Variable declarations for sensitive values
+variable "sendgrid_api_key" {
+  description = "SendGrid API Key for email notifications"
+  type        = string
+  sensitive   = true
+}
+
+variable "aws_access_key_id" {
+  description = "AWS Access Key ID"
+  type        = string
+  sensitive   = true
+}
+
+variable "aws_secret_access_key" {
+  description = "AWS Secret Access Key"
+  type        = string
+  sensitive   = true
+}
+
+variable "openai_api_key" {
+  description = "OpenAI API Key"
+  type        = string
+  sensitive   = true
+}
+
+variable "google_client_id" {
+  description = "Google OAuth Client ID"
+  type        = string
+  sensitive   = true
+}
+
+variable "jwt_secret_key" {
+  description = "JWT Secret Key for authentication"
+  type        = string
+  sensitive   = true
+}
+
 provider "aws" {
   region = "us-east-2"
 }
@@ -271,7 +308,7 @@ resource "aws_elastic_beanstalk_application" "backend_app" {
 
 # Elastic Beanstalk Application Version linking to the S3 package
 resource "aws_elastic_beanstalk_application_version" "app_version" {
-  name             = "v5.4 (updated log path)"
+  name             = "v5.7 (Refactor Database Initialization and Enhance User Authentication)"
   application      = aws_elastic_beanstalk_application.backend_app.name
   description      = "FastAPI Backend"
   bucket           = aws_s3_bucket.app_bucket.id
@@ -349,43 +386,30 @@ resource "aws_elastic_beanstalk_environment" "backend_env" {
     value     = aws_lb.backend_lb.arn
   }
   
-  # Explicitly disable the default HTTP listener
-  setting {
-    namespace = "aws:elbv2:listener:default"
-    name      = "ListenerEnabled"
-    value     = "false"
-  }
-  
-  # Explicitly disable port 80 listener 
-  setting {
-    namespace = "aws:elbv2:listener:80"
-    name      = "ListenerEnabled"
-    value     = "false"
-  }
-  
-  # Configure HTTPS listener
+  # Add a custom listener rule to the load balancer's HTTPS listener 
   setting {
     namespace = "aws:elbv2:listener:443"
-    name      = "ListenerEnabled"
-    value     = "true"
+    name      = "Rules"
+    value     = "default,defaultrule"
   }
-  
+
+  # Configure rules to forward to process
   setting {
-    namespace = "aws:elbv2:listener:443"
-    name      = "Protocol"
-    value     = "HTTPS"
+    namespace = "aws:elbv2:listenerrule:defaultrule"
+    name      = "PathPatterns"
+    value     = "/*"
   }
 
   setting {
-    namespace = "aws:elbv2:listener:443"
-    name      = "DefaultProcess"
+    namespace = "aws:elbv2:listenerrule:defaultrule"
+    name      = "Process"
     value     = "default"
   }
   
   setting {
-    namespace = "aws:elbv2:listener:443"
-    name      = "SSLCertificateArns"
-    value     = data.aws_acm_certificate.existing_cert.arn
+    namespace = "aws:elbv2:listenerrule:defaultrule"
+    name      = "Priority"
+    value     = "1"
   }
   
   # Environment Type - Change to LoadBalanced for high availability
@@ -671,6 +695,78 @@ resource "aws_elastic_beanstalk_environment" "backend_env" {
     name      = "LOG_FILE_PATH"
     value     = "/var/app/current/logs/app.log"
   }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "ENABLE_EMAIL"
+    value     = "true"
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "FROM_EMAIL"
+    value     = "meetgurudev@aolf.app"
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "SENDGRID_API_KEY"
+    value     = var.sendgrid_api_key
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "S3_BUCKET_NAME"
+    value     = "aolf-gsec-prod"
+  }
+  
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "AWS_ACCESS_KEY_ID"
+    value     = var.aws_access_key_id
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "AWS_SECRET_ACCESS_KEY"
+    value     = var.aws_secret_access_key
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "AWS_REGION"
+    value     = "us-east-2"
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "OPENAI_API_KEY"
+    value     = var.openai_api_key
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "OPENAI_MODEL"
+    value     = "gpt-4o-mini"
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "GOOGLE_CLIENT_ID"
+    value     = var.google_client_id
+  }
+  
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "JWT_SECRET_KEY"
+    value     = var.jwt_secret_key
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "APP_BASE_URL"
+    value     = "https://meetgurudev.aolf.app"
+  }
 }
 
 ### 🚀 Load Balancer (HTTPS Only)
@@ -726,20 +822,6 @@ resource "aws_lb_listener" "https" {
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.backend_tg.arn
-  }
-}
-
-resource "aws_lb_listener" "http_redirect" {
-  load_balancer_arn = aws_lb.backend_lb.arn
-  port     = "80"
-  protocol = "HTTP"
-  default_action {
-    type = "redirect"
-    redirect {
-      port        = "443"
-      protocol    = "HTTPS"
-      status_code = "HTTP_301"
-    }
   }
 }
 
