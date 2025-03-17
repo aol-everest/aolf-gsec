@@ -6,6 +6,7 @@ import enum
 import os
 
 schema = os.getenv('POSTGRES_SCHEMA', 'public')
+schema_prefix = f"{schema}." if schema != 'public' else ''
 
 class RelationshipType(str, enum.Enum):
     """Relationship type enum with proper case values"""
@@ -19,10 +20,10 @@ class DignitaryPointOfContact(Base):
     __tablename__ = "dignitary_point_of_contacts"
 
     id = Column(Integer, primary_key=True, index=True)
-    dignitary_id = Column(Integer, ForeignKey(f"{schema}.dignitaries.id"), nullable=False)
-    poc_id = Column(Integer, ForeignKey(f"{schema}.users.id"), nullable=False)
+    dignitary_id = Column(Integer, ForeignKey(f"{schema_prefix}dignitaries.id"), nullable=False)
+    poc_id = Column(Integer, ForeignKey(f"{schema_prefix}users.id"), nullable=False)
     relationship_type = Column(Enum(RelationshipType), nullable=False)
-    created_by = Column(Integer, ForeignKey(f"{schema}.users.id"), nullable=False)
+    created_by = Column(Integer, ForeignKey(f"{schema_prefix}users.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships

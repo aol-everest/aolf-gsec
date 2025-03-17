@@ -301,7 +301,7 @@ PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-prod-database.cluster-cxg084kkue
 PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-prod-database.cluster-cxg084kkue8o.us-east-2.rds.amazonaws.com \
   -U aolf_gsec_admin \
   -d aolf_gsec \
-  -c "INSERT INTO users (email, first_name, last_name, role, email_notification_preferences, created_at, updated_at) VALUES (
+  -c "INSERT INTO aolf_gsec_app.users (email, first_name, last_name, role, email_notification_preferences, created_at, updated_at) VALUES (
     'amit.nair@artofliving.org',
     'Amit',
     'Nair',

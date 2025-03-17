@@ -9,17 +9,17 @@ def load_environment():
     env = os.getenv("ENVIRONMENT", "dev")
     env_file = f".env.{env}"
 
-    # First check if we're in an Elastic Beanstalk environment
-    # If we are, we don't need to load from .env file as EB sets the environment variables
-    if os.getenv("POSTGRES_HOST") and "elasticbeanstalk" in os.getenv("POSTGRES_HOST", ""):
-        print("Running in Elastic Beanstalk environment, using environment variables")
+    # First check if we're running in a deployed environment with config already set
+    # Check for either POSTGRES_HOST or POSTGRES_WRITE_HOST for Aurora setups
+    if os.getenv("POSTGRES_HOST") or os.getenv("POSTGRES_WRITE_HOST"):
+        print("Running in deployed environment, using environment variables")
         print(f"Environment: {env}")
-        print(f"Database Host: {os.getenv('POSTGRES_HOST')}")
+        print(f"Database Host: {os.getenv('POSTGRES_HOST') or os.getenv('POSTGRES_WRITE_HOST')}")
         print(f"Database: {os.getenv('POSTGRES_DB')}")
-        print(f"AWS Region: {os.getenv('AWS_REGION')}")
+        print(f"AWS Region: {os.getenv('AWS_REGION', 'Not set')}")
         return True
     
-    # If we're not in EB or the environment variables aren't set, try to load from .env file
+    # If environment variables aren't set, try to load from .env file
     if os.path.exists(env_file):
         print(f"Loading environment from {env_file}")
         load_dotenv(env_file, override=False)  # Don't override existing env vars
@@ -28,8 +28,8 @@ def load_environment():
         # (without revealing sensitive information)
         print(f"Environment: {env}")
         print(f"Database: {os.getenv('POSTGRES_DB')}")
-        print(f"AWS Region: {os.getenv('AWS_REGION')}")
-        print(f"S3 Bucket: {os.getenv('S3_BUCKET_NAME')}")
+        print(f"AWS Region: {os.getenv('AWS_REGION', 'Not set')}")
+        print(f"S3 Bucket: {os.getenv('S3_BUCKET_NAME', 'Not set')}")
         
         return True
     else:

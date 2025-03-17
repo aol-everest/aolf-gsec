@@ -100,8 +100,8 @@ GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 if not GOOGLE_CLIENT_ID:
     raise ValueError("GOOGLE_CLIENT_ID is not set")
 
-# Create database tables on the write database
-models.Base.metadata.create_all(bind=write_engine)
+# MOVED: Database table creation to the startup event
+# models.Base.metadata.create_all(bind=write_engine)
 
 app = FastAPI(
     title="AOLF GSEC API",
@@ -138,6 +138,7 @@ app.add_middleware(
         "https://aolf-gsec-uat.appspot.com",
         "https://d2wxu2rjtgc6ou.cloudfront.net",
         "https://aolfgsecuat.aolf.app",
+        "https://d1ol7e67owy62w.cloudfront.net",
         "https://meetgurudev.aolf.app",
     ],
     allow_credentials=True,
@@ -283,6 +284,17 @@ async def get_current_user(
     db: Session = Depends(get_read_db),
     token: str = Security(oauth2_scheme),
 ) -> models.User:
+    """
+    Get the current authenticated user using the read-only database session.
+    
+    Use this function when:
+    - You only need to read user data without modifying it
+    - The User object won't be associated with other database entities in write operations
+    - You're performing read-only operations (GET endpoints)
+    
+    For write operations where the user object might be linked to other entities,
+    use get_current_user_for_write instead to avoid SQLAlchemy session conflicts.
+    """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -296,6 +308,68 @@ async def get_current_user(
     
     try:
         logger.debug("Attempting to decode JWT token")
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            logger.warning("Token payload missing 'sub' claim")
+            raise credentials_exception
+            
+        # Check token expiration
+        exp = payload.get("exp")
+        if exp is None or datetime.utcnow() > datetime.fromtimestamp(exp):
+            logger.warning(f"Token expired for user {email}")
+            raise token_expired_exception
+            
+        logger.debug(f"Token decoded successfully for user {email}")
+    except jwt.ExpiredSignatureError:
+        logger.warning("JWT token has expired signature")
+        raise token_expired_exception
+    except InvalidTokenError as e:
+        logger.warning(f"Invalid JWT token: {str(e)}")
+        raise credentials_exception
+        
+    # Look up the user in the database
+    try:
+        user = db.query(models.User).filter(models.User.email == email).first()
+        if user is None:
+            logger.warning(f"No user found with email {email}")
+            raise credentials_exception
+            
+        logger.debug(f"User {email} authenticated successfully")
+        return user
+    except Exception as e:
+        logger.error(f"Database error during user authentication: {str(e)}")
+        raise credentials_exception
+
+async def get_current_user_for_write(
+    db: Session = Depends(get_db),
+    token: str = Security(oauth2_scheme),
+) -> models.User:
+    """
+    Get the current authenticated user using the write database session.
+    
+    Use this function when:
+    - You need to perform write operations where the User object will be associated
+      with other database entities (e.g., as a foreign key relationship)
+    - You're using the user in POST, PUT, PATCH, or DELETE operations
+    - You need to assign the user to another object's relationship
+    
+    This prevents SQLAlchemy "Object already attached to session" errors that occur
+    when an object from one session is used in operations with another session.
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    token_expired_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Token has expired",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    try:
+        logger.debug("Attempting to decode JWT token for write operation")
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
@@ -412,8 +486,8 @@ async def verify_google_token(
 @app.post("/appointments/new", response_model=schemas.Appointment)
 async def create_appointment(
     appointment: schemas.AppointmentCreate,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
 ):
     start_time = datetime.utcnow()
     logger.info(f"Creating new appointment for user {current_user.email} (ID: {current_user.id})")
@@ -482,8 +556,8 @@ async def create_appointment(
 @app.post("/dignitaries/new", response_model=schemas.Dignitary)
 async def new_dignitary(
     dignitary: schemas.DignitaryCreate,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
 ):
     # Extract poc_relationship_type and create dignitary without it
     poc_relationship_type = dignitary.poc_relationship_type
@@ -516,8 +590,8 @@ async def new_dignitary(
 async def update_dignitary(
     dignitary_id: int,
     dignitary: schemas.DignitaryUpdate,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
 ):
     # Log the incoming request data
     logger.info(f"Updating dignitary {dignitary_id} with data: {dignitary.dict()}")
@@ -599,7 +673,7 @@ async def get_assigned_dignitaries(
 @app.patch("/users/me/update", response_model=schemas.User)
 async def update_user(
     user_update: schemas.UserUpdate,
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_user_for_write),
     db: Session = Depends(get_db)
 ):
     logger.info(f"Received user update: {user_update.dict()}")
@@ -801,7 +875,7 @@ async def get_appointment(
 async def update_appointment(
     appointment_id: int,
     appointment_update: schemas.AppointmentAdminUpdate,
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_user_for_write),
     db: Session = Depends(get_db)
 ):
     """Update an appointment"""
@@ -875,7 +949,7 @@ async def get_all_users(
 @requires_role(models.UserRole.SECRETARIAT)
 async def create_user(
     user: schemas.UserAdminCreate,
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_user_for_write),
     db: Session = Depends(get_db)
 ):
     """Create a new user"""
@@ -899,7 +973,7 @@ async def create_user(
 async def update_user(
     user_id: int,
     user_update: schemas.UserAdminUpdate,
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_user_for_write),
     db: Session = Depends(get_db)
 ):
     """Update a user"""
@@ -986,7 +1060,7 @@ async def get_user_role_options():
 @requires_role(models.UserRole.SECRETARIAT)
 async def create_location(
     location: schemas.LocationAdminCreate,
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_user_for_write),
     db: Session = Depends(get_db)
 ):
     """Create a new location"""
@@ -1071,7 +1145,7 @@ async def get_location(
 async def update_location(
     location_id: int,
     location_update: schemas.LocationAdminUpdate,
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_user_for_write),
     db: Session = Depends(get_db)
 ):
     """Update a location"""
@@ -1124,7 +1198,7 @@ async def upload_appointment_attachment(
     appointment_id: int,
     file: UploadFile = File(...),
     attachment_type: str = Form(models.AttachmentType.GENERAL),
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_user_for_write),
     db: Session = Depends(get_db)
 ):
     """Upload an attachment for an appointment"""
@@ -1139,9 +1213,9 @@ async def upload_appointment_attachment(
     # Upload file to S3
     file_content = await file.read()
     upload_result = upload_file(
-        file_content,
-        f"{appointment_id}/{file.filename}",
-        file.content_type,
+        file_data=file_content,
+        file_name=f"{appointment_id}/{file.filename}",
+        content_type=file.content_type,
         entity_type="appointments"
     )
 
@@ -1166,7 +1240,7 @@ async def upload_appointment_attachment(
 async def upload_business_card_attachment(
     appointment_id: int,
     file: UploadFile = File(...),
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_user_for_write),
     db: Session = Depends(get_db)
 ):
     """Upload a business card attachment and extract information from it"""
@@ -1181,9 +1255,9 @@ async def upload_business_card_attachment(
     # Upload file to S3
     file_content = await file.read()
     upload_result = upload_file(
-        file_content,
-        f"{appointment_id}/{file.filename}",
-        file.content_type,
+        file_data=file_content,
+        file_name=f"{appointment_id}/{file.filename}",
+        content_type=file.content_type,
         entity_type="appointments"
     )
 
@@ -1255,7 +1329,7 @@ async def upload_business_card_attachment(
 async def create_dignitary_from_business_card(
     appointment_id: int,
     extraction: schemas.BusinessCardExtraction,
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_user_for_write),
     db: Session = Depends(get_db)
 ):
     """Create a dignitary record from business card extraction"""
@@ -1427,7 +1501,7 @@ async def get_attachment_thumbnail(
 async def upload_location_attachment(
     location_id: int,
     file: UploadFile = File(...),
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_user_for_write),
     db: Session = Depends(get_db)
 ):
     """Upload an attachment for a location"""
@@ -1528,7 +1602,7 @@ async def get_location_thumbnail(
 @requires_role(models.UserRole.SECRETARIAT)
 async def remove_location_attachment(
     location_id: int,
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_user_for_write),
     db: Session = Depends(get_db)
 ):
     """Remove an attachment from a location"""
@@ -1550,7 +1624,7 @@ async def remove_location_attachment(
 @app.delete("/appointments/attachments/{attachment_id}", status_code=204)
 async def delete_attachment(
     attachment_id: int,
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_user_for_write),
     db: Session = Depends(get_db)
 ):
     """Delete an attachment"""
@@ -1585,8 +1659,8 @@ async def get_business_card_extraction_status(
 async def add_dignitaries_to_appointment(
     appointment_id: int,
     dignitary_ids: List[int],
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
 ):
     """Add dignitaries to an existing appointment"""
     appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
@@ -1623,7 +1697,7 @@ async def remove_dignitary_from_appointment(
     appointment_id: int,
     dignitary_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(get_current_user_for_write)
 ):
     """Remove a dignitary from an appointment"""
     appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
@@ -1722,16 +1796,22 @@ async def health_check():
 async def startup_event():
     logger.info("Application startup complete")
     # Log important configuration information
-    logger.info(f"Environment: {os.getenv('ENV', 'dev')}")
-    logger.info(f"Database host: {os.getenv('POSTGRES_HOST')}")
+    logger.info(f"Environment: {os.getenv('ENVIRONMENT', 'dev')}")
     
-    # Check database connection on startup
+    # Create database tables on startup
     try:
-        db = SessionLocal()
-        # Use SQLAlchemy's text() function for raw SQL
-        db.execute(text("SELECT 1"))
-        logger.info("Database connection successful")
-        db.close()
+        logger.info("Creating database tables if they don't exist")
+        models.Base.metadata.create_all(bind=write_engine)
+        logger.info("Database tables created successfully")
+    except Exception as e:
+        logger.error(f"Failed to create database tables: {str(e)}")
+    
+    # Check database connection on startup using a raw connection
+    # instead of a session to avoid concurrent operations
+    try:
+        with write_engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+            logger.info("Database connection successful")
     except Exception as e:
         logger.error(f"Database connection failed on startup: {str(e)}")
 

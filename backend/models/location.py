@@ -5,6 +5,7 @@ from database import Base
 import os
 
 schema = os.getenv('POSTGRES_SCHEMA', 'public')
+schema_prefix = f"{schema}." if schema != 'public' else ''
 
 class Location(Base):
     __tablename__ = "locations"
@@ -26,9 +27,9 @@ class Location(Base):
     
     # Timestamps and audit fields
     created_at = Column(DateTime, default=datetime.utcnow)
-    created_by = Column(Integer, ForeignKey(f"{schema}.users.id"), nullable=False)
+    created_by = Column(Integer, ForeignKey(f"{schema_prefix}users.id"), nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    updated_by = Column(Integer, ForeignKey(f"{schema}.users.id"))
+    updated_by = Column(Integer, ForeignKey(f"{schema_prefix}users.id"))
     
     # Relationships
     created_by_user = relationship("User", foreign_keys=[created_by])

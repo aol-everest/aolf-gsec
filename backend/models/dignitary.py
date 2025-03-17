@@ -8,6 +8,7 @@ from typing import Optional
 import os
 
 schema = os.getenv('POSTGRES_SCHEMA', 'public')
+schema_prefix = f"{schema}." if schema != 'public' else ''
 
 class HonorificTitle(str, enum.Enum):
     """Honorific title enum with proper case values"""
@@ -119,10 +120,10 @@ class Dignitary(Base):
     
     # Source of the dignitary record
     source = Column(Enum(DignitarySource), default=DignitarySource.MANUAL, nullable=False)
-    source_appointment_id = Column(Integer, ForeignKey(f"{schema}.appointments.id", ondelete="SET NULL"), nullable=True)
+    source_appointment_id = Column(Integer, ForeignKey(f"{schema_prefix}appointments.id", ondelete="SET NULL"), nullable=True)
   
     # Foreign keys
-    created_by = Column(Integer, ForeignKey(f"{schema}.users.id"), nullable=False)
+    created_by = Column(Integer, ForeignKey(f"{schema_prefix}users.id"), nullable=False)
 
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)

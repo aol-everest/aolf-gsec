@@ -75,6 +75,8 @@ def ensure_schema_exists(conn, schema_name, user_name):
     except Exception as e:
         logger.error(f"Error ensuring schema {schema_name} exists: {str(e)}")
         logger.warning("This might indicate a permissions issue. Ensure the database user has CREATE privileges on the database.")
+        # Don't raise the exception - let the application continue even if schema creation fails
+        # The application might still work if tables already exist
         return False
 
 # Build database URLs
@@ -100,6 +102,10 @@ def get_db_engine(db_url: str, for_writes: bool = False):
         SQLAlchemy engine
     """
     try:
+        # Log the database host we're connecting to (without credentials)
+        host_part = db_url.split('@')[1].split('/')[0] if '@' in db_url else 'unknown'
+        logger.info(f"Creating database engine for {'write' if for_writes else 'read'} operations on host: {host_part}")
+        
         # Create engine with schema configuration
         engine = create_engine(
             db_url,
@@ -115,8 +121,28 @@ def get_db_engine(db_url: str, for_writes: bool = False):
         
         # Set up the schema if needed - only for write engines
         if for_writes and POSTGRES_SCHEMA != "public":
-            with engine.connect() as conn:
-                ensure_schema_exists(conn, POSTGRES_SCHEMA, POSTGRES_USER)
+            retries = 0
+            last_error = None
+            
+            while retries < MAX_RETRIES:
+                try:
+                    with engine.connect() as conn:
+                        success = ensure_schema_exists(conn, POSTGRES_SCHEMA, POSTGRES_USER)
+                        if success:
+                            break
+                except Exception as conn_err:
+                    last_error = conn_err
+                    logger.warning(f"Failed to connect on attempt {retries+1}/{MAX_RETRIES}: {str(conn_err)}")
+                
+                # Wait before retrying
+                retries += 1
+                if retries < MAX_RETRIES:
+                    logger.info(f"Waiting {RETRY_INTERVAL}s before retry {retries+1}...")
+                    time.sleep(RETRY_INTERVAL)
+            
+            if retries == MAX_RETRIES and last_error:
+                logger.error(f"Failed to set up schema after {MAX_RETRIES} attempts")
+                # Continue anyway - the app might still work if schema is set up elsewhere
                 
         return engine
     except Exception as e:
@@ -198,11 +224,16 @@ for retry in range(MAX_RETRIES):
 def session_factory(engine):
     session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     
-    # Set search_path for all sessions to use the configured schema
-    @event.listens_for(session, "after_begin")
-    def set_schema(session, transaction, connection):
-        if POSTGRES_SCHEMA != "public":
-            session.execute(text(f"SET search_path TO {POSTGRES_SCHEMA}, public"))
+    # Set the schema at the connection level instead of the session level
+    # to avoid concurrent operation errors
+    if POSTGRES_SCHEMA != "public":
+        @event.listens_for(engine, "connect")
+        def set_schema_on_connect(dbapi_connection, connection_record):
+            cursor = dbapi_connection.cursor()
+            cursor.execute(f"SET search_path TO {POSTGRES_SCHEMA}, public")
+            cursor.close()
+            
+        logger.info(f"Configured schema search_path for {POSTGRES_SCHEMA} at connection level")
     
     return session
 

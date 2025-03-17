@@ -6,6 +6,7 @@ import enum
 import os
 
 schema = os.getenv('POSTGRES_SCHEMA', 'public')
+schema_prefix = f"{schema}." if schema != 'public' else ''
 
 class UserRole(str, enum.Enum):
     """User role enum with proper case values"""
@@ -39,8 +40,8 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_login_at = Column(DateTime)
-    created_by = Column(Integer, ForeignKey(f"{schema}.users.id"), nullable=True)
-    updated_by = Column(Integer, ForeignKey(f"{schema}.users.id"), nullable=True)
+    created_by = Column(Integer, ForeignKey(f"{schema_prefix}users.id"), nullable=True)
+    updated_by = Column(Integer, ForeignKey(f"{schema_prefix}users.id"), nullable=True)
 
     # Relationships
     appointments = relationship(
