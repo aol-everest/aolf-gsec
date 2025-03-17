@@ -59,7 +59,7 @@ stream_handler.setFormatter(formatter)
 log_handlers = [stream_handler]  # Always log to stdout/stderr for EBS to collect
 
 # In production-like environments, also log to a file with rotation
-log_file_path = os.getenv("LOG_FILE_PATH", "/var/log/app/application.log")
+log_file_path = os.getenv("LOG_FILE_PATH", "/var/app/current/logs/app.log")
 log_file_enabled = os.getenv("LOG_FILE_ENABLED", "false").lower() == "true"
 
 if log_file_enabled:
