@@ -285,6 +285,7 @@ PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-prod-database.cluster-cxg084kkue
   -U aolf_gsec_admin \
   -d postgres \
   -c "GRANT CONNECT ON DATABASE aolf_gsec TO $APP_USER_NAME;" \
+  -c "GRANT CREATE ON DATABASE aolf_gsec TO $APP_USER_NAME;" \
   -c "GRANT USAGE ON SCHEMA public TO $APP_USER_NAME;" \
   -c "GRANT CREATE ON SCHEMA public TO $APP_USER_NAME;" \
   -c "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO $APP_USER_NAME;" \

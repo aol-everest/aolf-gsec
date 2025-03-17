@@ -8,6 +8,7 @@ from config import environment  # Import the centralized environment module
 from sqlalchemy.sql import text
 from contextlib import contextmanager
 from typing import Optional
+from sqlalchemy import event
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -18,6 +19,7 @@ POSTGRES_USER = os.getenv("POSTGRES_USER", "aolf_gsec_app_user")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "postgres")
 POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
 POSTGRES_DB = os.getenv("POSTGRES_DB", "aolf_gsec")
+POSTGRES_SCHEMA = os.getenv("POSTGRES_SCHEMA", "public")  # Get schema from env, default to public
 
 # Check for Aurora read/write endpoints
 POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
@@ -31,6 +33,9 @@ if use_aurora_endpoints:
     logger.info(f"Using Aurora endpoints - Read: {POSTGRES_READ_HOST}, Write: {POSTGRES_WRITE_HOST}")
 else:
     logger.info(f"Using single database host: {POSTGRES_HOST}")
+
+# Log the schema configuration
+logger.info(f"Using database schema: {POSTGRES_SCHEMA}")
 
 # Connection parameters with increased timeout for cross-region/cross-VPC connections
 CONNECT_TIMEOUT = 120  # Increased to 2 minutes for cross-VPC connections
@@ -63,8 +68,8 @@ def get_db_engine(db_url: str, for_writes: bool = False):
         SQLAlchemy engine
     """
     try:
-        # Try to connect to the specified database with increased timeout
-        return create_engine(
+        # Create engine with schema configuration
+        engine = create_engine(
             db_url,
             connect_args={
                 "connect_timeout": CONNECT_TIMEOUT,
@@ -75,6 +80,16 @@ def get_db_engine(db_url: str, for_writes: bool = False):
             pool_size=5,  # Set explicit pool size
             max_overflow=10  # Allow up to 10 connections beyond pool_size
         )
+        
+        # Set up the schema if needed
+        if for_writes and POSTGRES_SCHEMA != "public":
+            with engine.connect() as conn:
+                # Create schema if it doesn't exist and set search path
+                conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {POSTGRES_SCHEMA}"))
+                conn.execute(text(f"COMMIT"))
+                logger.info(f"Schema '{POSTGRES_SCHEMA}' created or already exists")
+                
+        return engine
     except Exception as e:
         # If there's an error, check if it's because the database doesn't exist
         if for_writes and "database" in str(e).lower() and "not exist" in str(e).lower():
@@ -91,11 +106,11 @@ def get_db_engine(db_url: str, for_writes: bool = False):
             
             # Create the database
             with postgres_engine.connect() as conn:
-                conn.execute("commit")  # Required to run CREATE DATABASE
+                conn.execute(text("COMMIT"))  # Required to run CREATE DATABASE
                 conn.execute(text(f"CREATE DATABASE {POSTGRES_DB}"))
             
             # Now connect to the newly created database
-            return create_engine(
+            engine = create_engine(
                 db_url,
                 connect_args={
                     "connect_timeout": CONNECT_TIMEOUT,
@@ -106,6 +121,15 @@ def get_db_engine(db_url: str, for_writes: bool = False):
                 pool_size=5,
                 max_overflow=10
             )
+            
+            # Set up the schema if needed
+            if POSTGRES_SCHEMA != "public":
+                with engine.connect() as conn:
+                    conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {POSTGRES_SCHEMA}"))
+                    conn.execute(text(f"COMMIT"))
+                    logger.info(f"Schema '{POSTGRES_SCHEMA}' created or already exists")
+            
+            return engine
         else:
             # Re-raise the exception if it's not about the database not existing
             raise
@@ -143,15 +167,30 @@ for retry in range(MAX_RETRIES):
             logger.error("Maximum retry attempts reached. Could not connect to the database(s).")
             raise
 
-# Create session classes for read and write operations
-WriteSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=write_engine)
-ReadSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=read_engine)
+# Create session classes for read and write operations with schema configuration
+def session_factory(engine):
+    session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    
+    # Set search_path for all sessions to use the configured schema
+    @event.listens_for(session, "after_begin")
+    def set_schema(session, transaction, connection):
+        if POSTGRES_SCHEMA != "public":
+            session.execute(text(f"SET search_path TO {POSTGRES_SCHEMA}, public"))
+    
+    return session
+
+WriteSessionLocal = session_factory(write_engine)
+ReadSessionLocal = session_factory(read_engine)
 
 # For backward compatibility
 SessionLocal = WriteSessionLocal
 
 # Define Base for declarative models
 Base = declarative_base()
+
+# Set schema for all models
+if POSTGRES_SCHEMA != "public":
+    Base.__table_args__ = {'schema': POSTGRES_SCHEMA}
 
 # Context managers for database sessions
 @contextmanager

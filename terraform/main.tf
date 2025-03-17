@@ -242,11 +242,25 @@ resource "aws_s3_bucket" "app_bucket" {
   bucket = "aolf-gsec-prod-app-bucket"  # choose a unique bucket name
 }
 
+# Compute hash of the ZIP file to detect changes and trigger replacement
+resource "terraform_data" "app_package_hash" {
+  input = filebase64sha256("../backend/deployment/aolf-gsec-backend.zip")
+}
+
 # Upload the FastAPI application package (ZIP file) to S3
 resource "aws_s3_object" "app_package" {
   bucket = aws_s3_bucket.app_bucket.id
   key    = "aolf-gsec-backend.zip"             # the S3 object key (file name in bucket)
   source = "../backend/deployment/aolf-gsec-backend.zip"     # path to your local ZIP package
+  etag   = filemd5("../backend/deployment/aolf-gsec-backend.zip")  # Forces update when file content changes
+  
+  # Alternative approach using lifecycle
+  lifecycle {
+    replace_triggered_by = [
+      # This will force replacement of the S3 object when the content hash changes
+      terraform_data.app_package_hash
+    ]
+  }
 }
 
 ### 🚀 Elastic Beanstalk with High Availability
@@ -257,7 +271,7 @@ resource "aws_elastic_beanstalk_application" "backend_app" {
 
 # Elastic Beanstalk Application Version linking to the S3 package
 resource "aws_elastic_beanstalk_application_version" "app_version" {
-  name             = "v4"
+  name             = "v5.1 (added app specific DB)"
   application      = aws_elastic_beanstalk_application.backend_app.name
   description      = "FastAPI Backend"
   bucket           = aws_s3_bucket.app_bucket.id
@@ -454,6 +468,12 @@ resource "aws_elastic_beanstalk_environment" "backend_env" {
     namespace = "aws:elasticbeanstalk:application:environment"
     name      = "POSTGRES_USER"
     value     = "aolf_gsec_app_user"
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "POSTGRES_SCHEMA"
+    value     = "aolf_gsec_app"
   }
 
   # Python configuration
