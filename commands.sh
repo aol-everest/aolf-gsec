@@ -123,6 +123,9 @@ pip install awscli awsebcli
 # Configure AWS CLI
 aws configure
 
+# Install Session Manager Plugin
+curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/mac/sessionmanager-bundle.zip" -o "sessionmanager-bundle.zip" && unzip sessionmanager-bundle.zip && sudo ./sessionmanager-bundle/install -i /usr/local/sessionmanagerplugin -b /usr/local/bin/session-manager-plugin
+
 # Backend Deployment to AWS Elastic Beanstalk
 cd backend
 # Deploy to UAT environment
@@ -141,6 +144,8 @@ eb logs aolf-gsec-prod-backend-env
 # SSH into Elastic Beanstalk instance
 eb ssh aolf-gsec-backend-uat
 eb ssh aolf-gsec-prod-backend-env
+
+aws ssm start-session --target i-001d04a51ce791d3d
 
 # Frontend Deployment to AWS S3 and CloudFront
 cd frontend
@@ -239,9 +244,12 @@ zip -r deployment/aolf-gsec-backend-uat.zip . \
 
 zip -r deployment/aolf-gsec-backend.zip . \
     -x "*ebextensions*" \
+    -x "*deployment*" \
+    -x ".elasticbeanstalk*" \
     -x "*venv*" \
     -x "*.git*" \
-    -x "*__pycache__*"
+    -x "*__pycache__*" \
+    -x ".ebignore"
 
 openssl rand -base64 6
 
@@ -255,14 +263,59 @@ eb ssh aolf-gsec-backend-uat
 
 # 2. Install required tools if not present
 sudo yum install -y jq postgresql15
+sudo yum install postgresql16 
 
 # 3. Retrieve the master password from Secrets Manager
 # MASTER_PASSWORD=$(aws secretsmanager get-secret-value --secret-id 'arn:aws:secretsmanager:us-east-2:851725315788:secret:rds!db-f1759782-588f-413c-8d45-55675a2138bf-ZDATni' --query SecretString --output text | jq -r '.password')
+
+
 MASTER_PASSWORD=""
 
 # 4. Connect to PostgreSQL and create the application user
 APP_USER_NAME="aolf_gsec_app_user"
-APP_USER_PASSWORD="eHvO8gyF"
+APP_USER_PASSWORD=""
+
+# Connect to postgres database and create user
+PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-prod-database.cluster-cxg084kkue8o.us-east-2.rds.amazonaws.com \
+  -U aolf_gsec_admin \
+  -d postgres \
+  -c "CREATE USER $APP_USER_NAME WITH PASSWORD '$APP_USER_PASSWORD';"
+
+PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-prod-database.cluster-cxg084kkue8o.us-east-2.rds.amazonaws.com \
+  -U aolf_gsec_admin \
+  -d postgres \
+  -c "GRANT CONNECT ON DATABASE aolf_gsec TO $APP_USER_NAME;" \
+  -c "GRANT USAGE ON SCHEMA public TO $APP_USER_NAME;" \
+  -c "GRANT CREATE ON SCHEMA public TO $APP_USER_NAME;" \
+  -c "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO $APP_USER_NAME;" \
+  -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO $APP_USER_NAME;"
+
+# Insert a SECRETARIAT user record for Amit Nair
+PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-prod-database.cluster-cxg084kkue8o.us-east-2.rds.amazonaws.com \
+  -U aolf_gsec_admin \
+  -d aolf_gsec \
+  -c "INSERT INTO users (email, first_name, last_name, role, email_notification_preferences, created_at, updated_at) VALUES (
+    'amit.nair@artofliving.org',
+    'Amit',
+    'Nair',
+    'SECRETARIAT',
+    '{\"appointment_created\": true, \"appointment_updated\": true, \"new_appointment_request\": true}',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+  ) ON CONFLICT (email) DO UPDATE SET 
+    role = 'SECRETARIAT',
+    email_notification_preferences = '{\"appointment_created\": true, \"appointment_updated\": true, \"new_appointment_request\": true}',
+    updated_at = CURRENT_TIMESTAMP
+    RETURNING id, email, role;"
+
+
+# -- Setup UAT database ----------------------------------------------------------------------------------------------
+
+MASTER_PASSWORD=""
+
+# 4. Connect to PostgreSQL and create the application user
+APP_USER_NAME="aolf_gsec_app_user"
+APP_USER_PASSWORD=""
 
 # Connect to postgres database and create user
 PGPASSWORD="$MASTER_PASSWORD" psql -h aolf-gsec-db-uat.cxg084kkue8o.us-east-2.rds.amazonaws.com \
