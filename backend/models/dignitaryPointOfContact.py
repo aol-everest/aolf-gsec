@@ -1,9 +1,11 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Enum, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
-from sqlalchemy import Enum
 import enum
+import os
+
+schema = os.getenv('POSTGRES_SCHEMA', 'public')
 
 class RelationshipType(str, enum.Enum):
     """Relationship type enum with proper case values"""
@@ -17,10 +19,10 @@ class DignitaryPointOfContact(Base):
     __tablename__ = "dignitary_point_of_contacts"
 
     id = Column(Integer, primary_key=True, index=True)
-    dignitary_id = Column(Integer, ForeignKey("dignitaries.id"), nullable=False)
-    poc_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    dignitary_id = Column(Integer, ForeignKey(f"{schema}.dignitaries.id"), nullable=False)
+    poc_id = Column(Integer, ForeignKey(f"{schema}.users.id"), nullable=False)
     relationship_type = Column(Enum(RelationshipType), nullable=False)
-    created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_by = Column(Integer, ForeignKey(f"{schema}.users.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships

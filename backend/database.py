@@ -45,6 +45,38 @@ RETRY_INTERVAL = 15  # Increased interval between retries
 # Command timeout for operations
 COMMAND_TIMEOUT = 120  # Increased timeout for database operations
 
+# Function to check/create schema - centralized implementation
+def ensure_schema_exists(conn, schema_name, user_name):
+    """
+    Ensure the specified schema exists and user has proper permissions.
+    
+    Args:
+        conn: A SQLAlchemy connection
+        schema_name: The name of the schema to create
+        user_name: The database user who needs access
+        
+    Returns:
+        bool: Whether the schema exists or was created successfully
+    """
+    try:
+        # Check if schema exists
+        result = conn.execute(text(f"SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = '{schema_name}')"))
+        schema_exists = result.scalar()
+        
+        if not schema_exists:
+            # Create schema and set permissions
+            conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema_name}"))
+            conn.execute(text(f"GRANT ALL ON SCHEMA {schema_name} TO {user_name}"))
+            conn.execute(text("COMMIT"))
+            logger.info(f"Created schema {schema_name} and granted permissions to {user_name}")
+        else:
+            logger.info(f"Schema {schema_name} already exists")
+        return True
+    except Exception as e:
+        logger.error(f"Error ensuring schema {schema_name} exists: {str(e)}")
+        logger.warning("This might indicate a permissions issue. Ensure the database user has CREATE privileges on the database.")
+        return False
+
 # Build database URLs
 def get_database_url(host: str, database: str = POSTGRES_DB) -> str:
     return f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{host}:{POSTGRES_PORT}/{database}"
@@ -81,13 +113,10 @@ def get_db_engine(db_url: str, for_writes: bool = False):
             max_overflow=10  # Allow up to 10 connections beyond pool_size
         )
         
-        # Set up the schema if needed
+        # Set up the schema if needed - only for write engines
         if for_writes and POSTGRES_SCHEMA != "public":
             with engine.connect() as conn:
-                # Create schema if it doesn't exist and set search path
-                conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {POSTGRES_SCHEMA}"))
-                conn.execute(text(f"COMMIT"))
-                logger.info(f"Schema '{POSTGRES_SCHEMA}' created or already exists")
+                ensure_schema_exists(conn, POSTGRES_SCHEMA, POSTGRES_USER)
                 
         return engine
     except Exception as e:
@@ -122,12 +151,10 @@ def get_db_engine(db_url: str, for_writes: bool = False):
                 max_overflow=10
             )
             
-            # Set up the schema if needed
+            # Set up the schema if needed - reusing our function
             if POSTGRES_SCHEMA != "public":
                 with engine.connect() as conn:
-                    conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {POSTGRES_SCHEMA}"))
-                    conn.execute(text(f"COMMIT"))
-                    logger.info(f"Schema '{POSTGRES_SCHEMA}' created or already exists")
+                    ensure_schema_exists(conn, POSTGRES_SCHEMA, POSTGRES_USER)
             
             return engine
         else:
@@ -190,7 +217,36 @@ Base = declarative_base()
 
 # Set schema for all models
 if POSTGRES_SCHEMA != "public":
-    Base.__table_args__ = {'schema': POSTGRES_SCHEMA}
+    # Set schema for all table definitions using metadata instead of table args
+    # This allows us to reference the schema in foreign keys properly
+    schema_translator = lambda schema, table, metadata: f"{schema}.{table}"
+    
+    # Use a callback for schema qualification
+    def table_args_factory():
+        return {
+            'schema': POSTGRES_SCHEMA
+        }
+    
+    # Provide schema info to all models
+    Base.__table_args__ = table_args_factory()
+    
+    # Log the schema configuration
+    logger.info(f"Set Base.__table_args__ schema to {POSTGRES_SCHEMA}")
+    
+    # NOTE: We don't need to re-check/create schema here since the write_engine
+    # has already been initialized above and would have created the schema.
+    # This also avoids race conditions if multiple application instances start simultaneously.
+    
+    # Verify the schema exists (log-only, don't create again)
+    try:
+        with write_engine.connect() as conn:
+            # Check if schema exists without creating
+            result = conn.execute(text(f"SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = '{POSTGRES_SCHEMA}')"))
+            schema_exists = result.scalar()
+            logger.info(f"Schema '{POSTGRES_SCHEMA}' exists check (post-model configuration): {schema_exists}")
+    except Exception as e:
+        logger.error(f"Error verifying schema existence: {str(e)}")
+        logger.warning("Will attempt to proceed anyway")
 
 # Context managers for database sessions
 @contextmanager

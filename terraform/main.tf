@@ -271,7 +271,7 @@ resource "aws_elastic_beanstalk_application" "backend_app" {
 
 # Elastic Beanstalk Application Version linking to the S3 package
 resource "aws_elastic_beanstalk_application_version" "app_version" {
-  name             = "v5.1 (added app specific DB)"
+  name             = "v5.2 (improved DB handling and relationships)"
   application      = aws_elastic_beanstalk_application.backend_app.name
   description      = "FastAPI Backend"
   bucket           = aws_s3_bucket.app_bucket.id
@@ -531,6 +531,13 @@ resource "aws_elastic_beanstalk_environment" "backend_env" {
     namespace = "aws:elasticbeanstalk:application:environment"
     name      = "DEBUG"
     value     = "true"
+  }
+
+  # Update log file path to a location that exists with proper permissions
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "LOG_FILE_PATH"
+    value     = "/var/log/web.stdout.log"  # Use existing log file that EB already creates
   }
 }
 

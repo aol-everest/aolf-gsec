@@ -5,6 +5,9 @@ from database import Base
 from sqlalchemy import Enum
 import enum
 from .location import Location
+import os
+
+schema = os.getenv('POSTGRES_SCHEMA', 'public')
 
 class AppointmentStatus(str, enum.Enum):
     """Appointment status enum with proper case values"""
@@ -104,14 +107,14 @@ class Appointment(Base):
     __tablename__ = "appointments"
 
     id = Column(Integer, primary_key=True, index=True)
-    requester_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    dignitary_id = Column(Integer, ForeignKey("dignitaries.id"), nullable=True)
+    requester_id = Column(Integer, ForeignKey(f"{schema}.users.id"), nullable=False)
+    dignitary_id = Column(Integer, ForeignKey(f"{schema}.dignitaries.id"), nullable=True)
     purpose = Column(Text, nullable=False)
     preferred_date = Column(Date, nullable=False)
     preferred_time_of_day = Column(Enum(AppointmentTimeOfDay), nullable=False)
     appointment_date = Column(Date)
     appointment_time = Column(String)
-    location_id = Column(Integer, ForeignKey("locations.id"))
+    location_id = Column(Integer, ForeignKey(f"{schema}.locations.id"))
     requester_notes_to_secretariat = Column(Text)
     status = Column(Enum(AppointmentStatus), nullable=False, default=AppointmentStatus.PENDING)
     sub_status = Column(Enum(AppointmentSubStatus), nullable=True, default=AppointmentSubStatus.NOT_REVIEWED)
@@ -120,8 +123,8 @@ class Appointment(Base):
     secretariat_follow_up_actions = Column(Text)
     secretariat_notes_to_requester = Column(Text)
     approved_datetime = Column(DateTime)
-    approved_by = Column(Integer, ForeignKey("users.id"))
-    last_updated_by = Column(Integer, ForeignKey("users.id"))
+    approved_by = Column(Integer, ForeignKey(f"{schema}.users.id"))
+    last_updated_by = Column(Integer, ForeignKey(f"{schema}.users.id"))
     
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
