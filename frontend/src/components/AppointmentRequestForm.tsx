@@ -401,7 +401,7 @@ export const AppointmentRequestForm: React.FC = () => {
   // Mutation for creating new dignitary
   const createDignitaryMutation = useMutation<Dignitary, Error, any>({
     mutationFn: async (data: any) => {
-      const { data: response } = await api.post<Dignitary>('/dignitaries/new/', data);
+      const { data: response } = await api.post<Dignitary>('/dignitaries/new', data);
       return response;
     },
     onSuccess: (newDignitary) => {
