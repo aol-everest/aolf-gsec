@@ -31,6 +31,17 @@ resource "aws_subnet" "public_subnet_2" {
   }
 }
 
+# Adding a third public subnet for better EB compatibility
+resource "aws_subnet" "public_subnet_3" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.5.0/24"
+  map_public_ip_on_launch = true
+  availability_zone = "us-east-2c"
+  tags = {
+    Name = "aolf-gsec-prod-public-subnet-3"
+  }
+}
+
 ### 📌 Private Subnets (For EBS Backend & RDS)
 resource "aws_subnet" "private_subnet_1" {
   vpc_id            = aws_vpc.main.id
@@ -49,6 +60,17 @@ resource "aws_subnet" "private_subnet_2" {
   availability_zone = "us-east-2b"
   tags = {
     Name = "aolf-gsec-prod-private-subnet-2"
+  }
+}
+
+# Adding a third private subnet for better EB compatibility
+resource "aws_subnet" "private_subnet_3" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.6.0/24"
+  map_public_ip_on_launch = false
+  availability_zone = "us-east-2c"
+  tags = {
+    Name = "aolf-gsec-prod-private-subnet-3"
   }
 }
 
@@ -81,6 +103,11 @@ resource "aws_route_table_association" "public_assoc_1" {
 
 resource "aws_route_table_association" "public_assoc_2" {
   subnet_id      = aws_subnet.public_subnet_2.id
+  route_table_id = aws_route_table.public_rt.id
+}
+
+resource "aws_route_table_association" "public_assoc_3" {
+  subnet_id      = aws_subnet.public_subnet_3.id
   route_table_id = aws_route_table.public_rt.id
 }
 
@@ -120,6 +147,11 @@ resource "aws_route_table_association" "private_assoc_1" {
 
 resource "aws_route_table_association" "private_assoc_2" {
   subnet_id      = aws_subnet.private_subnet_2.id
+  route_table_id = aws_route_table.private_rt.id
+}
+
+resource "aws_route_table_association" "private_assoc_3" {
+  subnet_id      = aws_subnet.private_subnet_3.id
   route_table_id = aws_route_table.private_rt.id
 }
 
@@ -205,10 +237,31 @@ resource "aws_security_group" "rds_sg" {
   }
 }
 
+# S3 bucket to store application bundles
+resource "aws_s3_bucket" "app_bucket" {
+  bucket = "aolf-gsec-prod-app-bucket"  # choose a unique bucket name
+}
+
+# Upload the FastAPI application package (ZIP file) to S3
+resource "aws_s3_object" "app_package" {
+  bucket = aws_s3_bucket.app_bucket.id
+  key    = "aolf-gsec-backend.zip"             # the S3 object key (file name in bucket)
+  source = "../backend/deployment/aolf-gsec-backend.zip"     # path to your local ZIP package
+}
+
 ### 🚀 Elastic Beanstalk with High Availability
 resource "aws_elastic_beanstalk_application" "backend_app" {
   name        = "aolf-gsec-prod-backend"
   description = "FastAPI Backend"
+}
+
+# Elastic Beanstalk Application Version linking to the S3 package
+resource "aws_elastic_beanstalk_application_version" "app_version" {
+  name             = "v4"
+  application      = aws_elastic_beanstalk_application.backend_app.name
+  description      = "FastAPI Backend"
+  bucket           = aws_s3_bucket.app_bucket.id
+  key              = aws_s3_object.app_package.id
 }
 
 # Create application database user password
@@ -242,6 +295,7 @@ resource "aws_elastic_beanstalk_environment" "backend_env" {
   application         = aws_elastic_beanstalk_application.backend_app.name
   platform_arn        = "arn:aws:elasticbeanstalk:us-east-2::platform/Python 3.12 running on 64bit Amazon Linux 2023/4.4.1"
   tier                = "WebServer"
+  version_label       = aws_elastic_beanstalk_application_version.app_version.version_label
 
   # VPC Configuration
   setting {
@@ -253,29 +307,30 @@ resource "aws_elastic_beanstalk_environment" "backend_env" {
   setting {
     namespace = "aws:ec2:vpc"
     name      = "Subnets"
-    value     = "${aws_subnet.private_subnet_1.id},${aws_subnet.private_subnet_2.id}"
+    value     = "${aws_subnet.private_subnet_1.id},${aws_subnet.private_subnet_2.id},${aws_subnet.private_subnet_3.id}"
   }
 
   setting {
     namespace = "aws:ec2:vpc"
     name      = "ELBSubnets"
-    value     = "${aws_subnet.public_subnet_1.id},${aws_subnet.public_subnet_2.id}"
+    value     = "${aws_subnet.public_subnet_1.id},${aws_subnet.public_subnet_2.id},${aws_subnet.public_subnet_3.id}"
   }
 
-  # Load Balancer Configuration
+  # Environment Type - Change to SingleInstance
   setting {
     namespace = "aws:elasticbeanstalk:environment"
-    name      = "LoadBalancerType"
-    value     = "application"
+    name      = "EnvironmentType"
+    value     = "SingleInstance"
   }
 
+  # Service Role is still needed
   setting {
     namespace = "aws:elasticbeanstalk:environment"
     name      = "ServiceRole"
     value     = "aws-elasticbeanstalk-service-role"
   }
 
-  # Auto Scaling Configuration
+  # Auto Scaling Configuration - Set to 1 for SingleInstance
   setting {
     namespace = "aws:autoscaling:asg"
     name      = "MinSize"
@@ -285,7 +340,7 @@ resource "aws_elastic_beanstalk_environment" "backend_env" {
   setting {
     namespace = "aws:autoscaling:asg"
     name      = "MaxSize"
-    value     = "4"
+    value     = "1"
   }
 
   # Launch Configuration
@@ -314,10 +369,29 @@ resource "aws_elastic_beanstalk_environment" "backend_env" {
     value     = "aolf-gsec-prod-backend-key-pair"
   }
 
+  # Deployment Policy
+  setting {
+    namespace = "aws:elasticbeanstalk:command"
+    name      = "DeploymentPolicy"
+    value     = "AllAtOnce"
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:command"
+    name      = "BatchSizeType"
+    value     = "Percentage"
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:command"
+    name      = "BatchSize"
+    value     = "100"
+  }
+
   # Health Check Configuration
   setting {
-    namespace = "aws:elasticbeanstalk:environment:process:default"
-    name      = "HealthCheckPath"
+    namespace = "aws:elasticbeanstalk:application"
+    name      = "Application Healthcheck URL"
     value     = "/health"
   }
 
@@ -331,25 +405,6 @@ resource "aws_elastic_beanstalk_environment" "backend_env" {
     namespace = "aws:elasticbeanstalk:environment:process:default"
     name      = "Protocol"
     value     = "HTTP"
-  }
-
-  # Deployment Policy
-  setting {
-    namespace = "aws:elasticbeanstalk:command"
-    name      = "DeploymentPolicy"
-    value     = "Rolling"
-  }
-
-  setting {
-    namespace = "aws:elasticbeanstalk:command"
-    name      = "BatchSizeType"
-    value     = "Percentage"
-  }
-
-  setting {
-    namespace = "aws:elasticbeanstalk:command"
-    name      = "BatchSize"
-    value     = "25"
   }
 
   # Environment variables
@@ -408,6 +463,13 @@ resource "aws_elastic_beanstalk_environment" "backend_env" {
     value     = "application:application"
   }
 
+  # Add custom initialization command to create virtual environment
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "CREATE_VENV_COMMAND"
+    value     = "python3.12 -m venv /var/app/staging/.venv"
+  }
+
   # Add these new settings for better Python configuration and logging
   setting {
     namespace = "aws:elasticbeanstalk:container:python"
@@ -443,7 +505,7 @@ resource "aws_elastic_beanstalk_environment" "backend_env" {
   setting {
     namespace = "aws:elasticbeanstalk:application:environment"
     name      = "PYTHONPATH"
-    value     = "/var/app/current"
+    value     = "/var/app/current:$PYTHONPATH"
   }
 
   setting {
@@ -456,6 +518,20 @@ resource "aws_elastic_beanstalk_environment" "backend_env" {
     namespace = "aws:elasticbeanstalk:application:environment"
     name      = "DEBUG"
     value     = "true"
+  }
+
+  # Add container commands to create virtual environment (from 02_python.config)
+  setting {
+    namespace = "aws:elasticbeanstalk:container:python"
+    name      = "SetupPythonVirtualenv"
+    value     = "true"
+  }
+
+  # Add command to create virtual environment
+  setting {
+    namespace = "aws:elasticbeanstalk:container:python:staticfiles"
+    name      = "create_venv"
+    value     = "/var/app/staging/.venv"
   }
 }
 
@@ -472,7 +548,7 @@ resource "aws_lb" "backend_lb" {
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.lb_sg.id]
-  subnets            = [aws_subnet.public_subnet_1.id, aws_subnet.public_subnet_2.id]
+  subnets            = [aws_subnet.public_subnet_1.id, aws_subnet.public_subnet_2.id, aws_subnet.public_subnet_3.id]
 
   enable_deletion_protection = true
 
@@ -547,7 +623,7 @@ resource "aws_secretsmanager_secret_version" "db_credentials_initial" {
 ### 🚀 Aurora RDS PostgreSQL with High Availability
 resource "aws_db_subnet_group" "aurora_subnet" {
   name       = "aolf-gsec-prod-aurora-subnet-group"
-  subnet_ids = [aws_subnet.private_subnet_1.id, aws_subnet.private_subnet_2.id]
+  subnet_ids = [aws_subnet.private_subnet_1.id, aws_subnet.private_subnet_2.id, aws_subnet.private_subnet_3.id]
 
   tags = {
     Name = "aolf-gsec-prod-aurora-db-subnet-group"
@@ -613,20 +689,20 @@ resource "aws_rds_cluster_instance" "aurora_instances" {
 }
 
 # Add RDS cluster post-creation configuration
-resource "null_resource" "setup_db_user" {
-  depends_on = [aws_rds_cluster_instance.aurora_instances]
+# resource "null_resource" "setup_db_user" {
+#   depends_on = [aws_rds_cluster_instance.aurora_instances]
 
-  provisioner "local-exec" {
-    command = <<-EOT
-      PGPASSWORD="${jsondecode(aws_secretsmanager_secret_version.db_credentials_initial.secret_string)["password"]}" psql \
-      -h ${aws_rds_cluster.aurora.endpoint} \
-      -U ${jsondecode(aws_secretsmanager_secret_version.db_credentials_initial.secret_string)["username"]} \
-      -d ${jsondecode(aws_secretsmanager_secret_version.db_credentials_initial.secret_string)["dbname"]} \
-      -c "CREATE USER ${jsondecode(aws_secretsmanager_secret_version.app_db_credentials.secret_string)["username"]} WITH PASSWORD '${jsondecode(aws_secretsmanager_secret_version.app_db_credentials.secret_string)["password"]}';" \
-      -c "GRANT CONNECT ON DATABASE ${jsondecode(aws_secretsmanager_secret_version.db_credentials_initial.secret_string)["dbname"]} TO ${jsondecode(aws_secretsmanager_secret_version.app_db_credentials.secret_string)["username"]};" \
-      -c "GRANT USAGE ON SCHEMA public TO ${jsondecode(aws_secretsmanager_secret_version.app_db_credentials.secret_string)["username"]};" \
-      -c "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${jsondecode(aws_secretsmanager_secret_version.app_db_credentials.secret_string)["username"]};" \
-      -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ${jsondecode(aws_secretsmanager_secret_version.app_db_credentials.secret_string)["username"]};"
-    EOT
-  }
-}
+#   provisioner "local-exec" {
+#     command = <<-EOT
+#       PGPASSWORD="${jsondecode(aws_secretsmanager_secret_version.db_credentials_initial.secret_string)["password"]}" psql \
+#       -h ${aws_rds_cluster.aurora.endpoint} \
+#       -U ${jsondecode(aws_secretsmanager_secret_version.db_credentials_initial.secret_string)["username"]} \
+#       -d ${jsondecode(aws_secretsmanager_secret_version.db_credentials_initial.secret_string)["dbname"]} \
+#       -c "CREATE USER ${jsondecode(aws_secretsmanager_secret_version.app_db_credentials.secret_string)["username"]} WITH PASSWORD '${jsondecode(aws_secretsmanager_secret_version.app_db_credentials.secret_string)["password"]}';" \
+#       -c "GRANT CONNECT ON DATABASE ${jsondecode(aws_secretsmanager_secret_version.db_credentials_initial.secret_string)["dbname"]} TO ${jsondecode(aws_secretsmanager_secret_version.app_db_credentials.secret_string)["username"]};" \
+#       -c "GRANT USAGE ON SCHEMA public TO ${jsondecode(aws_secretsmanager_secret_version.app_db_credentials.secret_string)["username"]};" \
+#       -c "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${jsondecode(aws_secretsmanager_secret_version.app_db_credentials.secret_string)["username"]};" \
+#       -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ${jsondecode(aws_secretsmanager_secret_version.app_db_credentials.secret_string)["username"]};"
+#     EOT
+#   }
+# }

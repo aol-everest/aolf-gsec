@@ -237,6 +237,12 @@ zip -r deployment/aolf-gsec-backend-uat.zip . \
     -x "*.git*" \
     -x "*__pycache__*"
 
+zip -r deployment/aolf-gsec-backend.zip . \
+    -x "*ebextensions*" \
+    -x "*venv*" \
+    -x "*.git*" \
+    -x "*__pycache__*"
+
 openssl rand -base64 6
 
 
@@ -394,3 +400,8 @@ terraform state show aws_rds_cluster.aurora
 # Deploy the backend
 cd backend; eb deploy
 
+# Destroy the PROD environment
+terraform destroy -target aws_elastic_beanstalk_environment.backend_env
+
+# Import the UAT environment
+terraform import aws_elastic_beanstalk_environment.uatenv e-byrifajyzp
