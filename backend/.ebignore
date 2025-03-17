@@ -5,6 +5,12 @@ __pycache__/
 *.py[cod]
 *$py.class
 .DS_Store 
+# .ebextensions/01-vpc-settings.config
+# .ebextensions/02-app-settings.config
+# .ebextensions/02-security-groups.config
+# .ebextensions/03_database.config
+# .ebextensions/03-scaling.config
+# .ebextensions/02_python.config
 
 # IMPORTANT: Do NOT ignore .ebextensions directory as it contains critical deployment configuration
 # .ebextensions/ 
