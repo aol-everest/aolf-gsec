@@ -271,7 +271,7 @@ resource "aws_elastic_beanstalk_application" "backend_app" {
 
 # Elastic Beanstalk Application Version linking to the S3 package
 resource "aws_elastic_beanstalk_application_version" "app_version" {
-  name             = "v5.3 (refreshing code)"
+  name             = "v5.4 (updated log path)"
   application      = aws_elastic_beanstalk_application.backend_app.name
   description      = "FastAPI Backend"
   bucket           = aws_s3_bucket.app_bucket.id
@@ -330,11 +330,69 @@ resource "aws_elastic_beanstalk_environment" "backend_env" {
     value     = "${aws_subnet.public_subnet_1.id},${aws_subnet.public_subnet_2.id},${aws_subnet.public_subnet_3.id}"
   }
 
-  # Environment Type - Change to SingleInstance
+  # Connect to existing load balancer
+  setting {
+    namespace = "aws:elasticbeanstalk:environment"
+    name      = "LoadBalancerIsShared"
+    value     = "true"
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:environment"
+    name      = "LoadBalancerType"
+    value     = "application"
+  }
+
+  setting {
+    namespace = "aws:elbv2:loadbalancer"
+    name      = "SharedLoadBalancer"
+    value     = aws_lb.backend_lb.arn
+  }
+  
+  # Explicitly disable the default HTTP listener
+  setting {
+    namespace = "aws:elbv2:listener:default"
+    name      = "ListenerEnabled"
+    value     = "false"
+  }
+  
+  # Explicitly disable port 80 listener 
+  setting {
+    namespace = "aws:elbv2:listener:80"
+    name      = "ListenerEnabled"
+    value     = "false"
+  }
+  
+  # Configure HTTPS listener
+  setting {
+    namespace = "aws:elbv2:listener:443"
+    name      = "ListenerEnabled"
+    value     = "true"
+  }
+  
+  setting {
+    namespace = "aws:elbv2:listener:443"
+    name      = "Protocol"
+    value     = "HTTPS"
+  }
+
+  setting {
+    namespace = "aws:elbv2:listener:443"
+    name      = "DefaultProcess"
+    value     = "default"
+  }
+  
+  setting {
+    namespace = "aws:elbv2:listener:443"
+    name      = "SSLCertificateArns"
+    value     = data.aws_acm_certificate.existing_cert.arn
+  }
+  
+  # Environment Type - Change to LoadBalanced for high availability
   setting {
     namespace = "aws:elasticbeanstalk:environment"
     name      = "EnvironmentType"
-    value     = "SingleInstance"
+    value     = "LoadBalanced"
   }
 
   # Service Role is still needed
@@ -344,7 +402,7 @@ resource "aws_elastic_beanstalk_environment" "backend_env" {
     value     = "aws-elasticbeanstalk-service-role"
   }
 
-  # Auto Scaling Configuration - Set to 1 for SingleInstance
+  # Auto Scaling Configuration - Min: 1, Max: 3 for high availability
   setting {
     namespace = "aws:autoscaling:asg"
     name      = "MinSize"
@@ -354,6 +412,49 @@ resource "aws_elastic_beanstalk_environment" "backend_env" {
   setting {
     namespace = "aws:autoscaling:asg"
     name      = "MaxSize"
+    value     = "3"
+  }
+  
+  # Auto Scaling triggers
+  setting {
+    namespace = "aws:autoscaling:trigger"
+    name      = "MeasureName"
+    value     = "CPUUtilization"
+  }
+  
+  setting {
+    namespace = "aws:autoscaling:trigger"
+    name      = "Statistic"
+    value     = "Average"
+  }
+  
+  setting {
+    namespace = "aws:autoscaling:trigger"
+    name      = "Unit"
+    value     = "Percent"
+  }
+  
+  setting {
+    namespace = "aws:autoscaling:trigger"
+    name      = "LowerThreshold"
+    value     = "20"
+  }
+  
+  setting {
+    namespace = "aws:autoscaling:trigger"
+    name      = "LowerBreachScaleIncrement"
+    value     = "-1"
+  }
+  
+  setting {
+    namespace = "aws:autoscaling:trigger"
+    name      = "UpperThreshold"
+    value     = "70"
+  }
+  
+  setting {
+    namespace = "aws:autoscaling:trigger"
+    name      = "UpperBreachScaleIncrement"
     value     = "1"
   }
 
@@ -409,6 +510,7 @@ resource "aws_elastic_beanstalk_environment" "backend_env" {
     value     = "/health"
   }
 
+  # Process configuration
   setting {
     namespace = "aws:elasticbeanstalk:environment:process:default"
     name      = "Port"
@@ -419,6 +521,36 @@ resource "aws_elastic_beanstalk_environment" "backend_env" {
     namespace = "aws:elasticbeanstalk:environment:process:default"
     name      = "Protocol"
     value     = "HTTP"
+  }
+  
+  setting {
+    namespace = "aws:elasticbeanstalk:environment:process:default"
+    name      = "HealthCheckPath"
+    value     = "/health"
+  }
+  
+  setting {
+    namespace = "aws:elasticbeanstalk:environment:process:default"
+    name      = "HealthCheckInterval"
+    value     = "15"
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:environment:process:default"
+    name      = "HealthCheckTimeout"
+    value     = "5"
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:environment:process:default"
+    name      = "HealthyThresholdCount"
+    value     = "3"
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:environment:process:default"
+    name      = "UnhealthyThresholdCount"
+    value     = "5"
   }
 
   # Environment variables
@@ -537,7 +669,7 @@ resource "aws_elastic_beanstalk_environment" "backend_env" {
   setting {
     namespace = "aws:elasticbeanstalk:application:environment"
     name      = "LOG_FILE_PATH"
-    value     = "/var/log/web.stdout.log"  # Use existing log file that EB already creates
+    value     = "/var/app/current/logs/app.log"
   }
 }
 
@@ -594,6 +726,20 @@ resource "aws_lb_listener" "https" {
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.backend_tg.arn
+  }
+}
+
+resource "aws_lb_listener" "http_redirect" {
+  load_balancer_arn = aws_lb.backend_lb.arn
+  port     = "80"
+  protocol = "HTTP"
+  default_action {
+    type = "redirect"
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
   }
 }
 
@@ -721,4 +867,10 @@ resource "aws_rds_cluster_instance" "aurora_instances" {
 resource "aws_iam_role_policy_attachment" "ssm_policy" {
   role       = "aws-elasticbeanstalk-ec2-role"  # This is the default EB role
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+# Backend Load Balancer DNS name output for DNS configuration
+output "backend_lb_dns_name" {
+  value       = aws_lb.backend_lb.dns_name
+  description = "The DNS name of the backend Load Balancer"
 }
