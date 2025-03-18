@@ -58,6 +58,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Collapse from '@mui/material/Collapse';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
+import { formatHonorificTitle } from '../utils/formattingUtils';
 
 interface AppointmentFormData {
   appointment_date: string;
@@ -831,7 +832,7 @@ const AppointmentEdit: React.FC = () => {
                     }}
                   >
                     <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
-                      {dig.honorific_title || ''} {dig.first_name} {dig.last_name}
+                      {formatHonorificTitle(dig.honorific_title)} {dig.first_name} {dig.last_name}
                     </Typography>
                     <Typography color="text.secondary" variant="body2" sx={{ mt: 1 }}>
                       {dig.organization && dig.organization} | {dig.title_in_organization && dig.title_in_organization}<br />
@@ -864,7 +865,7 @@ const AppointmentEdit: React.FC = () => {
                         }}
                       >
                         <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
-                          {dig.honorific_title || ''} {dig.first_name} {dig.last_name}
+                          {formatHonorificTitle(dig.honorific_title)} {dig.first_name} {dig.last_name}
                         </Typography>
                         <Typography color="text.secondary" variant="body2" sx={{ mt: 1 }}>
                           {dig.organization && <>{dig.organization}<br /></>}
@@ -905,7 +906,7 @@ const AppointmentEdit: React.FC = () => {
             Dignitary
           </Typography>
           <Typography>
-            {appointment.dignitary.honorific_title || ''} {appointment.dignitary.first_name} {appointment.dignitary.last_name}
+            {formatHonorificTitle(appointment.dignitary.honorific_title)} {appointment.dignitary.first_name} {appointment.dignitary.last_name}
           </Typography>
           <Typography color="text.secondary" sx={{ mt: 1 }}>
             {appointment.dignitary.organization} - {appointment.dignitary.title_in_organization} | {appointment.dignitary.email} | {appointment.dignitary.phone}
