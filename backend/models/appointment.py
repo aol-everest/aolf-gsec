@@ -26,7 +26,6 @@ class AppointmentStatus(str, enum.Enum):
 class AppointmentSubStatus(str, enum.Enum):
     """Appointment sub-status enum with proper case values"""
     CANCELLED = "Cancelled"
-    DARSHAN_LINE = "Darshan line / public event"
     FOLLOW_UP_REQUIRED = "Follow-up required"
     LOW_PRIORITY = "Low priority"
     MET_GURUDEV = "Met Gurudev already"
@@ -35,8 +34,8 @@ class AppointmentSubStatus(str, enum.Enum):
     NO_FURTHER_ACTION = "No further action"
     NOT_REVIEWED = "Not yet reviewed"
     SHORTLISTED = "Shortlisted"
-    UNDER_CONSIDERATION = "Under consideration"
-    UNSCHEDULED = "To be scheduled"
+    UNDER_CONSIDERATION = "Under consideration (screened)"
+    UNSCHEDULED = "To be scheduled (reviewed)"
     SCHEDULED = "Scheduled"
 
     def __str__(self):
@@ -65,7 +64,6 @@ STATUS_SUBSTATUS_MAPPING = {
         "default_sub_status": AppointmentSubStatus.LOW_PRIORITY.value,
         "valid_sub_statuses": [
             AppointmentSubStatus.LOW_PRIORITY.value,
-            AppointmentSubStatus.DARSHAN_LINE.value,
             AppointmentSubStatus.MET_GURUDEV.value
         ]
     },
@@ -89,8 +87,10 @@ VALID_SUBSTATUS_OPTIONS = [substatus for status in STATUS_SUBSTATUS_MAPPING.valu
 
 class AppointmentType(str, enum.Enum):
     """Appointment type enum with proper case values"""
-    PRIVATE = "Private"
-    SMALL_GROUP = "Small group"
+    EXCLUSIVE_APPOINTMENT = "Exclusive appointment"
+    SHARED_APPOINTMENT = "Shared appointment"
+    DARSHAN_LINE = "Darshan line"
+    PRIVATE_EVENT = "Private event"
 
     def __str__(self):
         return self.value
