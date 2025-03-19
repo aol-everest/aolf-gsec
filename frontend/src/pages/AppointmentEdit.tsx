@@ -367,9 +367,10 @@ const AppointmentEdit: React.FC = () => {
     }
 
     if (data.status === statusMap['COMPLETED']) {
-      if (!data.secretariat_meeting_notes) {
-        errors.secretariat_meeting_notes = 'Meeting notes are required for Completed appointments';
-      }
+      // Meeting notes are not required for Completed appointments
+      // if (!data.secretariat_meeting_notes) {
+      //   errors.secretariat_meeting_notes = 'Meeting notes are required for Completed appointments';
+      // }
 
       if (!data.appointment_date) {
         errors.appointment_date = 'Appointment date is required for Completed appointments';
@@ -1190,7 +1191,7 @@ const AppointmentEdit: React.FC = () => {
                   />
                 </Grid>
 
-                {(watchStatus === statusMap['APPROVED'] || appointment.status === statusMap['APPROVED']) && appointment.appointment_date && new Date(appointment.appointment_date) <= new Date() && (
+                {(watchStatus in [statusMap['APPROVED'], statusMap['COMPLETED']] || appointment.status in [statusMap['APPROVED'], statusMap['COMPLETED']]) && appointment.appointment_date && new Date(appointment.appointment_date) <= new Date() && (
                   <Grid item xs={12}>
                     <Controller
                       name="secretariat_follow_up_actions"
@@ -1210,7 +1211,7 @@ const AppointmentEdit: React.FC = () => {
                   </Grid>
                 )}
 
-                {(watchStatus === statusMap['APPROVED'] || appointment.status === statusMap['APPROVED']) && appointment.appointment_date && new Date(appointment.appointment_date) <= new Date() && (
+                {(watchStatus in [statusMap['APPROVED'], statusMap['COMPLETED']] || appointment.status in [statusMap['APPROVED'], statusMap['COMPLETED']]) && appointment.appointment_date && new Date(appointment.appointment_date) <= new Date() && (
                   <Grid item xs={12}>
                     <Controller
                       name="secretariat_meeting_notes"
@@ -1277,7 +1278,7 @@ const AppointmentEdit: React.FC = () => {
                   </Box>
                   
                   {/* Business Cards Section */}
-                  {(watchStatus === statusMap['APPROVED'] || appointment.status === statusMap['APPROVED']) && appointment.appointment_date && new Date(appointment.appointment_date) <= new Date() && (
+                  {(watchStatus in [statusMap['APPROVED'], statusMap['COMPLETED']] || appointment.status in [statusMap['APPROVED'], statusMap['COMPLETED']]) && appointment.appointment_date && new Date(appointment.appointment_date) <= new Date() && (
                     <>
                       <Typography variant="h6" gutterBottom color="primary" sx={{ mt: 3, mb: 1 }}>
                         Business Cards
