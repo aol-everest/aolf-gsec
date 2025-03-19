@@ -186,18 +186,18 @@ const AppointmentStatus: React.FC = () => {
         return location ? `${location.name} - ${location.city}, ${location.state}` : 'N/A';
       },
     },
-    {
-      field: 'status',
-      headerName: 'Status',
-      width: 130,
-      renderCell: (params: GridRenderCellParams) => (
-        <Chip
-          label={params.value}
-          size="small"
-          sx={getStatusChipSx(params.value as string, theme)}
-        />
-      ),
-    },
+    // {
+    //   field: 'status',
+    //   headerName: 'Status',
+    //   width: 130,
+    //   renderCell: (params: GridRenderCellParams) => (
+    //     <Chip
+    //       label={params.value}
+    //       size="small"
+    //       sx={getStatusChipSx(params.value as string, theme)}
+    //     />
+    //   ),
+    // },
     {
       field: 'created_at',
       headerName: 'Created',
@@ -238,7 +238,7 @@ const AppointmentStatus: React.FC = () => {
               </Typography>
               
               {/* Status Filters */}
-              <Box>
+              {/* <Box>
                 <Typography variant="subtitle2" sx={{ mb: 1 }}>Filter by Status</Typography>
                 <Box sx={{ 
                   display: 'flex', 
@@ -264,7 +264,7 @@ const AppointmentStatus: React.FC = () => {
                     />
                   ))}
                 </Box>
-              </Box>
+              </Box> */}
               
               {/* Location Filters */}
               <Box>
@@ -350,7 +350,8 @@ const AppointmentStatus: React.FC = () => {
             rows={selectedStatus || selectedLocation ? filteredAppointments : appointments}
             columns={columns}
             loading={isLoading}
-            defaultVisibleColumns={['id', 'dignitary', 'appointment_date_and_time', 'location', 'status', 'secretariat_notes_to_requester']}
+            // defaultVisibleColumns={['id', 'dignitary', 'appointment_date_and_time', 'location', 'status', 'secretariat_notes_to_requester']}
+            defaultVisibleColumns={['id', 'dignitary', 'appointment_date_and_time', 'location', 'secretariat_notes_to_requester']}
           />
         </Box>
       </Container>
