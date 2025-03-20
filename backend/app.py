@@ -1931,6 +1931,11 @@ async def create_dignitary_from_business_card_admin(
             business_card_file_type=extraction.file_type,
             business_card_is_image=extraction.is_image,
             business_card_thumbnail_path=extraction.thumbnail_path,
+            has_dignitary_met_gurudev=extraction.has_dignitary_met_gurudev,
+            gurudev_meeting_date=extraction.gurudev_meeting_date,
+            gurudev_meeting_location=extraction.gurudev_meeting_location,
+            gurudev_meeting_notes=extraction.gurudev_meeting_notes,
+            secretariat_notes=extraction.secretariat_notes,
         )
         db.add(dignitary)
         db.commit()

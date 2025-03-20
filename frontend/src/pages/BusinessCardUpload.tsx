@@ -366,12 +366,22 @@ const BusinessCardUpload: React.FC = () => {
       }
     });
     
-    // Return the updated extraction object instead of updating state
-    return {
+    // Ensure we're including all meeting-related fields
+    const updatedExtraction = {
       ...extraction,
       social_media: socialMediaDict,
-      additional_info: additionalInfoDict
+      additional_info: additionalInfoDict,
+      // Explicitly include these fields to ensure they're not lost
+      has_dignitary_met_gurudev: extraction.has_dignitary_met_gurudev,
+      gurudev_meeting_date: extraction.gurudev_meeting_date,
+      gurudev_meeting_location: extraction.gurudev_meeting_location,
+      gurudev_meeting_notes: extraction.gurudev_meeting_notes
     };
+
+    // Debug log to check what's being sent
+    console.log('Sending dignitary data:', updatedExtraction);
+    
+    return updatedExtraction;
   };
   
   // Add new social media entry
@@ -444,6 +454,15 @@ const BusinessCardUpload: React.FC = () => {
     try {
       setSaveInProgress(true);
       
+      // Add better logging before API call
+      console.log('Creating dignitary with data:', {
+        name: `${updatedExtraction.first_name} ${updatedExtraction.last_name}`,
+        has_met_gurudev: updatedExtraction.has_dignitary_met_gurudev,
+        meeting_date: updatedExtraction.gurudev_meeting_date,
+        meeting_location: updatedExtraction.gurudev_meeting_location,
+        meeting_notes: updatedExtraction.gurudev_meeting_notes
+      });
+      
       // Use the updated extraction for the API call
       const response = await api.post<DignitaryResponse>('/admin/business-card/create-dignitary', updatedExtraction);
       
@@ -461,9 +480,11 @@ const BusinessCardUpload: React.FC = () => {
         if (fileInputRef.current) fileInputRef.current.value = '';
         if (cameraInputRef.current) cameraInputRef.current.value = '';
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating dignitary:', error);
-      enqueueSnackbar('Failed to create dignitary', { variant: 'error' });
+      // More detailed error message
+      const errorMessage = error.response?.data?.detail || 'Failed to create dignitary';
+      enqueueSnackbar(errorMessage, { variant: 'error' });
     } finally {
       setSaveInProgress(false);
     }
@@ -566,7 +587,7 @@ const BusinessCardUpload: React.FC = () => {
     );
   };
 
-  // Initialize autocomplete function similar to LocationsManage.tsx
+  // Update the initializeAutocomplete function to better handle the location input
   const initializeAutocomplete = useCallback(() => {
     if (!mapsLoaded || !inputRef.current) return;
 
@@ -590,19 +611,28 @@ const BusinessCardUpload: React.FC = () => {
           return;
         }
 
-        // Format the location string
-        let locationString = '';
-        locationString = (place.name ? place.name + ', ' : '') + (place.formatted_address ? place.formatted_address : '');
+        // Format the location string - include both name and address when available
+        const locationString = place.name && place.formatted_address 
+          ? `${place.name}, ${place.formatted_address}`
+          : (place.formatted_address || place.name || '');
 
-        // Update the extraction with the selected place
+        console.log('Selected location:', locationString);
+
+        // Update the extraction object with the selected place
         if (extraction) {
-          setExtraction({
+          // Create a new extraction object with the updated location
+          const updatedExtraction = {
             ...extraction,
             gurudev_meeting_location: locationString
-          });
+          };
+          
+          // Update the state with the new extraction object
+          setExtraction(updatedExtraction);
+          
+          console.log('Updated extraction with location:', updatedExtraction);
         }
 
-        // Update the input field value directly instead of clearing it
+        // Update the input field value directly
         if (inputRef.current) {
           inputRef.current.value = locationString;
         }
@@ -634,7 +664,15 @@ const BusinessCardUpload: React.FC = () => {
     };
   }, []);
 
-  // Replace renderMeetingLocationField with new implementation
+  // Add this useEffect to sync the input field value with extraction state
+  // This replaces the useEffect that was inside renderMeetingLocationField
+  useEffect(() => {
+    if (inputRef.current && extraction?.gurudev_meeting_location && extraction.has_dignitary_met_gurudev) {
+      inputRef.current.value = extraction.gurudev_meeting_location;
+    }
+  }, [extraction?.gurudev_meeting_location, extraction?.has_dignitary_met_gurudev]);
+
+  // Update the renderMeetingLocationField function to remove the useEffect
   const renderMeetingLocationField = () => {
     if (!extraction) return null;
 
@@ -652,17 +690,11 @@ const BusinessCardUpload: React.FC = () => {
             InputProps={{
               autoComplete: 'off',
             }}
-            // Set default value from extraction
-            defaultValue={extraction.gurudev_meeting_location || ''}
-            // Add an onChange handler to sync manual edits with the extraction state
-            onChange={(e) => {
-              if (extraction) {
-                setExtraction({
-                  ...extraction,
-                  gurudev_meeting_location: e.target.value
-                });
-              }
-            }}
+            // Instead of defaultValue, use value to ensure it updates when the extraction changes
+            value={extraction.gurudev_meeting_location || ''}
+            // Use handleInputChange to keep everything consistent
+            onChange={handleInputChange}
+            name="gurudev_meeting_location"
           />
         </Grid>
         <Grid item>

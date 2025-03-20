@@ -416,7 +416,11 @@ class BusinessCardExtraction(BaseModel):
     file_type: Optional[str] = None
     is_image: Optional[bool] = None
     thumbnail_path: Optional[str] = None
-
+    has_dignitary_met_gurudev: Optional[bool] = None
+    gurudev_meeting_date: Optional[date] = None
+    gurudev_meeting_location: Optional[str] = None
+    gurudev_meeting_notes: Optional[str] = None
+    secretariat_notes: Optional[str] = None
 
 class AppointmentBusinessCardExtractionResponse(BaseModel):
     extraction: BusinessCardExtraction
