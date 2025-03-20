@@ -19,6 +19,7 @@ ALTER TABLE dignitaries ADD COLUMN IF NOT EXISTS fax VARCHAR;
 ALTER TABLE dignitaries ADD COLUMN IF NOT EXISTS street_address VARCHAR;
 ALTER TABLE dignitaries ADD COLUMN IF NOT EXISTS social_media JSONB;
 ALTER TABLE dignitaries ADD COLUMN IF NOT EXISTS additional_info JSONB;
+ALTER TABLE dignitaries ADD COLUMN IF NOT EXISTS secretariat_notes TEXT;
 
 -- Add business card fields
 ALTER TABLE dignitaries ADD COLUMN IF NOT EXISTS business_card_file_name VARCHAR;
