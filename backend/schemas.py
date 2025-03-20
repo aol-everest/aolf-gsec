@@ -161,6 +161,16 @@ class DignitaryAdminWithAppointments(DignitaryBase):
     created_by: int
     created_at: datetime
     appointment_dignitaries: List[AppointmentDignitaryWithAppointmentAdmin]
+    fax: Optional[str] = None
+    other_phone: Optional[str] = None
+    street_address: Optional[str] = None
+    social_media: Optional[Dict[str, str]] = None
+    additional_info: Optional[Dict[str, str]] = None
+    business_card_file_name: Optional[str] = None
+    business_card_file_path: Optional[str] = None
+    business_card_file_type: Optional[str] = None
+    business_card_is_image: Optional[bool] = None
+    business_card_thumbnail_path: Optional[str] = None
 
     class Config:
         orm_mode = True
@@ -169,6 +179,16 @@ class DignitaryAdmin(DignitaryBase):
     id: int
     created_by: int
     created_at: datetime
+    fax: Optional[str] = None
+    other_phone: Optional[str] = None
+    street_address: Optional[str] = None
+    social_media: Optional[Dict[str, str]] = None
+    additional_info: Optional[Dict[str, str]] = None
+    business_card_file_name: Optional[str] = None
+    business_card_file_path: Optional[str] = None
+    business_card_file_type: Optional[str] = None
+    business_card_is_image: Optional[bool] = None
+    business_card_thumbnail_path: Optional[str] = None
 
     class Config:
         orm_mode = True
@@ -368,18 +388,26 @@ class AppointmentAttachment(AppointmentAttachmentBase):
         orm_mode = True
 
 class BusinessCardExtraction(BaseModel):
-    first_name: str
-    last_name: str
+    honorific_title: Optional[HonorificTitle] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
     title: Optional[str] = None
     company: Optional[str] = None
+    primary_domain: Optional[str] = None
+    primary_domain_other: Optional[str] = None
     phone: Optional[str] = None
     other_phone: Optional[str] = None
     fax: Optional[str] = None
     email: Optional[str] = None
     website: Optional[str] = None
-    address: Optional[str] = None
-    social_media: Optional[List[str]] = None
-    extra_fields: Optional[List[str]] = None
+    street_address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    country: Optional[str] = None
+    social_media: Optional[Dict[str, str]] = None
+    bio: Optional[str] = None
+    additional_info: Optional[Dict[str, str]] = None
+
 
 class BusinessCardExtractionResponse(BaseModel):
     extraction: BusinessCardExtraction

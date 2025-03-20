@@ -1345,15 +1345,31 @@ async def create_dignitary_from_business_card(
     try:
         # Try to determine honorific title
         honorific_title = None
-        for title in models.HonorificTitle:
-            if extraction.title and title.value in extraction.title:
-                honorific_title = title
+        for _honorific_title in models.HonorificTitle:
+            if extraction.honorific_title and _honorific_title.value.lower() in extraction.honorific_title.lower():
+                honorific_title = _honorific_title
                 break
         
         # Default to Mr. if no title found
         if not honorific_title:
-            honorific_title = models.HonorificTitle.MR
+            honorific_title = models.HonorificTitle.NA
         
+        # Determine primary domain
+        primary_domain = None
+        primary_domain_other = None
+        if extraction.primary_domain:
+            for _primary_domain in models.PrimaryDomain:
+                if _primary_domain.value.lower() in extraction.primary_domain.lower():
+                    primary_domain = _primary_domain
+                    break
+            if not primary_domain:
+                primary_domain = models.PrimaryDomain.OTHER
+                primary_domain_other = extraction.primary_domain + (f" ({extraction.primary_domain_other})" if extraction.primary_domain_other else "")
+        elif extraction.primary_domain_other:
+            primary_domain = models.PrimaryDomain.OTHER
+            primary_domain_other = extraction.primary_domain_other or ''
+
+      
         # Debug logging
         logger.info(f"Creating dignitary with source={models.DignitarySource.BUSINESS_CARD}")
         logger.info(f"Appointment dignitary country: {appointment.dignitary.country if appointment.dignitary else 'None'}")
@@ -1361,24 +1377,32 @@ async def create_dignitary_from_business_card(
         # Create dignitary
         dignitary = models.Dignitary(
             honorific_title=honorific_title,
-            first_name=extraction.first_name,
-            last_name=extraction.last_name,
+            first_name=extraction.first_name or '',
+            last_name=extraction.last_name or '',
             email=extraction.email,
             phone=extraction.phone,
-            primary_domain=models.PrimaryDomain.BUSINESS,  # Default to Business
+            other_phone=extraction.other_phone,
+            fax=extraction.fax,
             title_in_organization=extraction.title,
             organization=extraction.company,
-            bio_summary="",
+            street_address=extraction.street_address,
+            primary_domain=primary_domain,
+            primary_domain_other=primary_domain_other,
+            bio_summary=(
+                f"Bio extracted from business card: {extraction.bio or 'N/A'}"
+            ),
             linked_in_or_website=extraction.website,
-            country=appointment.dignitary.country if appointment.dignitary else None,  # Use the appointment dignitary's country as default
-            state=appointment.dignitary.state if appointment.dignitary else None,  # Use the appointment dignitary's state as default
-            city=appointment.dignitary.city if appointment.dignitary else None,  # Use the appointment dignitary's city as default
+            country=extraction.country if extraction.country else None,
+            state=extraction.state if extraction.state else None,
+            city=extraction.city if extraction.city else None,
             has_dignitary_met_gurudev=True,  # Mark as met Gurudev
-            gurudev_meeting_date=appointment.appointment_date,  # Use appointment date
+            gurudev_meeting_date=(appointment.appointment_date if appointment.appointment_date else appointment.preferred_date),  # Use appointment date
             gurudev_meeting_location=appointment.location.name if appointment.location else None,
             gurudev_meeting_notes=f"Met during appointment #{appointment_id}",
             source=models.DignitarySource.BUSINESS_CARD,
             source_appointment_id=appointment_id,
+            social_media=extraction.social_media,
+            additional_info=extraction.additional_info,
             created_by=current_user.id
         )
         db.add(dignitary)

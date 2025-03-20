@@ -768,24 +768,24 @@ const AppointmentEdit: React.FC = () => {
                 <Typography variant="body1">{extraction.address}</Typography>
               </Grid>
             )}
-            
-            {extraction.social_media && extraction.social_media.length > 0 && (
+
+            {extraction.social_media && Object.keys(extraction.social_media).length > 0 && (
               <Grid item xs={12}>
                 <Typography variant="subtitle2" color="text.secondary">Social Media</Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-                  {extraction.social_media.map((social, index) => (
-                    <Chip key={index} label={social} size="small" />
+                  {Object.entries(extraction.social_media).map(([platform, handle]) => (
+                    <Chip key={platform} label={`${platform}: ${handle}`} size="small" />
                   ))}
                 </Box>
               </Grid>
             )}
             
-            {extraction.extra_fields && extraction.extra_fields.length > 0 && (
+            {extraction.extra_fields && Object.keys(extraction.extra_fields).length > 0 && (
               <Grid item xs={12}>
                 <Typography variant="subtitle2" color="text.secondary">Additional Information</Typography>
                 <Box sx={{ mt: 1 }}>
-                  {extraction.extra_fields.map((field, index) => (
-                    <Typography key={index} variant="body2">{field}</Typography>
+                  {Object.entries(extraction.extra_fields).map(([field, value]) => (
+                    <Typography key={field} variant="body2">{`${field}: ${value}`}</Typography>
                   ))}
                 </Box>
               </Grid>

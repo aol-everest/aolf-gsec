@@ -7,6 +7,7 @@ from openai import OpenAI
 import logging
 
 from schemas import BusinessCardExtraction
+from models import PrimaryDomain
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +41,7 @@ def extract_business_card_info(image_path: str) -> BusinessCardExtraction:
             phone=None,
             email=None,
             website=None,
-            address=None
+            street_address=None
         )
     
     try:
@@ -61,19 +62,26 @@ def extract_business_card_info(image_path: str) -> BusinessCardExtraction:
             messages=[
                 {
                     "role": "system",
-                    "content": """You are a business card information extractor. Extract the following fields from the business card image:
+                    "content": f"""You are a business card information extractor. Extract the following fields from the business card image:
+                    - honorific_title: The person's salutation or honorific title (e.g. Mr., Mrs., Dr., etc.)
                     - first_name: The person's first name
                     - last_name: The person's last name
                     - title: The person's job title or position
                     - company: The company or organization name
+                    - primary_domain: The primary domain of the person's business or organization (choose from {", ".join([domain.value for domain in PrimaryDomain])})
+                    - primary_domain_other: If the primary domain is "Other", then this field should be the specific domain of the person's business or organization
                     - phone: The primary phone number
                     - other_phone: Any secondary phone number
                     - fax: Fax number if available
                     - email: Email address
                     - website: Website or LinkedIn URL
-                    - address: Physical address
-                    - social_media: List of social media handles
-                    - extra_fields: Any other information on the card
+                    - street_address: Street address
+                    - city: City
+                    - state: State
+                    - country: Country
+                    - social_media: Dictionary of social media platforms to their handles
+                    - bio: Biography of the person
+                    - additional_info: Dictionary of any other information on the card
                     
                     Format your response as a valid JSON object with these fields. Use null for missing fields."""
                 }, 
@@ -94,23 +102,48 @@ def extract_business_card_info(image_path: str) -> BusinessCardExtraction:
         content = response.choices[0].message.content
         if not content:
             raise BusinessCardExtractionError("Empty response from OpenAI API")
-            
-        data = json.loads(content)
         
+        data = json.loads(content)
+
+        social_media = data.get("social_media")
+        if social_media:
+            if isinstance(social_media, dict):
+                data["social_media"] = social_media
+            else:
+                data["social_media"] = {"other": social_media}
+        else:
+            data["social_media"] = {}
+
+        additional_info = data.get("additional_info")
+        if additional_info:
+            if isinstance(additional_info, dict):
+                data["additional_info"] = additional_info
+            else:
+                data["additional_info"] = {"other": additional_info}
+        else:
+            data["additional_info"] = {}
+
         # Create and return the BusinessCardExtraction object
         return BusinessCardExtraction(
+            honorific_title=data.get("honorific_title"),
             first_name=data.get("first_name", ""),
             last_name=data.get("last_name", ""),
             title=data.get("title"),
             company=data.get("company"),
+            primary_domain=data.get("primary_domain"),
+            primary_domain_other=data.get("primary_domain_other"),
             phone=data.get("phone"),
             other_phone=data.get("other_phone"),
             fax=data.get("fax"),
             email=data.get("email"),
             website=data.get("website"),
-            address=data.get("address"),
+            street_address=data.get("street_address"),
+            city=data.get("city"),
+            state=data.get("state"),
+            country=data.get("country"),
             social_media=data.get("social_media"),
-            extra_fields=data.get("extra_fields")
+            bio=data.get("bio"),
+            additional_info=data.get("additional_info"),
         )
     
     except Exception as e:
