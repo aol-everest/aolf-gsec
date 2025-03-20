@@ -61,6 +61,7 @@ interface BusinessCardExtraction {
   bio?: string;
   social_media?: Record<string, string>;
   additional_info?: Record<string, string>;
+  secretariat_notes?: string;
   file_path?: string;
   file_name?: string;
   file_type?: string;
@@ -100,6 +101,13 @@ const BusinessCardUpload: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
+  const [socialMediaEntries, setSocialMediaEntries] = useState<{key: string; value: string}[]>([]);
+  const [additionalInfoEntries, setAdditionalInfoEntries] = useState<{key: string; value: string}[]>([]);
+  const [newSocialMediaKey, setNewSocialMediaKey] = useState('');
+  const [newSocialMediaValue, setNewSocialMediaValue] = useState('');
+  const [newAdditionalInfoKey, setNewAdditionalInfoKey] = useState('');
+  const [newAdditionalInfoValue, setNewAdditionalInfoValue] = useState('');
+
   // Fetch honorific title and primary domain options
   useEffect(() => {
     const fetchOptions = async () => {
@@ -124,6 +132,33 @@ const BusinessCardUpload: React.FC = () => {
   useEffect(() => {
     if (extraction?.primary_domain === 'Other') {
       setShowDomainOther(true);
+    }
+  }, [extraction]);
+
+  // Update dictionary entries when extraction changes
+  useEffect(() => {
+    if (extraction) {
+      // Convert social_media dictionary to array of key-value entries
+      if (extraction.social_media) {
+        const entries = Object.entries(extraction.social_media).map(([key, value]) => ({
+          key,
+          value: value || ''
+        }));
+        setSocialMediaEntries(entries);
+      } else {
+        setSocialMediaEntries([]);
+      }
+      
+      // Convert additional_info dictionary to array of key-value entries
+      if (extraction.additional_info) {
+        const entries = Object.entries(extraction.additional_info).map(([key, value]) => ({
+          key,
+          value: value || ''
+        }));
+        setAdditionalInfoEntries(entries);
+      } else {
+        setAdditionalInfoEntries([]);
+      }
     }
   }, [extraction]);
 
@@ -203,13 +238,106 @@ const BusinessCardUpload: React.FC = () => {
     }
   };
 
+  // Update extraction with the latest entries before submitting
+  const updateDictionariesInExtraction = () => {
+    if (!extraction) return null;
+    
+    // Convert social media entries back to dictionary
+    const socialMediaDict: Record<string, string> = {};
+    socialMediaEntries.forEach(entry => {
+      if (entry.key && entry.key.trim() !== '') {
+        socialMediaDict[entry.key] = entry.value;
+      }
+    });
+    
+    // Convert additional info entries back to dictionary
+    const additionalInfoDict: Record<string, string> = {};
+    additionalInfoEntries.forEach(entry => {
+      if (entry.key && entry.key.trim() !== '') {
+        additionalInfoDict[entry.key] = entry.value;
+      }
+    });
+    
+    // Return the updated extraction object instead of updating state
+    return {
+      ...extraction,
+      social_media: socialMediaDict,
+      additional_info: additionalInfoDict
+    };
+  };
+  
+  // Add new social media entry
+  const handleAddSocialMedia = () => {
+    if (newSocialMediaKey.trim() === '') return;
+    
+    setSocialMediaEntries([
+      ...socialMediaEntries,
+      { key: newSocialMediaKey, value: newSocialMediaValue }
+    ]);
+    
+    setNewSocialMediaKey('');
+    setNewSocialMediaValue('');
+  };
+  
+  // Add new additional info entry
+  const handleAddAdditionalInfo = () => {
+    if (newAdditionalInfoKey.trim() === '') return;
+    
+    setAdditionalInfoEntries([
+      ...additionalInfoEntries,
+      { key: newAdditionalInfoKey, value: newAdditionalInfoValue }
+    ]);
+    
+    setNewAdditionalInfoKey('');
+    setNewAdditionalInfoValue('');
+  };
+  
+  // Update social media entry
+  const handleUpdateSocialMedia = (index: number, field: 'key' | 'value', value: string) => {
+    const updatedEntries = [...socialMediaEntries];
+    updatedEntries[index] = {
+      ...updatedEntries[index],
+      [field]: value
+    };
+    setSocialMediaEntries(updatedEntries);
+  };
+  
+  // Update additional info entry
+  const handleUpdateAdditionalInfo = (index: number, field: 'key' | 'value', value: string) => {
+    const updatedEntries = [...additionalInfoEntries];
+    updatedEntries[index] = {
+      ...updatedEntries[index],
+      [field]: value
+    };
+    setAdditionalInfoEntries(updatedEntries);
+  };
+  
+  // Remove social media entry
+  const handleRemoveSocialMedia = (index: number) => {
+    const updatedEntries = [...socialMediaEntries];
+    updatedEntries.splice(index, 1);
+    setSocialMediaEntries(updatedEntries);
+  };
+  
+  // Remove additional info entry
+  const handleRemoveAdditionalInfo = (index: number) => {
+    const updatedEntries = [...additionalInfoEntries];
+    updatedEntries.splice(index, 1);
+    setAdditionalInfoEntries(updatedEntries);
+  };
+
   const handleSaveDignitaryClick = async () => {
     if (!extraction) return;
+    
+    // Get updated extraction with dictionaries
+    const updatedExtraction = updateDictionariesInExtraction();
+    if (!updatedExtraction) return;
     
     try {
       setSaveInProgress(true);
       
-      const response = await api.post<DignitaryResponse>('/admin/business-card/create-dignitary', extraction);
+      // Use the updated extraction for the API call
+      const response = await api.post<DignitaryResponse>('/admin/business-card/create-dignitary', updatedExtraction);
       
       if (response.data && response.data.id) {
         setCreatedDignitaryId(response.data.id);
@@ -220,6 +348,8 @@ const BusinessCardUpload: React.FC = () => {
         // Clear the form data but keep success message
         setExtraction(null);
         setPreviewUrl(null);
+        setSocialMediaEntries([]);
+        setAdditionalInfoEntries([]);
         if (fileInputRef.current) fileInputRef.current.value = '';
         if (cameraInputRef.current) cameraInputRef.current.value = '';
       }
@@ -234,6 +364,12 @@ const BusinessCardUpload: React.FC = () => {
   const handleResetForm = () => {
     setExtraction(null);
     setPreviewUrl(null);
+    setSocialMediaEntries([]);
+    setAdditionalInfoEntries([]);
+    setNewSocialMediaKey('');
+    setNewSocialMediaValue('');
+    setNewAdditionalInfoKey('');
+    setNewAdditionalInfoValue('');
     if (fileInputRef.current) fileInputRef.current.value = '';
     if (cameraInputRef.current) cameraInputRef.current.value = '';
     setSuccessMessage(null);
@@ -548,10 +684,23 @@ const BusinessCardUpload: React.FC = () => {
                 fullWidth
                 multiline
                 rows={3}
-                label="Bio / Notes"
+                label="Bio"
                 name="bio"
                 value={extraction.bio || ''}
                 onChange={handleInputChange}
+              />
+            </Grid>
+            
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                multiline
+                rows={3}
+                label="Secretariat Notes"
+                name="secretariat_notes"
+                value={extraction.secretariat_notes || ''}
+                onChange={handleInputChange}
+                placeholder="Add additional notes for secretariat use"
               />
             </Grid>
             
@@ -567,6 +716,146 @@ const BusinessCardUpload: React.FC = () => {
                 }
                 label="Has met Gurudev"
               />
+            </Grid>
+            
+            {/* Social Media Section */}
+            <Grid item xs={12} sx={{ mt: 2 }}>
+              <Divider />
+              <Typography variant="subtitle1" color="primary" sx={{ mt: 2 }} gutterBottom>
+                Social Media Profiles
+              </Typography>
+            </Grid>
+            
+            {socialMediaEntries.map((entry, index) => (
+              <Grid item xs={12} key={`social-media-${index}`} container spacing={1} alignItems="center">
+                <Grid item xs={5}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Platform"
+                    value={entry.key}
+                    onChange={(e) => handleUpdateSocialMedia(index, 'key', e.target.value)}
+                    placeholder="e.g., Twitter, LinkedIn"
+                  />
+                </Grid>
+                <Grid item xs={5}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Profile"
+                    value={entry.value}
+                    onChange={(e) => handleUpdateSocialMedia(index, 'value', e.target.value)}
+                    placeholder="e.g., username or URL"
+                  />
+                </Grid>
+                <Grid item xs={2}>
+                  <IconButton color="error" onClick={() => handleRemoveSocialMedia(index)}>
+                    <CloseIcon />
+                  </IconButton>
+                </Grid>
+              </Grid>
+            ))}
+            
+            <Grid item xs={12} container spacing={1} alignItems="center">
+              <Grid item xs={5}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="New Platform"
+                  value={newSocialMediaKey}
+                  onChange={(e) => setNewSocialMediaKey(e.target.value)}
+                  placeholder="e.g., Twitter, LinkedIn"
+                />
+              </Grid>
+              <Grid item xs={5}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="New Profile"
+                  value={newSocialMediaValue}
+                  onChange={(e) => setNewSocialMediaValue(e.target.value)}
+                  placeholder="e.g., username or URL"
+                />
+              </Grid>
+              <Grid item xs={2}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handleAddSocialMedia}
+                  disabled={!newSocialMediaKey.trim()}
+                >
+                  Add
+                </Button>
+              </Grid>
+            </Grid>
+            
+            {/* Additional Info Section */}
+            <Grid item xs={12} sx={{ mt: 2 }}>
+              <Divider />
+              <Typography variant="subtitle1" color="primary" sx={{ mt: 2 }} gutterBottom>
+                Additional Details
+              </Typography>
+            </Grid>
+            
+            {additionalInfoEntries.map((entry, index) => (
+              <Grid item xs={12} key={`additional-info-${index}`} container spacing={1} alignItems="center">
+                <Grid item xs={5}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Field"
+                    value={entry.key}
+                    onChange={(e) => handleUpdateAdditionalInfo(index, 'key', e.target.value)}
+                    placeholder="e.g., Language, Interests"
+                  />
+                </Grid>
+                <Grid item xs={5}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Value"
+                    value={entry.value}
+                    onChange={(e) => handleUpdateAdditionalInfo(index, 'value', e.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={2}>
+                  <IconButton color="error" onClick={() => handleRemoveAdditionalInfo(index)}>
+                    <CloseIcon />
+                  </IconButton>
+                </Grid>
+              </Grid>
+            ))}
+            
+            <Grid item xs={12} container spacing={1} alignItems="center">
+              <Grid item xs={5}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="New Field"
+                  value={newAdditionalInfoKey}
+                  onChange={(e) => setNewAdditionalInfoKey(e.target.value)}
+                  placeholder="e.g., Language, Interests"
+                />
+              </Grid>
+              <Grid item xs={5}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="New Value"
+                  value={newAdditionalInfoValue}
+                  onChange={(e) => setNewAdditionalInfoValue(e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={2}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handleAddAdditionalInfo}
+                  disabled={!newAdditionalInfoKey.trim()}
+                >
+                  Add
+                </Button>
+              </Grid>
             </Grid>
             
             {/* Submit Button */}

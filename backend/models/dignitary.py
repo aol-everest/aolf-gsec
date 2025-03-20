@@ -124,6 +124,7 @@ class Dignitary(Base):
 
     social_media = Column(JSONB, nullable=True)
     additional_info = Column(JSONB, nullable=True)
+    secretariat_notes = Column(Text, nullable=True)
 
     # Business card file
     business_card_file_name = Column(String, nullable=True)

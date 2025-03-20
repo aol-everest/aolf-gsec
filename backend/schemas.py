@@ -171,6 +171,7 @@ class DignitaryAdminWithAppointments(DignitaryBase):
     business_card_file_type: Optional[str] = None
     business_card_is_image: Optional[bool] = None
     business_card_thumbnail_path: Optional[str] = None
+    secretariat_notes: Optional[str] = None
 
     class Config:
         orm_mode = True
@@ -189,6 +190,7 @@ class DignitaryAdmin(DignitaryBase):
     business_card_file_type: Optional[str] = None
     business_card_is_image: Optional[bool] = None
     business_card_thumbnail_path: Optional[str] = None
+    secretariat_notes: Optional[str] = None
 
     class Config:
         orm_mode = True
