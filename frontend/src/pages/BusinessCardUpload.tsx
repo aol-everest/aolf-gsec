@@ -768,8 +768,12 @@ const BusinessCardUpload: React.FC = () => {
             onChange={handleInputChange}
             name="gurudev_meeting_location"
           />
+          <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+            Note: You can enter a location manually, search for a location.
+          </Typography>
         </Grid>
-        <Grid item>
+        {/* TODO: Add back in when we have a way to get the current location and convert it to a human-readable address */}
+        {/* <Grid item>
           <Button
             variant="outlined"
             onClick={getCurrentLocation}
@@ -779,7 +783,7 @@ const BusinessCardUpload: React.FC = () => {
           >
             {isLoadingLocation ? <CircularProgress size={24} /> : 'Current Location'}
           </Button>
-        </Grid>
+        </Grid> */}
       </Grid>
     );
   };
@@ -1145,11 +1149,6 @@ const BusinessCardUpload: React.FC = () => {
                   </Grid>
                 )}
                 <Grid item xs={12}>
-                  <Typography variant="caption" color="text.secondary">
-                    Note: You can enter a location manually, search for a location, or use your current location.
-                  </Typography>
-                </Grid>
-                <Grid item xs={12}>
                   <TextField
                     fullWidth
                     multiline
@@ -1335,7 +1334,14 @@ const BusinessCardUpload: React.FC = () => {
             <Typography variant="body1" color="text.primary" paragraph align="center">
               {successMessage}
             </Typography>
-            <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+            <Box sx={{ 
+                display: 'flex', 
+                flexDirection: { xs: 'column', sm: 'row' }, // Stack vertically on mobile, horizontal on larger screens
+                alignItems: { xs: 'stretch', sm: 'center' }, // Full width on mobile, centered on larger screens
+                justifyContent: 'flex-end', // Position buttons on the right side
+                gap: 2, // Space between buttons
+                mt: 2 
+              }}>
               <Button
                 variant="contained"
                 color="primary"
@@ -1376,7 +1382,8 @@ const BusinessCardUpload: React.FC = () => {
             Business Card Upload
           </Typography>
           <Typography variant="body1" color="text.secondary" paragraph>
-            Upload a business card to extract dignitary information and create a new dignitary record.
+            Upload a business card to extract dignitary information and create a new dignitary record. <br />
+            Note: The extraction process may take some time to complete, please be patient.
           </Typography>
           
           {renderSuccessSection()}
