@@ -181,6 +181,7 @@ const AppointmentEdit: React.FC = () => {
   // Watch status and sub_status for conditional validation
   const watchStatus = watch('status');
   const watchSubStatus = watch('sub_status');
+  const watchAppointmentDate = watch('appointment_date');
 
   // Fetch status map from the API
   const { data: statusMap = {} } = useQuery<StatusMap>({
@@ -1196,7 +1197,7 @@ const AppointmentEdit: React.FC = () => {
                   />
                 </Grid>
                   
-                {(watchStatus === statusMap['APPROVED'] || watchStatus === statusMap['COMPLETED']) && appointment.appointment_date && parseUTCDate(appointment.appointment_date) <= new Date() && (
+                {(watchStatus === statusMap['APPROVED'] || watchStatus === statusMap['COMPLETED']) && watchAppointmentDate && parseUTCDate(watchAppointmentDate) <= new Date() && (
                   <Grid item xs={12}>
                     <Controller
                       name="secretariat_follow_up_actions"
@@ -1216,7 +1217,7 @@ const AppointmentEdit: React.FC = () => {
                   </Grid>
                 )}
 
-                {(watchStatus === statusMap['APPROVED'] || watchStatus === statusMap['COMPLETED']) && appointment.appointment_date && parseUTCDate(appointment.appointment_date) <= new Date() && (
+                {(watchStatus === statusMap['APPROVED'] || watchStatus === statusMap['COMPLETED']) && watchAppointmentDate && parseUTCDate(watchAppointmentDate) <= new Date() && (
                   <Grid item xs={12}>
                     <Controller
                       name="secretariat_meeting_notes"
@@ -1283,7 +1284,7 @@ const AppointmentEdit: React.FC = () => {
                   </Box>
                   
                   {/* Business Cards Section */}
-                  {(watchStatus === statusMap['APPROVED'] || watchStatus === statusMap['COMPLETED']) && appointment.appointment_date && parseUTCDate(appointment.appointment_date) <= new Date() && (
+                  {(watchStatus === statusMap['APPROVED'] || watchStatus === statusMap['COMPLETED']) && watchAppointmentDate && parseUTCDate(watchAppointmentDate) <= new Date() && (
                     <>
                       <Typography variant="h6" gutterBottom color="primary" sx={{ mt: 3, mb: 1 }}>
                         Business Cards
