@@ -1191,12 +1191,34 @@ const AppointmentEdit: React.FC = () => {
                         rows={4}
                         label="Notes to Point of Contact (shared with Point of Contact)"
                         error={!!validationErrors.secretariat_notes_to_requester}
-                        helperText={validationErrors.secretariat_notes_to_requester}
+                        helperText={
+                          <span><span style={{ fontWeight: 'bold' }}>NOT FOR INTERNAL USE.</span> Please note: Above notes are not shared with the Point of Contact.</span>
+                        }
                       />
                     )}
                   />
                 </Grid>
-                  
+
+                <Grid item xs={12}>
+                  <Controller
+                    name="secretariat_meeting_notes"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        multiline
+                        rows={4}
+                        label="Internal Meeting Notes (Secretariat Internal)"
+                        error={!!validationErrors.secretariat_meeting_notes}
+                        helperText={
+                          <span><span style={{ fontWeight: 'bold' }}>INTERNAL USE ONLY.</span> Please note: Above notes are for internal use only and are not shared with the Point of Contact.</span>
+                        }
+                      />  
+                    )}
+                  />
+                </Grid>
+
                 {(watchStatus === statusMap['APPROVED'] || watchStatus === statusMap['COMPLETED']) && watchAppointmentDate && parseUTCDate(watchAppointmentDate) <= new Date() && (
                   <Grid item xs={12}>
                     <Controller
@@ -1212,26 +1234,6 @@ const AppointmentEdit: React.FC = () => {
                           error={!!validationErrors.secretariat_follow_up_actions}
                           helperText={validationErrors.secretariat_follow_up_actions}
                         />
-                      )}
-                    />
-                  </Grid>
-                )}
-
-                {(watchStatus === statusMap['APPROVED'] || watchStatus === statusMap['COMPLETED']) && watchAppointmentDate && parseUTCDate(watchAppointmentDate) <= new Date() && (
-                  <Grid item xs={12}>
-                    <Controller
-                      name="secretariat_meeting_notes"
-                      control={control}
-                      render={({ field }) => (
-                        <TextField
-                          {...field}
-                          fullWidth
-                          multiline
-                          rows={4}
-                          label="Meeting Notes (Secretariat Internal)"
-                          error={!!validationErrors.secretariat_meeting_notes}
-                          helperText={validationErrors.secretariat_meeting_notes}
-                        />  
                       )}
                     />
                   </Grid>
