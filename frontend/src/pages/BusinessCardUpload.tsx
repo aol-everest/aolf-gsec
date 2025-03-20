@@ -280,8 +280,8 @@ const BusinessCardUpload: React.FC = () => {
           let height = img.height;
           
           // Calculate new dimensions while maintaining aspect ratio
-          const MAX_WIDTH = 1200;
-          const MAX_HEIGHT = 1200;
+          const MAX_WIDTH = 1600;
+          const MAX_HEIGHT = 1600;
           
           if (width > height) {
             if (width > MAX_WIDTH) {
