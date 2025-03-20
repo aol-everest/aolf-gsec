@@ -32,9 +32,13 @@ import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SaveIcon from '@mui/icons-material/Save';
 import CloseIcon from '@mui/icons-material/Close';
+import HomeIcon from '@mui/icons-material/Home';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import Layout from '../components/Layout';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
+import { useNavigate } from 'react-router-dom';
+import { HomeRoute } from '../config/routes';
 
 interface BusinessCardExtraction {
   honorific_title?: string;
@@ -81,6 +85,7 @@ const BusinessCardUpload: React.FC = () => {
   const { enqueueSnackbar } = useSnackbar();
   const theme = useTheme();
   const api = useApi();
+  const navigate = useNavigate();
   const [uploading, setUploading] = useState(false);
   const [extraction, setExtraction] = useState<BusinessCardExtraction | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -88,8 +93,9 @@ const BusinessCardUpload: React.FC = () => {
   const [primaryDomainOptions, setPrimaryDomainOptions] = useState<string[]>([]);
   const [showDomainOther, setShowDomainOther] = useState(false);
   const [saveInProgress, setSaveInProgress] = useState(false);
-  const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [createdDignitaryId, setCreatedDignitaryId] = useState<number | null>(null);
+  const [createdDignitaryName, setCreatedDignitaryName] = useState<string | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -207,7 +213,15 @@ const BusinessCardUpload: React.FC = () => {
       
       if (response.data && response.data.id) {
         setCreatedDignitaryId(response.data.id);
-        setSuccessDialogOpen(true);
+        const fullName = `${response.data.first_name} ${response.data.last_name}`;
+        setCreatedDignitaryName(fullName);
+        setSuccessMessage(`Dignitary "${fullName}" has been created successfully with ID: ${response.data.id}`);
+        
+        // Clear the form data but keep success message
+        setExtraction(null);
+        setPreviewUrl(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        if (cameraInputRef.current) cameraInputRef.current.value = '';
       }
     } catch (error) {
       console.error('Error creating dignitary:', error);
@@ -222,6 +236,13 @@ const BusinessCardUpload: React.FC = () => {
     setPreviewUrl(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
     if (cameraInputRef.current) cameraInputRef.current.value = '';
+    setSuccessMessage(null);
+    setCreatedDignitaryId(null);
+    setCreatedDignitaryName(null);
+  };
+
+  const handleGoHome = () => {
+    navigate(HomeRoute.path || '/home');
   };
 
   const renderFileUploadSection = () => (
@@ -565,37 +586,42 @@ const BusinessCardUpload: React.FC = () => {
       </Card>
     );
   };
-  
-  // Success Dialog
-  const renderSuccessDialog = () => (
-    <Dialog open={successDialogOpen} onClose={() => setSuccessDialogOpen(false)}>
-      <DialogTitle>
-        Dignitary Created Successfully
-        <IconButton
-          aria-label="close"
-          onClick={() => setSuccessDialogOpen(false)}
-          sx={{ position: 'absolute', right: 8, top: 8 }}
-        >
-          <CloseIcon />
-        </IconButton>
-      </DialogTitle>
-      <DialogContent>
-        <Typography>
-          The dignitary has been created successfully with ID: {createdDignitaryId}
-        </Typography>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={() => setSuccessDialogOpen(false)}>Close</Button>
-        <Button 
-          variant="contained" 
-          color="primary"
-          onClick={handleResetForm}
-        >
-          Add Another Dignitary
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
+
+  const renderSuccessSection = () => {
+    if (!successMessage) return null;
+    
+    return (
+      <Card variant="outlined" sx={{ mb: 3 }}>
+        <CardContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 2 }}>
+            <Typography variant="h6" color="success.dark" gutterBottom align="center">
+              Success!
+            </Typography>
+            <Typography variant="body1" color="text.primary" paragraph align="center">
+              {successMessage}
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<HomeIcon />}
+                onClick={handleGoHome}
+              >
+                Home
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<RefreshIcon />}
+                onClick={handleResetForm}
+              >
+                Upload Another Business Card
+              </Button>
+            </Box>
+          </Box>
+        </CardContent>
+      </Card>
+    );
+  };
 
   return (
     <Layout>
@@ -608,9 +634,9 @@ const BusinessCardUpload: React.FC = () => {
             Upload a business card to extract dignitary information and create a new dignitary record.
           </Typography>
           
-          {renderFileUploadSection()}
-          {renderExtractionForm()}
-          {renderSuccessDialog()}
+          {renderSuccessSection()}
+          {!successMessage && renderFileUploadSection()}
+          {!successMessage && renderExtractionForm()}
         </Box>
       </Container>
     </Layout>
