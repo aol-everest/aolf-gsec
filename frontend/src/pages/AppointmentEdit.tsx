@@ -59,6 +59,7 @@ import Collapse from '@mui/material/Collapse';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import { formatHonorificTitle } from '../utils/formattingUtils';
+import { formatDate, formatDateWithTimezone, parseUTCDate } from '../utils/dateUtils';
 
 interface AppointmentFormData {
   appointment_date: string;
@@ -374,6 +375,10 @@ const AppointmentEdit: React.FC = () => {
 
       if (!data.appointment_date) {
         errors.appointment_date = 'Appointment date is required for Completed appointments';
+      }
+
+      if (data.appointment_date && parseUTCDate(data.appointment_date) > new Date()) {
+        errors.appointment_date = 'Appointment date cannot be in the future for Completed appointments';
       }
 
       if (!data.location_id) {
@@ -1190,8 +1195,8 @@ const AppointmentEdit: React.FC = () => {
                     )}
                   />
                 </Grid>
-
-                {(watchStatus in [statusMap['APPROVED'], statusMap['COMPLETED']] || appointment.status in [statusMap['APPROVED'], statusMap['COMPLETED']]) && appointment.appointment_date && new Date(appointment.appointment_date) <= new Date() && (
+                  
+                {(watchStatus === statusMap['APPROVED'] || watchStatus === statusMap['COMPLETED']) && appointment.appointment_date && parseUTCDate(appointment.appointment_date) <= new Date() && (
                   <Grid item xs={12}>
                     <Controller
                       name="secretariat_follow_up_actions"
@@ -1211,7 +1216,7 @@ const AppointmentEdit: React.FC = () => {
                   </Grid>
                 )}
 
-                {(watchStatus in [statusMap['APPROVED'], statusMap['COMPLETED']] || appointment.status in [statusMap['APPROVED'], statusMap['COMPLETED']]) && appointment.appointment_date && new Date(appointment.appointment_date) <= new Date() && (
+                {(watchStatus === statusMap['APPROVED'] || watchStatus === statusMap['COMPLETED']) && appointment.appointment_date && parseUTCDate(appointment.appointment_date) <= new Date() && (
                   <Grid item xs={12}>
                     <Controller
                       name="secretariat_meeting_notes"
@@ -1278,7 +1283,7 @@ const AppointmentEdit: React.FC = () => {
                   </Box>
                   
                   {/* Business Cards Section */}
-                  {(watchStatus in [statusMap['APPROVED'], statusMap['COMPLETED']] || appointment.status in [statusMap['APPROVED'], statusMap['COMPLETED']]) && appointment.appointment_date && new Date(appointment.appointment_date) <= new Date() && (
+                  {(watchStatus === statusMap['APPROVED'] || watchStatus === statusMap['COMPLETED']) && appointment.appointment_date && parseUTCDate(appointment.appointment_date) <= new Date() && (
                     <>
                       <Typography variant="h6" gutterBottom color="primary" sx={{ mt: 3, mb: 1 }}>
                         Business Cards
@@ -1390,7 +1395,7 @@ const AppointmentEdit: React.FC = () => {
                                     </ListItemIcon>
                                     <ListItemText
                                       primary={attachment.file_name}
-                                      secondary={new Date(attachment.created_at).toLocaleString()}
+                                      secondary={formatDate(attachment.created_at)}
                                     />
                                     <ListItemSecondaryAction>
                                       <IconButton 
@@ -1438,7 +1443,7 @@ const AppointmentEdit: React.FC = () => {
                                     </ListItemIcon>
                                     <ListItemText
                                       primary={attachment.file_name}
-                                      secondary={new Date(attachment.created_at).toLocaleString()}
+                                      secondary={formatDate(attachment.created_at)}
                                     />
                                     <ListItemSecondaryAction>
                                       <IconButton 

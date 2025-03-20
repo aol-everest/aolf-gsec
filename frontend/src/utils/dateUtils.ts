@@ -11,6 +11,7 @@ export const parseUTCDate = (dateStr: string): Date => {
   if (!dateStr) return new Date(NaN); // Return invalid date for empty strings
   
   try {
+    console.log('dateStr', dateStr);
     let safeDateStr = dateStr.trim();
     
     // Handle specific date formats
@@ -24,6 +25,7 @@ export const parseUTCDate = (dateStr: string): Date => {
     
     // Try parsing with date-fns first (best cross-platform compatibility)
     const parsedDate = parseISO(safeDateStr);
+    console.log('parsedDate', parsedDate);
     
     // Check if date is valid
     if (isValid(parsedDate)) {
@@ -51,12 +53,12 @@ export const formatDate = (dateStr: string | null, showTime = true): string => {
   }
 };
 
-export const formatDateWithTimezone = (dateStr: string, timezone: string): string => {
+export const formatDateWithTimezone = (dateStr: string, timezone: string, showTime = true): string => {
   if (!dateStr) return '';
   try {
     const date = parseUTCDate(dateStr);
     if (!isValid(date)) return '';
-    return date.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short', timeZone: timezone });
+    return date.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: showTime ? 'short' : undefined, timeZone: timezone });
   } catch (error) {
     console.error('Error formatting date with timezone:', error);
     return '';

@@ -57,6 +57,7 @@ import { AppointmentCard } from '../components/AppointmentCard';
 const SEARCH_CONFIG = {
   // Fields directly on the appointment object
   appointmentFields: [
+    'id',
     'purpose',
     'appointment_type',
     'appointment_date',

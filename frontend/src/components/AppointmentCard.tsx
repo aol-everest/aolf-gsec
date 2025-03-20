@@ -1,5 +1,5 @@
 import { Paper, Typography, Box, Chip, IconButton, Grid, Theme, CardContent, Card, useMediaQuery } from "@mui/material"
-import { formatDate } from "../utils/dateUtils"
+import { formatDate, formatDateWithTimezone } from "../utils/dateUtils"
 import { formatHonorificTitle, getStatusChipSx, getSubStatusChipSx, formatPrimaryDomain } from "../utils/formattingUtils"
 import { validateUrl } from "../utils/urlUtils"
 import EditIcon from "@mui/icons-material/Edit"
@@ -213,7 +213,7 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                                     </Grid>
                                     <Grid item xs={12} sm={4}>
                                         <Typography sx={{ fontWeight: 500, mr: 1, display: 'inline' }}>Gurudev Meeting Date:</Typography>
-                                        <Typography sx={{ color: theme.palette.text.primary, display: 'inline' }}>{dig.gurudev_meeting_date ? formatDate(dig.gurudev_meeting_date, false) : 'N/A'}</Typography>
+                                        <Typography sx={{ color: theme.palette.text.primary, display: 'inline' }}>{dig.gurudev_meeting_date ? formatDateWithTimezone(dig.gurudev_meeting_date, 'UTC', false) : 'N/A'}</Typography>
                                     </Grid>
                                     <Grid item xs={12} sm={4}>
                                         <Typography sx={{ fontWeight: 500, mr: 1, display: 'inline' }}>Gurudev Meeting Location:</Typography>
@@ -338,7 +338,7 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                 <Box component="span" sx={{ width: '150px', fontWeight: 'medium' }}>Date & Time:</Box>
                                 <Typography component="span" sx={{ color: theme.palette.text.primary }}>
-                                    {appointment.status.toLowerCase() === 'approved' && appointment.appointment_date ? formatDate(appointment.appointment_date, false) + ' ' + (appointment.appointment_time || '') : formatDate(appointment.preferred_date, false) + ' ' + (appointment.preferred_time_of_day || '')}
+                                    {appointment.status.toLowerCase() === 'approved' && appointment.appointment_date ? formatDateWithTimezone(appointment.appointment_date, 'UTC', false) + ' ' + (appointment.appointment_time || '') : formatDateWithTimezone(appointment.preferred_date, 'UTC', false) + ' ' + (appointment.preferred_time_of_day || '')}
                                 </Typography>
                             </Box>
                         </Grid>
