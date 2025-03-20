@@ -1341,6 +1341,17 @@ async def create_dignitary_from_business_card(
     if current_user.role != models.UserRole.SECRETARIAT and appointment.requester_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to create dignitaries for this appointment")
 
+    # Get the attachment if provided
+    attachment = None
+    if extraction.attachment_id:
+        attachment = db.query(models.AppointmentAttachment).filter(
+            models.AppointmentAttachment.id == extraction.attachment_id,
+            models.AppointmentAttachment.appointment_id == appointment_id
+        ).first()
+        
+        if not attachment:
+            logger.warning(f"Attachment with ID {extraction.attachment_id} not found for appointment {appointment_id}")
+
     # Create dignitary record
     try:
         # Try to determine honorific title
@@ -1403,7 +1414,13 @@ async def create_dignitary_from_business_card(
             source_appointment_id=appointment_id,
             social_media=extraction.social_media,
             additional_info=extraction.additional_info,
-            created_by=current_user.id
+            created_by=current_user.id,
+            # Add business card attachment details
+            business_card_file_name=attachment.file_name if attachment else None,
+            business_card_file_path=attachment.file_path if attachment else None,
+            business_card_file_type=attachment.file_type if attachment else None,
+            business_card_is_image=attachment.is_image if attachment else None,
+            business_card_thumbnail_path=attachment.thumbnail_path if attachment else None,
         )
         db.add(dignitary)
         db.commit()

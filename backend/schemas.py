@@ -407,6 +407,7 @@ class BusinessCardExtraction(BaseModel):
     social_media: Optional[Dict[str, str]] = None
     bio: Optional[str] = None
     additional_info: Optional[Dict[str, str]] = None
+    attachment_id: Optional[int] = None
 
 
 class BusinessCardExtractionResponse(BaseModel):

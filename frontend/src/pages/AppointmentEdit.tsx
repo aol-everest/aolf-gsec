@@ -659,9 +659,15 @@ const AppointmentEdit: React.FC = () => {
     if (!businessCardExtraction) return;
     
     try {
+      // Pass both the extraction data and the attachment_id
+      const extractionWithAttachmentId = {
+        ...businessCardExtraction.extraction,
+        attachment_id: businessCardExtraction.attachment_id
+      };
+      
       // The backend API should handle adding the new dignitary to the appointment_dignitaries array
       // instead of replacing the deprecated dignitary field
-      await api.post(`/appointments/${id}/business-card/create-dignitary`, businessCardExtraction.extraction);
+      await api.post(`/appointments/${id}/business-card/create-dignitary`, extractionWithAttachmentId);
       setDignitaryCreated(true);
       setBusinessCardExtraction(null);
       // Make sure to invalidate both appointments and the specific appointment queries
