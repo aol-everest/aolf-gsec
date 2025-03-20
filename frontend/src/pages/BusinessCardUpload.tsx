@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Typography,
   Container,
@@ -26,6 +26,9 @@ import {
   Snackbar,
   Alert,
   SelectChangeEvent,
+  Radio,
+  RadioGroup,
+  FormLabel,
 } from '@mui/material';
 import ContactMailIcon from '@mui/icons-material/ContactMail';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
@@ -34,11 +37,14 @@ import SaveIcon from '@mui/icons-material/Save';
 import CloseIcon from '@mui/icons-material/Close';
 import HomeIcon from '@mui/icons-material/Home';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import MyLocationIcon from '@mui/icons-material/MyLocation';
+import SearchIcon from '@mui/icons-material/Search';
 import Layout from '../components/Layout';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { useNavigate } from 'react-router-dom';
 import { HomeRoute } from '../config/routes';
+import LocationAutocomplete from '../components/LocationAutocomplete';
 
 interface BusinessCardExtraction {
   honorific_title?: string;
@@ -58,6 +64,9 @@ interface BusinessCardExtraction {
   state?: string;
   country?: string;
   has_dignitary_met_gurudev?: boolean;
+  gurudev_meeting_date?: string;
+  gurudev_meeting_location?: string;
+  gurudev_meeting_notes?: string;
   bio?: string;
   social_media?: Record<string, string>;
   additional_info?: Record<string, string>;
@@ -81,6 +90,60 @@ interface DignitaryResponse {
   last_name: string;
   // Add other fields as needed
 }
+
+// Fix the Google Maps script loading hook to check for an existing script and prevent duplicate loading
+const useGoogleMapsScript = () => {
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // If Google Maps is already loaded, just set the state
+    if (window.google?.maps?.places) {
+      setIsLoaded(true);
+      return;
+    }
+
+    // Check if script is already in the document
+    const scriptId = 'google-maps-places-script';
+    let existingScript = document.getElementById(scriptId) as HTMLScriptElement;
+
+    // If script exists but is still loading, just wait for it
+    if (existingScript) {
+      const handleExistingScriptLoad = () => setIsLoaded(true);
+      existingScript.addEventListener('load', handleExistingScriptLoad);
+      return () => existingScript.removeEventListener('load', handleExistingScriptLoad);
+    }
+
+    // If script doesn't exist, create and append it
+    const script = document.createElement('script');
+    script.id = scriptId;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}&libraries=places`;
+    script.async = true;
+    script.defer = true;
+
+    const handleScriptLoad = () => {
+      console.log('Google Maps script loaded successfully');
+      setIsLoaded(true);
+    };
+    
+    const handleScriptError = (event: Event | string) => {
+      console.error('Google Maps script failed to load:', event);
+      setError('Failed to load Google Maps script');
+    };
+
+    script.addEventListener('load', handleScriptLoad);
+    script.addEventListener('error', handleScriptError);
+
+    document.head.appendChild(script);
+
+    return () => {
+      script.removeEventListener('load', handleScriptLoad);
+      script.removeEventListener('error', handleScriptError);
+    };
+  }, []);
+
+  return { isLoaded, error };
+};
 
 const BusinessCardUpload: React.FC = () => {
   const { enqueueSnackbar } = useSnackbar();
@@ -107,6 +170,40 @@ const BusinessCardUpload: React.FC = () => {
   const [newSocialMediaValue, setNewSocialMediaValue] = useState('');
   const [newAdditionalInfoKey, setNewAdditionalInfoKey] = useState('');
   const [newAdditionalInfoValue, setNewAdditionalInfoValue] = useState('');
+
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  
+  // Replace useGooglePlaces state with the hook
+  const { isLoaded: mapsLoaded, error: mapsError } = useGoogleMapsScript();
+
+  // Add references for Google Places autocomplete
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+
+  // Modify the handleLocationChange function to use timeout instead of lodash debounce
+  // We'll use useRef to store the timeout ID
+  const locationChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleLocationChange = useCallback((value: string) => {
+    if (extraction) {
+      // Clear any existing timeout
+      if (locationChangeTimeoutRef.current) {
+        clearTimeout(locationChangeTimeoutRef.current);
+      }
+      
+      // Set a new timeout to update the state after 300ms
+      locationChangeTimeoutRef.current = setTimeout(() => {
+        setExtraction((prevExtraction) => {
+          if (!prevExtraction) return null;
+          return {
+            ...prevExtraction,
+            gurudev_meeting_location: value
+          };
+        });
+      }, 300);
+    }
+  }, [extraction]);
 
   // Fetch honorific title and primary domain options
   useEffect(() => {
@@ -231,10 +328,21 @@ const BusinessCardUpload: React.FC = () => {
     }
   };
 
-  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, checked } = e.target;
+  const handleRadioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    const boolValue = value === 'true';
+    
     if (extraction) {
-      setExtraction({ ...extraction, [name]: checked });
+      // Update the extraction object with the new value
+      const updatedExtraction = { ...extraction, [name]: boolValue };
+      
+      // If "Yes" is selected for has_dignitary_met_gurudev, set the meeting date to today
+      if (name === 'has_dignitary_met_gurudev' && boolValue) {
+        const today = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
+        updatedExtraction.gurudev_meeting_date = today;
+      }
+      
+      setExtraction(updatedExtraction);
     }
   };
 
@@ -379,6 +487,197 @@ const BusinessCardUpload: React.FC = () => {
 
   const handleGoHome = () => {
     navigate(HomeRoute.path || '/home');
+  };
+
+  // Add a utility function for reverse geocoding using Google Maps API
+  const reverseGeocode = async (latitude: number, longitude: number): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      if (!window.google?.maps?.Geocoder) {
+        resolve(`Location at coordinates: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+        return;
+      }
+
+      const geocoder = new window.google.maps.Geocoder();
+      const latlng = { lat: latitude, lng: longitude };
+      
+      geocoder.geocode({ location: latlng }, (results, status) => {
+        if (status === 'OK' && results && results.length > 0) {
+          resolve(results[0].formatted_address);
+        } else {
+          console.warn('Geocoder failed due to: ' + status);
+          resolve(`Location at coordinates: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+        }
+      });
+    });
+  };
+
+  // Update getCurrentLocation to use the new reverse geocoding function
+  const getCurrentLocation = () => {
+    if (!extraction) return;
+    
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation is not supported by your browser");
+      return;
+    }
+    
+    setIsLoadingLocation(true);
+    setLocationError(null);
+    
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          // Get location based on coordinates
+          const { latitude, longitude } = position.coords;
+          
+          // Use reverse geocoding to get a human-readable address
+          const address = await reverseGeocode(latitude, longitude);
+          
+          setExtraction({
+            ...extraction,
+            gurudev_meeting_location: address
+          });
+          
+          setIsLoadingLocation(false);
+        } catch (error) {
+          console.error("Error getting location details:", error);
+          setLocationError("Failed to get location details");
+          setIsLoadingLocation(false);
+        }
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
+        let errorMessage = "Failed to get your location";
+        
+        switch(error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = "Location access was denied";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = "Location information is unavailable";
+            break;
+          case error.TIMEOUT:
+            errorMessage = "The request to get location timed out";
+            break;
+        }
+        
+        setLocationError(errorMessage);
+        setIsLoadingLocation(false);
+      }
+    );
+  };
+
+  // Initialize autocomplete function similar to LocationsManage.tsx
+  const initializeAutocomplete = useCallback(() => {
+    if (!mapsLoaded || !inputRef.current) return;
+
+    try {
+      // Clean up existing instance
+      if (autocompleteRef.current) {
+        google.maps.event.clearInstanceListeners(autocompleteRef.current);
+        autocompleteRef.current = null;
+      }
+
+      const autocomplete = new google.maps.places.Autocomplete(inputRef.current, {
+        types: ['establishment', 'geocode'],
+        fields: ['name', 'geometry', 'formatted_address', 'address_components'],
+      });
+
+      autocomplete.addListener('place_changed', () => {
+        const place = autocomplete.getPlace();
+        
+        if (!place.geometry) {
+          enqueueSnackbar('Please select a location from the dropdown', { variant: 'warning' });
+          return;
+        }
+
+        // Format the location string
+        let locationString = '';
+        locationString = (place.name ? place.name + ', ' : '') + (place.formatted_address ? place.formatted_address : '');
+
+        // Update the extraction with the selected place
+        if (extraction) {
+          setExtraction({
+            ...extraction,
+            gurudev_meeting_location: locationString
+          });
+        }
+
+        // Update the input field value directly instead of clearing it
+        if (inputRef.current) {
+          inputRef.current.value = locationString;
+        }
+      });
+
+      autocompleteRef.current = autocomplete;
+    } catch (error) {
+      console.error('Error initializing Google Places Autocomplete:', error);
+      enqueueSnackbar('Error initializing location search', { variant: 'error' });
+    }
+  }, [mapsLoaded, enqueueSnackbar, extraction]);
+
+  // Initialize autocomplete when extraction is updated or when meeting radio changes
+  useEffect(() => {
+    if (extraction?.has_dignitary_met_gurudev && mapsLoaded) {
+      setTimeout(() => {
+        initializeAutocomplete();
+      }, 100); // Small delay to ensure DOM is ready
+    }
+  }, [extraction?.has_dignitary_met_gurudev, mapsLoaded, initializeAutocomplete]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (autocompleteRef.current) {
+        google.maps.event.clearInstanceListeners(autocompleteRef.current);
+        autocompleteRef.current = null;
+      }
+    };
+  }, []);
+
+  // Replace renderMeetingLocationField with new implementation
+  const renderMeetingLocationField = () => {
+    if (!extraction) return null;
+
+    return (
+      <Grid item xs={12} md={8} container alignItems="center" spacing={1}>
+        <Grid item xs>
+          <TextField
+            inputRef={inputRef}
+            fullWidth
+            label="Meeting Location"
+            placeholder="Start typing to search..."
+            disabled={!mapsLoaded}
+            helperText={mapsError || (!mapsLoaded && 'Loading Google Maps...')}
+            error={!!mapsError}
+            InputProps={{
+              autoComplete: 'off',
+            }}
+            // Set default value from extraction
+            defaultValue={extraction.gurudev_meeting_location || ''}
+            // Add an onChange handler to sync manual edits with the extraction state
+            onChange={(e) => {
+              if (extraction) {
+                setExtraction({
+                  ...extraction,
+                  gurudev_meeting_location: e.target.value
+                });
+              }
+            }}
+          />
+        </Grid>
+        <Grid item>
+          <Button
+            variant="outlined"
+            onClick={getCurrentLocation}
+            startIcon={<MyLocationIcon />}
+            disabled={isLoadingLocation}
+            sx={{ height: '56px' }}
+          >
+            {isLoadingLocation ? <CircularProgress size={24} /> : 'Current Location'}
+          </Button>
+        </Grid>
+      </Grid>
+    );
   };
 
   const renderFileUploadSection = () => (
@@ -705,18 +1004,61 @@ const BusinessCardUpload: React.FC = () => {
             </Grid>
             
             <Grid item xs={12}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={extraction.has_dignitary_met_gurudev || false}
-                    onChange={handleCheckboxChange}
-                    name="has_dignitary_met_gurudev"
-                    color="primary"
-                  />
-                }
-                label="Has met Gurudev"
-              />
+              <FormControl component="fieldset">
+                <FormLabel component="legend">Has the dignitary met Gurudev?</FormLabel>
+                <RadioGroup
+                  row
+                  name="has_dignitary_met_gurudev"
+                  value={extraction.has_dignitary_met_gurudev?.toString() || 'false'}
+                  onChange={handleRadioChange}
+                >
+                  <FormControlLabel value="true" control={<Radio />} label="Yes" />
+                  <FormControlLabel value="false" control={<Radio />} label="No" />
+                </RadioGroup>
+              </FormControl>
             </Grid>
+            
+            {/* Show meeting details if has met Gurudev */}
+            {extraction.has_dignitary_met_gurudev && (
+              <>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    label="Meeting Date"
+                    name="gurudev_meeting_date"
+                    type="date"
+                    value={extraction.gurudev_meeting_date || ''}
+                    onChange={handleInputChange}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </Grid>
+                {renderMeetingLocationField()}
+                {locationError && (
+                  <Grid item xs={12}>
+                    <Typography color="error" variant="caption">
+                      {locationError}
+                    </Typography>
+                  </Grid>
+                )}
+                <Grid item xs={12}>
+                  <Typography variant="caption" color="text.secondary">
+                    Note: You can enter a location manually, search for a location, or use your current location.
+                  </Typography>
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={3}
+                    label="Meeting Notes"
+                    name="gurudev_meeting_notes"
+                    value={extraction.gurudev_meeting_notes || ''}
+                    onChange={handleInputChange}
+                    placeholder="Any details about their meeting with Gurudev"
+                  />
+                </Grid>
+              </>
+            )}
             
             {/* Social Media Section */}
             <Grid item xs={12} sx={{ mt: 2 }}>
@@ -911,6 +1253,16 @@ const BusinessCardUpload: React.FC = () => {
       </Card>
     );
   };
+
+  // Add a useEffect for cleanup
+  useEffect(() => {
+    // Cleanup function to clear any pending timeouts when unmounting
+    return () => {
+      if (locationChangeTimeoutRef.current) {
+        clearTimeout(locationChangeTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <Layout>
