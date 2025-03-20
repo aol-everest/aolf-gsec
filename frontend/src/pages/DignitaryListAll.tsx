@@ -48,6 +48,13 @@ const DignitaryListAll: React.FC = () => {
   });
 
   const columns: GridColDef[] = [
+    {
+      field: 'id',
+      headerName: 'ID',
+      width: 50,
+      flex: 0.25,
+      renderCell: (params) => params.row.id
+    },
     { 
       field: 'Name', 
       headerName: 'Name', 

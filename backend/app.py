@@ -1236,7 +1236,7 @@ async def upload_appointment_attachment(
 
     return attachment
 
-@app.post("/appointments/{appointment_id}/attachments/business-card", response_model=schemas.BusinessCardExtractionResponse)
+@app.post("/appointments/{appointment_id}/attachments/business-card", response_model=schemas.AppointmentBusinessCardExtractionResponse)
 async def upload_business_card_attachment(
     appointment_id: int,
     file: UploadFile = File(...),
@@ -1281,7 +1281,7 @@ async def upload_business_card_attachment(
     
     if not enable_extraction:
         # If extraction is disabled, return a response with empty extraction data
-        return schemas.BusinessCardExtractionResponse(
+        return schemas.AppointmentBusinessCardExtractionResponse(
             extraction=schemas.BusinessCardExtraction(
                 first_name="",
                 last_name="",
@@ -1313,7 +1313,7 @@ async def upload_business_card_attachment(
         os.unlink(temp_file_path)
         
         # Return the extraction result
-        return schemas.BusinessCardExtractionResponse(
+        return schemas.AppointmentBusinessCardExtractionResponse(
             extraction=extraction_result,
             attachment_id=attachment.id,
             appointment_id=appointment_id
@@ -1787,6 +1787,160 @@ async def get_appointment_dignitaries(
     )
     
     return dignitaries
+
+@app.post("/admin/business-card/upload", response_model=schemas.BusinessCardExtractionResponse)
+@requires_role(models.UserRole.SECRETARIAT)
+async def upload_business_card_admin(
+    file: UploadFile = File(...),
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
+):
+    """Upload a business card and extract information from it (admin/secretariat only)"""
+    try:
+        # Generate a unique ID for this upload
+        upload_uuid = str(uuid.uuid4())
+        
+        # Upload file to S3
+        file_content = await file.read()
+        upload_result = upload_file(
+            file_data=file_content,
+            file_name=f"business_cards/{upload_uuid}/{file.filename}",
+            content_type=file.content_type,
+            entity_type="dignitaries"
+        )
+
+        # Check if business card extraction is enabled
+        enable_extraction = os.environ.get("ENABLE_BUSINESS_CARD_EXTRACTION", "true").lower() == "true"
+        
+        if not enable_extraction:
+            # If extraction is disabled, return a response with empty extraction data
+            return schemas.BusinessCardExtractionResponse(
+                extraction=schemas.BusinessCardExtraction(
+                    first_name="",
+                    last_name="",
+                    title=None,
+                    company=None,
+                    phone=None,
+                    email=None,
+                    website=None,
+                    address=None
+                ),
+                attachment_uuid=upload_uuid
+            )
+
+        # Extract business card information
+        try:
+            # Save the file temporarily
+            with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
+                temp_file_path = temp_file.name
+                # Reset file position
+                await file.seek(0)
+                # Write content to temp file
+                temp_file.write(await file.read())
+            
+            # Extract information from the business card
+            extraction_result = extract_business_card_info(temp_file_path)
+            
+            # Add file path information
+            extraction_result.file_path = upload_result['s3_path']
+            extraction_result.file_name = file.filename
+            extraction_result.file_type = file.content_type
+            extraction_result.is_image = upload_result.get('is_image', False)
+            extraction_result.thumbnail_path = upload_result.get('thumbnail_path')
+            extraction_result.attachment_uuid = upload_uuid
+            
+            # Clean up the temporary file
+            os.unlink(temp_file_path)
+            
+            # Return the extraction result
+            return schemas.BusinessCardExtractionResponse(
+                extraction=extraction_result,
+                attachment_uuid=upload_uuid
+            )
+        except BusinessCardExtractionError as e:
+            # If extraction fails, still keep the attachment but return an error
+            raise HTTPException(status_code=422, detail=str(e))
+        except Exception as e:
+            # For any other error, return a 500 error
+            raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error uploading business card: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error uploading business card: {str(e)}")
+
+@app.post("/admin/business-card/create-dignitary", response_model=schemas.Dignitary)
+@requires_role(models.UserRole.SECRETARIAT)
+async def create_dignitary_from_business_card_admin(
+    extraction: schemas.BusinessCardExtraction,
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
+):
+    """Create a dignitary record from business card extraction (admin/secretariat only)"""
+    try:
+        # Try to determine honorific title
+        honorific_title = None
+        for _honorific_title in models.HonorificTitle:
+            if extraction.honorific_title and _honorific_title.value.lower() in extraction.honorific_title.lower():
+                honorific_title = _honorific_title
+                break
+        
+        # Default to NA if no title found
+        if not honorific_title:
+            honorific_title = models.HonorificTitle.NA
+        
+        # Determine primary domain
+        primary_domain = None
+        primary_domain_other = None
+        if extraction.primary_domain:
+            for _primary_domain in models.PrimaryDomain:
+                if _primary_domain.value.lower() in extraction.primary_domain.lower():
+                    primary_domain = _primary_domain
+                    break
+            if not primary_domain:
+                primary_domain = models.PrimaryDomain.OTHER
+                primary_domain_other = extraction.primary_domain + (f" ({extraction.primary_domain_other})" if extraction.primary_domain_other else "")
+        elif extraction.primary_domain_other:
+            primary_domain = models.PrimaryDomain.OTHER
+            primary_domain_other = extraction.primary_domain_other or ''
+        
+        # Create dignitary
+        dignitary = models.Dignitary(
+            honorific_title=honorific_title,
+            first_name=extraction.first_name or '',
+            last_name=extraction.last_name or '',
+            email=extraction.email,
+            phone=extraction.phone,
+            other_phone=extraction.other_phone,
+            fax=extraction.fax,
+            title_in_organization=extraction.title,
+            organization=extraction.company,
+            street_address=extraction.street_address,
+            primary_domain=primary_domain,
+            primary_domain_other=primary_domain_other,
+            bio_summary=extraction.bio,
+            linked_in_or_website=extraction.website,
+            country=extraction.country if extraction.country else None,
+            state=extraction.state if extraction.state else None,
+            city=extraction.city if extraction.city else None,
+            source=models.DignitarySource.BUSINESS_CARD,
+            social_media=extraction.social_media,
+            additional_info=extraction.additional_info,
+            created_by=current_user.id,
+            # Add business card attachment details
+            business_card_file_name=extraction.file_name,
+            business_card_file_path=extraction.file_path,
+            business_card_file_type=extraction.file_type,
+            business_card_is_image=extraction.is_image,
+            business_card_thumbnail_path=extraction.thumbnail_path,
+        )
+        db.add(dignitary)
+        db.commit()
+        db.refresh(dignitary)
+        
+        return dignitary
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error creating dignitary: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create dignitary: {str(e)}")
 
 # Configure app-wide exception handlers
 @app.exception_handler(Exception)

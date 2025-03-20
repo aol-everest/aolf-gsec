@@ -1,0 +1,620 @@
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  Typography,
+  Container,
+  Box,
+  Paper,
+  Grid,
+  Button,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  CircularProgress,
+  Divider,
+  Card,
+  CardContent,
+  FormControlLabel,
+  Checkbox,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  IconButton,
+  useTheme,
+  Snackbar,
+  Alert,
+  SelectChangeEvent,
+} from '@mui/material';
+import ContactMailIcon from '@mui/icons-material/ContactMail';
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import SaveIcon from '@mui/icons-material/Save';
+import CloseIcon from '@mui/icons-material/Close';
+import Layout from '../components/Layout';
+import { useApi } from '../hooks/useApi';
+import { useSnackbar } from 'notistack';
+
+interface BusinessCardExtraction {
+  honorific_title?: string;
+  first_name: string;
+  last_name: string;
+  title?: string;
+  company?: string;
+  primary_domain?: string;
+  primary_domain_other?: string;
+  phone?: string;
+  other_phone?: string;
+  fax?: string;
+  email?: string;
+  website?: string;
+  street_address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  has_dignitary_met_gurudev?: boolean;
+  bio?: string;
+  social_media?: Record<string, string>;
+  additional_info?: Record<string, string>;
+  file_path?: string;
+  file_name?: string;
+  file_type?: string;
+  is_image?: boolean;
+  thumbnail_path?: string;
+  attachment_uuid?: string;
+}
+
+interface BusinessCardExtractionResponse {
+  extraction: BusinessCardExtraction;
+  attachment_uuid: string;
+}
+
+interface DignitaryResponse {
+  id: number;
+  first_name: string;
+  last_name: string;
+  // Add other fields as needed
+}
+
+const BusinessCardUpload: React.FC = () => {
+  const { enqueueSnackbar } = useSnackbar();
+  const theme = useTheme();
+  const api = useApi();
+  const [uploading, setUploading] = useState(false);
+  const [extraction, setExtraction] = useState<BusinessCardExtraction | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [honorificTitleOptions, setHonorificTitleOptions] = useState<string[]>([]);
+  const [primaryDomainOptions, setPrimaryDomainOptions] = useState<string[]>([]);
+  const [showDomainOther, setShowDomainOther] = useState(false);
+  const [saveInProgress, setSaveInProgress] = useState(false);
+  const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+  const [createdDignitaryId, setCreatedDignitaryId] = useState<number | null>(null);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch honorific title and primary domain options
+  useEffect(() => {
+    const fetchOptions = async () => {
+      try {
+        const [honorificResponse, domainResponse] = await Promise.all([
+          api.get<string[]>('/dignitaries/honorific-title-options'),
+          api.get<string[]>('/dignitaries/primary-domain-options'),
+        ]);
+        
+        setHonorificTitleOptions(honorificResponse.data);
+        setPrimaryDomainOptions(domainResponse.data);
+      } catch (error) {
+        console.error('Failed to fetch dropdown options:', error);
+        enqueueSnackbar('Failed to load form options', { variant: 'error' });
+      }
+    };
+    
+    fetchOptions();
+  }, [enqueueSnackbar, api]);
+
+  // Update showDomainOther when extraction changes
+  useEffect(() => {
+    if (extraction?.primary_domain === 'Other') {
+      setShowDomainOther(true);
+    }
+  }, [extraction]);
+
+  const handleChooseFile = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleTakePhoto = () => {
+    cameraInputRef.current?.click();
+  };
+
+  const processFile = async (file: File) => {
+    setUploading(true);
+    setExtraction(null);
+    
+    try {
+      // Create preview URL
+      const fileUrl = URL.createObjectURL(file);
+      setPreviewUrl(fileUrl);
+      
+      // Upload the file and extract data
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await api.post<BusinessCardExtractionResponse>(
+        '/admin/business-card/upload',
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+      );
+      
+      setExtraction(response.data.extraction);
+      enqueueSnackbar('Business card information extracted successfully', { variant: 'success' });
+    } catch (error) {
+      console.error('Error uploading business card:', error);
+      enqueueSnackbar('Failed to process business card', { variant: 'error' });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      processFile(e.target.files[0]);
+    }
+  };
+
+  const handleCameraInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      processFile(e.target.files[0]);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    if (extraction) {
+      setExtraction({ ...extraction, [name]: value });
+    }
+  };
+
+  const handleSelectChange = (e: SelectChangeEvent) => {
+    const name = e.target.name as string;
+    const value = e.target.value;
+    
+    if (extraction) {
+      setExtraction({ ...extraction, [name]: value });
+      
+      if (name === 'primary_domain') {
+        setShowDomainOther(value === 'Other');
+      }
+    }
+  };
+
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, checked } = e.target;
+    if (extraction) {
+      setExtraction({ ...extraction, [name]: checked });
+    }
+  };
+
+  const handleSaveDignitaryClick = async () => {
+    if (!extraction) return;
+    
+    try {
+      setSaveInProgress(true);
+      
+      const response = await api.post<DignitaryResponse>('/admin/business-card/create-dignitary', extraction);
+      
+      if (response.data && response.data.id) {
+        setCreatedDignitaryId(response.data.id);
+        setSuccessDialogOpen(true);
+      }
+    } catch (error) {
+      console.error('Error creating dignitary:', error);
+      enqueueSnackbar('Failed to create dignitary', { variant: 'error' });
+    } finally {
+      setSaveInProgress(false);
+    }
+  };
+
+  const handleResetForm = () => {
+    setExtraction(null);
+    setPreviewUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
+  };
+
+  const renderFileUploadSection = () => (
+    <Card variant="outlined" sx={{ mb: 3 }}>
+      <CardContent>
+        <Typography variant="h6" gutterBottom>
+          Upload Business Card
+        </Typography>
+        
+        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+          <Button
+            variant="outlined"
+            startIcon={<ContactMailIcon />}
+            onClick={handleChooseFile}
+            disabled={uploading}
+          >
+            Choose Business Card
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<PhotoCameraIcon />}
+            onClick={handleTakePhoto}
+            disabled={uploading}
+          >
+            Take Photo
+          </Button>
+          
+          {/* Hidden file inputs */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            style={{ display: 'none' }}
+            onChange={handleFileInputChange}
+            accept="image/*"
+          />
+          <input
+            type="file"
+            ref={cameraInputRef}
+            style={{ display: 'none' }}
+            onChange={handleCameraInputChange}
+            accept="image/*"
+            capture="environment"
+          />
+          
+          {uploading && <CircularProgress size={24} sx={{ ml: 2 }} />}
+        </Box>
+        
+        {previewUrl && (
+          <Box sx={{ maxWidth: 400, mt: 2 }}>
+            <Typography variant="subtitle2" gutterBottom>
+              Business Card Preview:
+            </Typography>
+            <img 
+              src={previewUrl} 
+              alt="Business Card Preview" 
+              style={{ 
+                maxWidth: '100%', 
+                maxHeight: 300, 
+                objectFit: 'contain',
+                border: `1px solid ${theme.palette.divider}`
+              }}
+            />
+          </Box>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  const renderExtractionForm = () => {
+    if (!extraction) return null;
+    
+    return (
+      <Card variant="outlined">
+        <CardContent>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6">
+              Edit Dignitary Information
+            </Typography>
+            <Button 
+              variant="outlined" 
+              color="secondary" 
+              onClick={handleResetForm}
+              startIcon={<ArrowBackIcon />}
+            >
+              Upload Different Card
+            </Button>
+          </Box>
+          
+          <Grid container spacing={2}>
+            {/* Basic Information */}
+            <Grid item xs={12}>
+              <Typography variant="subtitle1" color="primary" gutterBottom>
+                Basic Information
+              </Typography>
+            </Grid>
+            
+            <Grid item xs={12} md={3}>
+              <FormControl fullWidth>
+                <InputLabel>Honorific Title</InputLabel>
+                <Select
+                  name="honorific_title"
+                  value={extraction.honorific_title || '(Not Applicable)'}
+                  label="Honorific Title"
+                  onChange={handleSelectChange}
+                >
+                  {honorificTitleOptions.map((title) => (
+                    <MenuItem key={title} value={title}>
+                      {title}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            
+            <Grid item xs={12} md={4.5}>
+              <TextField
+                fullWidth
+                label="First Name"
+                name="first_name"
+                value={extraction.first_name || ''}
+                onChange={handleInputChange}
+                required
+              />
+            </Grid>
+            
+            <Grid item xs={12} md={4.5}>
+              <TextField
+                fullWidth
+                label="Last Name"
+                name="last_name"
+                value={extraction.last_name || ''}
+                onChange={handleInputChange}
+                required
+              />
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Email"
+                name="email"
+                value={extraction.email || ''}
+                onChange={handleInputChange}
+              />
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Phone"
+                name="phone"
+                value={extraction.phone || ''}
+                onChange={handleInputChange}
+              />
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Other Phone"
+                name="other_phone"
+                value={extraction.other_phone || ''}
+                onChange={handleInputChange}
+              />
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Fax"
+                name="fax"
+                value={extraction.fax || ''}
+                onChange={handleInputChange}
+              />
+            </Grid>
+            
+            {/* Professional Information */}
+            <Grid item xs={12} sx={{ mt: 2 }}>
+              <Divider />
+              <Typography variant="subtitle1" color="primary" sx={{ mt: 2 }} gutterBottom>
+                Professional Information
+              </Typography>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Title / Position"
+                name="title"
+                value={extraction.title || ''}
+                onChange={handleInputChange}
+              />
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Organization / Company"
+                name="company"
+                value={extraction.company || ''}
+                onChange={handleInputChange}
+              />
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth>
+                <InputLabel>Primary Domain</InputLabel>
+                <Select
+                  name="primary_domain"
+                  value={extraction.primary_domain || ''}
+                  label="Primary Domain"
+                  onChange={handleSelectChange}
+                >
+                  {primaryDomainOptions.map((domain) => (
+                    <MenuItem key={domain} value={domain}>
+                      {domain}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            
+            {showDomainOther && (
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Specify Domain"
+                  name="primary_domain_other"
+                  value={extraction.primary_domain_other || ''}
+                  onChange={handleInputChange}
+                />
+              </Grid>
+            )}
+            
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Website / LinkedIn"
+                name="website"
+                value={extraction.website || ''}
+                onChange={handleInputChange}
+              />
+            </Grid>
+            
+            {/* Address Information */}
+            <Grid item xs={12} sx={{ mt: 2 }}>
+              <Divider />
+              <Typography variant="subtitle1" color="primary" sx={{ mt: 2 }} gutterBottom>
+                Location Information
+              </Typography>
+            </Grid>
+            
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Street Address"
+                name="street_address"
+                value={extraction.street_address || ''}
+                onChange={handleInputChange}
+              />
+            </Grid>
+            
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                label="City"
+                name="city"
+                value={extraction.city || ''}
+                onChange={handleInputChange}
+              />
+            </Grid>
+            
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                label="State / Province"
+                name="state"
+                value={extraction.state || ''}
+                onChange={handleInputChange}
+              />
+            </Grid>
+            
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                label="Country"
+                name="country"
+                value={extraction.country || ''}
+                onChange={handleInputChange}
+              />
+            </Grid>
+            
+            {/* Additional Information */}
+            <Grid item xs={12} sx={{ mt: 2 }}>
+              <Divider />
+              <Typography variant="subtitle1" color="primary" sx={{ mt: 2 }} gutterBottom>
+                Additional Information
+              </Typography>
+            </Grid>
+            
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                multiline
+                rows={3}
+                label="Bio / Notes"
+                name="bio"
+                value={extraction.bio || ''}
+                onChange={handleInputChange}
+              />
+            </Grid>
+            
+            <Grid item xs={12}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={extraction.has_dignitary_met_gurudev || false}
+                    onChange={handleCheckboxChange}
+                    name="has_dignitary_met_gurudev"
+                    color="primary"
+                  />
+                }
+                label="Has met Gurudev"
+              />
+            </Grid>
+            
+            {/* Submit Button */}
+            <Grid item xs={12} sx={{ mt: 2, textAlign: 'right' }}>
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<SaveIcon />}
+                onClick={handleSaveDignitaryClick}
+                disabled={saveInProgress || !extraction.first_name || !extraction.last_name}
+              >
+                {saveInProgress ? <CircularProgress size={24} /> : 'Create Dignitary'}
+              </Button>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
+    );
+  };
+  
+  // Success Dialog
+  const renderSuccessDialog = () => (
+    <Dialog open={successDialogOpen} onClose={() => setSuccessDialogOpen(false)}>
+      <DialogTitle>
+        Dignitary Created Successfully
+        <IconButton
+          aria-label="close"
+          onClick={() => setSuccessDialogOpen(false)}
+          sx={{ position: 'absolute', right: 8, top: 8 }}
+        >
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent>
+        <Typography>
+          The dignitary has been created successfully with ID: {createdDignitaryId}
+        </Typography>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setSuccessDialogOpen(false)}>Close</Button>
+        <Button 
+          variant="contained" 
+          color="primary"
+          onClick={handleResetForm}
+        >
+          Add Another Dignitary
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+
+  return (
+    <Layout>
+      <Container maxWidth="lg">
+        <Box>
+          <Typography variant="h4" gutterBottom>
+            Business Card Upload
+          </Typography>
+          <Typography variant="body1" color="text.secondary" paragraph>
+            Upload a business card to extract dignitary information and create a new dignitary record.
+          </Typography>
+          
+          {renderFileUploadSection()}
+          {renderExtractionForm()}
+          {renderSuccessDialog()}
+        </Box>
+      </Container>
+    </Layout>
+  );
+};
+
+export default BusinessCardUpload; 

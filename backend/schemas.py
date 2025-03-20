@@ -408,12 +408,22 @@ class BusinessCardExtraction(BaseModel):
     bio: Optional[str] = None
     additional_info: Optional[Dict[str, str]] = None
     attachment_id: Optional[int] = None
+    attachment_uuid: Optional[str] = None
+    file_name: Optional[str] = None
+    file_path: Optional[str] = None
+    file_type: Optional[str] = None
+    is_image: Optional[bool] = None
+    thumbnail_path: Optional[str] = None
 
 
-class BusinessCardExtractionResponse(BaseModel):
+class AppointmentBusinessCardExtractionResponse(BaseModel):
     extraction: BusinessCardExtraction
     attachment_id: int
     appointment_id: int
+
+class BusinessCardExtractionResponse(BaseModel):
+    extraction: BusinessCardExtraction
+    attachment_uuid: str
 
 # New schemas for USHER role
 class DignitaryUsherView(BaseModel):
