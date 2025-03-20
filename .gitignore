@@ -281,3 +281,15 @@ terraform*/*.tfvars
 # Keep example files
 !terraform*/terraform.tfvars.example
 !terraform*/*.tfvars.example
+
+# Icon files with carriage return.
+# Edited in vim
+# - vim .gitignore
+# - in a new line write Icon, then
+# - press ctrl+v and then press Enter
+# - repeat step 3
+# - save and exit (shortcut: ZZ)
+Icon
+
+
+
