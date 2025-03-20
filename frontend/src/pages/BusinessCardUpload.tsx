@@ -267,18 +267,90 @@ const BusinessCardUpload: React.FC = () => {
     cameraInputRef.current?.click();
   };
 
+  // Helper function to compress image
+  const compressImage = async (file: File, maxSizeMB = 1): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (readerEvent) => {
+        const img = new Image();
+        img.onload = () => {
+          // Create canvas
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          
+          // Calculate new dimensions while maintaining aspect ratio
+          const MAX_WIDTH = 1200;
+          const MAX_HEIGHT = 1200;
+          
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height = Math.round((height * MAX_WIDTH) / width);
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width = Math.round((width * MAX_HEIGHT) / height);
+              height = MAX_HEIGHT;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          // Draw image on canvas
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error('Could not get canvas context'));
+            return;
+          }
+          
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // Convert to Blob with reduced quality
+          canvas.toBlob((blob) => {
+            if (!blob) {
+              reject(new Error('Could not create blob'));
+              return;
+            }
+            
+            // Create new file from blob
+            const compressedFile = new File([blob], file.name, {
+              type: 'image/jpeg', // Convert to JPEG for better compression
+              lastModified: Date.now(),
+            });
+            
+            console.log(`Original size: ${(file.size / 1024 / 1024).toFixed(2)} MB, Compressed size: ${(compressedFile.size / 1024 / 1024).toFixed(2)} MB`);
+            
+            resolve(compressedFile);
+          }, 'image/jpeg', 0.7); // Adjust quality (0-1) as needed
+        };
+        
+        img.src = readerEvent.target?.result as string;
+      };
+      
+      reader.onerror = (error) => reject(error);
+      reader.readAsDataURL(file);
+    });
+  };
+
   const processFile = async (file: File) => {
     setUploading(true);
     setExtraction(null);
     
     try {
-      // Create preview URL
+      // Create preview URL from the original file
       const fileUrl = URL.createObjectURL(file);
       setPreviewUrl(fileUrl);
       
-      // Upload the file and extract data
+      // Compress the image before uploading
+      console.log(`Starting compression for file: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`);
+      const compressedFile = await compressImage(file);
+      console.log(`Compression complete: ${(compressedFile.size / 1024 / 1024).toFixed(2)} MB`);
+      
+      // Upload the compressed file and extract data
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', compressedFile);
       
       const response = await api.post<BusinessCardExtractionResponse>(
         '/admin/business-card/upload',
