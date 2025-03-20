@@ -1192,7 +1192,15 @@ const AppointmentEdit: React.FC = () => {
                         label="Notes to Point of Contact (shared with Point of Contact)"
                         error={!!validationErrors.secretariat_notes_to_requester}
                         helperText={
-                          <span><span style={{ fontWeight: 'bold' }}>NOT FOR INTERNAL USE.</span> Please note: Above notes are not shared with the Point of Contact.</span>
+                          <span>
+                            <span style={{ fontWeight: 'bold' }}>NOT FOR INTERNAL USE.</span> Please note: Above notes are not shared with the Point of Contact.
+                            {validationErrors.secretariat_notes_to_requester ? (
+                              <>
+                                <br />
+                                {validationErrors.secretariat_notes_to_requester}
+                              </>
+                            ) : null}
+                          </span>
                         }
                       />
                     )}
@@ -1212,7 +1220,15 @@ const AppointmentEdit: React.FC = () => {
                         label="Internal Meeting Notes (Secretariat Internal)"
                         error={!!validationErrors.secretariat_meeting_notes}
                         helperText={
-                          <span><span style={{ fontWeight: 'bold' }}>INTERNAL USE ONLY.</span> Please note: Above notes are for internal use only and are not shared with the Point of Contact.</span>
+                          <span>
+                            <span style={{ fontWeight: 'bold' }}>INTERNAL USE ONLY.</span> Please note: Above notes are for internal use only and are not shared with the Point of Contact.
+                            {validationErrors.secretariat_meeting_notes ? (
+                                <>
+                                  <br />
+                                  {validationErrors.secretariat_meeting_notes}
+                                </>
+                              ) : null}
+                          </span>
                         }
                       />  
                     )}
@@ -1232,7 +1248,17 @@ const AppointmentEdit: React.FC = () => {
                           rows={4}
                           label="Follow-up Actions (Secretariat Internal)"
                           error={!!validationErrors.secretariat_follow_up_actions}
-                          helperText={validationErrors.secretariat_follow_up_actions}
+                          helperText={
+                            <span>
+                              <span style={{ fontWeight: 'bold' }}>INTERNAL USE ONLY.</span> Please note: Above notes are for internal use only and are not shared with the Point of Contact.
+                              {validationErrors.secretariat_follow_up_actions ? (
+                                <>
+                                  <br />
+                                  {validationErrors.secretariat_follow_up_actions}
+                                </>
+                              ) : null}
+                            </span>
+                          }
                         />
                       )}
                     />
