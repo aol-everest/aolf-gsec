@@ -33,6 +33,7 @@ import {
   Tooltip,
   Switch,
   Collapse,
+  Autocomplete,
 } from '@mui/material';
 import ContactMailIcon from '@mui/icons-material/ContactMail';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
@@ -482,6 +483,28 @@ const AddNewDignitary: React.FC = () => {
     
     return updatedExtraction;
   };
+  
+  // Add common social media platforms list
+  const commonSocialMediaPlatforms = [
+    'Twitter',
+    'LinkedIn',
+    'Facebook',
+    'Instagram',
+    'YouTube',
+    'TikTok',
+    'Pinterest',
+    'Reddit',
+    'Snapchat',
+    'WhatsApp',
+    'Telegram',
+    'WeChat',
+    'Quora',
+    'Medium',
+    'Tumblr',
+    'Discord',
+    'Clubhouse',
+    'Other'
+  ];
   
   // Add new social media entry
   const handleAddSocialMedia = () => {
@@ -1266,13 +1289,20 @@ const AddNewDignitary: React.FC = () => {
                 {socialMediaEntries.map((entry, index) => (
                   <Grid item xs={12} key={`social-media-${index}`} container spacing={1} alignItems="center">
                     <Grid item xs={5}>
-                      <TextField
-                        fullWidth
-                        size="small"
-                        label="Platform"
+                      <Autocomplete
+                        freeSolo
+                        options={commonSocialMediaPlatforms}
                         value={entry.key}
-                        onChange={(e) => handleUpdateSocialMedia(index, 'key', e.target.value)}
-                        placeholder="e.g., Twitter, LinkedIn"
+                        onChange={(_, newValue) => handleUpdateSocialMedia(index, 'key', newValue || '')}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            fullWidth
+                            size="small"
+                            label="Platform"
+                            placeholder="e.g., Twitter, LinkedIn"
+                          />
+                        )}
                       />
                     </Grid>
                     <Grid item xs={5}>
@@ -1295,13 +1325,20 @@ const AddNewDignitary: React.FC = () => {
                 
                 <Grid item xs={12} container spacing={1} alignItems="center">
                   <Grid item xs={5}>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      label="New Platform"
+                    <Autocomplete
+                      freeSolo
+                      options={commonSocialMediaPlatforms}
                       value={newSocialMediaKey}
-                      onChange={(e) => setNewSocialMediaKey(e.target.value)}
-                      placeholder="e.g., Twitter, LinkedIn"
+                      onChange={(_, newValue) => setNewSocialMediaKey(newValue || '')}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          fullWidth
+                          size="small"
+                          label="New Platform"
+                          placeholder="e.g., Twitter, LinkedIn"
+                        />
+                      )}
                     />
                   </Grid>
                   <Grid item xs={5}>
