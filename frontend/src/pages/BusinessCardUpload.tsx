@@ -928,7 +928,7 @@ const BusinessCardUpload: React.FC = () => {
               </Typography>
             </Grid>
             
-            <Grid item xs={12} md={3}>
+            <Grid item xs={12} md={4}>
               <FormControl fullWidth>
                 <InputLabel>Honorific Title</InputLabel>
                 <Select
@@ -946,7 +946,7 @@ const BusinessCardUpload: React.FC = () => {
               </FormControl>
             </Grid>
             
-            <Grid item xs={12} md={4.5}>
+            <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
                 label="First Name"
@@ -957,7 +957,7 @@ const BusinessCardUpload: React.FC = () => {
               />
             </Grid>
             
-            <Grid item xs={12} md={4.5}>
+            <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
                 label="Last Name"
@@ -968,7 +968,7 @@ const BusinessCardUpload: React.FC = () => {
               />
             </Grid>
             
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
                 label="Email"
@@ -978,7 +978,7 @@ const BusinessCardUpload: React.FC = () => {
               />
             </Grid>
             
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
                 label="Phone"
@@ -990,7 +990,7 @@ const BusinessCardUpload: React.FC = () => {
             
             {isDetailedMode && (
               <>
-                <Grid item xs={12} md={6}>
+                <Grid item xs={12} md={4}>
                   <TextField
                     fullWidth
                     label="Other Phone"
@@ -1000,7 +1000,7 @@ const BusinessCardUpload: React.FC = () => {
                   />
                 </Grid>
                 
-                <Grid item xs={12} md={6}>
+                <Grid item xs={12} md={4}>
                   <TextField
                     fullWidth
                     label="Fax"
@@ -1020,7 +1020,7 @@ const BusinessCardUpload: React.FC = () => {
               </Typography>
             </Grid>
             
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
                 label="Title / Position"
@@ -1030,7 +1030,7 @@ const BusinessCardUpload: React.FC = () => {
               />
             </Grid>
             
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
                 label="Organization / Company"
@@ -1040,7 +1040,7 @@ const BusinessCardUpload: React.FC = () => {
               />
             </Grid>
             
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12} md={4}>
               <FormControl fullWidth>
                 <InputLabel>Primary Domain</InputLabel>
                 <Select
@@ -1059,7 +1059,7 @@ const BusinessCardUpload: React.FC = () => {
             </Grid>
             
             {showDomainOther && (
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
                   label="Specify Domain"
@@ -1091,7 +1091,7 @@ const BusinessCardUpload: React.FC = () => {
             </Grid>
             
             {isDetailedMode && (
-              <Grid item xs={12}>
+              <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
                   label="Street Address"
