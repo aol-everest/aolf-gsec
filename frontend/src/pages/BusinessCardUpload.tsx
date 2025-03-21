@@ -52,6 +52,7 @@ import { useSnackbar } from 'notistack';
 import { useNavigate } from 'react-router-dom';
 import { HomeRoute } from '../config/routes';
 import LocationAutocomplete from '../components/LocationAutocomplete';
+import { getLocalDate } from '../utils/dateUtils';
 
 interface BusinessCardExtraction {
   honorific_title?: string;
@@ -158,10 +159,15 @@ const BusinessCardUpload: React.FC = () => {
   const api = useApi();
   const navigate = useNavigate();
   const [uploading, setUploading] = useState(false);
+  
+  // Get today's date in YYYY-MM-DD format for default meeting date
+  const today = getLocalDate();
+  
   const [extraction, setExtraction] = useState<BusinessCardExtraction | null>({
     first_name: '',
     last_name: '',
-    has_dignitary_met_gurudev: false
+    has_dignitary_met_gurudev: true,
+    gurudev_meeting_date: today
   });
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [honorificTitleOptions, setHonorificTitleOptions] = useState<string[]>([]);
@@ -897,30 +903,104 @@ const BusinessCardUpload: React.FC = () => {
       <Card variant="outlined">
         <CardContent>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Typography variant="h6" sx={{ mr: 3 }}>
-                Dignitary Information
-              </Typography>
-              <FormControlLabel
-                control={<Switch checked={isDetailedMode} onChange={toggleDetailedMode} />}
-                label={isDetailedMode ? "Detailed Entry" : "Quick Entry"}
-              />
-            </Box>
-            {/* Button to toggle business card uploader */}
-            <Button 
-              variant="contained" 
-              color="primary" 
-              onClick={() => setShowBusinessCardUploader(!showBusinessCardUploader)}
-              startIcon={<ContactMailIcon />}
-              endIcon={showBusinessCardUploader ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-            >
-              Auto-fill with Business Card
-            </Button>
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={6}>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} md={6}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Typography variant="h6" sx={{ mr: 3 }}>
+                        Dignitary Information
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} md={6} container justifyContent="flex-end">
+                    <FormControlLabel
+                      control={<Switch checked={isDetailedMode} onChange={toggleDetailedMode} />}
+                      label={isDetailedMode ? "Detailed Entry" : "Quick Entry"}
+                    />
+                  </Grid>
+                </Grid>
+              </Grid>
+              <Grid item xs={12} md={6} container justifyContent="flex-end">
+                <Button 
+                  variant="contained" 
+                  color="primary" 
+                  onClick={() => setShowBusinessCardUploader(!showBusinessCardUploader)}
+                  startIcon={<ContactMailIcon />}
+                  endIcon={showBusinessCardUploader ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                >
+                  Autofill with Business Card
+                </Button>
+              </Grid>
+            </Grid>
           </Box>
           
           {renderBusinessCardUploader()}
           
           <Grid container spacing={2}>
+            {/* Gurudev Meeting Details */}
+            <Grid item xs={12}>
+              <Typography variant="subtitle1" color="primary" gutterBottom>
+                Gurudev Meeting Details
+              </Typography>
+            </Grid>
+            
+            <Grid item xs={12}>
+              <FormControl component="fieldset">
+                <FormLabel component="legend">Has the dignitary met Gurudev?</FormLabel>
+                <RadioGroup
+                  row
+                  name="has_dignitary_met_gurudev"
+                  value={extraction.has_dignitary_met_gurudev?.toString() || 'true'}
+                  onChange={handleRadioChange}
+                >
+                  <FormControlLabel value="true" control={<Radio />} label="Yes" />
+                  <FormControlLabel value="false" control={<Radio />} label="No" />
+                </RadioGroup>
+              </FormControl>
+            </Grid>
+            
+            {/* Show meeting details if has met Gurudev */}
+            {extraction.has_dignitary_met_gurudev && (
+              <>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    label="Meeting Date"
+                    name="gurudev_meeting_date"
+                    type="date"
+                    value={extraction.gurudev_meeting_date || today}
+                    onChange={handleInputChange}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </Grid>
+                {renderMeetingLocationField()}
+                {locationError && (
+                  <Grid item xs={12}>
+                    <Typography color="error" variant="caption">
+                      {locationError}
+                    </Typography>
+                  </Grid>
+                )}
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={3}
+                    label="Meeting Notes"
+                    name="gurudev_meeting_notes"
+                    value={extraction.gurudev_meeting_notes || ''}
+                    onChange={handleInputChange}
+                    placeholder="Any details about their meeting with Gurudev"
+                  />
+                </Grid>
+              </>
+            )}
+            
+            <Grid item xs={12} sx={{ mt: 2 }}>
+              <Divider />
+            </Grid>
+            
             {/* Basic Information */}
             <Grid item xs={12}>
               <Typography variant="subtitle1" color="primary" gutterBottom>
@@ -1071,7 +1151,7 @@ const BusinessCardUpload: React.FC = () => {
             )}
             
             {isDetailedMode && (
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
                   label="Website / LinkedIn"
@@ -1167,58 +1247,6 @@ const BusinessCardUpload: React.FC = () => {
             
             {isDetailedMode && (
               <>
-                <Grid item xs={12}>
-                  <FormControl component="fieldset">
-                    <FormLabel component="legend">Has the dignitary met Gurudev?</FormLabel>
-                    <RadioGroup
-                      row
-                      name="has_dignitary_met_gurudev"
-                      value={extraction.has_dignitary_met_gurudev?.toString() || 'false'}
-                      onChange={handleRadioChange}
-                    >
-                      <FormControlLabel value="true" control={<Radio />} label="Yes" />
-                      <FormControlLabel value="false" control={<Radio />} label="No" />
-                    </RadioGroup>
-                  </FormControl>
-                </Grid>
-                
-                {/* Show meeting details if has met Gurudev */}
-                {extraction.has_dignitary_met_gurudev && (
-                  <>
-                    <Grid item xs={12} md={4}>
-                      <TextField
-                        fullWidth
-                        label="Meeting Date"
-                        name="gurudev_meeting_date"
-                        type="date"
-                        value={extraction.gurudev_meeting_date || ''}
-                        onChange={handleInputChange}
-                        InputLabelProps={{ shrink: true }}
-                      />
-                    </Grid>
-                    {renderMeetingLocationField()}
-                    {locationError && (
-                      <Grid item xs={12}>
-                        <Typography color="error" variant="caption">
-                          {locationError}
-                        </Typography>
-                      </Grid>
-                    )}
-                    <Grid item xs={12}>
-                      <TextField
-                        fullWidth
-                        multiline
-                        rows={3}
-                        label="Meeting Notes"
-                        name="gurudev_meeting_notes"
-                        value={extraction.gurudev_meeting_notes || ''}
-                        onChange={handleInputChange}
-                        placeholder="Any details about their meeting with Gurudev"
-                      />
-                    </Grid>
-                  </>
-                )}
-                
                 {/* Social Media Section */}
                 <Grid item xs={12} sx={{ mt: 2 }}>
                   <Divider />
