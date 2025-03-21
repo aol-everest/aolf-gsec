@@ -47,6 +47,8 @@ import {
     LocationIconV2,
     TeamCheckV2,
     MemoCheckIconV2,
+    AddPersonIconV2,
+    LocationThinIconV2,
 } from '../components/icons';
 
 export const SECRETARIAT_ROLE = 'SECRETARIAT';
@@ -115,8 +117,8 @@ export const LocationAttachmentViewRoute: RouteConfig = {
 // Admin (Secretariat) routes ---------------------------------------------------------------------------
 export const AdminLocationsRoute: RouteConfig = {
   path: '/admin/locations',
-  label: 'Locations',
-  icon: LocationIconV2,
+  label: 'Manage Locations',
+  icon: LocationThinIconV2,
   roles: [SECRETARIAT_ROLE],
   showInSidebar: true,
   component: LocationsManage
@@ -124,7 +126,7 @@ export const AdminLocationsRoute: RouteConfig = {
 
 export const AdminAppointmentsRoute: RouteConfig = {
   path: '/admin/appointments',
-  label: 'All Appointments',
+  label: 'Appointments List',
   icon: ListIconV2,
   roles: [SECRETARIAT_ROLE],
   showInSidebar: true,
@@ -188,7 +190,7 @@ export const AdminDignitariesRoute: RouteConfig = {
 export const AdminAddNewDignitaryRoute: RouteConfig = {
   path: '/admin/add-new-dignitary',
   label: 'Add New Dignitary',
-  icon: FileCopyIcon,
+  icon: AddPersonIconV2,
   roles: [SECRETARIAT_ROLE],
   showInSidebar: true,
   component: AddNewDignitary
@@ -231,15 +233,15 @@ export const userRoutes: RouteConfig[] = [
 // Admin (Secretariat) routes --------------------------------------------------------------------------
 export const adminRoutes: RouteConfig[] = [
   AdminHeaderRoute,
-  AdminUsersRoute,
-  AdminDignitariesRoute,
+  AdminAppointmentsReviewRoute,
+  AdminAppointmentsCalendarRoute,
+  AdminAppointmentReviewWithIdRoute,
+  AdminAppointmentsEditRoute,
   AdminAddNewDignitaryRoute,
   AdminLocationsRoute,
   AdminAppointmentsRoute,
-  AdminAppointmentsReviewRoute,
-  AdminAppointmentReviewWithIdRoute,
-  AdminAppointmentsCalendarRoute,
-  AdminAppointmentsEditRoute,
+  AdminUsersRoute,
+  AdminDignitariesRoute,
 ];
 
 // Usher routes ----------------------------------------------------------------------------------------
