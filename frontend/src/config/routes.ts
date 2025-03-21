@@ -19,7 +19,7 @@ import AppointmentDayView from '../pages/AppointmentDayView';
 import LocationsManage from '../pages/LocationsManage';
 import AppointmentUsherView from '../pages/AppointmentUsherView';
 import LocationAttachmentView from '../pages/LocationAttachmentView';
-import BusinessCardUpload from '../pages/BusinessCardUpload';
+import AddNewDignitary from '../pages/AdminAddNewDignitary';
 
 import { 
     AddIcon, 
@@ -185,13 +185,13 @@ export const AdminDignitariesRoute: RouteConfig = {
   component: DignitaryListAll
 }
 
-export const AdminBusinessCardRoute: RouteConfig = {
-  path: '/admin/business-card',
-  label: 'Business Card Upload',
+export const AdminAddNewDignitaryRoute: RouteConfig = {
+  path: '/admin/add-new-dignitary',
+  label: 'Add New Dignitary',
   icon: FileCopyIcon,
   roles: [SECRETARIAT_ROLE],
   showInSidebar: true,
-  component: BusinessCardUpload
+  component: AddNewDignitary
 }
 
 export const AdminHeaderRoute: RouteConfig = {
@@ -233,7 +233,7 @@ export const adminRoutes: RouteConfig[] = [
   AdminHeaderRoute,
   AdminUsersRoute,
   AdminDignitariesRoute,
-  AdminBusinessCardRoute,
+  AdminAddNewDignitaryRoute,
   AdminLocationsRoute,
   AdminAppointmentsRoute,
   AdminAppointmentsReviewRoute,

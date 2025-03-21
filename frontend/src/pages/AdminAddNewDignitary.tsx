@@ -153,7 +153,7 @@ const useGoogleMapsScript = () => {
   return { isLoaded, error };
 };
 
-const BusinessCardUpload: React.FC = () => {
+const AddNewDignitary: React.FC = () => {
   const { enqueueSnackbar } = useSnackbar();
   const theme = useTheme();
   const api = useApi();
@@ -837,41 +837,49 @@ const BusinessCardUpload: React.FC = () => {
           </Typography>
           
           <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-            <Button
-              variant="outlined"
-              startIcon={<ContactMailIcon />}
-              onClick={handleChooseFile}
-              disabled={uploading}
-            >
-              Choose Business Card
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<PhotoCameraIcon />}
-              onClick={handleTakePhoto}
-              disabled={uploading}
-            >
-              Take Photo
-            </Button>
-            
-            {/* Hidden file inputs */}
-            <input
-              type="file"
-              ref={fileInputRef}
-              style={{ display: 'none' }}
-              onChange={handleFileInputChange}
-              accept="image/*"
-            />
-            <input
-              type="file"
-              ref={cameraInputRef}
-              style={{ display: 'none' }}
-              onChange={handleCameraInputChange}
-              accept="image/*"
-              capture="environment"
-            />
-            
-            {uploading && <CircularProgress size={24} sx={{ ml: 2 }} />}
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={4}>
+                <Button
+                  variant="outlined"
+                  startIcon={<ContactMailIcon />}
+                  onClick={handleChooseFile}
+                  disabled={uploading}
+                >
+                  Choose Business Card
+                </Button>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <Button
+                  variant="outlined"
+                  startIcon={<PhotoCameraIcon />}
+                  onClick={handleTakePhoto}
+                  disabled={uploading}
+                  >
+                    Take Photo
+                </Button>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                {uploading && <CircularProgress size={24} sx={{ ml: 2 }} />}
+              </Grid>
+              
+              {/* Hidden file inputs */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                onChange={handleFileInputChange}
+                accept="image/*"
+              />
+              <input
+                type="file"
+                ref={cameraInputRef}
+                style={{ display: 'none' }}
+                onChange={handleCameraInputChange}
+                accept="image/*"
+                capture="environment"
+              />
+              
+            </Grid>
           </Box>
           
           {previewUrl && (
@@ -1479,4 +1487,4 @@ const BusinessCardUpload: React.FC = () => {
   );
 };
 
-export default BusinessCardUpload; 
+export default AddNewDignitary; 
