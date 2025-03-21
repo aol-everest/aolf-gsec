@@ -29,6 +29,10 @@ import {
   Radio,
   RadioGroup,
   FormLabel,
+  Fab,
+  Tooltip,
+  Switch,
+  Collapse,
 } from '@mui/material';
 import ContactMailIcon from '@mui/icons-material/ContactMail';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
@@ -39,6 +43,9 @@ import HomeIcon from '@mui/icons-material/Home';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import MyLocationIcon from '@mui/icons-material/MyLocation';
 import SearchIcon from '@mui/icons-material/Search';
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import Layout from '../components/Layout';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
@@ -151,7 +158,11 @@ const BusinessCardUpload: React.FC = () => {
   const api = useApi();
   const navigate = useNavigate();
   const [uploading, setUploading] = useState(false);
-  const [extraction, setExtraction] = useState<BusinessCardExtraction | null>(null);
+  const [extraction, setExtraction] = useState<BusinessCardExtraction | null>({
+    first_name: '',
+    last_name: '',
+    has_dignitary_met_gurudev: false
+  });
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [honorificTitleOptions, setHonorificTitleOptions] = useState<string[]>([]);
   const [primaryDomainOptions, setPrimaryDomainOptions] = useState<string[]>([]);
@@ -160,6 +171,8 @@ const BusinessCardUpload: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [createdDignitaryId, setCreatedDignitaryId] = useState<number | null>(null);
   const [createdDignitaryName, setCreatedDignitaryName] = useState<string | null>(null);
+  const [isDetailedMode, setIsDetailedMode] = useState(false);
+  const [showBusinessCardUploader, setShowBusinessCardUploader] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -259,6 +272,14 @@ const BusinessCardUpload: React.FC = () => {
     }
   }, [extraction]);
 
+  const handleOpenBusinessCardUploader = () => {
+    setShowBusinessCardUploader(true);
+  };
+
+  const handleCloseBusinessCardUploader = () => {
+    setShowBusinessCardUploader(false);
+  };
+
   const handleChooseFile = () => {
     fileInputRef.current?.click();
   };
@@ -336,7 +357,6 @@ const BusinessCardUpload: React.FC = () => {
 
   const processFile = async (file: File) => {
     setUploading(true);
-    setExtraction(null);
     
     try {
       // Create preview URL from the original file
@@ -359,6 +379,7 @@ const BusinessCardUpload: React.FC = () => {
       );
       
       setExtraction(response.data.extraction);
+      setShowBusinessCardUploader(false);
       enqueueSnackbar('Business card information extracted successfully', { variant: 'success' });
     } catch (error) {
       console.error('Error uploading business card:', error);
@@ -788,91 +809,116 @@ const BusinessCardUpload: React.FC = () => {
     );
   };
 
-  const renderFileUploadSection = () => (
-    <Card variant="outlined" sx={{ mb: 3 }}>
-      <CardContent>
-        <Typography variant="h6" gutterBottom>
-          Upload Business Card
-        </Typography>
-        
-        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-          <Button
-            variant="outlined"
-            startIcon={<ContactMailIcon />}
-            onClick={handleChooseFile}
-            disabled={uploading}
-          >
-            Choose Business Card
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<PhotoCameraIcon />}
-            onClick={handleTakePhoto}
-            disabled={uploading}
-          >
-            Take Photo
-          </Button>
-          
-          {/* Hidden file inputs */}
-          <input
-            type="file"
-            ref={fileInputRef}
-            style={{ display: 'none' }}
-            onChange={handleFileInputChange}
-            accept="image/*"
-          />
-          <input
-            type="file"
-            ref={cameraInputRef}
-            style={{ display: 'none' }}
-            onChange={handleCameraInputChange}
-            accept="image/*"
-            capture="environment"
-          />
-          
-          {uploading && <CircularProgress size={24} sx={{ ml: 2 }} />}
-        </Box>
-        
-        {previewUrl && (
-          <Box sx={{ maxWidth: 400, mt: 2 }}>
-            <Typography variant="subtitle2" gutterBottom>
-              Business Card Preview:
-            </Typography>
-            <img 
-              src={previewUrl} 
-              alt="Business Card Preview" 
-              style={{ 
-                maxWidth: '100%', 
-                maxHeight: 300, 
-                objectFit: 'contain',
-                border: `1px solid ${theme.palette.divider}`
-              }}
-            />
+  // Toggle detailed mode
+  const toggleDetailedMode = () => {
+    setIsDetailedMode(!isDetailedMode);
+  };
+
+  // Business Card Upload Section
+  const renderBusinessCardUploader = () => (
+    <Collapse in={showBusinessCardUploader}>
+      <Card variant="outlined" sx={{ mb: 3, mt: 2 }}>
+        <CardContent>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6">Upload Business Card</Typography>
+            <IconButton onClick={handleCloseBusinessCardUploader} size="small">
+              <CloseIcon />
+            </IconButton>
           </Box>
-        )}
-      </CardContent>
-    </Card>
+          
+          <Typography variant="body2" color="text.secondary" paragraph>
+            Upload a business card to automatically extract dignitary information.
+          </Typography>
+          
+          <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+            <Button
+              variant="outlined"
+              startIcon={<ContactMailIcon />}
+              onClick={handleChooseFile}
+              disabled={uploading}
+            >
+              Choose Business Card
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<PhotoCameraIcon />}
+              onClick={handleTakePhoto}
+              disabled={uploading}
+            >
+              Take Photo
+            </Button>
+            
+            {/* Hidden file inputs */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              style={{ display: 'none' }}
+              onChange={handleFileInputChange}
+              accept="image/*"
+            />
+            <input
+              type="file"
+              ref={cameraInputRef}
+              style={{ display: 'none' }}
+              onChange={handleCameraInputChange}
+              accept="image/*"
+              capture="environment"
+            />
+            
+            {uploading && <CircularProgress size={24} sx={{ ml: 2 }} />}
+          </Box>
+          
+          {previewUrl && (
+            <Box sx={{ maxWidth: 400, mt: 2 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Business Card Preview:
+              </Typography>
+              <img 
+                src={previewUrl} 
+                alt="Business Card Preview" 
+                style={{ 
+                  maxWidth: '100%', 
+                  maxHeight: 300, 
+                  objectFit: 'contain',
+                  border: `1px solid ${theme.palette.divider}`
+                }}
+              />
+            </Box>
+          )}
+        </CardContent>
+      </Card>
+    </Collapse>
   );
 
-  const renderExtractionForm = () => {
+  const renderForm = () => {
     if (!extraction) return null;
     
     return (
       <Card variant="outlined">
         <CardContent>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h6">
-              Edit Dignitary Information
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Typography variant="h6" sx={{ mr: 3 }}>
+                Dignitary Information
+              </Typography>
+              <FormControlLabel
+                control={<Switch checked={isDetailedMode} onChange={toggleDetailedMode} />}
+                label={isDetailedMode ? "Detailed Entry" : "Quick Entry"}
+              />
+            </Box>
+            {/* Button to toggle business card uploader */}
             <Button 
-              variant="outlined" 
-              color="secondary" 
-              onClick={handleResetForm}
-              startIcon={<ArrowBackIcon />}
+              variant="contained" 
+              color="primary" 
+              onClick={() => setShowBusinessCardUploader(!showBusinessCardUploader)}
+              startIcon={<ContactMailIcon />}
+              endIcon={showBusinessCardUploader ? <ExpandLessIcon /> : <ExpandMoreIcon />}
             >
-              Upload Different Card
+              Auto-fill with Business Card
             </Button>
           </Box>
+          
+          {renderBusinessCardUploader()}
           
           <Grid container spacing={2}>
             {/* Basic Information */}
@@ -942,25 +988,29 @@ const BusinessCardUpload: React.FC = () => {
               />
             </Grid>
             
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Other Phone"
-                name="other_phone"
-                value={extraction.other_phone || ''}
-                onChange={handleInputChange}
-              />
-            </Grid>
-            
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Fax"
-                name="fax"
-                value={extraction.fax || ''}
-                onChange={handleInputChange}
-              />
-            </Grid>
+            {isDetailedMode && (
+              <>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Other Phone"
+                    name="other_phone"
+                    value={extraction.other_phone || ''}
+                    onChange={handleInputChange}
+                  />
+                </Grid>
+                
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Fax"
+                    name="fax"
+                    value={extraction.fax || ''}
+                    onChange={handleInputChange}
+                  />
+                </Grid>
+              </>
+            )}
             
             {/* Professional Information */}
             <Grid item xs={12} sx={{ mt: 2 }}>
@@ -1020,17 +1070,19 @@ const BusinessCardUpload: React.FC = () => {
               </Grid>
             )}
             
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Website / LinkedIn"
-                name="website"
-                value={extraction.website || ''}
-                onChange={handleInputChange}
-              />
-            </Grid>
+            {isDetailedMode && (
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Website / LinkedIn"
+                  name="website"
+                  value={extraction.website || ''}
+                  onChange={handleInputChange}
+                />
+              </Grid>
+            )}
             
-            {/* Address Information */}
+            {/* Location Information */}
             <Grid item xs={12} sx={{ mt: 2 }}>
               <Divider />
               <Typography variant="subtitle1" color="primary" sx={{ mt: 2 }} gutterBottom>
@@ -1038,15 +1090,17 @@ const BusinessCardUpload: React.FC = () => {
               </Typography>
             </Grid>
             
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Street Address"
-                name="street_address"
-                value={extraction.street_address || ''}
-                onChange={handleInputChange}
-              />
-            </Grid>
+            {isDetailedMode && (
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Street Address"
+                  name="street_address"
+                  value={extraction.street_address || ''}
+                  onChange={handleInputChange}
+                />
+              </Grid>
+            )}
             
             <Grid item xs={12} md={4}>
               <TextField
@@ -1111,197 +1165,201 @@ const BusinessCardUpload: React.FC = () => {
               />
             </Grid>
             
-            <Grid item xs={12}>
-              <FormControl component="fieldset">
-                <FormLabel component="legend">Has the dignitary met Gurudev?</FormLabel>
-                <RadioGroup
-                  row
-                  name="has_dignitary_met_gurudev"
-                  value={extraction.has_dignitary_met_gurudev?.toString() || 'false'}
-                  onChange={handleRadioChange}
-                >
-                  <FormControlLabel value="true" control={<Radio />} label="Yes" />
-                  <FormControlLabel value="false" control={<Radio />} label="No" />
-                </RadioGroup>
-              </FormControl>
-            </Grid>
-            
-            {/* Show meeting details if has met Gurudev */}
-            {extraction.has_dignitary_met_gurudev && (
+            {isDetailedMode && (
               <>
-                <Grid item xs={12} md={4}>
-                  <TextField
-                    fullWidth
-                    label="Meeting Date"
-                    name="gurudev_meeting_date"
-                    type="date"
-                    value={extraction.gurudev_meeting_date || ''}
-                    onChange={handleInputChange}
-                    InputLabelProps={{ shrink: true }}
-                  />
-                </Grid>
-                {renderMeetingLocationField()}
-                {locationError && (
-                  <Grid item xs={12}>
-                    <Typography color="error" variant="caption">
-                      {locationError}
-                    </Typography>
-                  </Grid>
-                )}
                 <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    multiline
-                    rows={3}
-                    label="Meeting Notes"
-                    name="gurudev_meeting_notes"
-                    value={extraction.gurudev_meeting_notes || ''}
-                    onChange={handleInputChange}
-                    placeholder="Any details about their meeting with Gurudev"
-                  />
+                  <FormControl component="fieldset">
+                    <FormLabel component="legend">Has the dignitary met Gurudev?</FormLabel>
+                    <RadioGroup
+                      row
+                      name="has_dignitary_met_gurudev"
+                      value={extraction.has_dignitary_met_gurudev?.toString() || 'false'}
+                      onChange={handleRadioChange}
+                    >
+                      <FormControlLabel value="true" control={<Radio />} label="Yes" />
+                      <FormControlLabel value="false" control={<Radio />} label="No" />
+                    </RadioGroup>
+                  </FormControl>
+                </Grid>
+                
+                {/* Show meeting details if has met Gurudev */}
+                {extraction.has_dignitary_met_gurudev && (
+                  <>
+                    <Grid item xs={12} md={4}>
+                      <TextField
+                        fullWidth
+                        label="Meeting Date"
+                        name="gurudev_meeting_date"
+                        type="date"
+                        value={extraction.gurudev_meeting_date || ''}
+                        onChange={handleInputChange}
+                        InputLabelProps={{ shrink: true }}
+                      />
+                    </Grid>
+                    {renderMeetingLocationField()}
+                    {locationError && (
+                      <Grid item xs={12}>
+                        <Typography color="error" variant="caption">
+                          {locationError}
+                        </Typography>
+                      </Grid>
+                    )}
+                    <Grid item xs={12}>
+                      <TextField
+                        fullWidth
+                        multiline
+                        rows={3}
+                        label="Meeting Notes"
+                        name="gurudev_meeting_notes"
+                        value={extraction.gurudev_meeting_notes || ''}
+                        onChange={handleInputChange}
+                        placeholder="Any details about their meeting with Gurudev"
+                      />
+                    </Grid>
+                  </>
+                )}
+                
+                {/* Social Media Section */}
+                <Grid item xs={12} sx={{ mt: 2 }}>
+                  <Divider />
+                  <Typography variant="subtitle1" color="primary" sx={{ mt: 2 }} gutterBottom>
+                    Social Media Profiles
+                  </Typography>
+                </Grid>
+                
+                {socialMediaEntries.map((entry, index) => (
+                  <Grid item xs={12} key={`social-media-${index}`} container spacing={1} alignItems="center">
+                    <Grid item xs={5}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        label="Platform"
+                        value={entry.key}
+                        onChange={(e) => handleUpdateSocialMedia(index, 'key', e.target.value)}
+                        placeholder="e.g., Twitter, LinkedIn"
+                      />
+                    </Grid>
+                    <Grid item xs={5}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        label="Profile"
+                        value={entry.value}
+                        onChange={(e) => handleUpdateSocialMedia(index, 'value', e.target.value)}
+                        placeholder="e.g., username or URL"
+                      />
+                    </Grid>
+                    <Grid item xs={2}>
+                      <IconButton color="error" onClick={() => handleRemoveSocialMedia(index)}>
+                        <CloseIcon />
+                      </IconButton>
+                    </Grid>
+                  </Grid>
+                ))}
+                
+                <Grid item xs={12} container spacing={1} alignItems="center">
+                  <Grid item xs={5}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="New Platform"
+                      value={newSocialMediaKey}
+                      onChange={(e) => setNewSocialMediaKey(e.target.value)}
+                      placeholder="e.g., Twitter, LinkedIn"
+                    />
+                  </Grid>
+                  <Grid item xs={5}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="New Profile"
+                      value={newSocialMediaValue}
+                      onChange={(e) => setNewSocialMediaValue(e.target.value)}
+                      placeholder="e.g., username or URL"
+                    />
+                  </Grid>
+                  <Grid item xs={2}>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={handleAddSocialMedia}
+                      disabled={!newSocialMediaKey.trim()}
+                    >
+                      Add
+                    </Button>
+                  </Grid>
+                </Grid>
+                
+                {/* Additional Info Section */}
+                <Grid item xs={12} sx={{ mt: 2 }}>
+                  <Divider />
+                  <Typography variant="subtitle1" color="primary" sx={{ mt: 2 }} gutterBottom>
+                    Additional Details
+                  </Typography>
+                </Grid>
+                
+                {additionalInfoEntries.map((entry, index) => (
+                  <Grid item xs={12} key={`additional-info-${index}`} container spacing={1} alignItems="center">
+                    <Grid item xs={5}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        label="Field"
+                        value={entry.key}
+                        onChange={(e) => handleUpdateAdditionalInfo(index, 'key', e.target.value)}
+                        placeholder="e.g., Language, Interests"
+                      />
+                    </Grid>
+                    <Grid item xs={5}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        label="Value"
+                        value={entry.value}
+                        onChange={(e) => handleUpdateAdditionalInfo(index, 'value', e.target.value)}
+                      />
+                    </Grid>
+                    <Grid item xs={2}>
+                      <IconButton color="error" onClick={() => handleRemoveAdditionalInfo(index)}>
+                        <CloseIcon />
+                      </IconButton>
+                    </Grid>
+                  </Grid>
+                ))}
+                
+                <Grid item xs={12} container spacing={1} alignItems="center">
+                  <Grid item xs={5}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="New Field"
+                      value={newAdditionalInfoKey}
+                      onChange={(e) => setNewAdditionalInfoKey(e.target.value)}
+                      placeholder="e.g., Language, Interests"
+                    />
+                  </Grid>
+                  <Grid item xs={5}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="New Value"
+                      value={newAdditionalInfoValue}
+                      onChange={(e) => setNewAdditionalInfoValue(e.target.value)}
+                    />
+                  </Grid>
+                  <Grid item xs={2}>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={handleAddAdditionalInfo}
+                      disabled={!newAdditionalInfoKey.trim()}
+                    >
+                      Add
+                    </Button>
+                  </Grid>
                 </Grid>
               </>
             )}
-            
-            {/* Social Media Section */}
-            <Grid item xs={12} sx={{ mt: 2 }}>
-              <Divider />
-              <Typography variant="subtitle1" color="primary" sx={{ mt: 2 }} gutterBottom>
-                Social Media Profiles
-              </Typography>
-            </Grid>
-            
-            {socialMediaEntries.map((entry, index) => (
-              <Grid item xs={12} key={`social-media-${index}`} container spacing={1} alignItems="center">
-                <Grid item xs={5}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Platform"
-                    value={entry.key}
-                    onChange={(e) => handleUpdateSocialMedia(index, 'key', e.target.value)}
-                    placeholder="e.g., Twitter, LinkedIn"
-                  />
-                </Grid>
-                <Grid item xs={5}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Profile"
-                    value={entry.value}
-                    onChange={(e) => handleUpdateSocialMedia(index, 'value', e.target.value)}
-                    placeholder="e.g., username or URL"
-                  />
-                </Grid>
-                <Grid item xs={2}>
-                  <IconButton color="error" onClick={() => handleRemoveSocialMedia(index)}>
-                    <CloseIcon />
-                  </IconButton>
-                </Grid>
-              </Grid>
-            ))}
-            
-            <Grid item xs={12} container spacing={1} alignItems="center">
-              <Grid item xs={5}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="New Platform"
-                  value={newSocialMediaKey}
-                  onChange={(e) => setNewSocialMediaKey(e.target.value)}
-                  placeholder="e.g., Twitter, LinkedIn"
-                />
-              </Grid>
-              <Grid item xs={5}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="New Profile"
-                  value={newSocialMediaValue}
-                  onChange={(e) => setNewSocialMediaValue(e.target.value)}
-                  placeholder="e.g., username or URL"
-                />
-              </Grid>
-              <Grid item xs={2}>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={handleAddSocialMedia}
-                  disabled={!newSocialMediaKey.trim()}
-                >
-                  Add
-                </Button>
-              </Grid>
-            </Grid>
-            
-            {/* Additional Info Section */}
-            <Grid item xs={12} sx={{ mt: 2 }}>
-              <Divider />
-              <Typography variant="subtitle1" color="primary" sx={{ mt: 2 }} gutterBottom>
-                Additional Details
-              </Typography>
-            </Grid>
-            
-            {additionalInfoEntries.map((entry, index) => (
-              <Grid item xs={12} key={`additional-info-${index}`} container spacing={1} alignItems="center">
-                <Grid item xs={5}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Field"
-                    value={entry.key}
-                    onChange={(e) => handleUpdateAdditionalInfo(index, 'key', e.target.value)}
-                    placeholder="e.g., Language, Interests"
-                  />
-                </Grid>
-                <Grid item xs={5}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Value"
-                    value={entry.value}
-                    onChange={(e) => handleUpdateAdditionalInfo(index, 'value', e.target.value)}
-                  />
-                </Grid>
-                <Grid item xs={2}>
-                  <IconButton color="error" onClick={() => handleRemoveAdditionalInfo(index)}>
-                    <CloseIcon />
-                  </IconButton>
-                </Grid>
-              </Grid>
-            ))}
-            
-            <Grid item xs={12} container spacing={1} alignItems="center">
-              <Grid item xs={5}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="New Field"
-                  value={newAdditionalInfoKey}
-                  onChange={(e) => setNewAdditionalInfoKey(e.target.value)}
-                  placeholder="e.g., Language, Interests"
-                />
-              </Grid>
-              <Grid item xs={5}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="New Value"
-                  value={newAdditionalInfoValue}
-                  onChange={(e) => setNewAdditionalInfoValue(e.target.value)}
-                />
-              </Grid>
-              <Grid item xs={2}>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={handleAddAdditionalInfo}
-                  disabled={!newAdditionalInfoKey.trim()}
-                >
-                  Add
-                </Button>
-              </Grid>
-            </Grid>
             
             {/* Submit Button */}
             <Grid item xs={12} sx={{ mt: 2, textAlign: 'right' }}>
@@ -1355,7 +1413,7 @@ const BusinessCardUpload: React.FC = () => {
                 startIcon={<RefreshIcon />}
                 onClick={handleResetForm}
               >
-                Upload Another Business Card
+                Add Another Dignitary
               </Button>
             </Box>
           </Box>
@@ -1379,16 +1437,14 @@ const BusinessCardUpload: React.FC = () => {
       <Container maxWidth="lg">
         <Box>
           <Typography variant="h4" gutterBottom>
-            Business Card Upload
+            Add New Dignitary
           </Typography>
           <Typography variant="body1" color="text.secondary" paragraph>
-            Upload a business card to extract dignitary information and create a new dignitary record. <br />
-            Note: The extraction process may take some time to complete, please be patient.
+            Add a new dignitary record by entering information manually or uploading a business card to auto-fill the form.
           </Typography>
           
           {renderSuccessSection()}
-          {!successMessage && renderFileUploadSection()}
-          {!successMessage && renderExtractionForm()}
+          {!successMessage && renderForm()}
         </Box>
       </Container>
     </Layout>
