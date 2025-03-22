@@ -24,7 +24,7 @@ from utils.business_card import extract_business_card_info, BusinessCardExtracti
 import inspect
 from sqlalchemy.orm import selectinload, joinedload
 from sqlalchemy.orm import aliased
-from sqlalchemy import or_, text, and_, false
+from sqlalchemy import or_, text, and_, false, func, asc, desc
 import logging
 import uuid
 from logging.handlers import RotatingFileHandler
@@ -1258,28 +1258,77 @@ async def get_all_appointments(
     return appointments
 
 @app.get("/admin/appointments/upcoming", response_model=List[schemas.AppointmentAdmin])
-@requires_role(models.UserRole.SECRETARIAT)
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
 async def get_upcoming_appointments(
     db: Session = Depends(get_read_db),
     current_user: models.User = Depends(get_current_user),
     status: Optional[str] = None
 ):
-    """Get all upcoming appointments (future appointment_date, not NULL)"""
-    query = db.query(models.Appointment).filter(
+    """Get all upcoming appointments (future appointment_date, not NULL) with access control restrictions"""
+    # Start with the filter for upcoming appointments
+    upcoming_filter = and_(
         or_(
             models.Appointment.appointment_date == None,
             models.Appointment.appointment_date >= date.today()-timedelta(days=1),
         ),
-        models.Appointment.status not in [
+        models.Appointment.status.notin_([
             models.AppointmentStatus.CANCELLED, 
             models.AppointmentStatus.REJECTED, 
             models.AppointmentStatus.COMPLETED,
-        ],
-    ).order_by(models.Appointment.appointment_date.asc())
+        ])
+    )
     
+    # Base query with upcoming filter
+    query = db.query(models.Appointment).filter(upcoming_filter)
+    
+    # Apply status filter if provided
     if status:
         query = query.filter(models.Appointment.status == status)
-    
+
+    # ADMIN role has full access to all appointments
+    if current_user.role != models.UserRole.ADMIN:
+        # For non-ADMIN users, apply access control restrictions
+        # Get all active access records for the current user
+        user_access = db.query(models.UserAccess).filter(
+            models.UserAccess.user_id == current_user.id,
+            models.UserAccess.is_active == True,
+            # Only consider records that grant access to appointments
+            or_(
+                models.UserAccess.entity_type == models.EntityType.APPOINTMENT,
+                models.UserAccess.entity_type == models.EntityType.APPOINTMENT_AND_DIGNITARY
+            )
+        ).all()
+        
+        if not user_access:
+            # If no valid access records exist, return empty list
+            return []
+        
+        # Create access filters based on country and location
+        access_filters = []
+        # Start with a "false" condition that ensures no records are returned if no access is configured
+        access_filters.append(false())
+        for access in user_access:
+            # If a specific location is specified in the access record
+            if access.location_id:
+                access_filters.append(
+                    and_(
+                        models.Appointment.location_id == access.location_id,
+                        models.Location.country_code == access.country_code
+                    )
+                )
+            else:
+                # Access to all locations in the country
+                access_filters.append(
+                    models.Location.country_code == access.country_code
+                )
+        
+        # Join to locations table and apply the country and location filters
+        query = query.join(models.Location)
+        query = query.filter(or_(*access_filters))
+
+    # Add sorting
+    query = query.order_by(models.Appointment.appointment_date.asc())
+
     # Add options to eagerly load appointment_dignitaries and their associated dignitaries
     query = query.options(
         joinedload(models.Appointment.appointment_dignitaries).joinedload(models.AppointmentDignitary.dignitary),
@@ -1287,12 +1336,12 @@ async def get_upcoming_appointments(
     )
     
     appointments = query.all()
-    logger.debug(f"Upcoming appointments: {appointments}")
+    logger.debug(f"Upcoming appointments with access control: {len(appointments)}")
     return appointments
 
 
 def admin_get_appointment(appointment_id: int, current_user: models.User, db: Session, required_access_level: models.AccessLevel=models.AccessLevel.READ):
-    # Get the appointment with location join for access control
+    """Reusable function to get a specific appointment with access control restrictions"""
     appointment = (
         db.query(models.Appointment)
         .filter(models.Appointment.id == appointment_id)
