@@ -64,6 +64,9 @@ CREATE TABLE IF NOT EXISTS user_access (
 CREATE INDEX IF NOT EXISTS user_access_user_id_idx ON user_access(user_id);
 CREATE INDEX IF NOT EXISTS user_access_country_code_idx ON user_access(country_code);
 CREATE INDEX IF NOT EXISTS user_access_location_id_idx ON user_access(location_id);
+
+-- Step 8: Add ADMIN role to UserRole enum
+ALTER TYPE userrole ADD VALUE IF NOT EXISTS 'ADMIN';
 EOF
 
 echo "Access control attributes update completed in PROD!" 

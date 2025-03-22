@@ -13,6 +13,7 @@ class UserRole(str, enum.Enum):
     SECRETARIAT = "SECRETARIAT"
     GENERAL = "GENERAL"
     USHER = "USHER"
+    ADMIN = "ADMIN"
 
     def __str__(self):
         return self.value
