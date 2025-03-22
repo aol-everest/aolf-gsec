@@ -17,6 +17,29 @@ class AccessLevel(str, enum.Enum):
     def __str__(self):
         return self.value
 
+    def get_int_value(self):
+        if self == AccessLevel.READ:
+            return 1
+        elif self == AccessLevel.READ_WRITE:
+            return 2
+        elif self == AccessLevel.ADMIN:
+            return 3
+        else:
+            raise ValueError(f"Invalid access level: {self}")
+    
+    def is_greater_than_or_equal_to(self, other: "AccessLevel"):
+        """
+        Check if this access level is greater than or equal to the other
+        """
+        return self.get_int_value() >= other.get_int_value()
+
+    def get_permitting_access_levels(self):
+        """
+        Get the access that allow this access level
+        """
+        return [access_level for access_level in AccessLevel if access_level.is_greater_than_or_equal_to(self)]
+
+
 class EntityType(str, enum.Enum):
     """Entity type enum with proper case values"""
     APPOINTMENT = "Appointment"
@@ -57,6 +80,12 @@ class UserAccess(Base):
     location = relationship("Location", foreign_keys=[location_id])
     created_by_user = relationship("User", foreign_keys=[created_by])
     updated_by_user = relationship("User", foreign_keys=[updated_by])
+
+    @classmethod
+    def check_access_level(cls, required_access_level: AccessLevel):
+        required_access_int = required_access_level.get_int_value()
+        user_access_int = cls.access_level.get_int_value()
+        return user_access_int >= required_access_int
     
     @classmethod
     def create_with_role_enforcement(cls, db, user_id, country_code, location_id, access_level, 

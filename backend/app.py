@@ -976,44 +976,83 @@ async def get_usher_appointments(
     appointments = query.all()
     return appointments
 
-@app.get("/admin/appointments/{appointment_id}", response_model=schemas.AppointmentAdmin)
-@requires_role(models.UserRole.SECRETARIAT) 
-async def get_appointment(
-    appointment_id: int,
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_read_db)
-):
-    """Get an appointment"""
+
+def admin_get_appointment(appointment_id: int, current_user: models.User, db: Session, required_access_level: models.AccessLevel=models.AccessLevel.READ):
+    # Get the appointment with location join for access control
     appointment = (
         db.query(models.Appointment)
         .filter(models.Appointment.id == appointment_id)
         .options(
             joinedload(models.Appointment.appointment_dignitaries).joinedload(models.AppointmentDignitary.dignitary),
-            joinedload(models.Appointment.requester)
+            joinedload(models.Appointment.requester),
+            joinedload(models.Appointment.location)
         )
         .first()
     )
-    logger.debug(f"Appointment: {appointment}")
-    return appointment 
+    
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    
+    # ADMIN role has full access to all appointments
+    if current_user.role != models.UserRole.ADMIN:
+        # Get the allowed access levels for the required access level
+        allowed_access_levels = required_access_level.get_permitting_access_levels()
 
+        # For SECRETARIAT, enforce access control restrictions
+        # Get all active access records for the current user
+        user_access = db.query(models.UserAccess).filter(
+            models.UserAccess.user_id == current_user.id,
+            models.UserAccess.is_active == True,
+            # Only consider records that grant access to appointments
+            or_(
+                models.UserAccess.entity_type == models.EntityType.APPOINTMENT,
+                models.UserAccess.entity_type == models.EntityType.APPOINTMENT_AND_DIGNITARY
+            ),
+            models.UserAccess.access_level.in_(allowed_access_levels)
+        ).all()
+        
+        if not user_access:
+            # If no valid access records exist, return 403 Forbidden
+            raise HTTPException(status_code=403, detail="You don't have access to this appointment")
+    
+        # Check if user has access to this appointment's country/location
+        has_access = False
+        for access in user_access:
+            # Check if user has access to this appointment's country
+            if access.country_code == appointment.location.country_code:
+                # If location_id is specified in access record, it must match
+                if access.location_id is None or access.location_id == appointment.location_id:
+                    has_access = True
+                    break
+        
+        if not has_access:
+            raise HTTPException(status_code=403, detail="You don't have access to this appointment")
+
+    return appointment
+
+
+@app.get("/admin/appointments/{appointment_id}", response_model=schemas.AppointmentAdmin)
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def get_appointment(
+    appointment_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_read_db)
+):
+    """Get a specific appointment with access control restrictions"""
+    appointment = admin_get_appointment(appointment_id, current_user, db, models.AccessLevel.READ)
+    return appointment
 
 
 @app.patch("/admin/appointments/update/{appointment_id}", response_model=schemas.AppointmentAdmin)
-@requires_role(models.UserRole.SECRETARIAT)
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
 async def update_appointment(
     appointment_id: int,
     appointment_update: schemas.AppointmentAdminUpdate,
     current_user: models.User = Depends(get_current_user_for_write),
     db: Session = Depends(get_db)
 ):
-    """Update an appointment"""
-    appointment = (
-        db.query(models.Appointment)
-        .filter(models.Appointment.id == appointment_id)
-        .first()
-    )
-    if not appointment:
-        raise HTTPException(status_code=404, detail="Appointment not found")
+    """Update an appointment with access control restrictions"""
+    appointment = admin_get_appointment(appointment_id, current_user, db, models.AccessLevel.READ_WRITE)
     
     # Save old data for notifications
     old_data = {}
@@ -1044,23 +1083,49 @@ async def update_appointment(
 
 
 @app.get("/admin/users/all", response_model=List[schemas.UserAdminView])
-@requires_role(models.UserRole.SECRETARIAT)
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
 async def get_all_users(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_read_db)
 ):
-    """Get all users with creator and updater information via joins"""
+    """Get all users with creator and updater information via joins, with access control restrictions"""
+
     # Create aliases for the User table for creator and updater
     CreatorUser = aliased(models.User)
     UpdaterUser = aliased(models.User)
-    
-    # Query users with joins to get creator and updater information in one go
-    users = (
+
+    # Query users with joins 
+    query = (
         db.query(models.User, CreatorUser, UpdaterUser)
         .outerjoin(CreatorUser, models.User.created_by == CreatorUser.id)
         .outerjoin(UpdaterUser, models.User.updated_by == UpdaterUser.id)
-        .all()
     )
+
+    # ADMIN role has full access to all users
+    if current_user.role != models.UserRole.ADMIN:
+        # For SECRETARIAT, check if they have ADMIN access level
+        user_access = db.query(models.UserAccess).filter(
+            models.UserAccess.user_id == current_user.id,
+            models.UserAccess.is_active == True,
+            # For user management, admin access level is required
+            models.UserAccess.access_level == models.AccessLevel.ADMIN
+        ).all()
+        
+        if not user_access:
+            # If no valid access records with ADMIN level exist, return 403 Forbidden
+            raise HTTPException(
+                status_code=403, 
+                detail="You need administrator access level to view users"
+            )
+        
+        # Create country filters based on access permissions
+        countries = set(access.country_code for access in user_access)
+
+        # Add country filter
+        query = query.filter(models.User.country_code.in_(countries))
+
+    # Get all users
+    users = query.all()
     
     # Process results to set created_by_user and updated_by_user attributes
     result_users = []
@@ -1073,14 +1138,36 @@ async def get_all_users(
     
     return result_users
 
+
 @app.post("/admin/users/new", response_model=schemas.UserAdminView)
-@requires_role(models.UserRole.SECRETARIAT)
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
 async def create_user(
     user: schemas.UserAdminCreate,
     current_user: models.User = Depends(get_current_user_for_write),
     db: Session = Depends(get_db)
 ):
-    """Create a new user"""
+    """Create a new user with access control restrictions"""
+    # ADMIN role has full access to create users
+    if current_user.role != models.UserRole.ADMIN:
+        # For SECRETARIAT, check if they have ADMIN access level
+        user_access = db.query(models.UserAccess).filter(
+            models.UserAccess.user_id == current_user.id,
+            models.UserAccess.is_active == True,
+            # For user management, admin access level is required
+            models.UserAccess.access_level == models.AccessLevel.ADMIN,
+            # Check country permission
+            models.UserAccess.country_code == user.country_code,
+            models.UserAccess.location_id == None
+        ).first()
+        
+        if not user_access:
+            # If no valid access record with ADMIN level for this country exists, return 403 Forbidden
+            raise HTTPException(
+                status_code=403, 
+                detail=f"You don't have administrator access for country: {user.country_code}"
+            )
+    
+    # Create the user
     new_user = models.User(
         **user.dict(),
         created_by=current_user.id,
@@ -1097,7 +1184,7 @@ async def create_user(
     return new_user
 
 @app.patch("/admin/users/update/{user_id}", response_model=schemas.UserAdminView)
-@requires_role(models.UserRole.SECRETARIAT)
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
 async def update_user(
     user_id: int,
     user_update: schemas.UserAdminUpdate,
@@ -1108,6 +1195,43 @@ async def update_user(
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    # ADMIN role has full access to update users
+    if current_user.role != models.UserRole.ADMIN:
+        # For SECRETARIAT, check if they have ADMIN access level
+        user_access = db.query(models.UserAccess).filter(
+            models.UserAccess.user_id == current_user.id,
+            models.UserAccess.is_active == True,
+            # For user management, admin access level is required
+            models.UserAccess.access_level == models.AccessLevel.ADMIN,
+            # Check country permission for the existing user
+            models.UserAccess.country_code == user.country_code,
+            models.UserAccess.location_id == None
+        ).first()
+        
+        if not user_access:
+            # If no valid access record with ADMIN level for this user's country exists, return 403 Forbidden
+            raise HTTPException(
+                status_code=403, 
+                detail=f"You don't have administrator access for this user's country: {user.country_code}"
+            )
+        
+        # If trying to change country, check if they have access to the new country as well
+        if 'country_code' in user_update.dict(exclude_unset=True):
+            new_country = user_update.country_code
+            if new_country != user.country_code:
+                new_country_access = db.query(models.UserAccess).filter(
+                    models.UserAccess.user_id == current_user.id,
+                    models.UserAccess.is_active == True,
+                    models.UserAccess.access_level == models.AccessLevel.ADMIN,
+                    models.UserAccess.country_code == new_country
+                ).first()
+                
+                if not new_country_access:
+                    raise HTTPException(
+                        status_code=403, 
+                        detail=f"You don't have administrator access for the new country: {new_country}"
+                    )
     
     # Update user with new data
     update_data = user_update.dict(exclude_unset=True)
