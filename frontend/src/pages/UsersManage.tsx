@@ -144,7 +144,7 @@ const initialAccessFormData: UserAccessFormData = {
   is_active: true,
 };
 
-const UsersAll: React.FC = () => {
+const UsersManage: React.FC = () => {
   const api = useApi();
   const { enqueueSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
@@ -1150,4 +1150,4 @@ const UsersAll: React.FC = () => {
   );
 };
 
-export default UsersAll; 
+export default UsersManage; 

@@ -1689,6 +1689,10 @@ async def create_user(
         required_access_level=models.AccessLevel.ADMIN
     )
     
+    if current_user.role != models.UserRole.ADMIN:
+        if user.role.is_greater_than_or_equal_to(current_user.role):
+            raise HTTPException(status_code=403, detail=f"You do not have permission to create a user with role {user.role}")
+
     # Create the user
     new_user = models.User(
         **user.dict(),
@@ -1725,6 +1729,10 @@ async def update_user(
         required_access_level=models.AccessLevel.ADMIN
     )    
         
+    if 'role' in user_update.dict(exclude_unset=True) and current_user.role != models.UserRole.ADMIN:
+        if user_update.role.is_greater_than_or_equal_to(current_user.role) or user.role.is_greater_than_or_equal_to(current_user.role):
+            raise HTTPException(status_code=403, detail="You do not have permission to change this user's role")
+
     # If trying to change country, check if they have access to the new country as well
     if 'country_code' in user_update.dict(exclude_unset=True):
         new_country = user_update.country_code

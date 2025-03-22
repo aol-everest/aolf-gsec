@@ -34,7 +34,12 @@ RESET ROLE; -- Optional, resets back to your original role
 EOF
 
 PGPASSWORD="$MASTER_PASSWORD" psql -h $DB_HOST -U $DB_USER -d $DB_NAME << EOF
-UPDATE users SET role = 'ADMIN' WHERE email IN ('amit.nair@artofliving.org', 'mrigank.nagar@artofliving.org');
+UPDATE users SET role = 'ADMIN' WHERE email IN (
+    'amit.nair@artofliving.org', 
+    'mrigank.nagar@artofliving.org', 
+    'bhushan@artofliving.org', 
+    'alak.vasa@artofliving.org'
+);
 EOF
 
 echo "Access control attributes update completed in PROD!" 

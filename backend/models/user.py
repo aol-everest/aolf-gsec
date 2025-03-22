@@ -24,6 +24,24 @@ class UserRole(str, enum.Enum):
     def is_general_role_type(self):
         return self == UserRole.GENERAL
 
+    def get_int_value(self):
+        if self == UserRole.GENERAL:
+            return 1
+        elif self == UserRole.USHER:
+            return 2
+        elif self == UserRole.SECRETARIAT:
+            return 3
+        elif self == UserRole.ADMIN:
+            return 4
+        else:
+            raise ValueError(f"Invalid user role: {self}")
+    
+    def is_greater_than_or_equal_to(self, other: "UserRole"):
+        """
+        Check if this user role is greater than or equal to the other
+        """
+        return self.get_int_value() >= other.get_int_value()
+
 
 # Define default notification preferences
 DEFAULT_EMAIL_NOTIFICATION_PREFERENCES = {
