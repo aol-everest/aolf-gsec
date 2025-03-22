@@ -56,4 +56,37 @@ class UserAccess(Base):
     user = relationship("User", foreign_keys=[user_id], backref="access_permissions")
     location = relationship("Location", foreign_keys=[location_id])
     created_by_user = relationship("User", foreign_keys=[created_by])
-    updated_by_user = relationship("User", foreign_keys=[updated_by]) 
+    updated_by_user = relationship("User", foreign_keys=[updated_by])
+    
+    @classmethod
+    def create_with_role_enforcement(cls, db, user_id, country_code, location_id, access_level, 
+                                     entity_type, expiry_date, reason, is_active, created_by):
+        """
+        Create a user access with role-based restrictions.
+        If the user has the USHER role, it will enforce read-only access to appointments only.
+        """
+        from models.user import User, UserRole
+        
+        # Get the user to check their role
+        user = db.query(User).filter(User.id == user_id).first()
+        
+        if user and user.role == UserRole.USHER:
+            # Override settings for USHER role
+            access_level = AccessLevel.READ
+            entity_type = EntityType.APPOINTMENT
+        
+        # Create the access record
+        access = cls(
+            user_id=user_id,
+            country_code=country_code,
+            location_id=location_id,
+            access_level=access_level,
+            entity_type=entity_type,
+            expiry_date=expiry_date,
+            reason=reason,
+            is_active=is_active,
+            created_by=created_by
+        )
+        
+        db.add(access)
+        return access 

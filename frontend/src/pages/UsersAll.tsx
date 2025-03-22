@@ -850,6 +850,23 @@ const UsersAll: React.FC = () => {
                       )}
                     </Box>
                     
+                    {/* USHER role restriction notice */}
+                    {formData.role === 'USHER' && (
+                      <Paper 
+                        sx={{ 
+                          p: 2, 
+                          mb: 3, 
+                          // bgcolor: 'info.light', 
+                          color: 'info.dark' 
+                        }}
+                        // variant="outlined"
+                      >
+                        <Typography variant="body2">
+                          <strong>Note:</strong> Users with the USHER role will only have Read access and can only access Appointments, regardless of the access settings below.
+                        </Typography>
+                      </Paper>
+                    )}
+                    
                     {userAccessSummaryLoading ? (
                       <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
                         <CircularProgress size={24} />
