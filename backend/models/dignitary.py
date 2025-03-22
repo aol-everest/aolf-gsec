@@ -114,6 +114,7 @@ class Dignitary(Base):
     bio_summary = Column(Text, nullable=True)
     linked_in_or_website = Column(String, nullable=True)
     country = Column(String, nullable=True)
+    country_code = Column(String, nullable=True)
     state = Column(String, nullable=True)
     city = Column(String, nullable=True)
     street_address = Column(String, nullable=True)

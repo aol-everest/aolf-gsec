@@ -16,6 +16,7 @@ class Location(Base):
     state = Column(String, nullable=False)
     city = Column(String, nullable=False)
     country = Column(String, nullable=False)
+    country_code = Column(String, nullable=False)
     zip_code = Column(String, nullable=False)
     driving_directions = Column(Text)
     secretariat_internal_notes = Column(Text)

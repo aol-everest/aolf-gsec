@@ -4,6 +4,7 @@ from datetime import datetime, date
 from models.appointment import AppointmentStatus, AppointmentTimeOfDay, AppointmentSubStatus, AppointmentType
 from models.dignitary import HonorificTitle, PrimaryDomain, DignitarySource
 from models.dignitaryPointOfContact import RelationshipType
+from models.accessControl import AccessLevel, EntityType
 from enum import Enum
 from models.appointmentAttachment import AttachmentType
 
@@ -201,6 +202,7 @@ class LocationBase(BaseModel):
     state: str
     city: str
     country: str
+    country_code: str
     zip_code: str
     driving_directions: Optional[str] = None
     parking_info: Optional[str] = None
@@ -477,6 +479,82 @@ class AppointmentDignitary(AppointmentDignitaryBase):
     appointment: Appointment
     dignitary: Dignitary
 
+    class Config:
+        orm_mode = True
+
+# Access Control schemas
+class UserAccessBase(BaseModel):
+    user_id: int
+    country_code: str
+    location_id: Optional[int] = None
+    access_level: AccessLevel
+    entity_type: EntityType
+    expiry_date: Optional[date] = None
+    reason: str
+    is_active: bool = True
+
+class UserAccessCreate(UserAccessBase):
+    pass
+
+class UserAccessUpdate(BaseModel):
+    country_code: Optional[str] = None
+    location_id: Optional[int] = None
+    access_level: Optional[AccessLevel] = None
+    entity_type: Optional[EntityType] = None
+    expiry_date: Optional[date] = None
+    reason: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class UserAccess(UserAccessBase):
+    id: int
+    created_by: int
+    created_at: datetime
+    updated_by: Optional[int] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        orm_mode = True
+
+class UserAccessSummary(BaseModel):
+    user_id: int
+    user_email: str
+    user_name: str
+    countries: List[str]
+    location_count: int
+    entity_types: List[str]
+    max_access_level: Optional[str] = None
+    access_count: int
+
+# Country schemas
+class CountryBase(BaseModel):
+    name: str
+    iso2_code: str
+    iso3_code: str
+    region: Optional[str] = None
+    sub_region: Optional[str] = None
+    intermediate_region: Optional[str] = None
+    country_groups: Optional[List[str]] = None
+    alt_names: Optional[List[str]] = None
+    is_enabled: bool = True
+
+class Country(CountryBase):
+    class Config:
+        orm_mode = True
+
+class CountryCreate(CountryBase):
+    pass
+
+class CountryUpdate(BaseModel):
+    name: Optional[str] = None
+    iso3_code: Optional[str] = None
+    region: Optional[str] = None
+    sub_region: Optional[str] = None
+    intermediate_region: Optional[str] = None
+    country_groups: Optional[List[str]] = None
+    alt_names: Optional[List[str]] = None
+    is_enabled: Optional[bool] = None
+
+class CountryResponse(CountryBase):
     class Config:
         orm_mode = True
 

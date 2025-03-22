@@ -5,6 +5,9 @@ from .location import Location
 from .appointment import Appointment, AppointmentStatus, AppointmentTimeOfDay, AppointmentSubStatus, AppointmentType, STATUS_SUBSTATUS_MAPPING, VALID_STATUS_OPTIONS, VALID_SUBSTATUS_OPTIONS
 from .appointmentAttachment import AppointmentAttachment, AttachmentType
 from .appointmentDignitary import AppointmentDignitary
+from .accessControl import UserAccess, AccessLevel, EntityType
+from .auditLog import AuditLog
+from .country import Country
 from database import Base
 
 __all__ = [
@@ -28,4 +31,9 @@ __all__ = [
     'STATUS_SUBSTATUS_MAPPING',
     'VALID_STATUS_OPTIONS',
     'VALID_SUBSTATUS_OPTIONS',
+    'AuditLog',
+    'UserAccess',
+    'AccessLevel',
+    'EntityType',
+    'Country',
 ] 

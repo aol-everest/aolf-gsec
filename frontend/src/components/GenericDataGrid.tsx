@@ -190,7 +190,7 @@ const GenericDataGrid: React.FC<GenericDataGridProps> = ({
       <Box 
         sx={{ 
           width: '100%',
-          height: containerHeight,
+          // height: containerHeight,
         }}
       >
         <DataGrid

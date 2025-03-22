@@ -2018,3 +2018,257 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     logger.info("Application shutting down")
+
+# Access Control Endpoints
+
+@app.get("/admin/access-control/all", response_model=List[schemas.UserAccess])
+@requires_role(models.UserRole.SECRETARIAT)
+async def get_all_user_access(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_read_db)
+):
+    """Get all user access records"""
+    user_access = db.query(models.UserAccess).all()
+    return user_access
+
+@app.get("/admin/access-control/by-user/{user_id}", response_model=List[schemas.UserAccess])
+@requires_role(models.UserRole.SECRETARIAT)
+async def get_user_access_by_user(
+    user_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_read_db)
+):
+    """Get access records for a specific user"""
+    user_access = db.query(models.UserAccess).filter(models.UserAccess.user_id == user_id).all()
+    return user_access
+
+@app.post("/admin/access-control/new", response_model=schemas.UserAccess)
+@requires_role(models.UserRole.SECRETARIAT)
+async def create_user_access(
+    user_access: schemas.UserAccessCreate,
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
+):
+    """Create a new user access record"""
+    new_access = models.UserAccess(
+        **user_access.dict(),
+        created_by=current_user.id
+    )
+    db.add(new_access)
+    db.commit()
+    db.refresh(new_access)
+    return new_access
+
+@app.patch("/admin/access-control/update/{access_id}", response_model=schemas.UserAccess)
+@requires_role(models.UserRole.SECRETARIAT)
+async def update_user_access(
+    access_id: int,
+    user_access_update: schemas.UserAccessUpdate,
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
+):
+    """Update a user access record"""
+    access = db.query(models.UserAccess).filter(models.UserAccess.id == access_id).first()
+    if not access:
+        raise HTTPException(status_code=404, detail="User access record not found")
+    
+    update_data = user_access_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(access, key, value)
+    
+    access.updated_by = current_user.id
+    access.updated_at = datetime.utcnow()
+    
+    db.commit()
+    db.refresh(access)
+    return access
+
+@app.delete("/admin/access-control/{access_id}", status_code=204)
+@requires_role(models.UserRole.SECRETARIAT)
+async def delete_user_access(
+    access_id: int,
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
+):
+    """Delete a user access record"""
+    access = db.query(models.UserAccess).filter(models.UserAccess.id == access_id).first()
+    if not access:
+        raise HTTPException(status_code=404, detail="User access record not found")
+    
+    # Log access deletion in audit trail
+    audit_log = models.AuditLog(
+        user_id=current_user.id,
+        entity_type="user_access",
+        entity_id=access_id,
+        action="delete",
+        previous_state={
+            "user_id": access.user_id,
+            "country_code": access.country_code,
+            "location_id": access.location_id,
+            "access_level": str(access.access_level),
+            "entity_type": str(access.entity_type),
+            "expiry_date": access.expiry_date.isoformat() if access.expiry_date else None,
+            "reason": access.reason,
+            "is_active": access.is_active
+        },
+        new_state=None
+    )
+    db.add(audit_log)
+    
+    db.delete(access)
+    db.commit()
+    
+    return None
+
+@app.get("/admin/access-control/user/{user_id}/summary", response_model=schemas.UserAccessSummary)
+@requires_role(models.UserRole.SECRETARIAT)
+async def get_user_access_summary(
+    user_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_read_db)
+):
+    """Get a summary of access for a specific user"""
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    access_records = db.query(models.UserAccess).filter(
+        models.UserAccess.user_id == user_id,
+        models.UserAccess.is_active == True
+    ).all()
+    
+    countries = set()
+    locations = set()
+    entity_types = set()
+    max_access_level = None
+    
+    for access in access_records:
+        countries.add(access.country_code)
+        if access.location_id:
+            locations.add(access.location_id)
+        entity_types.add(str(access.entity_type))
+        
+        # Determine highest access level (ADMIN > READ_WRITE > READ)
+        if max_access_level is None:
+            max_access_level = access.access_level
+        elif access.access_level == models.AccessLevel.ADMIN:
+            max_access_level = models.AccessLevel.ADMIN
+        elif access.access_level == models.AccessLevel.READ_WRITE and max_access_level != models.AccessLevel.ADMIN:
+            max_access_level = models.AccessLevel.READ_WRITE
+    
+    return {
+        "user_id": user_id,
+        "user_email": user.email,
+        "user_name": f"{user.first_name} {user.last_name}",
+        "countries": list(countries),
+        "location_count": len(locations),
+        "entity_types": list(entity_types),
+        "max_access_level": str(max_access_level) if max_access_level else None,
+        "access_count": len(access_records)
+    }
+
+# Endpoints for new Enums
+
+@app.get("/admin/access-level-options", response_model=List[str])
+async def get_access_levels():
+    """Get all possible access level options"""
+    return [level.value for level in models.AccessLevel]
+
+@app.get("/admin/entity-type-options", response_model=List[str])
+async def get_entity_types():
+    """Get all possible entity type options"""
+    return [entity_type.value for entity_type in models.EntityType]
+
+# Country endpoints
+@app.get("/countries", response_model=List[schemas.CountryResponse])
+async def get_enabled_countries(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_read_db)
+):
+    """Get all enabled countries for dropdowns and selectors"""
+    countries = db.query(models.Country).filter(models.Country.is_enabled == True).order_by(models.Country.name).all()
+    return countries
+
+@app.get("/admin/countries/all", response_model=List[schemas.Country])
+@requires_role(models.UserRole.SECRETARIAT)
+async def get_all_countries(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_read_db)
+):
+    """Get all countries, including disabled ones (admin only)"""
+    countries = db.query(models.Country).order_by(models.Country.name).all()
+    return countries
+
+@app.get("/admin/countries/{iso2_code}", response_model=schemas.Country)
+@requires_role(models.UserRole.SECRETARIAT)
+async def get_country(
+    iso2_code: str,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_read_db)
+):
+    """Get a specific country by ISO2 code (admin only)"""
+    country = db.query(models.Country).filter(models.Country.iso2_code == iso2_code).first()
+    if not country:
+        raise HTTPException(status_code=404, detail=f"Country with code {iso2_code} not found")
+    return country
+
+@app.patch("/admin/countries/{iso2_code}", response_model=schemas.Country)
+@requires_role(models.UserRole.SECRETARIAT)
+async def update_country(
+    iso2_code: str,
+    country_update: schemas.CountryUpdate,
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
+):
+    """Update a country (admin only)"""
+    country = db.query(models.Country).filter(models.Country.iso2_code == iso2_code).first()
+    if not country:
+        raise HTTPException(status_code=404, detail=f"Country with code {iso2_code} not found")
+    
+    # Update country attributes
+    update_data = country_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(country, key, value)
+    
+    # Create audit log
+    audit_log = models.AuditLog(
+        entity_id=iso2_code,
+        entity_type="country",
+        action="update",
+        details=json.dumps(update_data),
+        user_id=current_user.id
+    )
+    db.add(audit_log)
+    
+    # Commit changes
+    db.commit()
+    db.refresh(country)
+    return country
+
+@app.post("/admin/countries/bulk-enable", response_model=dict)
+@requires_role(models.UserRole.SECRETARIAT)
+async def bulk_update_countries(
+    iso2_codes: List[str],
+    enable: bool,
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
+):
+    """Enable or disable multiple countries at once (admin only)"""
+    updated = db.query(models.Country).filter(models.Country.iso2_code.in_(iso2_codes)).update(
+        {models.Country.is_enabled: enable}, 
+        synchronize_session=False
+    )
+    
+    # Create audit log
+    audit_log = models.AuditLog(
+        entity_id=",".join(iso2_codes),
+        entity_type="country",
+        action=f"bulk_{'enable' if enable else 'disable'}",
+        details=json.dumps({"iso2_codes": iso2_codes, "enable": enable}),
+        user_id=current_user.id
+    )
+    db.add(audit_log)
+    
+    db.commit()
+    
+    return {"message": f"Updated {updated} countries", "updated_count": updated}

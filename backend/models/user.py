@@ -35,6 +35,7 @@ class User(Base):
     last_name = Column(String)
     phone_number = Column(String)
     picture = Column(String)
+    country_code = Column(String, nullable=False)
     role = Column(Enum(UserRole), nullable=False, default=UserRole.GENERAL)
     email_notification_preferences = Column(JSON, nullable=False, default=lambda: DEFAULT_EMAIL_NOTIFICATION_PREFERENCES)
     created_at = Column(DateTime, default=datetime.utcnow)
