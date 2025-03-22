@@ -1406,14 +1406,21 @@ async def get_all_dignitaries(
 async def get_all_appointments(
     db: Session = Depends(get_read_db),
     current_user: models.User = Depends(get_current_user),
-    status: Optional[str] = None
+    status: Optional[str] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None
 ):
     """Get all appointments with optional status filter, restricted by user's access permissions"""
     query = db.query(models.Appointment).order_by(models.Appointment.id.asc())
-    
+
     # Apply status filter if provided
     if status:
         query = query.filter(models.Appointment.status == status)
+    # Apply start and end date filters if provided
+    if start_date:
+        query = query.filter(or_(models.Appointment.preferred_date >= start_date, models.Appointment.appointment_date >= start_date))
+    if end_date:
+        query = query.filter(or_(models.Appointment.preferred_date <= end_date, models.Appointment.appointment_date <= end_date))
 
     # ADMIN role has full access to all appointments
     if current_user.role != models.UserRole.ADMIN:

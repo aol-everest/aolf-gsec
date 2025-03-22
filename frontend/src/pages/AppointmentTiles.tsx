@@ -27,7 +27,11 @@ import {
   Tab,
   TextField,
   InputAdornment,
+  Stack,
 } from '@mui/material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import EditIcon from '@mui/icons-material/Edit';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
@@ -35,6 +39,7 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import SearchIcon from '@mui/icons-material/Search';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import Layout from '../components/Layout';
 import { formatDate } from '../utils/dateUtils';
 import { getStatusChipSx, getStatusColor } from '../utils/formattingUtils';
@@ -52,6 +57,7 @@ import ButtonWithBadge from '../components/ButtonWithBadge';
 import { Appointment, AppointmentDignitary } from '../models/types';
 
 import { AppointmentCard } from '../components/AppointmentCard';
+import { subDays, addDays } from 'date-fns';
 
 // Search configuration - customize this to include or exclude fields from search
 const SEARCH_CONFIG = {
@@ -206,6 +212,8 @@ const AppointmentTiles: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [startDate, setStartDate] = useState<Date | null>(subDays(new Date(), 1));
+  const [endDate, setEndDate] = useState<Date | null>(addDays(new Date(), 7));
   const [filteredAppointments, setFilteredAppointments] = useState<Appointment[]>([]);
   const theme = useTheme();
   const navigate = useNavigate();
@@ -250,17 +258,26 @@ const AppointmentTiles: React.FC = () => {
 
   // Fetch appointments using React Query with proper configuration
   const { data: appointments = [], isLoading } = useQuery({
-    queryKey: ['appointments'],
+    queryKey: ['appointments', startDate, endDate],
     queryFn: async () => {
       try {
         debugLog('Fetching appointments');
+        // Prepare parameters with optional date range
+        const params: Record<string, any> = {
+          include_location: true,
+          include_attachments: true
+        };
+
+        // Add date range parameters if they exist
+        if (startDate) {
+          params.start_date = startDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+        }
+        if (endDate) {
+          params.end_date = endDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+        }
+
         // Make sure we're getting the full appointment data including location
-        const { data } = await api.get<Appointment[]>('/admin/appointments/all', {
-          params: {
-            include_location: true,
-            include_attachments: true // Request attachments with the appointments to reduce API calls
-          }
-        });
+        const { data } = await api.get<Appointment[]>('/admin/appointments/all', { params });
         debugLog(`Fetched ${data.length} appointments`);
         return data;
       } catch (error) {
@@ -347,7 +364,7 @@ const AppointmentTiles: React.FC = () => {
     if (appointments.length === 0) return;
     
     // isFilteringRef.current = true;
-    debugLog('Filtering appointments', { selectedStatus, selectedLocation, searchTerm });
+    debugLog('Filtering appointments', { selectedStatus, selectedLocation, searchTerm, startDate, endDate });
     
     const filtered = getFilteredAppointments();
     setFilteredAppointments(filtered);
@@ -365,11 +382,13 @@ const AppointmentTiles: React.FC = () => {
         // ID doesn't exist in filtered results - check if it exists at all
         const existsInAllAppointments = appointments.some(apt => apt.id === appointmentId);
         
-        if (existsInAllAppointments && (selectedStatus || selectedLocation)) {
+        if (existsInAllAppointments && (selectedStatus || selectedLocation || startDate || endDate)) {
           // It exists but is filtered out - clear filters
           debugLog(`Clearing filters to show appointment ID ${appointmentId}`);
           setSelectedStatus(null);
           setSelectedLocation(null);
+          setStartDate(null);
+          setEndDate(null);
           return; // Exit early - the effect will run again with cleared filters
         } else {
           // It doesn't exist at all - go to first appointment
@@ -420,7 +439,7 @@ const AppointmentTiles: React.FC = () => {
       isFilteringRef.current = false;
     }, 100);
     
-  }, [appointments, selectedStatus, selectedLocation, searchTerm, id, navigate, getFilteredAppointments]);
+  }, [appointments, selectedStatus, selectedLocation, searchTerm, startDate, endDate, id, navigate, getFilteredAppointments]);
 
   // Update URL when activeStep changes due to Next/Back button clicks
   useEffect(() => {
@@ -527,6 +546,29 @@ const AppointmentTiles: React.FC = () => {
     return <AppointmentCard appointment={appointment} theme={theme} />;
   };
 
+  // Handle date filter changes
+  const handleStartDateChange = (date: Date | null) => {
+    debugLog(`Setting start date: ${date}`);
+    isFilteringRef.current = true;
+    setStartDate(date);
+    setActiveStep(0);
+  };
+
+  const handleEndDateChange = (date: Date | null) => {
+    debugLog(`Setting end date: ${date}`);
+    isFilteringRef.current = true;
+    setEndDate(date);
+    setActiveStep(0);
+  };
+
+  const clearDateFilters = () => {
+    debugLog('Clearing date filters');
+    isFilteringRef.current = true;
+    setStartDate(null);
+    setEndDate(null);
+    setActiveStep(0);
+  };
+
   return (
     <Layout>
       <Container>
@@ -537,7 +579,57 @@ const AppointmentTiles: React.FC = () => {
             gap: 2,
             mb: 4
           }}>
-            <Typography variant="h4" sx={{ mb: 2 }}>All Appointments</Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h4">All Appointments</Typography>
+              
+              <LocalizationProvider dateAdapter={AdapterDateFns}>
+                <Stack direction="row" spacing={2} alignItems="center">
+                  <DatePicker
+                    label="Start Date"
+                    value={startDate}
+                    onChange={handleStartDateChange}
+                    slotProps={{
+                      textField: {
+                        size: "small",
+                        InputProps: {
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <CalendarTodayIcon fontSize="small" />
+                            </InputAdornment>
+                          )
+                        }
+                      }
+                    }}
+                  />
+                  <DatePicker
+                    label="End Date"
+                    value={endDate}
+                    onChange={handleEndDateChange}
+                    slotProps={{
+                      textField: {
+                        size: "small",
+                        InputProps: {
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <CalendarTodayIcon fontSize="small" />
+                            </InputAdornment>
+                          )
+                        }
+                      }
+                    }}
+                  />
+                  {(startDate || endDate) && (
+                    <Button 
+                      size="small" 
+                      onClick={clearDateFilters}
+                      variant="outlined"
+                    >
+                      Clear Dates
+                    </Button>
+                  )}
+                </Stack>
+              </LocalizationProvider>
+            </Box>
             
             {/* Status Filters as Tabs */}
             <Box sx={{ borderBottom: 1, borderColor: 'divider', width: '100%' }}>
@@ -627,11 +719,44 @@ const AppointmentTiles: React.FC = () => {
                     Found {filteredAppointments.length} {filteredAppointments.length === 1 ? 'appointment' : 'appointments'} 
                     {selectedStatus ? ` with status "${selectedStatus}"` : ''} 
                     {selectedLocation ? ` at ${locations.find(l => l.id === selectedLocation)?.name || 'selected location'}` : ''}
+                    {startDate ? ` from ${startDate.toLocaleDateString()}` : ''}
+                    {endDate ? ` to ${endDate.toLocaleDateString()}` : ''}
                     {searchTerm ? ` matching "${searchTerm}"` : ''}
                   </Typography>
                 </Box>
               )}
             </Box>
+
+            {/* Active Date Filters Summary */}
+            {(startDate || endDate) && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                <Typography variant="body2">Date Filters:</Typography>
+                {startDate && (
+                  <Chip 
+                    label={`From: ${startDate.toLocaleDateString()}`}
+                    size="small" 
+                    onDelete={() => setStartDate(null)}
+                    icon={<CalendarTodayIcon fontSize="small" />}
+                    sx={{ color: theme.palette.primary.main }}
+                  />
+                )}
+                {endDate && (
+                  <Chip 
+                    label={`To: ${endDate.toLocaleDateString()}`}
+                    size="small" 
+                    onDelete={() => setEndDate(null)}
+                    icon={<CalendarTodayIcon fontSize="small" />}
+                    sx={{ color: theme.palette.primary.main }}
+                  />
+                )}
+                <Button 
+                  size="small" 
+                  onClick={clearDateFilters}
+                >
+                  Clear All
+                </Button>
+              </Box>
+            )}
 
             {/* Location Filters */}
             <Box>
