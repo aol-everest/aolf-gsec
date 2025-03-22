@@ -241,7 +241,7 @@ def requires_role(required_role: models.UserRole):
                 )
             
             # Check if the user has the required role
-            if current_user.role != required_role and current_user.role != models.UserRole.SECRETARIAT:
+            if current_user.role != required_role and current_user.role != models.UserRole.ADMIN:
                 logger.warning(f"User {current_user.email} with role {current_user.role} attempted to access {func.__name__} requiring role {required_role}")
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
@@ -777,8 +777,15 @@ async def upload_appointment_attachment(
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
     
-    if current_user.role != models.UserRole.SECRETARIAT and appointment.requester_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to upload attachments for this appointment")
+    if appointment.requester_id != current_user.id:
+        admin_access_check = admin_check_appointment_for_access_level(
+            current_user=current_user,
+            db=db,
+            appointment_id=appointment_id,
+            required_access_level=models.AccessLevel.READ_WRITE
+        )
+        if not admin_access_check:
+            raise HTTPException(status_code=403, detail="Not authorized to upload attachments for this appointment")
 
     # Upload file to S3
     file_content = await file.read()
@@ -819,8 +826,15 @@ async def upload_business_card_attachment(
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
     
-    if current_user.role != models.UserRole.SECRETARIAT and appointment.requester_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to upload attachments for this appointment")
+    if appointment.requester_id != current_user.id:
+        admin_access_check = admin_check_appointment_for_access_level(
+            current_user=current_user,
+            db=db,
+            appointment_id=appointment_id,
+            required_access_level=models.AccessLevel.READ_WRITE
+        )
+        if not admin_access_check:
+            raise HTTPException(status_code=403, detail="Not authorized to upload attachments for this appointment")
 
     # Upload file to S3
     file_content = await file.read()
@@ -908,8 +922,15 @@ async def create_dignitary_from_business_card(
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
     
-    if current_user.role != models.UserRole.SECRETARIAT and appointment.requester_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to create dignitaries for this appointment")
+    if appointment.requester_id != current_user.id:
+        admin_access_check = admin_check_appointment_for_access_level(
+            current_user=current_user,
+            db=db,
+            appointment_id=appointment_id,
+            required_access_level=models.AccessLevel.READ_WRITE
+        )
+        if not admin_access_check:
+            raise HTTPException(status_code=403, detail="Not authorized to create dignitaries for this appointment")
 
     # Get the attachment if provided
     attachment = None
@@ -1015,8 +1036,15 @@ async def get_appointment_attachments(
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
     
-    if current_user.role != models.UserRole.SECRETARIAT and appointment.requester_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to view attachments for this appointment")
+    if appointment.requester_id != current_user.id:
+        admin_access_check = admin_check_appointment_for_access_level(
+            current_user=current_user,
+            db=db,
+            appointment_id=appointment_id,
+            required_access_level=models.AccessLevel.READ
+        )
+        if not admin_access_check:
+            raise HTTPException(status_code=403, detail="Not authorized to view attachments for this appointment")
 
     # Base query
     query = db.query(models.AppointmentAttachment).filter(
@@ -1024,7 +1052,7 @@ async def get_appointment_attachments(
     )
     
     # Add uploaded_by filter only for non-SECRETARIAT users
-    if current_user.role != models.UserRole.SECRETARIAT:
+    if not current_user.role.is_general_role_type():
         query = query.filter(models.AppointmentAttachment.uploaded_by == current_user.id)
     
     attachments = query.all()
@@ -1043,7 +1071,7 @@ async def get_attachment_file(
     )
     
     # Add uploaded_by filter only for non-SECRETARIAT users
-    if current_user.role != models.UserRole.SECRETARIAT:
+    if current_user.role.is_general_role_type():
         query = query.filter(models.AppointmentAttachment.uploaded_by == current_user.id)
         
     attachment = query.first()
@@ -1054,8 +1082,16 @@ async def get_attachment_file(
         models.Appointment.id == attachment.appointment_id
     ).first()
     
-    if current_user.role != models.UserRole.SECRETARIAT and appointment.requester_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to access this attachment")
+    if appointment.requester_id != current_user.id:
+        # Do admin check only if 1st level check fails
+        admin_access_check = admin_check_appointment_for_access_level(
+            current_user=current_user,
+            db=db,
+            appointment_id=attachment.appointment_id,
+            required_access_level=models.AccessLevel.READ
+        )
+        if not admin_access_check:
+            raise HTTPException(status_code=403, detail="Not authorized to access this attachment")
 
     file_data = get_file(attachment.file_path)
     
@@ -1079,7 +1115,7 @@ async def get_attachment_thumbnail(
     )
     
     # Add uploaded_by filter only for non-SECRETARIAT users
-    if current_user.role != models.UserRole.SECRETARIAT:
+    if current_user.role.is_general_role_type():
         query = query.filter(models.AppointmentAttachment.uploaded_by == current_user.id)
         
     attachment = query.first()
@@ -1096,8 +1132,15 @@ async def get_attachment_thumbnail(
         models.Appointment.id == attachment.appointment_id
     ).first()
     
-    if current_user.role != models.UserRole.SECRETARIAT and appointment.requester_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to access this attachment")
+    if appointment.requester_id != current_user.id:
+        admin_access_check = admin_check_appointment_for_access_level(
+            current_user=current_user,
+            db=db,
+            appointment_id=attachment.appointment_id,
+            required_access_level=models.AccessLevel.READ
+        )
+        if not admin_access_check:
+            raise HTTPException(status_code=403, detail="Not authorized to access this attachment")
 
     file_data = get_file(attachment.thumbnail_path)
     
@@ -1151,6 +1194,10 @@ async def add_dignitaries_to_appointment(
 
 def admin_check_access_to_country(current_user: models.User, db: Session, country_code: str, required_access_level: models.AccessLevel=models.AccessLevel.ADMIN):
     """Check if the current user has access to a specific country"""
+    # Fail fast if user is not an admin
+    if current_user.role.is_general_role_type():
+        raise HTTPException(status_code=403, detail="You don't have access to this country")
+
     # ADMIN role has full access to create users
     if current_user.role != models.UserRole.ADMIN:
         # Get the allowed access levels for the required access level
@@ -1179,6 +1226,10 @@ def admin_check_access_to_country(current_user: models.User, db: Session, countr
 
 def admin_check_access_to_location(current_user: models.User, db: Session, country_code: str, location_id: int, required_access_level: models.AccessLevel=models.AccessLevel.ADMIN):
     """Check if the current user has access to a specific location"""
+    # Fail fast if user is not an admin
+    if current_user.role.is_general_role_type():
+        raise HTTPException(status_code=403, detail="You don't have access to this location")
+
     # ADMIN role has full access to create users
     if current_user.role != models.UserRole.ADMIN:
         # Get the allowed access levels for the required access level
@@ -1212,6 +1263,9 @@ def admin_check_access_to_location(current_user: models.User, db: Session, count
 
 def admin_get_country_list_for_access_level(current_user: models.User, db: Session, required_access_level: models.AccessLevel):
     """Get the list of countries for a specific access level"""
+    # Fail fast if user is not an admin
+    if current_user.role.is_general_role_type():
+        raise HTTPException(status_code=403, detail="You don't have access to this appointment")
 
     # Get the list of access levels that are >= the required access level
     allowed_access_levels = required_access_level.get_permitting_access_levels()
@@ -1227,7 +1281,11 @@ def admin_get_country_list_for_access_level(current_user: models.User, db: Sessi
     return countries
 
 
-def admin_get_appointment(appointment_id: int, current_user: models.User, db: Session, required_access_level: models.AccessLevel=models.AccessLevel.READ):
+def admin_get_appointment(current_user: models.User, db: Session, appointment_id: int, required_access_level: models.AccessLevel=models.AccessLevel.READ):
+    # Fail fast if user is not an admin
+    if current_user.role.is_general_role_type():
+        raise HTTPException(status_code=403, detail="You don't have access to this appointment")
+
     """Reusable function to get a specific appointment with access control restrictions"""
     appointment = (
         db.query(models.Appointment)
@@ -1279,6 +1337,21 @@ def admin_get_appointment(appointment_id: int, current_user: models.User, db: Se
             raise HTTPException(status_code=403, detail="You don't have access to this appointment")
 
     return appointment
+
+
+def admin_check_appointment_for_access_level(current_user: models.User, db: Session, appointment_id: int, required_access_level: models.AccessLevel=models.AccessLevel.READ):
+    """Check if the current user has access to a specific appointment"""
+    # Fail fast if user is not an admin
+    if current_user.role.is_general_role_type():
+        raise HTTPException(status_code=403, detail="You don't have access to this appointment")
+
+    appointment = admin_get_appointment(
+        current_user=current_user,
+        db=db,
+        appointment_id=appointment_id,
+        required_access_level=required_access_level
+    )
+    return appointment is not None
 
 
 # ------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1484,7 +1557,12 @@ async def get_appointment(
     db: Session = Depends(get_read_db)
 ):
     """Get a specific appointment with access control restrictions"""
-    appointment = admin_get_appointment(appointment_id, current_user, db, models.AccessLevel.READ)
+    appointment = admin_get_appointment(
+        current_user=current_user,
+        db=db,
+        appointment_id=appointment_id,
+        required_access_level=models.AccessLevel.READ
+    )
     return appointment
 
 
@@ -1497,7 +1575,12 @@ async def update_appointment(
     db: Session = Depends(get_db)
 ):
     """Update an appointment with access control restrictions"""
-    appointment = admin_get_appointment(appointment_id, current_user, db, models.AccessLevel.READ_WRITE)
+    appointment = admin_get_appointment(
+        current_user=current_user,
+        db=db,
+        appointment_id=appointment_id,
+        required_access_level=models.AccessLevel.READ_WRITE
+    )
     
     # Save old data for notifications
     old_data = {}
@@ -1592,7 +1675,12 @@ async def create_user(
     db: Session = Depends(get_db)
 ):
     """Create a new user with access control restrictions"""
-    admin_check_access_to_country(current_user, db, user.country_code, models.AccessLevel.ADMIN)
+    admin_check_access_to_country(
+        current_user=current_user,
+        db=db,
+        country_code=user.country_code,
+        required_access_level=models.AccessLevel.ADMIN
+    )
     
     # Create the user
     new_user = models.User(
@@ -1623,13 +1711,23 @@ async def update_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    admin_check_access_to_country(current_user, db, user.country_code, models.AccessLevel.ADMIN)    
+    admin_check_access_to_country(
+        current_user=current_user,
+        db=db,
+        country_code=user.country_code,
+        required_access_level=models.AccessLevel.ADMIN
+    )    
         
     # If trying to change country, check if they have access to the new country as well
     if 'country_code' in user_update.dict(exclude_unset=True):
         new_country = user_update.country_code
         if new_country != user.country_code:
-            admin_check_access_to_country(current_user, db, new_country, models.AccessLevel.ADMIN)
+            admin_check_access_to_country(
+                current_user=current_user,
+                db=db,
+                country_code=new_country,
+                required_access_level=models.AccessLevel.ADMIN
+            )
     
     # Update user with new data
     update_data = user_update.dict(exclude_unset=True)
@@ -1660,7 +1758,12 @@ async def create_location(
 ):
     """Create a new location"""
     # Check if the user has access to the country
-    admin_check_access_to_country(current_user, db, location.country_code, models.AccessLevel.ADMIN)
+    admin_check_access_to_country(
+        current_user=current_user,
+        db=db,
+        country_code=location.country_code,
+        required_access_level=models.AccessLevel.ADMIN
+    )
 
     new_location = models.Location(
         **location.dict(),
@@ -1683,21 +1786,27 @@ async def get_all_locations(
 ):
     """Get all locations with creator and updater information"""
 
-    # Get the list of countries for the current user
-    countries = admin_get_country_list_for_access_level(current_user, db, models.AccessLevel.READ)
-
     # Create aliases for the User table for creator and updater
     CreatorUser = aliased(models.User)
     UpdaterUser = aliased(models.User)
     
-    # Query locations with joins to get creator and updater information in one go
-    locations = (
+    query = (
         db.query(models.Location, CreatorUser, UpdaterUser)
         .outerjoin(CreatorUser, models.Location.created_by == CreatorUser.id)
         .outerjoin(UpdaterUser, models.Location.updated_by == UpdaterUser.id)
-        .filter(models.Location.country_code.in_(countries))
-        .all()
     )
+
+    if current_user.role != models.UserRole.ADMIN:
+        # Get the list of countries for the current user
+        countries = admin_get_country_list_for_access_level(
+            current_user=current_user,
+            db=db,
+            required_access_level=models.AccessLevel.READ
+        )
+        query = query.filter(models.Location.country_code.in_(countries))
+
+    # Query locations with joins to get creator and updater information in one go
+    locations = query.all()
     
     # Process results to set created_by_user and updated_by_user attributes
     result_locations = []
@@ -1719,7 +1828,12 @@ async def get_location(
 ):
     """Get a specific location with creator and updater information"""
     # Get the list of countries for the current user
-    admin_check_access_to_location(current_user, db, location_id, models.AccessLevel.READ)
+    admin_check_access_to_location(
+        current_user=current_user,
+        db=db,
+        location_id=location_id,
+        required_access_level=models.AccessLevel.READ
+    )
 
     # Create aliases for the User table for creator and updater
     CreatorUser = aliased(models.User)
@@ -1754,7 +1868,12 @@ async def update_location(
     current_user: models.User = Depends(get_current_user_for_write),
     db: Session = Depends(get_db)
 ):
-    admin_check_access_to_location(current_user, db, location_id, models.AccessLevel.ADMIN)
+    admin_check_access_to_location(
+        current_user=current_user,
+        db=db,
+        location_id=location_id,
+        required_access_level=models.AccessLevel.ADMIN
+    )
 
     """Update a location"""
     location = db.query(models.Location).filter(models.Location.id == location_id).first()
@@ -1790,7 +1909,12 @@ async def upload_location_attachment(
     db: Session = Depends(get_db)
 ):
     """Upload an attachment for a location"""
-    admin_check_access_to_location(current_user, db, location_id, models.AccessLevel.ADMIN)
+    admin_check_access_to_location(
+        current_user=current_user,
+        db=db,
+        location_id=location_id,
+        required_access_level=models.AccessLevel.ADMIN
+    )
 
     # Check if location exists
     location = db.query(models.Location).filter(models.Location.id == location_id).first()
@@ -1833,7 +1957,12 @@ async def remove_location_attachment(
     db: Session = Depends(get_db)
 ):
     """Remove an attachment from a location"""
-    admin_check_access_to_location(current_user, db, location_id, models.AccessLevel.ADMIN)
+    admin_check_access_to_location(
+        current_user=current_user,
+        db=db,
+        location_id=location_id,
+        required_access_level=models.AccessLevel.ADMIN
+    )
 
     location = db.query(models.Location).filter(models.Location.id == location_id).first()
     if not location:
@@ -2186,8 +2315,15 @@ async def delete_attachment(
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
     
-    if current_user.role != models.UserRole.SECRETARIAT and appointment.requester_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to delete this attachment")
+    if appointment.requester_id != current_user.id:
+        admin_access_check = admin_check_appointment_for_access_level(
+            current_user=current_user,
+            db=db,
+            appointment_id=attachment.appointment_id,
+            required_access_level=models.AccessLevel.READ_WRITE
+        )
+        if not admin_access_check:
+            raise HTTPException(status_code=403, detail="Not authorized to delete this attachment")
     
     # Delete the attachment
     db.delete(attachment)

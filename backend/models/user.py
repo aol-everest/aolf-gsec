@@ -17,6 +17,13 @@ class UserRole(str, enum.Enum):
 
     def __str__(self):
         return self.value
+    
+    def is_admin_role_type(self):
+        return (self == UserRole.ADMIN or self == UserRole.SECRETARIAT)
+    
+    def is_general_role_type(self):
+        return self == UserRole.GENERAL
+
 
 # Define default notification preferences
 DEFAULT_EMAIL_NOTIFICATION_PREFERENCES = {
