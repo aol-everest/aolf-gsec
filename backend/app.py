@@ -741,688 +741,6 @@ async def get_my_appointments_for_dignitary(
     logger.debug(f"Appointments: {appointments}")
     return appointments
 
-@app.get("/admin/dignitaries/all", response_model=List[schemas.DignitaryAdminWithAppointments])
-@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
-async def get_all_dignitaries(
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_read_db)
-):
-    """Get all dignitaries with access control restrictions based on user permissions"""
-    # ADMIN role has full access to all dignitaries
-    if current_user.role == models.UserRole.ADMIN:
-        dignitaries = db.query(models.Dignitary).all()
-        return dignitaries
-    
-    # For SECRETARIAT and other roles, apply access control restrictions
-    # Get all active access records for the current user
-    user_access = db.query(models.UserAccess).filter(
-        models.UserAccess.user_id == current_user.id,
-        models.UserAccess.is_active == True,
-        # Only consider records that grant access to dignitaries
-        or_(
-            models.UserAccess.entity_type == models.EntityType.APPOINTMENT_AND_DIGNITARY
-        )
-    ).all()
-    
-    if not user_access:
-        # If no valid access records exist, return empty list
-        return []
-    
-    # Create country filters based on user's access permissions
-    country_filters = []
-    # Start with a "false" condition that ensures no records are returned if no access is configured
-    country_filters.append(false())
-    
-    for access in user_access:
-        # Add country filter for each access record
-        country_filters.append(
-            models.Dignitary.country_code == access.country_code
-        )
-    
-    # Apply the filters to the query
-    dignitaries = db.query(models.Dignitary).filter(or_(*country_filters)).all()
-    return dignitaries
-
-
-@app.get("/admin/appointments/all", response_model=List[schemas.AppointmentAdmin])
-@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
-async def get_all_appointments(
-    db: Session = Depends(get_read_db),
-    current_user: models.User = Depends(get_current_user),
-    status: Optional[str] = None
-):
-    """Get all appointments with optional status filter, restricted by user's access permissions"""
-    query = db.query(models.Appointment).order_by(models.Appointment.id.asc())
-    
-    # Apply status filter if provided
-    if status:
-        query = query.filter(models.Appointment.status == status)
-
-    # ADMIN role has full access to all appointments
-    if current_user.role != models.UserRole.ADMIN:
-        # For non-ADMIN users, apply access control restrictions
-        # Get all active access records for the current user
-        user_access = db.query(models.UserAccess).filter(
-            models.UserAccess.user_id == current_user.id,
-            models.UserAccess.is_active == True,
-            # Only consider records that grant access to appointments
-            or_(
-                models.UserAccess.entity_type == models.EntityType.APPOINTMENT,
-                models.UserAccess.entity_type == models.EntityType.APPOINTMENT_AND_DIGNITARY
-            )
-        ).all()
-        
-        if not user_access:
-            # If no valid access records exist, return empty list
-            return []
-        
-        # Create access filters based on country and location
-        access_filters = []
-        # Start with a "false" condition that ensures no records are returned if no access is configured
-        access_filters.append(false())
-        for access in user_access:
-            # If a specific location is specified in the access record
-            if access.location_id:
-                access_filters.append(
-                    and_(
-                        models.Appointment.location_id == access.location_id,
-                        models.Location.country_code == access.country_code
-                    )
-                )
-            else:
-                # Access to all locations in the country
-                access_filters.append(
-                    models.Location.country_code == access.country_code
-                )
-        
-        # Join to locations table and apply the country and location filters
-        query = query.join(models.Location)
-        query = query.filter(or_(*access_filters))
-
-    # Add options to eagerly load appointment_dignitaries and their associated dignitaries
-    query = query.options(
-        joinedload(models.Appointment.appointment_dignitaries).joinedload(models.AppointmentDignitary.dignitary),
-        joinedload(models.Appointment.requester)
-    )
-
-    appointments = query.all()
-    logger.debug(f"Appointments: {appointments}")
-    return appointments
-
-@app.get("/admin/appointments/upcoming", response_model=List[schemas.AppointmentAdmin])
-@requires_role(models.UserRole.SECRETARIAT)
-async def get_upcoming_appointments(
-    db: Session = Depends(get_read_db),
-    current_user: models.User = Depends(get_current_user),
-    status: Optional[str] = None
-):
-    """Get all upcoming appointments (future appointment_date, not NULL)"""
-    query = db.query(models.Appointment).filter(
-        or_(
-            models.Appointment.appointment_date == None,
-            models.Appointment.appointment_date >= date.today()-timedelta(days=1),
-        ),
-        models.Appointment.status not in [
-            models.AppointmentStatus.CANCELLED, 
-            models.AppointmentStatus.REJECTED, 
-            models.AppointmentStatus.COMPLETED,
-        ],
-    ).order_by(models.Appointment.appointment_date.asc())
-    
-    if status:
-        query = query.filter(models.Appointment.status == status)
-    
-    # Add options to eagerly load appointment_dignitaries and their associated dignitaries
-    query = query.options(
-        joinedload(models.Appointment.appointment_dignitaries).joinedload(models.AppointmentDignitary.dignitary),
-        joinedload(models.Appointment.requester)
-    )
-    
-    appointments = query.all()
-    logger.debug(f"Upcoming appointments: {appointments}")
-    return appointments
-
-
-@app.get("/usher/appointments/all", response_model=List[schemas.AppointmentUsherView])
-@requires_any_role([models.UserRole.USHER, models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
-async def get_usher_appointments(
-    db: Session = Depends(get_read_db),
-    current_user: models.User = Depends(get_current_user),
-    date: Optional[str] = None,
-):
-    """
-    Get appointments for USHER role with access control restrictions.
-    By default, returns appointments for today and the next two days.
-    If date parameter is provided, returns appointments for that specific date.
-    """
-    # If specific date is provided, use that
-    if date:
-        if date < datetime.now().date()-timedelta(days=1) or date > datetime.now().date()+timedelta(days=2):
-            raise HTTPException(status_code=400, detail="Date beyond allowed range")
-
-        try:
-            target_date = datetime.strptime(date, "%Y-%m-%d").date()
-            start_date = target_date
-            end_date = target_date
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
-    else:
-        # Default: today and next two days
-        today = datetime.now().date()
-        start_date = today
-        end_date = today + timedelta(days=2)
-   
-    # Start building the query with date range filter
-    query = db.query(models.Appointment).filter(
-        models.Appointment.appointment_date >= start_date,
-        models.Appointment.appointment_date <= end_date
-    )
-    
-    # USHER specific filters - apply to all roles using this endpoint
-    # Only show confirmed appointments for the usher view
-    query = query.filter(models.Appointment.status == models.AppointmentStatus.CONFIRMED)
-    
-    # ADMIN role has full access to all appointments within the date range
-    if current_user.role != models.UserRole.ADMIN:
-        # Non-ADMIN roles need access control checks
-        # Get active access records for the SECRETARIAT user
-        user_access = db.query(models.UserAccess).filter(
-            models.UserAccess.user_id == current_user.id,
-            models.UserAccess.is_active == True,
-            # Only consider records that grant access to appointments
-            or_(
-                models.UserAccess.entity_type == models.EntityType.APPOINTMENT,
-                models.UserAccess.entity_type == models.EntityType.APPOINTMENT_AND_DIGNITARY
-            )
-        ).all()
-        
-        if not user_access:
-            # If no valid access records exist, return empty list
-            return []
-        
-        # Create access filters based on country and location
-        access_filters = []
-        # Start with a "false" condition
-        access_filters.append(false())
-        
-        for access in user_access:
-            # If a specific location is specified in the access record
-            if access.location_id:
-                access_filters.append(
-                    and_(
-                        models.Appointment.location_id == access.location_id,
-                        models.Location.country_code == access.country_code
-                    )
-                )
-            else:
-                # Access to all locations in the country
-                access_filters.append(
-                    models.Location.country_code == access.country_code
-                )
-        
-        # Join to locations table and apply the country and location filters
-        query = query.join(models.Location)
-        query = query.filter(or_(*access_filters))
-    
-    # Add eager loading and ordering
-    query = query.options(
-        joinedload(models.Appointment.appointment_dignitaries).joinedload(models.AppointmentDignitary.dignitary),
-        joinedload(models.Appointment.requester)
-    ).order_by(
-        models.Appointment.appointment_date,
-        models.Appointment.appointment_time
-    )
-    
-    appointments = query.all()
-    return appointments
-
-
-def admin_get_appointment(appointment_id: int, current_user: models.User, db: Session, required_access_level: models.AccessLevel=models.AccessLevel.READ):
-    # Get the appointment with location join for access control
-    appointment = (
-        db.query(models.Appointment)
-        .filter(models.Appointment.id == appointment_id)
-        .options(
-            joinedload(models.Appointment.appointment_dignitaries).joinedload(models.AppointmentDignitary.dignitary),
-            joinedload(models.Appointment.requester),
-            joinedload(models.Appointment.location)
-        )
-        .first()
-    )
-    
-    if not appointment:
-        raise HTTPException(status_code=404, detail="Appointment not found")
-    
-    # ADMIN role has full access to all appointments
-    if current_user.role != models.UserRole.ADMIN:
-        # Get the allowed access levels for the required access level
-        allowed_access_levels = required_access_level.get_permitting_access_levels()
-
-        # For SECRETARIAT, enforce access control restrictions
-        # Get all active access records for the current user
-        user_access = db.query(models.UserAccess).filter(
-            models.UserAccess.user_id == current_user.id,
-            models.UserAccess.is_active == True,
-            # Only consider records that grant access to appointments
-            or_(
-                models.UserAccess.entity_type == models.EntityType.APPOINTMENT,
-                models.UserAccess.entity_type == models.EntityType.APPOINTMENT_AND_DIGNITARY
-            ),
-            models.UserAccess.access_level.in_(allowed_access_levels)
-        ).all()
-        
-        if not user_access:
-            # If no valid access records exist, return 403 Forbidden
-            raise HTTPException(status_code=403, detail="You don't have access to this appointment")
-    
-        # Check if user has access to this appointment's country/location
-        has_access = False
-        for access in user_access:
-            # Check if user has access to this appointment's country
-            if access.country_code == appointment.location.country_code:
-                # If location_id is specified in access record, it must match
-                if access.location_id is None or access.location_id == appointment.location_id:
-                    has_access = True
-                    break
-        
-        if not has_access:
-            raise HTTPException(status_code=403, detail="You don't have access to this appointment")
-
-    return appointment
-
-
-@app.get("/admin/appointments/{appointment_id}", response_model=schemas.AppointmentAdmin)
-@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
-async def get_appointment(
-    appointment_id: int,
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_read_db)
-):
-    """Get a specific appointment with access control restrictions"""
-    appointment = admin_get_appointment(appointment_id, current_user, db, models.AccessLevel.READ)
-    return appointment
-
-
-@app.patch("/admin/appointments/update/{appointment_id}", response_model=schemas.AppointmentAdmin)
-@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
-async def update_appointment(
-    appointment_id: int,
-    appointment_update: schemas.AppointmentAdminUpdate,
-    current_user: models.User = Depends(get_current_user_for_write),
-    db: Session = Depends(get_db)
-):
-    """Update an appointment with access control restrictions"""
-    appointment = admin_get_appointment(appointment_id, current_user, db, models.AccessLevel.READ_WRITE)
-    
-    # Save old data for notifications
-    old_data = {}
-    for key, value in appointment_update.dict(exclude_unset=True).items():
-        old_data[key] = getattr(appointment, key)
-    
-    if appointment.status != models.AppointmentStatus.APPROVED and appointment_update.status == models.AppointmentStatus.APPROVED:
-        logger.info("Appointment is approved")
-        appointment.approved_datetime = datetime.utcnow()
-        appointment.approved_by = current_user.id
-
-    # Update appointment with new data
-    update_data = appointment_update.dict(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(appointment, key, value)
-    appointment.last_updated_by = current_user.id
-    
-    db.commit()
-    db.refresh(appointment)
-    
-    # Send email notifications about the update
-    try:
-        notify_appointment_update(db, appointment, old_data, update_data)
-    except Exception as e:
-        logger.error(f"Error sending email notifications: {str(e)}")
-    
-    return appointment
-
-
-@app.get("/admin/users/all", response_model=List[schemas.UserAdminView])
-@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
-async def get_all_users(
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_read_db)
-):
-    """Get all users with creator and updater information via joins, with access control restrictions"""
-
-    # Create aliases for the User table for creator and updater
-    CreatorUser = aliased(models.User)
-    UpdaterUser = aliased(models.User)
-
-    # Query users with joins 
-    query = (
-        db.query(models.User, CreatorUser, UpdaterUser)
-        .outerjoin(CreatorUser, models.User.created_by == CreatorUser.id)
-        .outerjoin(UpdaterUser, models.User.updated_by == UpdaterUser.id)
-    )
-
-    # ADMIN role has full access to all users
-    if current_user.role != models.UserRole.ADMIN:
-        # For SECRETARIAT, check if they have ADMIN access level
-        user_access = db.query(models.UserAccess).filter(
-            models.UserAccess.user_id == current_user.id,
-            models.UserAccess.is_active == True,
-            # For user management, admin access level is required
-            models.UserAccess.access_level == models.AccessLevel.ADMIN
-        ).all()
-        
-        if not user_access:
-            # If no valid access records with ADMIN level exist, return 403 Forbidden
-            raise HTTPException(
-                status_code=403, 
-                detail="You need administrator access level to view users"
-            )
-        
-        # Create country filters based on access permissions
-        countries = set(access.country_code for access in user_access)
-
-        # Add country filter
-        query = query.filter(models.User.country_code.in_(countries))
-
-    # Get all users
-    users = query.all()
-    
-    # Process results to set created_by_user and updated_by_user attributes
-    result_users = []
-    for user, creator, updater in users:
-        if creator:
-            setattr(user, "created_by_user", creator)
-        if updater:
-            setattr(user, "updated_by_user", updater)
-        result_users.append(user)
-    
-    return result_users
-
-
-@app.post("/admin/users/new", response_model=schemas.UserAdminView)
-@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
-async def create_user(
-    user: schemas.UserAdminCreate,
-    current_user: models.User = Depends(get_current_user_for_write),
-    db: Session = Depends(get_db)
-):
-    """Create a new user with access control restrictions"""
-    # ADMIN role has full access to create users
-    if current_user.role != models.UserRole.ADMIN:
-        # For SECRETARIAT, check if they have ADMIN access level
-        user_access = db.query(models.UserAccess).filter(
-            models.UserAccess.user_id == current_user.id,
-            models.UserAccess.is_active == True,
-            # For user management, admin access level is required
-            models.UserAccess.access_level == models.AccessLevel.ADMIN,
-            # Check country permission
-            models.UserAccess.country_code == user.country_code,
-            models.UserAccess.location_id == None
-        ).first()
-        
-        if not user_access:
-            # If no valid access record with ADMIN level for this country exists, return 403 Forbidden
-            raise HTTPException(
-                status_code=403, 
-                detail=f"You don't have administrator access for country: {user.country_code}"
-            )
-    
-    # Create the user
-    new_user = models.User(
-        **user.dict(),
-        created_by=current_user.id,
-        updated_by=current_user.id
-    )
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    
-    # Set creator and updater user references (both are the current user for a new record)
-    setattr(new_user, "created_by_user", current_user)
-    setattr(new_user, "updated_by_user", current_user)
-    
-    return new_user
-
-@app.patch("/admin/users/update/{user_id}", response_model=schemas.UserAdminView)
-@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
-async def update_user(
-    user_id: int,
-    user_update: schemas.UserAdminUpdate,
-    current_user: models.User = Depends(get_current_user_for_write),
-    db: Session = Depends(get_db)
-):
-    """Update a user"""
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    # ADMIN role has full access to update users
-    if current_user.role != models.UserRole.ADMIN:
-        # For SECRETARIAT, check if they have ADMIN access level
-        user_access = db.query(models.UserAccess).filter(
-            models.UserAccess.user_id == current_user.id,
-            models.UserAccess.is_active == True,
-            # For user management, admin access level is required
-            models.UserAccess.access_level == models.AccessLevel.ADMIN,
-            # Check country permission for the existing user
-            models.UserAccess.country_code == user.country_code,
-            models.UserAccess.location_id == None
-        ).first()
-        
-        if not user_access:
-            # If no valid access record with ADMIN level for this user's country exists, return 403 Forbidden
-            raise HTTPException(
-                status_code=403, 
-                detail=f"You don't have administrator access for this user's country: {user.country_code}"
-            )
-        
-        # If trying to change country, check if they have access to the new country as well
-        if 'country_code' in user_update.dict(exclude_unset=True):
-            new_country = user_update.country_code
-            if new_country != user.country_code:
-                new_country_access = db.query(models.UserAccess).filter(
-                    models.UserAccess.user_id == current_user.id,
-                    models.UserAccess.is_active == True,
-                    models.UserAccess.access_level == models.AccessLevel.ADMIN,
-                    models.UserAccess.country_code == new_country
-                ).first()
-                
-                if not new_country_access:
-                    raise HTTPException(
-                        status_code=403, 
-                        detail=f"You don't have administrator access for the new country: {new_country}"
-                    )
-    
-    # Update user with new data
-    update_data = user_update.dict(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(user, key, value)
-    user.updated_by = current_user.id
-    
-    db.commit()
-    db.refresh(user)
-    
-    # Fetch creator and updater information
-    if user.created_by:
-        creator = db.query(models.User).filter(models.User.id == user.created_by).first()
-        if creator:
-            setattr(user, "created_by_user", creator)
-    
-    # For updater, we know it's the current user who just did the update
-    setattr(user, "updated_by_user", current_user)
-    
-    return user
-
-@app.get("/appointments/status-options", response_model=List[str])
-async def get_appointment_status_options():
-    """Get all possible appointment status options"""
-    return models.VALID_STATUS_OPTIONS
-
-@app.get("/appointments/status-options-map")
-async def get_appointment_status_map():
-    """Get a dictionary mapping of appointment status enum names to their display values"""
-    return {status.name: status.value for status in models.AppointmentStatus}
-
-@app.get("/appointments/sub-status-options", response_model=List[str])
-async def get_appointment_sub_status_options():
-    """Get all possible appointment sub-status options"""
-    return models.VALID_SUBSTATUS_OPTIONS
-
-@app.get("/appointments/sub-status-options-map")
-async def get_appointment_sub_status_map():
-    """Get a dictionary mapping of appointment sub-status enum names to their display values"""
-    return {sub_status.name: sub_status.value for sub_status in models.AppointmentSubStatus}
-
-@app.get("/appointments/status-substatus-mapping")
-async def get_status_substatus_mapping():
-    """Get mapping between appointment status and valid sub-statuses"""
-    return models.STATUS_SUBSTATUS_MAPPING
-
-@app.get("/appointments/type-options", response_model=List[str])
-async def get_appointment_type_options():
-    """Get all possible appointment type options"""
-    return [app_type.value for app_type in models.AppointmentType]
-
-@app.get("/dignitaries/relationship-type-options", response_model=List[str])
-async def get_relationship_type_options():
-    """Get all possible relationship type options"""
-    return [rel_type.value for rel_type in models.RelationshipType]
-
-@app.get("/dignitaries/honorific-title-options", response_model=List[str])
-async def get_honorific_title_options():
-    """Get all possible honorific title options"""
-    return [title.value for title in models.HonorificTitle]
-
-@app.get("/dignitaries/primary-domain-options", response_model=List[str])
-async def get_primary_domain_options():
-    """Get all possible primary domain options"""
-    return [domain.value for domain in models.PrimaryDomain]
-
-@app.get("/appointments/time-of-day-options", response_model=List[str])
-async def get_appointment_time_of_day_options():
-    """Get all possible appointment time of day options"""
-    return [time.value for time in models.AppointmentTimeOfDay]
-
-@app.get("/admin/user-role-options", response_model=List[str])
-async def get_user_role_options():
-    """Get all possible user roles"""
-    return [role.value for role in models.UserRole]
-
-@app.post("/admin/locations/new", response_model=schemas.LocationAdmin)
-@requires_role(models.UserRole.SECRETARIAT)
-async def create_location(
-    location: schemas.LocationAdminCreate,
-    current_user: models.User = Depends(get_current_user_for_write),
-    db: Session = Depends(get_db)
-):
-    """Create a new location"""
-    new_location = models.Location(
-        **location.dict(),
-        created_by=current_user.id
-    )
-    db.add(new_location)
-    db.commit()
-    db.refresh(new_location)
-    
-    # Set creator user reference (it's the current user for a new record)
-    setattr(new_location, "created_by_user", current_user)
-    
-    return new_location
-
-@app.get("/admin/locations/all", response_model=List[schemas.LocationAdmin])
-@requires_role(models.UserRole.SECRETARIAT)
-async def get_all_locations(
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_read_db)
-):
-    """Get all locations with creator and updater information"""
-    # Create aliases for the User table for creator and updater
-    CreatorUser = aliased(models.User)
-    UpdaterUser = aliased(models.User)
-    
-    # Query locations with joins to get creator and updater information in one go
-    locations = (
-        db.query(models.Location, CreatorUser, UpdaterUser)
-        .outerjoin(CreatorUser, models.Location.created_by == CreatorUser.id)
-        .outerjoin(UpdaterUser, models.Location.updated_by == UpdaterUser.id)
-        .all()
-    )
-    
-    # Process results to set created_by_user and updated_by_user attributes
-    result_locations = []
-    for location, creator, updater in locations:
-        if creator:
-            setattr(location, "created_by_user", creator)
-        if updater:
-            setattr(location, "updated_by_user", updater)
-        result_locations.append(location)
-    
-    return result_locations
-
-@app.get("/admin/locations/{location_id}", response_model=schemas.LocationAdmin)
-@requires_role(models.UserRole.SECRETARIAT)
-async def get_location(
-    location_id: int,
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_read_db)
-):
-    """Get a specific location with creator and updater information"""
-    # Create aliases for the User table for creator and updater
-    CreatorUser = aliased(models.User)
-    UpdaterUser = aliased(models.User)
-    
-    # Query location with joins to get creator and updater information
-    result = (
-        db.query(models.Location, CreatorUser, UpdaterUser)
-        .filter(models.Location.id == location_id)
-        .outerjoin(CreatorUser, models.Location.created_by == CreatorUser.id)
-        .outerjoin(UpdaterUser, models.Location.updated_by == UpdaterUser.id)
-        .first()
-    )
-    
-    if not result:
-        raise HTTPException(status_code=404, detail="Location not found")
-    
-    location, creator, updater = result
-    
-    if creator:
-        setattr(location, "created_by_user", creator)
-    if updater:
-        setattr(location, "updated_by_user", updater)
-    
-    return location
-
-@app.patch("/admin/locations/update/{location_id}", response_model=schemas.LocationAdmin)
-@requires_role(models.UserRole.SECRETARIAT)
-async def update_location(
-    location_id: int,
-    location_update: schemas.LocationAdminUpdate,
-    current_user: models.User = Depends(get_current_user_for_write),
-    db: Session = Depends(get_db)
-):
-    """Update a location"""
-    location = db.query(models.Location).filter(models.Location.id == location_id).first()
-    if not location:
-        raise HTTPException(status_code=404, detail="Location not found")
-    
-    update_data = location_update.dict(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(location, key, value)
-    location.updated_by = current_user.id
-    
-    db.commit()
-    db.refresh(location)
-    
-    # Fetch creator information
-    if location.created_by:
-        creator = db.query(models.User).filter(models.User.id == location.created_by).first()
-        if creator:
-            setattr(location, "created_by_user", creator)
-    
-    # For updater, we know it's the current user who just did the update
-    setattr(location, "updated_by_user", current_user)
-    
-    return location
 
 @app.get("/locations/all", response_model=List[schemas.Location])
 async def get_locations_for_users(
@@ -1789,6 +1107,583 @@ async def get_attachment_thumbnail(
         media_type=file_data['content_type']
     )
 
+
+@app.post("/appointments/{appointment_id}/dignitaries", response_model=List[schemas.AppointmentDignitary])
+async def add_dignitaries_to_appointment(
+    appointment_id: int,
+    dignitary_ids: List[int],
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
+):
+    """Add dignitaries to an existing appointment"""
+    appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    for dignitary_id in dignitary_ids:
+        # Check if the association already exists
+        existing = (
+            db.query(models.AppointmentDignitary)
+            .filter(
+                models.AppointmentDignitary.appointment_id == appointment_id,
+                models.AppointmentDignitary.dignitary_id == dignitary_id
+            )
+            .first()
+        )
+        
+        if not existing:
+            appointment_dignitary = models.AppointmentDignitary(
+                appointment_id=appointment_id,
+                dignitary_id=dignitary_id
+            )
+            db.add(appointment_dignitary)
+
+    db.commit()
+
+    # Retrieve the updated list of dignitaries for the appointment
+    updated_dignitaries = db.query(models.AppointmentDignitary).filter(models.AppointmentDignitary.appointment_id == appointment_id).all()
+    
+    return updated_dignitaries
+
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+# Admin endpoints
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+
+@app.get("/admin/dignitaries/all", response_model=List[schemas.DignitaryAdminWithAppointments])
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def get_all_dignitaries(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_read_db)
+):
+    """Get all dignitaries with access control restrictions based on user permissions"""
+    # ADMIN role has full access to all dignitaries
+    if current_user.role == models.UserRole.ADMIN:
+        dignitaries = db.query(models.Dignitary).all()
+        return dignitaries
+    
+    # For SECRETARIAT and other roles, apply access control restrictions
+    # Get all active access records for the current user
+    user_access = db.query(models.UserAccess).filter(
+        models.UserAccess.user_id == current_user.id,
+        models.UserAccess.is_active == True,
+        # Only consider records that grant access to dignitaries
+        or_(
+            models.UserAccess.entity_type == models.EntityType.APPOINTMENT_AND_DIGNITARY
+        )
+    ).all()
+    
+    if not user_access:
+        # If no valid access records exist, return empty list
+        return []
+    
+    # Create country filters based on user's access permissions
+    country_filters = []
+    # Start with a "false" condition that ensures no records are returned if no access is configured
+    country_filters.append(false())
+    
+    for access in user_access:
+        # Add country filter for each access record
+        country_filters.append(
+            models.Dignitary.country_code == access.country_code
+        )
+    
+    # Apply the filters to the query
+    dignitaries = db.query(models.Dignitary).filter(or_(*country_filters)).all()
+    return dignitaries
+
+
+@app.get("/admin/appointments/all", response_model=List[schemas.AppointmentAdmin])
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def get_all_appointments(
+    db: Session = Depends(get_read_db),
+    current_user: models.User = Depends(get_current_user),
+    status: Optional[str] = None
+):
+    """Get all appointments with optional status filter, restricted by user's access permissions"""
+    query = db.query(models.Appointment).order_by(models.Appointment.id.asc())
+    
+    # Apply status filter if provided
+    if status:
+        query = query.filter(models.Appointment.status == status)
+
+    # ADMIN role has full access to all appointments
+    if current_user.role != models.UserRole.ADMIN:
+        # For non-ADMIN users, apply access control restrictions
+        # Get all active access records for the current user
+        user_access = db.query(models.UserAccess).filter(
+            models.UserAccess.user_id == current_user.id,
+            models.UserAccess.is_active == True,
+            # Only consider records that grant access to appointments
+            or_(
+                models.UserAccess.entity_type == models.EntityType.APPOINTMENT,
+                models.UserAccess.entity_type == models.EntityType.APPOINTMENT_AND_DIGNITARY
+            )
+        ).all()
+        
+        if not user_access:
+            # If no valid access records exist, return empty list
+            return []
+        
+        # Create access filters based on country and location
+        access_filters = []
+        # Start with a "false" condition that ensures no records are returned if no access is configured
+        access_filters.append(false())
+        for access in user_access:
+            # If a specific location is specified in the access record
+            if access.location_id:
+                access_filters.append(
+                    and_(
+                        models.Appointment.location_id == access.location_id,
+                        models.Location.country_code == access.country_code
+                    )
+                )
+            else:
+                # Access to all locations in the country
+                access_filters.append(
+                    models.Location.country_code == access.country_code
+                )
+        
+        # Join to locations table and apply the country and location filters
+        query = query.join(models.Location)
+        query = query.filter(or_(*access_filters))
+
+    # Add options to eagerly load appointment_dignitaries and their associated dignitaries
+    query = query.options(
+        joinedload(models.Appointment.appointment_dignitaries).joinedload(models.AppointmentDignitary.dignitary),
+        joinedload(models.Appointment.requester)
+    )
+
+    appointments = query.all()
+    logger.debug(f"Appointments: {appointments}")
+    return appointments
+
+@app.get("/admin/appointments/upcoming", response_model=List[schemas.AppointmentAdmin])
+@requires_role(models.UserRole.SECRETARIAT)
+async def get_upcoming_appointments(
+    db: Session = Depends(get_read_db),
+    current_user: models.User = Depends(get_current_user),
+    status: Optional[str] = None
+):
+    """Get all upcoming appointments (future appointment_date, not NULL)"""
+    query = db.query(models.Appointment).filter(
+        or_(
+            models.Appointment.appointment_date == None,
+            models.Appointment.appointment_date >= date.today()-timedelta(days=1),
+        ),
+        models.Appointment.status not in [
+            models.AppointmentStatus.CANCELLED, 
+            models.AppointmentStatus.REJECTED, 
+            models.AppointmentStatus.COMPLETED,
+        ],
+    ).order_by(models.Appointment.appointment_date.asc())
+    
+    if status:
+        query = query.filter(models.Appointment.status == status)
+    
+    # Add options to eagerly load appointment_dignitaries and their associated dignitaries
+    query = query.options(
+        joinedload(models.Appointment.appointment_dignitaries).joinedload(models.AppointmentDignitary.dignitary),
+        joinedload(models.Appointment.requester)
+    )
+    
+    appointments = query.all()
+    logger.debug(f"Upcoming appointments: {appointments}")
+    return appointments
+
+
+def admin_get_appointment(appointment_id: int, current_user: models.User, db: Session, required_access_level: models.AccessLevel=models.AccessLevel.READ):
+    # Get the appointment with location join for access control
+    appointment = (
+        db.query(models.Appointment)
+        .filter(models.Appointment.id == appointment_id)
+        .options(
+            joinedload(models.Appointment.appointment_dignitaries).joinedload(models.AppointmentDignitary.dignitary),
+            joinedload(models.Appointment.requester),
+            joinedload(models.Appointment.location)
+        )
+        .first()
+    )
+    
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    
+    # ADMIN role has full access to all appointments
+    if current_user.role != models.UserRole.ADMIN:
+        # Get the allowed access levels for the required access level
+        allowed_access_levels = required_access_level.get_permitting_access_levels()
+
+        # For SECRETARIAT, enforce access control restrictions
+        # Get all active access records for the current user
+        user_access = db.query(models.UserAccess).filter(
+            models.UserAccess.user_id == current_user.id,
+            models.UserAccess.is_active == True,
+            # Only consider records that grant access to appointments
+            or_(
+                models.UserAccess.entity_type == models.EntityType.APPOINTMENT,
+                models.UserAccess.entity_type == models.EntityType.APPOINTMENT_AND_DIGNITARY
+            ),
+            models.UserAccess.access_level.in_(allowed_access_levels)
+        ).all()
+        
+        if not user_access:
+            # If no valid access records exist, return 403 Forbidden
+            raise HTTPException(status_code=403, detail="You don't have access to this appointment")
+    
+        # Check if user has access to this appointment's country/location
+        has_access = False
+        for access in user_access:
+            # Check if user has access to this appointment's country
+            if access.country_code == appointment.location.country_code:
+                # If location_id is specified in access record, it must match
+                if access.location_id is None or access.location_id == appointment.location_id:
+                    has_access = True
+                    break
+        
+        if not has_access:
+            raise HTTPException(status_code=403, detail="You don't have access to this appointment")
+
+    return appointment
+
+
+@app.get("/admin/appointments/{appointment_id}", response_model=schemas.AppointmentAdmin)
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def get_appointment(
+    appointment_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_read_db)
+):
+    """Get a specific appointment with access control restrictions"""
+    appointment = admin_get_appointment(appointment_id, current_user, db, models.AccessLevel.READ)
+    return appointment
+
+
+@app.patch("/admin/appointments/update/{appointment_id}", response_model=schemas.AppointmentAdmin)
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def update_appointment(
+    appointment_id: int,
+    appointment_update: schemas.AppointmentAdminUpdate,
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
+):
+    """Update an appointment with access control restrictions"""
+    appointment = admin_get_appointment(appointment_id, current_user, db, models.AccessLevel.READ_WRITE)
+    
+    # Save old data for notifications
+    old_data = {}
+    for key, value in appointment_update.dict(exclude_unset=True).items():
+        old_data[key] = getattr(appointment, key)
+    
+    if appointment.status != models.AppointmentStatus.APPROVED and appointment_update.status == models.AppointmentStatus.APPROVED:
+        logger.info("Appointment is approved")
+        appointment.approved_datetime = datetime.utcnow()
+        appointment.approved_by = current_user.id
+
+    # Update appointment with new data
+    update_data = appointment_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(appointment, key, value)
+    appointment.last_updated_by = current_user.id
+    
+    db.commit()
+    db.refresh(appointment)
+    
+    # Send email notifications about the update
+    try:
+        notify_appointment_update(db, appointment, old_data, update_data)
+    except Exception as e:
+        logger.error(f"Error sending email notifications: {str(e)}")
+    
+    return appointment
+
+
+@app.get("/admin/users/all", response_model=List[schemas.UserAdminView])
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def get_all_users(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_read_db)
+):
+    """Get all users with creator and updater information via joins, with access control restrictions"""
+
+    # Create aliases for the User table for creator and updater
+    CreatorUser = aliased(models.User)
+    UpdaterUser = aliased(models.User)
+
+    # Query users with joins 
+    query = (
+        db.query(models.User, CreatorUser, UpdaterUser)
+        .outerjoin(CreatorUser, models.User.created_by == CreatorUser.id)
+        .outerjoin(UpdaterUser, models.User.updated_by == UpdaterUser.id)
+    )
+
+    # ADMIN role has full access to all users
+    if current_user.role != models.UserRole.ADMIN:
+        # For SECRETARIAT, check if they have ADMIN access level
+        user_access = db.query(models.UserAccess).filter(
+            models.UserAccess.user_id == current_user.id,
+            models.UserAccess.is_active == True,
+            # For user management, admin access level is required
+            models.UserAccess.access_level == models.AccessLevel.ADMIN
+        ).all()
+        
+        if not user_access:
+            # If no valid access records with ADMIN level exist, return 403 Forbidden
+            raise HTTPException(
+                status_code=403, 
+                detail="You need administrator access level to view users"
+            )
+        
+        # Create country filters based on access permissions
+        countries = set(access.country_code for access in user_access)
+
+        # Add country filter
+        query = query.filter(models.User.country_code.in_(countries))
+
+    # Get all users
+    users = query.all()
+    
+    # Process results to set created_by_user and updated_by_user attributes
+    result_users = []
+    for user, creator, updater in users:
+        if creator:
+            setattr(user, "created_by_user", creator)
+        if updater:
+            setattr(user, "updated_by_user", updater)
+        result_users.append(user)
+    
+    return result_users
+
+
+@app.post("/admin/users/new", response_model=schemas.UserAdminView)
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def create_user(
+    user: schemas.UserAdminCreate,
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
+):
+    """Create a new user with access control restrictions"""
+    # ADMIN role has full access to create users
+    if current_user.role != models.UserRole.ADMIN:
+        # For SECRETARIAT, check if they have ADMIN access level
+        user_access = db.query(models.UserAccess).filter(
+            models.UserAccess.user_id == current_user.id,
+            models.UserAccess.is_active == True,
+            # For user management, admin access level is required
+            models.UserAccess.access_level == models.AccessLevel.ADMIN,
+            # Check country permission
+            models.UserAccess.country_code == user.country_code,
+            models.UserAccess.location_id == None
+        ).first()
+        
+        if not user_access:
+            # If no valid access record with ADMIN level for this country exists, return 403 Forbidden
+            raise HTTPException(
+                status_code=403, 
+                detail=f"You don't have administrator access for country: {user.country_code}"
+            )
+    
+    # Create the user
+    new_user = models.User(
+        **user.dict(),
+        created_by=current_user.id,
+        updated_by=current_user.id
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    
+    # Set creator and updater user references (both are the current user for a new record)
+    setattr(new_user, "created_by_user", current_user)
+    setattr(new_user, "updated_by_user", current_user)
+    
+    return new_user
+
+@app.patch("/admin/users/update/{user_id}", response_model=schemas.UserAdminView)
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def update_user(
+    user_id: int,
+    user_update: schemas.UserAdminUpdate,
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
+):
+    """Update a user"""
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # ADMIN role has full access to update users
+    if current_user.role != models.UserRole.ADMIN:
+        # For SECRETARIAT, check if they have ADMIN access level
+        user_access = db.query(models.UserAccess).filter(
+            models.UserAccess.user_id == current_user.id,
+            models.UserAccess.is_active == True,
+            # For user management, admin access level is required
+            models.UserAccess.access_level == models.AccessLevel.ADMIN,
+            # Check country permission for the existing user
+            models.UserAccess.country_code == user.country_code,
+            models.UserAccess.location_id == None
+        ).first()
+        
+        if not user_access:
+            # If no valid access record with ADMIN level for this user's country exists, return 403 Forbidden
+            raise HTTPException(
+                status_code=403, 
+                detail=f"You don't have administrator access for this user's country: {user.country_code}"
+            )
+        
+        # If trying to change country, check if they have access to the new country as well
+        if 'country_code' in user_update.dict(exclude_unset=True):
+            new_country = user_update.country_code
+            if new_country != user.country_code:
+                new_country_access = db.query(models.UserAccess).filter(
+                    models.UserAccess.user_id == current_user.id,
+                    models.UserAccess.is_active == True,
+                    models.UserAccess.access_level == models.AccessLevel.ADMIN,
+                    models.UserAccess.country_code == new_country
+                ).first()
+                
+                if not new_country_access:
+                    raise HTTPException(
+                        status_code=403, 
+                        detail=f"You don't have administrator access for the new country: {new_country}"
+                    )
+    
+    # Update user with new data
+    update_data = user_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(user, key, value)
+    user.updated_by = current_user.id
+    
+    db.commit()
+    db.refresh(user)
+    
+    # Fetch creator and updater information
+    if user.created_by:
+        creator = db.query(models.User).filter(models.User.id == user.created_by).first()
+        if creator:
+            setattr(user, "created_by_user", creator)
+    
+    # For updater, we know it's the current user who just did the update
+    setattr(user, "updated_by_user", current_user)
+    
+    return user
+
+@app.post("/admin/locations/new", response_model=schemas.LocationAdmin)
+@requires_role(models.UserRole.SECRETARIAT)
+async def create_location(
+    location: schemas.LocationAdminCreate,
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
+):
+    """Create a new location"""
+    new_location = models.Location(
+        **location.dict(),
+        created_by=current_user.id
+    )
+    db.add(new_location)
+    db.commit()
+    db.refresh(new_location)
+    
+    # Set creator user reference (it's the current user for a new record)
+    setattr(new_location, "created_by_user", current_user)
+    
+    return new_location
+
+@app.get("/admin/locations/all", response_model=List[schemas.LocationAdmin])
+@requires_role(models.UserRole.SECRETARIAT)
+async def get_all_locations(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_read_db)
+):
+    """Get all locations with creator and updater information"""
+    # Create aliases for the User table for creator and updater
+    CreatorUser = aliased(models.User)
+    UpdaterUser = aliased(models.User)
+    
+    # Query locations with joins to get creator and updater information in one go
+    locations = (
+        db.query(models.Location, CreatorUser, UpdaterUser)
+        .outerjoin(CreatorUser, models.Location.created_by == CreatorUser.id)
+        .outerjoin(UpdaterUser, models.Location.updated_by == UpdaterUser.id)
+        .all()
+    )
+    
+    # Process results to set created_by_user and updated_by_user attributes
+    result_locations = []
+    for location, creator, updater in locations:
+        if creator:
+            setattr(location, "created_by_user", creator)
+        if updater:
+            setattr(location, "updated_by_user", updater)
+        result_locations.append(location)
+    
+    return result_locations
+
+@app.get("/admin/locations/{location_id}", response_model=schemas.LocationAdmin)
+@requires_role(models.UserRole.SECRETARIAT)
+async def get_location(
+    location_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_read_db)
+):
+    """Get a specific location with creator and updater information"""
+    # Create aliases for the User table for creator and updater
+    CreatorUser = aliased(models.User)
+    UpdaterUser = aliased(models.User)
+    
+    # Query location with joins to get creator and updater information
+    result = (
+        db.query(models.Location, CreatorUser, UpdaterUser)
+        .filter(models.Location.id == location_id)
+        .outerjoin(CreatorUser, models.Location.created_by == CreatorUser.id)
+        .outerjoin(UpdaterUser, models.Location.updated_by == UpdaterUser.id)
+        .first()
+    )
+    
+    if not result:
+        raise HTTPException(status_code=404, detail="Location not found")
+    
+    location, creator, updater = result
+    
+    if creator:
+        setattr(location, "created_by_user", creator)
+    if updater:
+        setattr(location, "updated_by_user", updater)
+    
+    return location
+
+@app.patch("/admin/locations/update/{location_id}", response_model=schemas.LocationAdmin)
+@requires_role(models.UserRole.SECRETARIAT)
+async def update_location(
+    location_id: int,
+    location_update: schemas.LocationAdminUpdate,
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
+):
+    """Update a location"""
+    location = db.query(models.Location).filter(models.Location.id == location_id).first()
+    if not location:
+        raise HTTPException(status_code=404, detail="Location not found")
+    
+    update_data = location_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(location, key, value)
+    location.updated_by = current_user.id
+    
+    db.commit()
+    db.refresh(location)
+    
+    # Fetch creator information
+    if location.created_by:
+        creator = db.query(models.User).filter(models.User.id == location.created_by).first()
+        if creator:
+            setattr(location, "created_by_user", creator)
+    
+    # For updater, we know it's the current user who just did the update
+    setattr(location, "updated_by_user", current_user)
+    
+    return location
+
+
 @app.post("/admin/locations/{location_id}/attachment", response_model=schemas.LocationAdmin)
 @requires_role(models.UserRole.SECRETARIAT)
 async def upload_location_attachment(
@@ -1831,66 +1726,6 @@ async def upload_location_attachment(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to upload file: {str(e)}")
 
-@app.get("/locations/{location_id}/attachment")
-async def get_location_attachment(
-    location_id: int,
-    db: Session = Depends(get_read_db)
-):
-    """Get a location's attachment - accessible to all users"""
-    location = db.query(models.Location).filter(models.Location.id == location_id).first()
-    if not location:
-        raise HTTPException(status_code=404, detail="Location not found")
-    
-    if not location.attachment_path or not location.attachment_name:
-        raise HTTPException(status_code=404, detail="Location has no attachment")
-    
-    try:
-        file_data = get_file(location.attachment_path)
-        
-        # Determine content disposition based on file type
-        content_disposition = 'attachment'
-        # For PDFs and images, display inline in the browser
-        if location.attachment_file_type in [
-            'application/pdf', 
-            'image/jpeg', 
-            'image/png', 
-            'image/gif', 
-            'image/svg+xml'
-        ]:
-            content_disposition = 'inline'
-        
-        return StreamingResponse(
-            io.BytesIO(file_data['file_data']),
-            media_type=location.attachment_file_type,
-            headers={
-                'Content-Disposition': f'{content_disposition}; filename="{location.attachment_name}"'
-            }
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve file: {str(e)}")
-
-@app.get("/locations/{location_id}/thumbnail")
-async def get_location_thumbnail(
-    location_id: int,
-    db: Session = Depends(get_read_db)
-):
-    """Get a location's attachment thumbnail - accessible to all users"""
-    location = db.query(models.Location).filter(models.Location.id == location_id).first()
-    if not location:
-        raise HTTPException(status_code=404, detail="Location not found")
-    
-    if not location.attachment_thumbnail_path:
-        raise HTTPException(status_code=404, detail="Location has no thumbnail")
-    
-    try:
-        file_data = get_file(location.attachment_thumbnail_path)
-        return StreamingResponse(
-            io.BytesIO(file_data['file_data']),
-            media_type=location.attachment_file_type
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve thumbnail: {str(e)}")
-
 @app.delete("/admin/locations/{location_id}/attachment", response_model=schemas.LocationAdmin)
 @requires_role(models.UserRole.SECRETARIAT)
 async def remove_location_attachment(
@@ -1913,132 +1748,6 @@ async def remove_location_attachment(
     db.commit()
     db.refresh(location)
     return location
-
-@app.delete("/appointments/attachments/{attachment_id}", status_code=204)
-async def delete_attachment(
-    attachment_id: int,
-    current_user: models.User = Depends(get_current_user_for_write),
-    db: Session = Depends(get_db)
-):
-    """Delete an attachment"""
-    # Get the attachment
-    attachment = db.query(models.AppointmentAttachment).filter(models.AppointmentAttachment.id == attachment_id).first()
-    if not attachment:
-        raise HTTPException(status_code=404, detail="Attachment not found")
-    
-    # Check if user has permission to delete
-    appointment = db.query(models.Appointment).filter(models.Appointment.id == attachment.appointment_id).first()
-    if not appointment:
-        raise HTTPException(status_code=404, detail="Appointment not found")
-    
-    if current_user.role != models.UserRole.SECRETARIAT and appointment.requester_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to delete this attachment")
-    
-    # Delete the attachment
-    db.delete(attachment)
-    db.commit()
-    
-    return None
-
-@app.get("/appointments/business-card/extraction-status")
-async def get_business_card_extraction_status(
-    current_user: models.User = Depends(get_current_user)
-):
-    """Check if business card extraction is enabled"""
-    enable_extraction = os.environ.get("ENABLE_BUSINESS_CARD_EXTRACTION", "true").lower() == "true"
-    return {"enabled": enable_extraction}
-
-@app.post("/appointments/{appointment_id}/dignitaries", response_model=List[schemas.AppointmentDignitary])
-async def add_dignitaries_to_appointment(
-    appointment_id: int,
-    dignitary_ids: List[int],
-    current_user: models.User = Depends(get_current_user_for_write),
-    db: Session = Depends(get_db)
-):
-    """Add dignitaries to an existing appointment"""
-    appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
-    if not appointment:
-        raise HTTPException(status_code=404, detail="Appointment not found")
-
-    for dignitary_id in dignitary_ids:
-        # Check if the association already exists
-        existing = (
-            db.query(models.AppointmentDignitary)
-            .filter(
-                models.AppointmentDignitary.appointment_id == appointment_id,
-                models.AppointmentDignitary.dignitary_id == dignitary_id
-            )
-            .first()
-        )
-        
-        if not existing:
-            appointment_dignitary = models.AppointmentDignitary(
-                appointment_id=appointment_id,
-                dignitary_id=dignitary_id
-            )
-            db.add(appointment_dignitary)
-
-    db.commit()
-
-    # Retrieve the updated list of dignitaries for the appointment
-    updated_dignitaries = db.query(models.AppointmentDignitary).filter(models.AppointmentDignitary.appointment_id == appointment_id).all()
-    
-    return updated_dignitaries
-
-@app.delete("/appointments/{appointment_id}/dignitaries/{dignitary_id}", status_code=204)
-async def remove_dignitary_from_appointment(
-    appointment_id: int,
-    dignitary_id: int,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user_for_write)
-):
-    """Remove a dignitary from an appointment"""
-    appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
-    if not appointment:
-        raise HTTPException(status_code=404, detail="Appointment not found")
-
-    # Check if the dignitary is associated with the appointment
-    appointment_dignitary = (
-        db.query(models.AppointmentDignitary)
-        .filter(
-            models.AppointmentDignitary.appointment_id == appointment_id,
-            models.AppointmentDignitary.dignitary_id == dignitary_id
-        )
-        .first()
-    )
-    
-    if not appointment_dignitary:
-        raise HTTPException(status_code=404, detail="Dignitary not associated with this appointment")
-    
-    # Delete the association
-    db.delete(appointment_dignitary)
-    db.commit()
-    
-    return None
-
-@app.get("/appointments/{appointment_id}/dignitaries", response_model=List[schemas.Dignitary])
-async def get_appointment_dignitaries(
-    appointment_id: int,
-    db: Session = Depends(get_read_db),
-    current_user: models.User = Depends(get_current_user)
-):
-    """Get all dignitaries associated with an appointment"""
-    appointment = db.query(models.Appointment).filter(
-        models.Appointment.id == appointment_id,
-        models.Appointment.requester_id == current_user.id,
-    ).first()
-    if not appointment:
-        raise HTTPException(status_code=404, detail="Appointment not found")
-
-    # Get all dignitaries associated with the appointment
-    dignitaries = (
-        db.query(models.Dignitary)
-        .join(models.AppointmentDignitary)
-        .filter(models.AppointmentDignitary.appointment_id == appointment_id)
-        .all()
-    )
-    
-    return dignitaries
 
 @app.post("/admin/business-card/upload", response_model=schemas.BusinessCardExtractionResponse)
 @requires_role(models.UserRole.SECRETARIAT)
@@ -2199,6 +1908,257 @@ async def create_dignitary_from_business_card_admin(
         logger.error(f"Error creating dignitary: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to create dignitary: {str(e)}")
 
+
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+# Usher endpoints
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+
+@app.get("/usher/appointments/all", response_model=List[schemas.AppointmentUsherView])
+@requires_any_role([models.UserRole.USHER, models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def get_usher_appointments(
+    db: Session = Depends(get_read_db),
+    current_user: models.User = Depends(get_current_user),
+    date: Optional[str] = None,
+):
+    """
+    Get appointments for USHER role with access control restrictions.
+    By default, returns appointments for today and the next two days.
+    If date parameter is provided, returns appointments for that specific date.
+    """
+    # If specific date is provided, use that
+    if date:
+        if date < datetime.now().date()-timedelta(days=1) or date > datetime.now().date()+timedelta(days=2):
+            raise HTTPException(status_code=400, detail="Date beyond allowed range")
+
+        try:
+            target_date = datetime.strptime(date, "%Y-%m-%d").date()
+            start_date = target_date
+            end_date = target_date
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+    else:
+        # Default: today and next two days
+        today = datetime.now().date()
+        start_date = today
+        end_date = today + timedelta(days=2)
+   
+    # Start building the query with date range filter
+    query = db.query(models.Appointment).filter(
+        models.Appointment.appointment_date >= start_date,
+        models.Appointment.appointment_date <= end_date
+    )
+    
+    # USHER specific filters - apply to all roles using this endpoint
+    # Only show confirmed appointments for the usher view
+    query = query.filter(models.Appointment.status == models.AppointmentStatus.CONFIRMED)
+    
+    # ADMIN role has full access to all appointments within the date range
+    if current_user.role != models.UserRole.ADMIN:
+        # Non-ADMIN roles need access control checks
+        # Get active access records for the SECRETARIAT user
+        user_access = db.query(models.UserAccess).filter(
+            models.UserAccess.user_id == current_user.id,
+            models.UserAccess.is_active == True,
+            # Only consider records that grant access to appointments
+            or_(
+                models.UserAccess.entity_type == models.EntityType.APPOINTMENT,
+                models.UserAccess.entity_type == models.EntityType.APPOINTMENT_AND_DIGNITARY
+            )
+        ).all()
+        
+        if not user_access:
+            # If no valid access records exist, return empty list
+            return []
+        
+        # Create access filters based on country and location
+        access_filters = []
+        # Start with a "false" condition
+        access_filters.append(false())
+        
+        for access in user_access:
+            # If a specific location is specified in the access record
+            if access.location_id:
+                access_filters.append(
+                    and_(
+                        models.Appointment.location_id == access.location_id,
+                        models.Location.country_code == access.country_code
+                    )
+                )
+            else:
+                # Access to all locations in the country
+                access_filters.append(
+                    models.Location.country_code == access.country_code
+                )
+        
+        # Join to locations table and apply the country and location filters
+        query = query.join(models.Location)
+        query = query.filter(or_(*access_filters))
+    
+    # Add eager loading and ordering
+    query = query.options(
+        joinedload(models.Appointment.appointment_dignitaries).joinedload(models.AppointmentDignitary.dignitary),
+        joinedload(models.Appointment.requester)
+    ).order_by(
+        models.Appointment.appointment_date,
+        models.Appointment.appointment_time
+    )
+    
+    appointments = query.all()
+    return appointments
+
+
+@app.get("/locations/{location_id}/attachment")
+async def get_location_attachment(
+    location_id: int,
+    db: Session = Depends(get_read_db)
+):
+    """Get a location's attachment - accessible to all users"""
+    location = db.query(models.Location).filter(models.Location.id == location_id).first()
+    if not location:
+        raise HTTPException(status_code=404, detail="Location not found")
+    
+    if not location.attachment_path or not location.attachment_name:
+        raise HTTPException(status_code=404, detail="Location has no attachment")
+    
+    try:
+        file_data = get_file(location.attachment_path)
+        
+        # Determine content disposition based on file type
+        content_disposition = 'attachment'
+        # For PDFs and images, display inline in the browser
+        if location.attachment_file_type in [
+            'application/pdf', 
+            'image/jpeg', 
+            'image/png', 
+            'image/gif', 
+            'image/svg+xml'
+        ]:
+            content_disposition = 'inline'
+        
+        return StreamingResponse(
+            io.BytesIO(file_data['file_data']),
+            media_type=location.attachment_file_type,
+            headers={
+                'Content-Disposition': f'{content_disposition}; filename="{location.attachment_name}"'
+            }
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve file: {str(e)}")
+
+@app.get("/locations/{location_id}/thumbnail")
+async def get_location_thumbnail(
+    location_id: int,
+    db: Session = Depends(get_read_db)
+):
+    """Get a location's attachment thumbnail - accessible to all users"""
+    location = db.query(models.Location).filter(models.Location.id == location_id).first()
+    if not location:
+        raise HTTPException(status_code=404, detail="Location not found")
+    
+    if not location.attachment_thumbnail_path:
+        raise HTTPException(status_code=404, detail="Location has no thumbnail")
+    
+    try:
+        file_data = get_file(location.attachment_thumbnail_path)
+        return StreamingResponse(
+            io.BytesIO(file_data['file_data']),
+            media_type=location.attachment_file_type
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve thumbnail: {str(e)}")
+
+
+@app.delete("/appointments/attachments/{attachment_id}", status_code=204)
+async def delete_attachment(
+    attachment_id: int,
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
+):
+    """Delete an attachment"""
+    # Get the attachment
+    attachment = db.query(models.AppointmentAttachment).filter(models.AppointmentAttachment.id == attachment_id).first()
+    if not attachment:
+        raise HTTPException(status_code=404, detail="Attachment not found")
+    
+    # Check if user has permission to delete
+    appointment = db.query(models.Appointment).filter(models.Appointment.id == attachment.appointment_id).first()
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    
+    if current_user.role != models.UserRole.SECRETARIAT and appointment.requester_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this attachment")
+    
+    # Delete the attachment
+    db.delete(attachment)
+    db.commit()
+    
+    return None
+
+@app.get("/appointments/business-card/extraction-status")
+async def get_business_card_extraction_status(
+    current_user: models.User = Depends(get_current_user)
+):
+    """Check if business card extraction is enabled"""
+    enable_extraction = os.environ.get("ENABLE_BUSINESS_CARD_EXTRACTION", "true").lower() == "true"
+    return {"enabled": enable_extraction}
+
+
+@app.delete("/appointments/{appointment_id}/dignitaries/{dignitary_id}", status_code=204)
+async def remove_dignitary_from_appointment(
+    appointment_id: int,
+    dignitary_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user_for_write)
+):
+    """Remove a dignitary from an appointment"""
+    appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    # Check if the dignitary is associated with the appointment
+    appointment_dignitary = (
+        db.query(models.AppointmentDignitary)
+        .filter(
+            models.AppointmentDignitary.appointment_id == appointment_id,
+            models.AppointmentDignitary.dignitary_id == dignitary_id
+        )
+        .first()
+    )
+    
+    if not appointment_dignitary:
+        raise HTTPException(status_code=404, detail="Dignitary not associated with this appointment")
+    
+    # Delete the association
+    db.delete(appointment_dignitary)
+    db.commit()
+    
+    return None
+
+@app.get("/appointments/{appointment_id}/dignitaries", response_model=List[schemas.Dignitary])
+async def get_appointment_dignitaries(
+    appointment_id: int,
+    db: Session = Depends(get_read_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Get all dignitaries associated with an appointment"""
+    appointment = db.query(models.Appointment).filter(
+        models.Appointment.id == appointment_id,
+        models.Appointment.requester_id == current_user.id,
+    ).first()
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    # Get all dignitaries associated with the appointment
+    dignitaries = (
+        db.query(models.Dignitary)
+        .join(models.AppointmentDignitary)
+        .filter(models.AppointmentDignitary.appointment_id == appointment_id)
+        .all()
+    )
+    
+    return dignitaries
+
+
 # Configure app-wide exception handlers
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
@@ -2271,7 +2231,10 @@ async def startup_event():
 async def shutdown_event():
     logger.info("Application shutting down")
 
-# Access Control Endpoints
+
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+# Admin Access Control Endpoints
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
 
 @app.get("/admin/users/access/all", response_model=List[schemas.UserAccess])
 @requires_role(models.UserRole.SECRETARIAT)
@@ -2433,7 +2396,65 @@ async def get_user_access_summary(
         "access_count": len(access_records)
     }
 
-# Endpoints for new Enums
+
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+# Enum endpoints
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+
+@app.get("/appointments/status-options", response_model=List[str])
+async def get_appointment_status_options():
+    """Get all possible appointment status options"""
+    return models.VALID_STATUS_OPTIONS
+
+@app.get("/appointments/status-options-map")
+async def get_appointment_status_map():
+    """Get a dictionary mapping of appointment status enum names to their display values"""
+    return {status.name: status.value for status in models.AppointmentStatus}
+
+@app.get("/appointments/sub-status-options", response_model=List[str])
+async def get_appointment_sub_status_options():
+    """Get all possible appointment sub-status options"""
+    return models.VALID_SUBSTATUS_OPTIONS
+
+@app.get("/appointments/sub-status-options-map")
+async def get_appointment_sub_status_map():
+    """Get a dictionary mapping of appointment sub-status enum names to their display values"""
+    return {sub_status.name: sub_status.value for sub_status in models.AppointmentSubStatus}
+
+@app.get("/appointments/status-substatus-mapping")
+async def get_status_substatus_mapping():
+    """Get mapping between appointment status and valid sub-statuses"""
+    return models.STATUS_SUBSTATUS_MAPPING
+
+@app.get("/appointments/type-options", response_model=List[str])
+async def get_appointment_type_options():
+    """Get all possible appointment type options"""
+    return [app_type.value for app_type in models.AppointmentType]
+
+@app.get("/dignitaries/relationship-type-options", response_model=List[str])
+async def get_relationship_type_options():
+    """Get all possible relationship type options"""
+    return [rel_type.value for rel_type in models.RelationshipType]
+
+@app.get("/dignitaries/honorific-title-options", response_model=List[str])
+async def get_honorific_title_options():
+    """Get all possible honorific title options"""
+    return [title.value for title in models.HonorificTitle]
+
+@app.get("/dignitaries/primary-domain-options", response_model=List[str])
+async def get_primary_domain_options():
+    """Get all possible primary domain options"""
+    return [domain.value for domain in models.PrimaryDomain]
+
+@app.get("/appointments/time-of-day-options", response_model=List[str])
+async def get_appointment_time_of_day_options():
+    """Get all possible appointment time of day options"""
+    return [time.value for time in models.AppointmentTimeOfDay]
+
+@app.get("/admin/user-role-options", response_model=List[str])
+async def get_user_role_options():
+    """Get all possible user roles"""
+    return [role.value for role in models.UserRole]
 
 @app.get("/admin/access-level-options", response_model=List[str])
 async def get_access_levels():
@@ -2445,7 +2466,10 @@ async def get_entity_types():
     """Get all possible entity type options"""
     return [entity_type.value for entity_type in models.EntityType]
 
-# Country endpoints
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+# Other static data endpoints
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+
 @app.get("/countries", response_model=List[schemas.CountryResponse])
 async def get_enabled_countries(
     current_user: models.User = Depends(get_current_user),
@@ -2455,86 +2479,71 @@ async def get_enabled_countries(
     countries = db.query(models.Country).filter(models.Country.is_enabled == True).order_by(models.Country.name).all()
     return countries
 
-@app.get("/admin/countries/all", response_model=List[schemas.Country])
-@requires_role(models.UserRole.SECRETARIAT)
-async def get_all_countries(
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_read_db)
-):
-    """Get all countries, including disabled ones (admin only)"""
-    countries = db.query(models.Country).order_by(models.Country.name).all()
-    return countries
 
-@app.get("/admin/countries/{iso2_code}", response_model=schemas.Country)
-@requires_role(models.UserRole.SECRETARIAT)
-async def get_country(
-    iso2_code: str,
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_read_db)
-):
-    """Get a specific country by ISO2 code (admin only)"""
-    country = db.query(models.Country).filter(models.Country.iso2_code == iso2_code).first()
-    if not country:
-        raise HTTPException(status_code=404, detail=f"Country with code {iso2_code} not found")
-    return country
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
+# FUTURE ENDPOINTS
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
 
-@app.patch("/admin/countries/{iso2_code}", response_model=schemas.Country)
-@requires_role(models.UserRole.SECRETARIAT)
-async def update_country(
-    iso2_code: str,
-    country_update: schemas.CountryUpdate,
-    current_user: models.User = Depends(get_current_user_for_write),
-    db: Session = Depends(get_db)
-):
-    """Update a country (admin only)"""
-    country = db.query(models.Country).filter(models.Country.iso2_code == iso2_code).first()
-    if not country:
-        raise HTTPException(status_code=404, detail=f"Country with code {iso2_code} not found")
+# @app.patch("/admin/countries/{iso2_code}", response_model=schemas.Country)
+# @requires_role(models.UserRole.SECRETARIAT)
+# async def update_country(
+#     iso2_code: str,
+#     country_update: schemas.CountryUpdate,
+#     current_user: models.User = Depends(get_current_user_for_write),
+#     db: Session = Depends(get_db)
+# ):
+#     """Update a country (admin only)"""
+#     country = db.query(models.Country).filter(models.Country.iso2_code == iso2_code).first()
+#     if not country:
+#         raise HTTPException(status_code=404, detail=f"Country with code {iso2_code} not found")
     
-    # Update country attributes
-    update_data = country_update.dict(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(country, key, value)
+#     # Update country attributes
+#     update_data = country_update.dict(exclude_unset=True)
+#     for key, value in update_data.items():
+#         setattr(country, key, value)
     
-    # Create audit log
-    audit_log = models.AuditLog(
-        entity_id=iso2_code,
-        entity_type="country",
-        action="update",
-        details=json.dumps(update_data),
-        user_id=current_user.id
-    )
-    db.add(audit_log)
+#     # Create audit log
+#     audit_log = models.AuditLog(
+#         entity_id=iso2_code,
+#         entity_type="country",
+#         action="update",
+#         details=json.dumps(update_data),
+#         user_id=current_user.id
+#     )
+#     db.add(audit_log)
     
-    # Commit changes
-    db.commit()
-    db.refresh(country)
-    return country
+#     # Commit changes
+#     db.commit()
+#     db.refresh(country)
+#     return country
 
-@app.post("/admin/countries/bulk-enable", response_model=dict)
-@requires_role(models.UserRole.SECRETARIAT)
-async def bulk_update_countries(
-    iso2_codes: List[str],
-    enable: bool,
-    current_user: models.User = Depends(get_current_user_for_write),
-    db: Session = Depends(get_db)
-):
-    """Enable or disable multiple countries at once (admin only)"""
-    updated = db.query(models.Country).filter(models.Country.iso2_code.in_(iso2_codes)).update(
-        {models.Country.is_enabled: enable}, 
-        synchronize_session=False
-    )
+# @app.post("/admin/countries/bulk-enable", response_model=dict)
+# @requires_role(models.UserRole.SECRETARIAT)
+# async def bulk_update_countries(
+#     iso2_codes: List[str],
+#     enable: bool,
+#     current_user: models.User = Depends(get_current_user_for_write),
+#     db: Session = Depends(get_db)
+# ):
+#     """Enable or disable multiple countries at once (admin only)"""
+#     updated = db.query(models.Country).filter(models.Country.iso2_code.in_(iso2_codes)).update(
+#         {models.Country.is_enabled: enable}, 
+#         synchronize_session=False
+#     )
     
-    # Create audit log
-    audit_log = models.AuditLog(
-        entity_id=",".join(iso2_codes),
-        entity_type="country",
-        action=f"bulk_{'enable' if enable else 'disable'}",
-        details=json.dumps({"iso2_codes": iso2_codes, "enable": enable}),
-        user_id=current_user.id
-    )
-    db.add(audit_log)
+#     # Create audit log
+#     audit_log = models.AuditLog(
+#         entity_id=",".join(iso2_codes),
+#         entity_type="country",
+#         action=f"bulk_{'enable' if enable else 'disable'}",
+#         details=json.dumps({"iso2_codes": iso2_codes, "enable": enable}),
+#         user_id=current_user.id
+#     )
+#     db.add(audit_log)
     
-    db.commit()
+#     db.commit()
     
-    return {"message": f"Updated {updated} countries", "updated_count": updated}
+#     return {"message": f"Updated {updated} countries", "updated_count": updated}
+
+
+
