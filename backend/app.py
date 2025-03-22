@@ -2083,23 +2083,14 @@ async def update_user_access(
     if not access:
         raise HTTPException(status_code=404, detail="User access record not found")
     
-    # Check if user is USHER and enforce restrictions
-    user = db.query(models.User).filter(models.User.id == access.user_id).first()
-    if user and user.role == models.UserRole.USHER:
-        # For USHER role, force values for access_level and entity_type if they're being updated
-        update_data = user_access_update.dict(exclude_unset=True)
-        if 'access_level' in update_data:
-            update_data['access_level'] = models.AccessLevel.READ
-        if 'entity_type' in update_data:
-            update_data['entity_type'] = models.EntityType.APPOINTMENT
-    else:
-        update_data = user_access_update.dict(exclude_unset=True)
-        
-    for key, value in update_data.items():
-        setattr(access, key, value)
-    
-    access.updated_by = current_user.id
-    access.updated_at = datetime.utcnow()
+    # Use the new method that enforces role-based restrictions
+    update_data = user_access_update.dict(exclude_unset=True)
+    models.UserAccess.update_with_role_enforcement(
+        db=db,
+        access_record=access,
+        update_data=update_data,
+        updated_by=current_user.id
+    )
     
     db.commit()
     db.refresh(access)

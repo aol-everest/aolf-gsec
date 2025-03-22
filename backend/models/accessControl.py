@@ -90,3 +90,43 @@ class UserAccess(Base):
         
         db.add(access)
         return access 
+        
+    @staticmethod
+    def update_with_role_enforcement(db, access_record, update_data, updated_by):
+        """
+        Update a user access with role-based restrictions.
+        If the user has the USHER role, it will enforce read-only access to appointments only.
+        
+        Args:
+            db: Database session
+            access_record: The UserAccess object to update
+            update_data: Dictionary containing the fields to update
+            updated_by: User ID of the person making the update
+            
+        Returns:
+            The updated UserAccess object
+        """
+        from models.user import User, UserRole
+        
+        # Get the user to check their role
+        user = db.query(User).filter(User.id == access_record.user_id).first()
+        
+        # Create a copy of update_data to avoid modifying the original
+        final_update_data = update_data.copy()
+        
+        if user and user.role == UserRole.USHER:
+            # Override settings for USHER role if they're being updated
+            if 'access_level' in final_update_data:
+                final_update_data['access_level'] = AccessLevel.READ
+            if 'entity_type' in final_update_data:
+                final_update_data['entity_type'] = EntityType.APPOINTMENT
+        
+        # Apply updates to the record
+        for key, value in final_update_data.items():
+            setattr(access_record, key, value)
+        
+        # Update audit fields
+        access_record.updated_by = updated_by
+        access_record.updated_at = datetime.utcnow()
+        
+        return access_record 
