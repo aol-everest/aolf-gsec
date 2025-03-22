@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
-import { formatDate, getLocalDate } from '../utils/dateUtils';
+import { formatDate, getLocalDateString } from '../utils/dateUtils';
 import {
   Box,
   Button,
@@ -1601,8 +1601,8 @@ export const AppointmentRequestForm: React.FC = () => {
                   label="Preferred Date"
                   InputLabelProps={{ shrink: true }}
                   inputProps={{ 
-                    min: getLocalDate(0),
-                    max: getLocalDate(60),
+                    min: getLocalDateString(0),
+                    max: getLocalDateString(60),
                   }}
                   {...appointmentForm.register('preferredDate', { required: 'Preferred date is required' })}
                   error={!!appointmentForm.formState.errors.preferredDate}

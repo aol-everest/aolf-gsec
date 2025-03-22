@@ -1,10 +1,8 @@
-import { parseISO, isValid } from 'date-fns';
+import { parseISO, isValid, format, addDays } from 'date-fns';
 
-export const getLocalDate = (daysToAdd = 0): string => {
-  const date = new Date();
-  date.setDate(date.getDate() + daysToAdd);
-
-  return date.toLocaleDateString('en-CA'); // Formats as YYYY-MM-DD
+export const getLocalDateString = (daysToAdd = 0, formatStr = 'yyyy-MM-dd'): string => {
+  const date = addDays(new Date(), daysToAdd);
+  return format(date, formatStr);
 };
 
 export const parseUTCDate = (dateStr: string): Date => {

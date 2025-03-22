@@ -53,7 +53,7 @@ import { useSnackbar } from 'notistack';
 import { useNavigate } from 'react-router-dom';
 import { HomeRoute } from '../config/routes';
 import LocationAutocomplete from '../components/LocationAutocomplete';
-import { getLocalDate } from '../utils/dateUtils';
+import { getLocalDateString } from '../utils/dateUtils';
 
 interface BusinessCardExtraction {
   honorific_title?: string;
@@ -162,7 +162,7 @@ const AddNewDignitary: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   
   // Get today's date in YYYY-MM-DD format for default meeting date
-  const today = getLocalDate();
+  const today = getLocalDateString();
   
   const [extraction, setExtraction] = useState<BusinessCardExtraction | null>({
     first_name: '',

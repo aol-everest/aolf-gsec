@@ -16,7 +16,7 @@ import format from 'date-fns/format';
 import isToday from 'date-fns/isToday';
 import parseISO from 'date-fns/parseISO';
 import Layout from '../components/Layout';
-import { getLocalDate, formatTime } from '../utils/dateUtils';
+import { getLocalDateString, formatTime } from '../utils/dateUtils';
 import { formatHonorificTitle, getStatusChipSx } from '../utils/formattingUtils';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
@@ -25,7 +25,7 @@ import { Appointment, AppointmentDignitary } from '../models/types';
 import AppointmentCard from '../components/AppointmentCard';
 
 const AppointmentDayView: React.FC = () => {
-  const [selectedDate, setSelectedDate] = useState(getLocalDate(0));
+  const [selectedDate, setSelectedDate] = useState(getLocalDateString(0));
   const [expandedAppointmentId, setExpandedAppointmentId] = useState<number | null>(null);
   const theme = useTheme();
   const api = useApi();
@@ -112,8 +112,8 @@ const AppointmentDayView: React.FC = () => {
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
               inputProps={{
-                min: getLocalDate(-1),
-                max: getLocalDate(365),
+                min: getLocalDateString(-1),
+                max: getLocalDateString(365),
               }}
               sx={{ width: 200 }}
             />
