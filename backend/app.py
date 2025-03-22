@@ -801,6 +801,17 @@ async def get_all_appointments(
                     models.Location.country_code == access.country_code
                 )
         
+        if current_user.role == models.UserRole.USHER:
+            # USHER role can only see appointments between day -1 and day +3
+            country_filters.append(
+                models.Appointment.appointment_date >= date.today()-timedelta(days=1),
+                models.Appointment.appointment_date <= date.today()+timedelta(days=3)
+            )
+            # USHER role can only see confirmed appointments
+            country_filters.append(
+                models.Appointment.status == models.AppointmentStatus.CONFIRMED
+            )
+        
         # Join to locations table and apply the country and location filters
         query = query.join(models.Location)
         query = query.filter(or_(*country_filters))
