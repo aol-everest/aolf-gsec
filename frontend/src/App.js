@@ -19,7 +19,7 @@ import PrivateRoute from './components/PrivateRoute';
 import RoleBasedRoute from './components/RoleBasedRoute';
 
 // Route Configuration
-import { userRoutes, adminRoutes, usherRoutes, SECRETARIAT_ROLE, USHER_ROLE } from './config/routes';
+import { userRoutes, adminRoutes, usherRoutes, SECRETARIAT_ROLE, USHER_ROLE, ADMIN_ROLE } from './config/routes';
 
 // Wrapper component to handle auth redirect
 const AuthRedirect = () => {
@@ -81,7 +81,7 @@ function App() {
                       path={route.path}
                       element={
                         <PrivateRoute>
-                          <RoleBasedRoute allowedRoles={[SECRETARIAT_ROLE]}>
+                          <RoleBasedRoute allowedRoles={[ADMIN_ROLE, SECRETARIAT_ROLE]}>
                             <route.component />
                           </RoleBasedRoute>
                         </PrivateRoute>
@@ -96,7 +96,7 @@ function App() {
                       path={route.path}
                       element={
                         <PrivateRoute>
-                          <RoleBasedRoute allowedRoles={[USHER_ROLE, SECRETARIAT_ROLE]}>
+                          <RoleBasedRoute allowedRoles={[USHER_ROLE, ADMIN_ROLE, SECRETARIAT_ROLE]}>
                             <route.component />
                           </RoleBasedRoute>
                         </PrivateRoute>

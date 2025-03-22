@@ -52,6 +52,7 @@ import {
 } from '../components/icons';
 
 export const SECRETARIAT_ROLE = 'SECRETARIAT';
+export const ADMIN_ROLE = 'ADMIN';
 export const USHER_ROLE = 'USHER';
 
 // Route configuration interface ----------------------------------------------------------------------
@@ -119,7 +120,7 @@ export const AdminLocationsRoute: RouteConfig = {
   path: '/admin/locations',
   label: 'Manage Locations',
   icon: LocationThinIconV2,
-  roles: [SECRETARIAT_ROLE],
+  roles: [ADMIN_ROLE, SECRETARIAT_ROLE],
   showInSidebar: true,
   component: LocationsManage
 }
@@ -128,7 +129,7 @@ export const AdminAppointmentsRoute: RouteConfig = {
   path: '/admin/appointments',
   label: 'Appointments List',
   icon: ListIconV2,
-  roles: [SECRETARIAT_ROLE],
+  roles: [ADMIN_ROLE, SECRETARIAT_ROLE],
   showInSidebar: true,
   component: AppointmentStatusAll
 }
@@ -137,7 +138,7 @@ export const AdminAppointmentsReviewRoute: RouteConfig = {
   path: '/admin/appointments/review',
   label: 'Review Appointments',
   icon: MemoCheckIconV2,
-  roles: [SECRETARIAT_ROLE],
+  roles: [ADMIN_ROLE, SECRETARIAT_ROLE],
   showInSidebar: true,
   component: AppointmentTiles
 }
@@ -146,7 +147,7 @@ export const AdminAppointmentReviewWithIdRoute: RouteConfig = {
   path: '/admin/appointments/review/:id',
   label: 'Review Appointment',
   icon: MemoCheckIconV2,
-  roles: [SECRETARIAT_ROLE],
+  roles: [ADMIN_ROLE, SECRETARIAT_ROLE],
   showInSidebar: false,
   component: AppointmentTiles
 }
@@ -155,7 +156,7 @@ export const AdminAppointmentsCalendarRoute: RouteConfig = {
   path: '/admin/appointments/calendar',
   label: 'Daily Schedule',
   icon: CalendarIconV2,
-  roles: [SECRETARIAT_ROLE],
+  roles: [ADMIN_ROLE, SECRETARIAT_ROLE],
   showInSidebar: true,
   component: AppointmentDayView
 }
@@ -164,7 +165,7 @@ export const AdminAppointmentsEditRoute: RouteConfig = {
   path: '/admin/appointments/edit/:id',
   label: 'Edit Appointment',
   icon: EditIcon,
-  roles: [SECRETARIAT_ROLE],
+  roles: [ADMIN_ROLE, SECRETARIAT_ROLE],
   showInSidebar: false,
   component: AppointmentEdit
 }
@@ -173,7 +174,7 @@ export const AdminUsersRoute: RouteConfig = {
   path: '/admin/users', 
   label: 'All Users',
   icon: PeopleIconV2,
-  roles: [SECRETARIAT_ROLE],
+  roles: [ADMIN_ROLE, SECRETARIAT_ROLE],
   showInSidebar: true,
   component: UsersAll
 }
@@ -182,7 +183,7 @@ export const AdminDignitariesRoute: RouteConfig = {
   path: '/admin/dignitaries',
   label: 'All Dignitaries',
   icon: PersonListIconV2,
-  roles: [SECRETARIAT_ROLE],
+  roles: [ADMIN_ROLE, SECRETARIAT_ROLE],
   showInSidebar: true,
   component: DignitaryListAll
 }
@@ -191,7 +192,7 @@ export const AdminAddNewDignitaryRoute: RouteConfig = {
   path: '/admin/add-new-dignitary',
   label: 'Add New Dignitary',
   icon: AddPersonIconV2,
-  roles: [SECRETARIAT_ROLE],
+  roles: [ADMIN_ROLE, SECRETARIAT_ROLE],
   showInSidebar: true,
   component: AddNewDignitary
 }
@@ -199,7 +200,7 @@ export const AdminAddNewDignitaryRoute: RouteConfig = {
 export const AdminHeaderRoute: RouteConfig = {
   label: 'ADMIN',
   icon: AdminIcon,
-  roles: [SECRETARIAT_ROLE],
+  roles: [ADMIN_ROLE, SECRETARIAT_ROLE],
   showInSidebar: true,
 }
 
@@ -208,7 +209,7 @@ export const UsherAppointmentsRoute: RouteConfig = {
   path: '/usher/appointments',
   label: 'Appointments Schedule',
   icon: CalendarIconV2,
-  roles: [USHER_ROLE, SECRETARIAT_ROLE],
+  roles: [USHER_ROLE, ADMIN_ROLE, SECRETARIAT_ROLE],
   showInSidebar: true,
   component: AppointmentUsherView
 }
@@ -216,7 +217,7 @@ export const UsherAppointmentsRoute: RouteConfig = {
 export const UsherHeaderRoute: RouteConfig = {
   label: 'USHER',
   icon: TeamCheckV2,
-  roles: [USHER_ROLE, SECRETARIAT_ROLE],
+  roles: [USHER_ROLE, ADMIN_ROLE, SECRETARIAT_ROLE],
   showInSidebar: true,
 }
 
@@ -257,11 +258,11 @@ export const allRoutes = [...userRoutes, ...adminRoutes, ...usherRoutes];
 export const getSidebarItems = (userRole: string | null) => {
   const items = [...userRoutes.filter(route => route.showInSidebar)];
   
-  if (userRole === SECRETARIAT_ROLE) {
+  if (userRole === ADMIN_ROLE || userRole === SECRETARIAT_ROLE) {
     items.push(...adminRoutes.filter(route => route.showInSidebar));
   }
   
-  if (userRole === USHER_ROLE || userRole === SECRETARIAT_ROLE) {
+  if (userRole === USHER_ROLE || userRole === ADMIN_ROLE || userRole === SECRETARIAT_ROLE) {
     items.push(...usherRoutes.filter(route => route.showInSidebar));
   }
   
