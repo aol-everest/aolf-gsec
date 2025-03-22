@@ -742,13 +742,45 @@ async def get_my_appointments_for_dignitary(
     return appointments
 
 @app.get("/admin/dignitaries/all", response_model=List[schemas.DignitaryAdminWithAppointments])
-@requires_role(models.UserRole.SECRETARIAT)
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
 async def get_all_dignitaries(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_read_db)
 ):
-    """Get all dignitaries"""
-    dignitaries = db.query(models.Dignitary).all()
+    """Get all dignitaries with access control restrictions based on user permissions"""
+    # ADMIN role has full access to all dignitaries
+    if current_user.role == models.UserRole.ADMIN:
+        dignitaries = db.query(models.Dignitary).all()
+        return dignitaries
+    
+    # For SECRETARIAT and other roles, apply access control restrictions
+    # Get all active access records for the current user
+    user_access = db.query(models.UserAccess).filter(
+        models.UserAccess.user_id == current_user.id,
+        models.UserAccess.is_active == True,
+        # Only consider records that grant access to dignitaries
+        or_(
+            models.UserAccess.entity_type == models.EntityType.APPOINTMENT_AND_DIGNITARY
+        )
+    ).all()
+    
+    if not user_access:
+        # If no valid access records exist, return empty list
+        return []
+    
+    # Create country filters based on user's access permissions
+    country_filters = []
+    # Start with a "false" condition that ensures no records are returned if no access is configured
+    country_filters.append(false())
+    
+    for access in user_access:
+        # Add country filter for each access record
+        country_filters.append(
+            models.Dignitary.country_code == access.country_code
+        )
+    
+    # Apply the filters to the query
+    dignitaries = db.query(models.Dignitary).filter(or_(*country_filters)).all()
     return dignitaries
 
 
@@ -803,17 +835,6 @@ async def get_all_appointments(
                     models.Location.country_code == access.country_code
                 )
         
-        if current_user.role == models.UserRole.USHER:
-            # USHER role can only see appointments between day -1 and day +3
-            access_filters.append(
-                models.Appointment.appointment_date >= date.today()-timedelta(days=1),
-                models.Appointment.appointment_date <= date.today()+timedelta(days=3)
-            )
-            # USHER role can only see confirmed appointments
-            access_filters.append(
-                models.Appointment.status == models.AppointmentStatus.CONFIRMED
-            )
-        
         # Join to locations table and apply the country and location filters
         query = query.join(models.Location)
         query = query.filter(or_(*access_filters))
@@ -862,19 +883,23 @@ async def get_upcoming_appointments(
     return appointments
 
 
-@app.get("/usher/appointments", response_model=List[schemas.AppointmentUsherView])
-@requires_any_role([models.UserRole.USHER, models.UserRole.SECRETARIAT])
+@app.get("/usher/appointments/all", response_model=List[schemas.AppointmentUsherView])
+@requires_any_role([models.UserRole.USHER, models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
 async def get_usher_appointments(
     db: Session = Depends(get_read_db),
     current_user: models.User = Depends(get_current_user),
     date: Optional[str] = None,
 ):
     """
-    Get appointments for USHER role. By default, returns appointments for today and the next two days.
+    Get appointments for USHER role with access control restrictions.
+    By default, returns appointments for today and the next two days.
     If date parameter is provided, returns appointments for that specific date.
     """
     # If specific date is provided, use that
     if date:
+        if date < datetime.now().date()-timedelta(days=1) or date > datetime.now().date()+timedelta(days=2):
+            raise HTTPException(status_code=400, detail="Date beyond allowed range")
+
         try:
             target_date = datetime.strptime(date, "%Y-%m-%d").date()
             start_date = target_date
@@ -886,19 +911,69 @@ async def get_usher_appointments(
         today = datetime.now().date()
         start_date = today
         end_date = today + timedelta(days=2)
-    
-    # Get appointments within date range
-    appointments = db.query(models.Appointment).filter(
+   
+    # Start building the query with date range filter
+    query = db.query(models.Appointment).filter(
         models.Appointment.appointment_date >= start_date,
         models.Appointment.appointment_date <= end_date
-    ).options(
+    )
+    
+    # USHER specific filters - apply to all roles using this endpoint
+    # Only show confirmed appointments for the usher view
+    query = query.filter(models.Appointment.status == models.AppointmentStatus.CONFIRMED)
+    
+    # ADMIN role has full access to all appointments within the date range
+    if current_user.role != models.UserRole.ADMIN:
+        # Non-ADMIN roles need access control checks
+        # Get active access records for the SECRETARIAT user
+        user_access = db.query(models.UserAccess).filter(
+            models.UserAccess.user_id == current_user.id,
+            models.UserAccess.is_active == True,
+            # Only consider records that grant access to appointments
+            or_(
+                models.UserAccess.entity_type == models.EntityType.APPOINTMENT,
+                models.UserAccess.entity_type == models.EntityType.APPOINTMENT_AND_DIGNITARY
+            )
+        ).all()
+        
+        if not user_access:
+            # If no valid access records exist, return empty list
+            return []
+        
+        # Create access filters based on country and location
+        access_filters = []
+        # Start with a "false" condition
+        access_filters.append(false())
+        
+        for access in user_access:
+            # If a specific location is specified in the access record
+            if access.location_id:
+                access_filters.append(
+                    and_(
+                        models.Appointment.location_id == access.location_id,
+                        models.Location.country_code == access.country_code
+                    )
+                )
+            else:
+                # Access to all locations in the country
+                access_filters.append(
+                    models.Location.country_code == access.country_code
+                )
+        
+        # Join to locations table and apply the country and location filters
+        query = query.join(models.Location)
+        query = query.filter(or_(*access_filters))
+    
+    # Add eager loading and ordering
+    query = query.options(
         joinedload(models.Appointment.appointment_dignitaries).joinedload(models.AppointmentDignitary.dignitary),
         joinedload(models.Appointment.requester)
     ).order_by(
         models.Appointment.appointment_date,
         models.Appointment.appointment_time
-    ).all()
+    )
     
+    appointments = query.all()
     return appointments
 
 @app.get("/admin/appointments/{appointment_id}", response_model=schemas.AppointmentAdmin)
