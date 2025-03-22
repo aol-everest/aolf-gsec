@@ -218,7 +218,7 @@ const UsersAll: React.FC = () => {
     queryFn: async () => {
       if (!editingId) return [];
       try {
-        const { data } = await api.get<UserAccess[]>(`/admin/access-control/by-user/${editingId}`);
+        const { data } = await api.get<UserAccess[]>(`/admin/users/${editingId}/access/all`);
         return data;
       } catch (error) {
         console.error('Error fetching user access:', error);
@@ -237,7 +237,7 @@ const UsersAll: React.FC = () => {
     queryFn: async () => {
       if (!editingId) return null;
       try {
-        const { data } = await api.get<UserAccessSummary>(`/admin/access-control/user/${editingId}/summary`);
+        const { data } = await api.get<UserAccessSummary>(`/admin/users/${editingId}/access/summary`);
         return data;
       } catch (error) {
         console.error('Error fetching user access summary:', error);
@@ -287,7 +287,7 @@ const UsersAll: React.FC = () => {
       try {
         if (variables.id) {
           const { data } = await api.patch<UserAccess>(
-            `/admin/access-control/update/${variables.id}`, 
+            `/admin/users/${variables.id}/access/update/${variables.id}`, 
             { 
               ...variables.data, 
               location_id: variables.data.location_ids.length > 0 ? variables.data.location_ids[0] : null 
@@ -298,7 +298,7 @@ const UsersAll: React.FC = () => {
           if (variables.data.location_ids.length > 0) {
             const promises = variables.data.location_ids.map(locationId => {
               return api.post<UserAccess>(
-                '/admin/access-control/new', 
+                `/admin/users/${variables.id}/access/new`, 
                 { 
                   ...variables.data, 
                   location_id: locationId 
@@ -309,7 +309,7 @@ const UsersAll: React.FC = () => {
             return results[0].data;
           } else {
             const { data } = await api.post<UserAccess>(
-              '/admin/access-control/new', 
+              `/admin/users/${variables.id}/access/new`, 
               { 
                 ...variables.data, 
                 location_id: null 
@@ -345,7 +345,7 @@ const UsersAll: React.FC = () => {
     mutationFn: async (variables: { id: number; isActive: boolean }) => {
       try {
         const { data } = await api.patch<UserAccess>(
-          `/admin/access-control/update/${variables.id}`, 
+          `/admin/users/${variables.id}/access/update/${variables.id}`, 
           { is_active: variables.isActive }
         );
         return data;
@@ -374,7 +374,7 @@ const UsersAll: React.FC = () => {
   const deleteAccessMutation = useMutation({
     mutationFn: async (accessId: number) => {
       try {
-        await api.delete(`/admin/access-control/${accessId}`);
+        await api.delete(`/admin/users/${editingId}/access/${accessId}`);
         return accessId;
       } catch (error) {
         console.error('Error deleting access:', error);
@@ -856,13 +856,11 @@ const UsersAll: React.FC = () => {
                         sx={{ 
                           p: 2, 
                           mb: 3, 
-                          // bgcolor: 'info.light', 
                           color: 'info.dark' 
                         }}
-                        // variant="outlined"
                       >
                         <Typography variant="body2">
-                          <strong>Note:</strong> Users with the USHER role will only have Read access and can only access Appointments, regardless of the access settings below.
+                          <strong>Note:</strong> Users with the USHER role will only have Read access and can only access Appointments, regardless of the settings below. Access level and entity type selections will be overridden by the system.
                         </Typography>
                       </Paper>
                     )}
@@ -996,11 +994,16 @@ const UsersAll: React.FC = () => {
                                 fullWidth
                                 label="Access Level"
                                 name="access_level"
-                                value={accessFormData.access_level}
+                                value={formData.role === 'USHER' ? 'Read' : accessFormData.access_level}
                                 onChange={handleAccessFormChange}
                                 required
+                                disabled={accessLevelsLoading || formData.role === 'USHER'}
                                 error={!!accessFormErrors.access_level}
-                                helperText={accessFormErrors.access_level || ''}
+                                helperText={
+                                  formData.role === 'USHER' 
+                                    ? 'USHER users are restricted to Read access' 
+                                    : accessFormErrors.access_level || ''
+                                }
                               >
                                 {accessLevels.length > 0 ? (
                                   accessLevels.map((level) => (
@@ -1024,11 +1027,16 @@ const UsersAll: React.FC = () => {
                                 fullWidth
                                 label="Entity Type"
                                 name="entity_type"
-                                value={accessFormData.entity_type}
+                                value={formData.role === 'USHER' ? 'Appointment' : accessFormData.entity_type}
                                 onChange={handleAccessFormChange}
                                 required
+                                disabled={entityTypesLoading || formData.role === 'USHER'}
                                 error={!!accessFormErrors.entity_type}
-                                helperText={accessFormErrors.entity_type || ''}
+                                helperText={
+                                  formData.role === 'USHER' 
+                                    ? 'USHER users are restricted to Appointment access only' 
+                                    : accessFormErrors.entity_type || ''
+                                }
                               >
                                 {entityTypes.length > 0 ? (
                                   entityTypes.map((type) => (

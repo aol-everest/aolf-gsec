@@ -2021,7 +2021,7 @@ async def shutdown_event():
 
 # Access Control Endpoints
 
-@app.get("/admin/access-control/all", response_model=List[schemas.UserAccess])
+@app.get("/admin/users/access/all", response_model=List[schemas.UserAccess])
 @requires_role(models.UserRole.SECRETARIAT)
 async def get_all_user_access(
     current_user: models.User = Depends(get_current_user),
@@ -2031,7 +2031,7 @@ async def get_all_user_access(
     user_access = db.query(models.UserAccess).all()
     return user_access
 
-@app.get("/admin/access-control/by-user/{user_id}", response_model=List[schemas.UserAccess])
+@app.get("/admin/users/{user_id}/access/all", response_model=List[schemas.UserAccess])
 @requires_role(models.UserRole.SECRETARIAT)
 async def get_user_access_by_user(
     user_id: int,
@@ -2042,37 +2042,59 @@ async def get_user_access_by_user(
     user_access = db.query(models.UserAccess).filter(models.UserAccess.user_id == user_id).all()
     return user_access
 
-@app.post("/admin/access-control/new", response_model=schemas.UserAccess)
+@app.post("/admin/users/{user_id}/access/new", response_model=schemas.UserAccess)
 @requires_role(models.UserRole.SECRETARIAT)
 async def create_user_access(
+    user_id: int,
     user_access: schemas.UserAccessCreate,
     current_user: models.User = Depends(get_current_user_for_write),
     db: Session = Depends(get_db)
 ):
-    """Create a new user access record"""
-    new_access = models.UserAccess(
-        **user_access.dict(),
+    """Create a new user access record with role-based restrictions"""
+    # Use the new method that enforces role-based restrictions
+    new_access = models.UserAccess.create_with_role_enforcement(
+        db=db,
+        user_id=user_id,
+        country_code=user_access.country_code,
+        location_id=user_access.location_id,
+        access_level=user_access.access_level,
+        entity_type=user_access.entity_type,
+        expiry_date=user_access.expiry_date,
+        reason=user_access.reason,
+        is_active=user_access.is_active,
         created_by=current_user.id
     )
-    db.add(new_access)
+    
     db.commit()
     db.refresh(new_access)
     return new_access
 
-@app.patch("/admin/access-control/update/{access_id}", response_model=schemas.UserAccess)
+@app.patch("/admin/users/{user_id}/access/update/{access_id}", response_model=schemas.UserAccess)
 @requires_role(models.UserRole.SECRETARIAT)
 async def update_user_access(
+    user_id: int,
     access_id: int,
     user_access_update: schemas.UserAccessUpdate,
     current_user: models.User = Depends(get_current_user_for_write),
     db: Session = Depends(get_db)
 ):
-    """Update a user access record"""
-    access = db.query(models.UserAccess).filter(models.UserAccess.id == access_id).first()
+    """Update a user access record with role-based restrictions"""
+    access = db.query(models.UserAccess).filter(models.UserAccess.id == access_id, models.UserAccess.user_id == user_id).first()
     if not access:
         raise HTTPException(status_code=404, detail="User access record not found")
     
-    update_data = user_access_update.dict(exclude_unset=True)
+    # Check if user is USHER and enforce restrictions
+    user = db.query(models.User).filter(models.User.id == access.user_id).first()
+    if user and user.role == models.UserRole.USHER:
+        # For USHER role, force values for access_level and entity_type if they're being updated
+        update_data = user_access_update.dict(exclude_unset=True)
+        if 'access_level' in update_data:
+            update_data['access_level'] = models.AccessLevel.READ
+        if 'entity_type' in update_data:
+            update_data['entity_type'] = models.EntityType.APPOINTMENT
+    else:
+        update_data = user_access_update.dict(exclude_unset=True)
+        
     for key, value in update_data.items():
         setattr(access, key, value)
     
@@ -2083,15 +2105,16 @@ async def update_user_access(
     db.refresh(access)
     return access
 
-@app.delete("/admin/access-control/{access_id}", status_code=204)
+@app.delete("/admin/users/{user_id}/access/{access_id}", status_code=204)
 @requires_role(models.UserRole.SECRETARIAT)
 async def delete_user_access(
+    user_id: int,
     access_id: int,
     current_user: models.User = Depends(get_current_user_for_write),
     db: Session = Depends(get_db)
 ):
     """Delete a user access record"""
-    access = db.query(models.UserAccess).filter(models.UserAccess.id == access_id).first()
+    access = db.query(models.UserAccess).filter(models.UserAccess.id == access_id, models.UserAccess.user_id == user_id).first()
     if not access:
         raise HTTPException(status_code=404, detail="User access record not found")
     
@@ -2120,7 +2143,7 @@ async def delete_user_access(
     
     return None
 
-@app.get("/admin/access-control/user/{user_id}/summary", response_model=schemas.UserAccessSummary)
+@app.get("/admin/users/{user_id}/access/summary", response_model=schemas.UserAccessSummary)
 @requires_role(models.UserRole.SECRETARIAT)
 async def get_user_access_summary(
     user_id: int,
