@@ -24,7 +24,7 @@ from utils.business_card import extract_business_card_info, BusinessCardExtracti
 import inspect
 from sqlalchemy.orm import selectinload, joinedload
 from sqlalchemy.orm import aliased
-from sqlalchemy import or_, text, and_
+from sqlalchemy import or_, text, and_, false
 import logging
 import uuid
 from logging.handlers import RotatingFileHandler
@@ -784,12 +784,14 @@ async def get_all_appointments(
             # If no valid access records exist, return empty list
             return []
         
-        # Create country and location filters
-        country_filters = []
+        # Create access filters based on country and location
+        access_filters = []
+        # Start with a "false" condition that ensures no records are returned if no access is configured
+        access_filters.append(false())
         for access in user_access:
             # If a specific location is specified in the access record
             if access.location_id:
-                country_filters.append(
+                access_filters.append(
                     and_(
                         models.Appointment.location_id == access.location_id,
                         models.Location.country_code == access.country_code
@@ -797,24 +799,24 @@ async def get_all_appointments(
                 )
             else:
                 # Access to all locations in the country
-                country_filters.append(
+                access_filters.append(
                     models.Location.country_code == access.country_code
                 )
         
         if current_user.role == models.UserRole.USHER:
             # USHER role can only see appointments between day -1 and day +3
-            country_filters.append(
+            access_filters.append(
                 models.Appointment.appointment_date >= date.today()-timedelta(days=1),
                 models.Appointment.appointment_date <= date.today()+timedelta(days=3)
             )
             # USHER role can only see confirmed appointments
-            country_filters.append(
+            access_filters.append(
                 models.Appointment.status == models.AppointmentStatus.CONFIRMED
             )
         
         # Join to locations table and apply the country and location filters
         query = query.join(models.Location)
-        query = query.filter(or_(*country_filters))
+        query = query.filter(or_(*access_filters))
 
     # Add options to eagerly load appointment_dignitaries and their associated dignitaries
     query = query.options(
