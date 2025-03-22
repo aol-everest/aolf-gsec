@@ -24,7 +24,7 @@ from utils.business_card import extract_business_card_info, BusinessCardExtracti
 import inspect
 from sqlalchemy.orm import selectinload, joinedload
 from sqlalchemy.orm import aliased
-from sqlalchemy import or_, text
+from sqlalchemy import or_, text, and_
 import logging
 import uuid
 from logging.handlers import RotatingFileHandler
@@ -753,17 +753,57 @@ async def get_all_dignitaries(
 
 
 @app.get("/admin/appointments/all", response_model=List[schemas.AppointmentAdmin])
-@requires_role(models.UserRole.SECRETARIAT)
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
 async def get_all_appointments(
     db: Session = Depends(get_read_db),
     current_user: models.User = Depends(get_current_user),
     status: Optional[str] = None
 ):
-    """Get all appointments with optional status filter"""
+    """Get all appointments with optional status filter, restricted by user's access permissions"""
     query = db.query(models.Appointment).order_by(models.Appointment.id.asc())
     
+    # Apply status filter if provided
     if status:
         query = query.filter(models.Appointment.status == status)
+
+    # ADMIN role has full access to all appointments
+    if current_user.role != models.UserRole.ADMIN:
+        # For non-ADMIN users, apply access control restrictions
+        # Get all active access records for the current user
+        user_access = db.query(models.UserAccess).filter(
+            models.UserAccess.user_id == current_user.id,
+            models.UserAccess.is_active == True,
+            # Only consider records that grant access to appointments
+            or_(
+                models.UserAccess.entity_type == models.EntityType.APPOINTMENT,
+                models.UserAccess.entity_type == models.EntityType.APPOINTMENT_AND_DIGNITARY
+            )
+        ).all()
+        
+        if not user_access:
+            # If no valid access records exist, return empty list
+            return []
+        
+        # Create country and location filters
+        country_filters = []
+        for access in user_access:
+            # If a specific location is specified in the access record
+            if access.location_id:
+                country_filters.append(
+                    and_(
+                        models.Appointment.location_id == access.location_id,
+                        models.Location.country_code == access.country_code
+                    )
+                )
+            else:
+                # Access to all locations in the country
+                country_filters.append(
+                    models.Location.country_code == access.country_code
+                )
+        
+        # Join to locations table and apply the country and location filters
+        query = query.join(models.Location)
+        query = query.filter(or_(*country_filters))
 
     # Add options to eagerly load appointment_dignitaries and their associated dignitaries
     query = query.options(
