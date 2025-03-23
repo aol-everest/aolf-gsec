@@ -83,8 +83,8 @@ const typography = {
   },
   h3: {
     fontWeight: 600,
-    fontSize: '1.75rem',
-    lineHeight: 1.2,
+    fontSize: '1.3rem',
+    lineHeight: 1.5,
     letterSpacing: '0em',
   },
   h4: {

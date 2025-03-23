@@ -600,7 +600,7 @@ const UsersManage: React.FC = () => {
         field: 'name', 
         headerName: 'Name', 
         width: 130,
-        flex: 1.3,
+        flex: 1,
         renderCell: (params) => `${params.row.first_name} ${params.row.last_name}`
     },
     { field: 'email', headerName: 'Email', width: 200, flex: 1 },
@@ -635,7 +635,7 @@ const UsersManage: React.FC = () => {
       field: 'last_login_at',
       headerName: 'Last Login',
       width: 170,
-      flex: 0.81,
+      flex: 0.7,
       renderCell: (params) => formatDate(params.row.last_login_at, true)
     },
     {
@@ -643,6 +643,7 @@ const UsersManage: React.FC = () => {
       type: 'actions',
       headerName: 'Actions',
       width: 120,
+      flex: 0.3,
       getActions: (params) => [
         <GridActionsCellItem
           icon={<EditIcon />}
@@ -734,10 +735,10 @@ const UsersManage: React.FC = () => {
           </Box>
 
           <Collapse in={formOpen}>
-            <Card>
+            <Card sx={{ backgroundColor: 'background.paper' }}>
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                  <Typography variant="h6">{editingId ? 'Edit User' : 'Add New User'}</Typography>
+                  <Typography variant="h3">{editingId ? 'Edit User' : 'Add New User'}</Typography>
                   <IconButton onClick={handleClose} size="small">
                     <CloseIcon />
                   </IconButton>
@@ -1148,7 +1149,7 @@ const UsersManage: React.FC = () => {
             rows={users}
             columns={columns}
             loading={isLoading}
-            defaultVisibleColumns={['name', 'email', 'role', 'actions']}
+            defaultVisibleColumns={['name', 'email', 'phone_number', 'role', 'actions']}
           />
         </Box>
       </Container>

@@ -267,7 +267,7 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                     mb: 3 
                 }}>
                     <Box>
-                        <Typography variant="h5" sx={{ fontSize: '1.25rem' }}>
+                        <Typography variant="h3">
                             Request #{appointment.id}
                         </Typography>
                     </Box>
