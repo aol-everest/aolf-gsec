@@ -2722,13 +2722,22 @@ async def get_entity_types():
 # Other static data endpoints
 # ------------------------------------------------------------------------------------------------------------------------------------------------------
 
-@app.get("/countries", response_model=List[schemas.CountryResponse])
+@app.get("/countries/enabled", response_model=List[schemas.CountryResponse])
 async def get_enabled_countries(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_read_db)
 ):
     """Get all enabled countries for dropdowns and selectors"""
     countries = db.query(models.Country).filter(models.Country.is_enabled == True).order_by(models.Country.name).all()
+    return countries
+
+@app.get("/countries/all", response_model=List[schemas.CountryResponse])
+async def get_all_countries(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_read_db)
+):
+    """Get all countries for dropdowns and selectors"""
+    countries = db.query(models.Country).order_by(models.Country.name).all()
     return countries
 
 

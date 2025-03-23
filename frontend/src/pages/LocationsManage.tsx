@@ -14,6 +14,12 @@ import {
   CircularProgress,
   Link,
   Paper,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  FormHelperText,
+  SelectChangeEvent,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
@@ -58,6 +64,18 @@ declare global {
   }
 }
 
+// Country interface based on the backend model
+interface Country {
+  iso2_code: string;
+  name: string;
+  iso3_code: string;
+  region?: string;
+  sub_region?: string;
+  intermediate_region?: string;
+  country_groups?: string[];
+  alt_names?: string[];
+}
+
 interface Location {
   id: number;
   name: string;
@@ -65,6 +83,7 @@ interface Location {
   state: string;
   city: string;
   country: string;
+  country_code: string;
   zip_code: string;
   driving_directions?: string;
   secretariat_internal_notes?: string;
@@ -95,6 +114,7 @@ interface LocationFormData {
   state: string;
   city: string;
   country: string;
+  country_code: string;
   zip_code: string;
   driving_directions?: string;
   secretariat_internal_notes?: string;
@@ -111,6 +131,7 @@ const initialFormData: LocationFormData = {
   state: '',
   city: '',
   country: '',
+  country_code: '',
   zip_code: '',
   driving_directions: '',
   secretariat_internal_notes: '',
@@ -198,6 +219,20 @@ export default function LocationsManage() {
         return data;
       } catch (error) {
         enqueueSnackbar('Failed to fetch locations', { variant: 'error' });
+        throw error;
+      }
+    }
+  });
+
+  // Query for fetching countries
+  const { data: countries = [], isLoading: isLoadingCountries } = useQuery({
+    queryKey: ['countries'],
+    queryFn: async () => {
+      try {
+        const { data } = await api.get<Country[]>('/countries/all');
+        return data;
+      } catch (error) {
+        enqueueSnackbar('Failed to fetch countries', { variant: 'error' });
         throw error;
       }
     }
@@ -325,6 +360,7 @@ export default function LocationsManage() {
         let city = '';
         let state = '';
         let country = '';
+        let countryCode = '';
         let postalCode = '';
 
         place.address_components?.forEach((component) => {
@@ -339,6 +375,7 @@ export default function LocationsManage() {
             state = component.long_name;
           } else if (types.includes('country')) {
             country = component.long_name;
+            countryCode = component.short_name;
           } else if (types.includes('postal_code')) {
             postalCode = component.long_name;
           }
@@ -348,13 +385,20 @@ export default function LocationsManage() {
         const encodedAddress = encodeURIComponent(formattedAddress);
         const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodedAddress}`;
 
+        // Find matching country in our dropdown list
+        const matchedCountry = countries.find(c => 
+          c.iso2_code.toLowerCase() === countryCode.toLowerCase() || 
+          c.name.toLowerCase() === country.toLowerCase()
+        );
+
         setFormData(prev => ({
           ...prev,
           name: place.name || '',
           street_address: `${streetNumber} ${route}`.trim(),
           city,
           state,
-          country,
+          country: matchedCountry ? matchedCountry.name : country,
+          country_code: matchedCountry ? matchedCountry.iso2_code : countryCode,
           zip_code: postalCode,
           driving_directions: directionsUrl,
         }));
@@ -370,7 +414,7 @@ export default function LocationsManage() {
       console.error('Error initializing Google Places Autocomplete:', error);
       enqueueSnackbar('Error initializing location search', { variant: 'error' });
     }
-  }, [mapsLoaded, enqueueSnackbar]);
+  }, [mapsLoaded, enqueueSnackbar, countries]);
 
   // Initialize autocomplete when form opens
   useEffect(() => {
@@ -397,6 +441,7 @@ export default function LocationsManage() {
         state: location.state,
         city: location.city,
         country: location.country,
+        country_code: location.country_code,
         zip_code: location.zip_code,
         driving_directions: location.driving_directions || '',
         secretariat_internal_notes: location.secretariat_internal_notes || '',
@@ -426,6 +471,25 @@ export default function LocationsManage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Add a handler for select changes
+  const handleSelectChange = (e: SelectChangeEvent) => {
+    const name = e.target.name as keyof LocationFormData;
+    const value = e.target.value;
+    
+    if (name === 'country_code') {
+      const selectedCountry = countries.find(c => c.iso2_code === value);
+      if (selectedCountry) {
+        setFormData(prev => ({ 
+          ...prev, 
+          country_code: selectedCountry.iso2_code,
+          country: selectedCountry.name
+        }));
+      }
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -592,6 +656,9 @@ export default function LocationsManage() {
                     <CloseIcon />
                   </IconButton>
                 </Box>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Please use the location search box to automatically populate address details.
+                </Typography>
                 <Grid container spacing={2}>
                   {!editingId && (
                     <Grid item xs={12}>
@@ -609,7 +676,7 @@ export default function LocationsManage() {
                       />
                     </Grid>
                   )}
-                  <Grid item xs={12}>
+                  <Grid item xs={12} sm={6} md={4}>
                     <TextField
                       fullWidth
                       label="Name"
@@ -619,7 +686,7 @@ export default function LocationsManage() {
                       required
                     />
                   </Grid>
-                  <Grid item xs={12}>
+                  <Grid item xs={12} sm={6} md={4}>
                     <TextField
                       fullWidth
                       label="Street Address"
@@ -629,7 +696,7 @@ export default function LocationsManage() {
                       required
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12} sm={6} md={4}>
                     <TextField
                       fullWidth
                       label="City"
@@ -639,7 +706,7 @@ export default function LocationsManage() {
                       required
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12} sm={6} md={4}>
                     <TextField
                       fullWidth
                       label="State"
@@ -649,17 +716,30 @@ export default function LocationsManage() {
                       required
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Country"
-                      name="country"
-                      value={formData.country}
-                      onChange={handleChange}
-                      required
-                    />
+                  <Grid item xs={12} sm={6} md={4}>
+                    <FormControl fullWidth required>
+                      <InputLabel id="country-select-label">Country</InputLabel>
+                      <Select
+                        labelId="country-select-label"
+                        id="country-select"
+                        name="country_code"
+                        value={formData.country_code}
+                        onChange={handleSelectChange}
+                        label="Country"
+                        disabled={isLoadingCountries}
+                      >
+                        {countries.map((country) => (
+                          <MenuItem key={country.iso2_code} value={country.iso2_code}>
+                            {country.name}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      {isLoadingCountries && (
+                        <FormHelperText>Loading countries...</FormHelperText>
+                      )}
+                    </FormControl>
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12} sm={6} md={4}>
                     <TextField
                       fullWidth
                       label="ZIP Code"

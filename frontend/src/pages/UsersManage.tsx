@@ -198,7 +198,7 @@ const UsersManage: React.FC = () => {
     queryKey: ['countries'],
     queryFn: async () => {
       try {
-        const { data } = await api.get<any[]>('/countries');
+        const { data } = await api.get<any[]>('/countries/enabled');
         return data;
       } catch (error) {
         console.error('Error fetching countries:', error);
