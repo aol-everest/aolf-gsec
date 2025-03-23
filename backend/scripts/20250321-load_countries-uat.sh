@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script to load countries data to the database
+# Script to load countries data to the database from JSON file
 # Usage: ./20250321-load_countries.sh
 
 # Variables - replace with actual values
@@ -12,6 +12,17 @@ DB_NAME="aolf_gsec"
 # Set the schema
 SCHEMA="public"
 
+# Path to the JSON file - default to looking in the same directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+JSON_FILE="${SCRIPT_DIR}/countries.json"
+
+# Check if JSON file exists
+if [ ! -f "$JSON_FILE" ]; then
+    echo "Error: Countries JSON file not found at $JSON_FILE"
+    exit 1
+fi
+
+echo "Found countries JSON file at $JSON_FILE"
 echo "Checking if countries already exist in the database..."
 
 # Check if countries already exist
@@ -30,26 +41,29 @@ if [ "$COUNT" -gt "0" ]; then
     PGPASSWORD="$DB_PASSWORD" psql -h $DB_HOST -U $DB_USER -d $DB_NAME -c "DELETE FROM ${SCHEMA}.countries;"
 fi
 
-echo "Loading countries data into database..."
+echo "Loading countries data from JSON file..."
 
-# Load the countries data
+# Create a temporary SQL file
+TEMP_SQL_FILE=$(mktemp)
+
+# Generate SQL from JSON using the Python helper script
+python3 "${SCRIPT_DIR}/20250321-load_countries-json_to_sql.py" "$JSON_FILE" > "$TEMP_SQL_FILE"
+
+# Check if SQL generation was successful
+if [ $? -ne 0 ]; then
+    echo "Error generating SQL from JSON file"
+    rm -f "$TEMP_SQL_FILE"
+    exit 1
+fi
+
+# Load the SQL into the database
 PGPASSWORD="$DB_PASSWORD" psql -h $DB_HOST -U $DB_USER -d $DB_NAME << EOF
 SET search_path TO ${SCHEMA}, public;
-
--- Insert countries data
--- Using sample data for US and CA, you should replace with all your countries data
-INSERT INTO countries (iso2_code, name, iso3_code, region, sub_region, intermediate_region, country_groups, alt_names, is_enabled)
-VALUES 
-('US', 'United States of America', 'USA', 'Americas', 'Northern America', null, ARRAY[]::VARCHAR[], ARRAY['United States', 'USA']::VARCHAR[], true),
-('CA', 'Canada', 'CAN', 'Americas', 'Northern America', null, ARRAY[]::VARCHAR[], ARRAY['Canada']::VARCHAR[], true);
-
--- Insert additional countries here...
--- For example:
--- ('IN', 'India', 'IND', 'Asia', 'Southern Asia', null, ARRAY[]::VARCHAR[], ARRAY['Republic of India']::VARCHAR[], false),
--- ('GB', 'United Kingdom', 'GBR', 'Europe', 'Northern Europe', null, ARRAY[]::VARCHAR[], ARRAY['UK', 'Great Britain']::VARCHAR[], false),
--- ...
-
+\i $TEMP_SQL_FILE
 EOF
+
+# Clean up the temporary file
+rm -f "$TEMP_SQL_FILE"
 
 # Get the count of loaded countries
 FINAL_COUNT=$(PGPASSWORD="$DB_PASSWORD" psql -h $DB_HOST -U $DB_USER -d $DB_NAME -t -c "SELECT COUNT(*) FROM ${SCHEMA}.countries;")
