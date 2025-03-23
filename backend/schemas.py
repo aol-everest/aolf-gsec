@@ -50,6 +50,7 @@ class UserAdminView(UserBase):
     updated_by_user: Optional["User"] = None
     last_login_at: Optional[datetime] = None
     role: str
+    country_code: str
     
     class Config:
         orm_mode = True

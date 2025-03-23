@@ -853,7 +853,8 @@ const UsersManage: React.FC = () => {
                       value={formData.country_code}
                       onChange={handleChange}
                       disabled={countriesLoading}
-                      helperText={countriesLoading ? "Loading countries..." : ""}
+                      error={!!formErrors.country_code}
+                      helperText={formErrors.country_code || (countriesLoading ? "Loading countries..." : "")}
                       required
                     >
                       {countries.map((country) => (
