@@ -108,7 +108,7 @@ class Appointment(Base):
     __tablename__ = "appointments"
 
     id = Column(Integer, primary_key=True, index=True)
-    requester_id = Column(Integer, ForeignKey(f"{schema_prefix}users.id"), nullable=False)
+    requester_id = Column(Integer, ForeignKey(f"{schema_prefix}users.id"), nullable=True)
     dignitary_id = Column(Integer, ForeignKey(f"{schema_prefix}dignitaries.id"), nullable=True)
     purpose = Column(Text, nullable=False)
     preferred_date = Column(Date, nullable=False)
@@ -125,6 +125,7 @@ class Appointment(Base):
     secretariat_notes_to_requester = Column(Text)
     approved_datetime = Column(DateTime)
     approved_by = Column(Integer, ForeignKey(f"{schema_prefix}users.id"))
+    created_by = Column(Integer, ForeignKey(f"{schema_prefix}users.id"))
     last_updated_by = Column(Integer, ForeignKey(f"{schema_prefix}users.id"))
     
     # Timestamps
