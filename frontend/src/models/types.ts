@@ -83,11 +83,11 @@ interface Appointment {
   last_updated_by_user: User;
   location: Location;
   location_id: number;
-  preferred_date: string;
-  preferred_time_of_day: string;
-  purpose: string;
-  requester: User;
-  requester_id: number;
+  preferred_date?: string;
+  preferred_time_of_day?: string;
+  purpose?: string;
+  requester?: User;
+  requester_id?: number;
   requester_notes_to_secretariat: string;
   secretariat_follow_up_actions: string;
   secretariat_meeting_notes: string;

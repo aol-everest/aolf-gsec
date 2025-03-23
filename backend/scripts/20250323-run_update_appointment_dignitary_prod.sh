@@ -19,6 +19,15 @@ ALTER TABLE appointments ADD COLUMN IF NOT EXISTS created_by INTEGER;
 -- Make requester_id nullable
 ALTER TABLE appointments ALTER COLUMN requester_id DROP NOT NULL;
 
+-- Make preferred_date nullable
+ALTER TABLE appointments ALTER COLUMN preferred_date DROP NOT NULL;
+
+-- Make preferred_time_of_day nullable
+ALTER TABLE appointments ALTER COLUMN preferred_time_of_day DROP NOT NULL;
+
+-- Make purpose nullable
+ALTER TABLE appointments ALTER COLUMN purpose DROP NOT NULL;
+
 -- Add foreign key constraint
 ALTER TABLE appointments ADD CONSTRAINT fk_appointments_created_by_users
     FOREIGN KEY (created_by) REFERENCES users(id);

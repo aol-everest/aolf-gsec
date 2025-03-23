@@ -289,7 +289,7 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                 {/* Point of Contact Information */}
                 <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 2, bgcolor: 'grey.50' }}>
                     <Typography variant="h5">
-                        Point of Contact: {appointment.requester.first_name} {appointment.requester.last_name}
+                        Point of Contact: {appointment.requester?.first_name} {appointment.requester?.last_name}
                     </Typography>
                     <Grid container spacing={2}>
                         <Grid item xs={12} md={6}>
@@ -297,10 +297,10 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                                 <MailIconV2 />
                                 <Typography 
                                     component="a" 
-                                    href={`mailto:${appointment.requester.email}`} 
+                                    href={`mailto:${appointment.requester?.email}`} 
                                     sx={{ ml: 1, textDecoration: 'none', color: theme.palette.text.primary }}
                                 >
-                                    {appointment.requester.email}
+                                    {appointment.requester?.email}
                                 </Typography>
                             </Box>
                         </Grid>
@@ -309,10 +309,10 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                                 <PhoneIconV2 />
                                 <Typography 
                                     component="a" 
-                                    href={`tel:${appointment.requester.phone_number}`} 
+                                    href={`tel:${appointment.requester?.phone_number}`} 
                                     sx={{ ml: 1, textDecoration: 'none', color: theme.palette.text.primary }}
                                 >
-                                    {appointment.requester.phone_number || 'N/A'}
+                                    {appointment.requester?.phone_number || 'N/A'}
                                 </Typography>
                             </Box>
                         </Grid>
@@ -347,6 +347,14 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                                 <LocationIconV2 />
                                 <Typography component="span" sx={{ ml: 1, color: theme.palette.text.primary }}>
                                     {appointment.location ? (appointment.location.name + ' - ' + appointment.location.city + ', ' + appointment.location.state) : 'N/A'}
+                                </Typography>
+                            </Box>
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <Box component="span" sx={{ width: '150px', fontWeight: 'medium' }}>Type:</Box>
+                                <Typography component="span" sx={{ color: theme.palette.text.primary }}>
+                                    {appointment.appointment_type || 'Not Specified'}
                                 </Typography>
                             </Box>
                         </Grid>

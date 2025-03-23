@@ -1360,7 +1360,7 @@ def admin_check_appointment_for_access_level(current_user: models.User, db: Sess
 # Admin endpoints
 # ------------------------------------------------------------------------------------------------------------------------------------------------------
 
-@app.post("/admin/appointments/new", response_model=schemas.AppointmentAdmin)
+@app.post("/admin/appointments/new", response_model=schemas.AdminAppointment)
 async def create_appointment(
     appointment: schemas.AdminAppointmentCreate,
     current_user: models.User = Depends(get_current_user_for_write),
@@ -1435,7 +1435,7 @@ async def create_appointment(
         raise
 
 
-@app.patch("/admin/appointments/update/{appointment_id}", response_model=schemas.AppointmentAdmin)
+@app.patch("/admin/appointments/update/{appointment_id}", response_model=schemas.AdminAppointment)
 @requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
 async def update_appointment(
     appointment_id: int,
@@ -1490,7 +1490,7 @@ async def update_appointment(
 
 
 
-@app.get("/admin/dignitaries/all", response_model=List[schemas.DignitaryAdminWithAppointments])
+@app.get("/admin/dignitaries/all", response_model=List[schemas.AdminDignitaryWithAppointments])
 @requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
 async def get_all_dignitaries(
     current_user: models.User = Depends(get_current_user),
@@ -1533,7 +1533,7 @@ async def get_all_dignitaries(
     return dignitaries
 
 
-@app.get("/admin/appointments/all", response_model=List[schemas.AppointmentAdmin])
+@app.get("/admin/appointments/all", response_model=List[schemas.AdminAppointment])
 @requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
 async def get_all_appointments(
     db: Session = Depends(get_read_db),
@@ -1605,7 +1605,7 @@ async def get_all_appointments(
     logger.debug(f"Appointments: {appointments}")
     return appointments
 
-@app.get("/admin/appointments/upcoming", response_model=List[schemas.AppointmentAdmin])
+@app.get("/admin/appointments/upcoming", response_model=List[schemas.AdminAppointment])
 @requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
 async def get_upcoming_appointments(
     db: Session = Depends(get_read_db),
@@ -1688,7 +1688,7 @@ async def get_upcoming_appointments(
     return appointments
 
 
-@app.get("/admin/appointments/{appointment_id}", response_model=schemas.AppointmentAdmin)
+@app.get("/admin/appointments/{appointment_id}", response_model=schemas.AdminAppointment)
 @requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
 async def get_appointment(
     appointment_id: int,

@@ -154,19 +154,19 @@ class DignitaryWithRelationship(DignitaryWithAppointments):
     class Config:
         orm_mode = True
 
-class AppointmentDignitaryWithAppointmentAdmin(AppointmentDignitaryBase):
+class AdminAppointmentDignitaryWithAppointment(AppointmentDignitaryBase):
     id: int
     created_at: datetime
-    appointment: "AppointmentAdmin"
+    appointment: "AdminAppointment"
 
     class Config:
         orm_mode = True
 
-class DignitaryAdminWithAppointments(DignitaryBase):
+class AdminDignitaryWithAppointments(DignitaryBase):
     id: int
     created_by: int
     created_at: datetime
-    appointment_dignitaries: List[AppointmentDignitaryWithAppointmentAdmin]
+    appointment_dignitaries: List[AdminAppointmentDignitaryWithAppointment]
     fax: Optional[str] = None
     other_phone: Optional[str] = None
     street_address: Optional[str] = None
@@ -182,7 +182,7 @@ class DignitaryAdminWithAppointments(DignitaryBase):
     class Config:
         orm_mode = True
 
-class DignitaryAdmin(DignitaryBase):
+class AdminDignitary(DignitaryBase):
     id: int
     created_by: int
     created_at: datetime
@@ -332,23 +332,23 @@ class AdminAppointmentUpdate(AppointmentBase):
     secretariat_notes_to_requester: Optional[str] = None
 
 
-class AppointmentDignitaryWithDignitaryAdmin(AppointmentDignitaryBase):
+class AdminAppointmentDignitaryWithDignitary(AppointmentDignitaryBase):
     id: int
     created_at: datetime
-    dignitary: DignitaryAdmin
+    dignitary: AdminDignitary
 
     class Config:
         orm_mode = True
 
-class AppointmentAdmin(AppointmentBase):
+class AdminAppointment(AppointmentBase):
     id: int
-    requester_id: int
-    purpose: str
-    preferred_date: date
+    requester_id: Optional[int] = None
+    purpose: Optional[str] = None
+    preferred_date: Optional[date] = None
     preferred_time_of_day: Optional[AppointmentTimeOfDay] = None
     requester_notes_to_secretariat: Optional[str] = None
-    appointment_dignitaries: List[AppointmentDignitaryWithDignitaryAdmin]
-    requester: User
+    appointment_dignitaries: List[AdminAppointmentDignitaryWithDignitary]
+    requester: Optional[User] = None
     status: AppointmentStatus
     sub_status: Optional[AppointmentSubStatus] = None
     appointment_type: Optional[AppointmentType] = None

@@ -70,7 +70,7 @@ export const parseUTCDate = (dateStr: string): Date => {
   }
 };
 
-export const formatDate = (dateStr: string | null, showTime = true): string => {
+export const formatDate = (dateStr?: string, showTime = true): string => {
   if (!dateStr) return '';
   try {
     const date = parseUTCDate(dateStr);
@@ -82,7 +82,7 @@ export const formatDate = (dateStr: string | null, showTime = true): string => {
   }
 };
 
-export const formatDateWithTimezone = (dateStr: string, timezone: string, showTime = true): string => {
+export const formatDateWithTimezone = (dateStr?: string, timezone?: string, showTime = true): string => {
   if (!dateStr) return '';
   try {
     const date = parseUTCDate(dateStr);

@@ -338,10 +338,10 @@ const AppointmentTiles: React.FC = () => {
             appointment.location[field]?.toLowerCase().includes(searchLower)
           );
 
-        // Search in dignitary information if available
+        // Search in requester information if available
         const requesterMatch = appointment.requester && 
           SEARCH_CONFIG.requesterFields.some(field => 
-            appointment.requester[field]?.toLowerCase().includes(searchLower)
+            appointment.requester?.[field]?.toLowerCase().includes(searchLower)
           );
 
         // Search in appointment dignitaries if available
