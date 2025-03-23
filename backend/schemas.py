@@ -35,6 +35,7 @@ class UserUpdate(BaseModel):
     phone_number: Optional[str] = None
     picture: Optional[str] = None
     email_notification_preferences: Optional[Dict[str, bool]] = None
+    country_code: Optional[str] = None
     
     class Config:
         orm_mode = True
@@ -61,7 +62,7 @@ class UserAdminUpdate(BaseModel):
 
 class UserAdminCreate(UserBase):
     role: str
-
+    country_code: str
     class Config:
         orm_mode = True
 

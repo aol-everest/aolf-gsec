@@ -1689,8 +1689,13 @@ async def create_user(
         required_access_level=models.AccessLevel.ADMIN
     )
     
+    try:
+        user_role_enum = models.UserRole(user.role)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid role: {user.role}")
+
     if current_user.role != models.UserRole.ADMIN:
-        if user.role.is_greater_than_or_equal_to(current_user.role):
+        if user_role_enum.is_greater_than_or_equal_to(current_user.role):
             raise HTTPException(status_code=403, detail=f"You do not have permission to create a user with role {user.role}")
 
     # Create the user

@@ -495,6 +495,10 @@ const UsersManage: React.FC = () => {
       errors.role = 'Role is required';
     }
     
+    if (!formData.country_code) {
+      errors.country_code = 'Country is required';
+    }
+    
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
