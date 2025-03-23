@@ -105,4 +105,20 @@ interface AppointmentDignitary {
   created_at?: string;
 }
 
-export type { Location, User, Dignitary, Appointment, AppointmentAttachment, AppointmentDignitary };
+interface StatusSubStatusMapping {
+  [key: string]: {
+    default_sub_status: string;
+    valid_sub_statuses: string[];
+  }
+}
+
+interface StatusMap {   
+  [key: string]: string;
+}
+
+interface SubStatusMap {
+  [key: string]: string;
+}
+
+export type { Location, User, Dignitary, Appointment, AppointmentAttachment, AppointmentDignitary, StatusSubStatusMapping, StatusMap, SubStatusMap };
+

@@ -5,6 +5,35 @@ export const getLocalDateString = (daysToAdd = 0, formatStr = 'yyyy-MM-dd'): str
   return format(date, formatStr);
 };
 
+export const getLocalTimeString = (formatStr = 'HH:mm'): string => {
+  const now = new Date();
+  const rounded = new Date(now);
+  rounded.setMinutes(Math.floor(now.getMinutes() / 15) * 15);
+  rounded.setSeconds(0);
+  rounded.setMilliseconds(0);
+  return format(rounded, formatStr);
+};
+
+export const getTimeOptions = (interval = 15): { value: string; label: string }[] => {
+  const options = [];
+  for (let hour = 0; hour < 24; hour++) {
+    for (let minute = 0; minute < 60; minute += interval) {
+      const hourFormatted = hour.toString().padStart(2, '0');
+      const minuteFormatted = minute.toString().padStart(2, '0');
+      const value = `${hourFormatted}:${minuteFormatted}`;
+      const label = `${hour % 12 === 0 ? 12 : hour % 12}:${minuteFormatted} ${hour < 12 ? 'AM' : 'PM'}`;
+      options.push({ value, label });
+    }
+  }
+  return options;
+};
+
+// Helper function to find the time option object from a time string
+export const findTimeOption = (timeString: string | null, timeOptions: { value: string; label: string }[]) => {
+  if (!timeString) return null;
+  return timeOptions.find(option => option.value === timeString) || null;
+};
+
 export const parseUTCDate = (dateStr: string): Date => {
   if (!dateStr) return new Date(NaN); // Return invalid date for empty strings
   

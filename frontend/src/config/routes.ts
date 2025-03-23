@@ -19,6 +19,7 @@ import AppointmentDayView from '../pages/AppointmentDayView';
 import LocationsManage from '../pages/LocationsManage';
 import AppointmentUsherView from '../pages/AppointmentUsherView';
 import LocationAttachmentView from '../pages/LocationAttachmentView';
+import SecretariatAppointmentRequest from '../pages/SecretariatAppointmentRequest';
 import AddNewDignitary from '../pages/AdminAddNewDignitary';
 
 import { 
@@ -204,6 +205,16 @@ export const AdminHeaderRoute: RouteConfig = {
   showInSidebar: true,
 }
 
+// Add the new route for secretariat appointment request
+export const AdminAppointmentRequestRoute: RouteConfig = {
+  path: '/admin/appointments/request',
+  label: 'Create Appointment',
+  icon: CalendarAddIconV2,
+  roles: [ADMIN_ROLE, SECRETARIAT_ROLE],
+  showInSidebar: true,
+  component: SecretariatAppointmentRequest
+}
+
 // Usher routes ---------------------------------------------------------------------------------------
 export const UsherAppointmentsRoute: RouteConfig = {
   path: '/usher/appointments',
@@ -239,6 +250,7 @@ export const adminRoutes: RouteConfig[] = [
   AdminAppointmentReviewWithIdRoute,
   AdminAppointmentsEditRoute,
   AdminAddNewDignitaryRoute,
+  AdminAppointmentRequestRoute,
   AdminLocationsRoute,
   AdminAppointmentsRoute,
   AdminUsersRoute,
