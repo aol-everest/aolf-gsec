@@ -103,6 +103,7 @@ class DignitaryBase(BaseModel):
 
 class DignitaryCreate(DignitaryBase):
     poc_relationship_type: RelationshipType
+    country_code: str
 
 class DignitaryUpdate(DignitaryBase):
     honorific_title: Optional[HonorificTitle] = None
@@ -117,6 +118,7 @@ class DignitaryUpdate(DignitaryBase):
     bio_summary: Optional[str] = None
     linked_in_or_website: Optional[str] = None
     country: Optional[str] = None
+    country_code: str
     state: Optional[str] = None
     city: Optional[str] = None
     poc_relationship_type: Optional[RelationshipType] = None

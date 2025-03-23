@@ -1437,47 +1437,48 @@ export const AppointmentRequestForm: React.FC = () => {
                   </Grid>
 
                   <Grid item xs={12} md={4}>
-                    <FormControl fullWidth>
-                      <InputLabel id="country-select-label">Country</InputLabel>
-                      <Controller
-                        name="dignitaryCountryCode"
-                        control={dignitaryForm.control}
-                        render={({ field }) => (
-                          <Select
-                            labelId="country-select-label"
-                            id="country-select"
-                            label="Country"
-                            value={field.value || ''}
-                            onChange={(e) => {
-                              const countryCode = e.target.value;
-                              field.onChange(countryCode);
-                              
-                              // Find the selected country to get its name
-                              const selectedCountry = countries.find(c => c.iso2_code === countryCode);
-                              if (selectedCountry) {
-                                dignitaryForm.setValue('dignitaryCountry', selectedCountry.name);
-                                // Update selectedCountryCode for state and city autocomplete
-                                setSelectedCountryCode(countryCode);
-                              }
-                              
-                              // Reset state and city when country changes
-                              dignitaryForm.setValue('dignitaryState', '');
-                              dignitaryForm.setValue('dignitaryCity', '');
-                            }}
-                            disabled={isLoadingCountries}
-                          >
-                            {countries.map((country) => (
-                              <MenuItem key={country.iso2_code} value={country.iso2_code}>
-                                {country.name}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        )}
-                      />
-                      {isLoadingCountries && (
-                        <FormHelperText>Loading countries...</FormHelperText>
+                    <Controller
+                      name="dignitaryCountryCode"
+                      control={dignitaryForm.control}
+                      rules={{ required: 'Country is required' }}
+                      render={({ field }) => (
+                        <TextField
+                          select
+                          fullWidth
+                          label="Country"
+                          value={field.value || ''}
+                          onChange={(e) => {
+                            const countryCode = e.target.value;
+                            field.onChange(countryCode);
+                            
+                            // Find the selected country to get its name
+                            const selectedCountry = countries.find(c => c.iso2_code === countryCode);
+                            if (selectedCountry) {
+                              dignitaryForm.setValue('dignitaryCountry', selectedCountry.name);
+                              // Update selectedCountryCode for state and city autocomplete
+                              setSelectedCountryCode(countryCode);
+                            }
+                            
+                            // Reset state and city when country changes
+                            dignitaryForm.setValue('dignitaryState', '');
+                            dignitaryForm.setValue('dignitaryCity', '');
+                          }}
+                          disabled={isLoadingCountries}
+                          error={!!dignitaryForm.formState.errors.dignitaryCountryCode}
+                          helperText={dignitaryForm.formState.errors.dignitaryCountryCode?.message || (isLoadingCountries ? "Loading countries..." : "")}
+                          required
+                        >
+                          <MenuItem value="">
+                            <em>Select a country</em>
+                          </MenuItem>
+                          {countries.map((country) => (
+                            <MenuItem key={country.iso2_code} value={country.iso2_code}>
+                              {country.name} ({country.iso2_code})
+                            </MenuItem>
+                          ))}
+                        </TextField>
                       )}
-                    </FormControl>
+                    />
                   </Grid>
                   
                   <Grid item xs={12} md={4}>
