@@ -282,9 +282,9 @@ class AppointmentCreate(AppointmentBase):
 
 class Appointment(AppointmentBase):
     id: int
-    requester_id: int
-    purpose: str
-    preferred_date: date
+    requester_id: Optional[int] = None
+    purpose: Optional[str] = None
+    preferred_date: Optional[date] = None
     preferred_time_of_day: Optional[AppointmentTimeOfDay] = None
     requester_notes_to_secretariat: Optional[str] = None
     appointment_dignitaries: List[AppointmentDignitaryWithDignitary]
