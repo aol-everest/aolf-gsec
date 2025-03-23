@@ -655,29 +655,32 @@ const UsersManage: React.FC = () => {
   
   // Access record data grid columns
   const accessColumns: GridColDef[] = [
-    { field: 'country_code', headerName: 'Country', width: 100 },
+    { field: 'country_code', headerName: 'Country', width: 100, flex: 0.5  },
     { 
       field: 'location_id', 
       headerName: 'Location', 
       width: 180,
+      flex: 1,
       renderCell: (params) => {
         if (!params.value) return 'All Locations';
         const location = locations.find(loc => loc.id === params.value);
         return location ? location.name : `Location #${params.value}`;
       }
     },
-    { field: 'access_level', headerName: 'Access Level', width: 120 },
-    { field: 'entity_type', headerName: 'Entity Type', width: 180 },
+    { field: 'access_level', headerName: 'Access Level', width: 120, flex: 0.81  },
+    { field: 'entity_type', headerName: 'Entity Type', width: 180, flex: 0.81 },
     { 
       field: 'expiry_date', 
       headerName: 'Expires', 
       width: 120,
+      flex: 0.81,
       renderCell: (params) => params.value ? formatDate(params.value, false) : 'Never'
     },
     { 
       field: 'is_active', 
       headerName: 'Status', 
       width: 100,
+      flex: 0.5,
       renderCell: (params) => params.value ? 
         <Chip label="Active" color="success" size="small" /> : 
         <Chip label="Inactive" color="error" size="small" />
@@ -687,6 +690,7 @@ const UsersManage: React.FC = () => {
       type: 'actions',
       headerName: 'Actions',
       width: 150,
+      flex: 0.5,
       getActions: (params) => [
         <GridActionsCellItem
           icon={params.row.is_active ? <LockIcon /> : <LockOpenIcon />}
