@@ -283,11 +283,11 @@ const UsersManage: React.FC = () => {
   
   // Mutation for creating/updating access
   const accessMutation = useMutation({
-    mutationFn: async (variables: { id?: number; data: UserAccessFormData }) => {
+    mutationFn: async (variables: { id?: number; userId: number; data: UserAccessFormData }) => {
       try {
         if (variables.id) {
           const { data } = await api.patch<UserAccess>(
-            `/admin/users/${variables.id}/access/update/${variables.id}`, 
+            `/admin/users/${variables.userId}/access/update/${variables.id}`, 
             { 
               ...variables.data, 
               location_id: variables.data.location_ids.length > 0 ? variables.data.location_ids[0] : null 
@@ -298,7 +298,7 @@ const UsersManage: React.FC = () => {
           if (variables.data.location_ids.length > 0) {
             const promises = variables.data.location_ids.map(locationId => {
               return api.post<UserAccess>(
-                `/admin/users/${variables.id}/access/new`, 
+                `/admin/users/${variables.userId}/access/new`, 
                 { 
                   ...variables.data, 
                   location_id: locationId 
@@ -309,7 +309,7 @@ const UsersManage: React.FC = () => {
             return results[0].data;
           } else {
             const { data } = await api.post<UserAccess>(
-              `/admin/users/${variables.id}/access/new`, 
+              `/admin/users/${variables.userId}/access/new`, 
               { 
                 ...variables.data, 
                 location_id: null 
@@ -342,10 +342,10 @@ const UsersManage: React.FC = () => {
 
   // Mutation for toggling access status
   const toggleAccessStatusMutation = useMutation({
-    mutationFn: async (variables: { id: number; isActive: boolean }) => {
+    mutationFn: async (variables: { accessId: number; userId: number; isActive: boolean }) => {
       try {
         const { data } = await api.patch<UserAccess>(
-          `/admin/users/${variables.id}/access/update/${variables.id}`, 
+          `/admin/users/${variables.userId}/access/update/${variables.accessId}`, 
           { is_active: variables.isActive }
         );
         return data;
@@ -460,7 +460,8 @@ const UsersManage: React.FC = () => {
   
   const handleToggleAccessStatus = (accessId: number, currentStatus: boolean) => {
     toggleAccessStatusMutation.mutate({
-      id: accessId,
+      accessId: accessId,
+      userId: editingId || 0,
       isActive: !currentStatus
     });
   };
@@ -537,6 +538,7 @@ const UsersManage: React.FC = () => {
 
     accessMutation.mutate({
       id: editingAccessId || undefined,
+      userId: editingId || 0,
       data: accessFormData
     });
   };
