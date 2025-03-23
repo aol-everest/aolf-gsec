@@ -66,6 +66,19 @@ interface AppointmentResponse extends Omit<Appointment, 'dignitary' | 'requester
   // Only include the fields that are returned by the API when creating a new appointment
 }
 
+// Add Country interface based on the backend model
+interface Country {
+  iso2_code: string;
+  name: string;
+  iso3_code: string;
+  region?: string;
+  sub_region?: string;
+  intermediate_region?: string;
+  country_groups?: string[];
+  alt_names?: string[];
+  is_enabled: boolean;
+}
+
 // Step 1: POC Information
 interface PocFormData {
   pocFirstName: string;
@@ -91,6 +104,7 @@ interface DignitaryFormData {
   dignitaryBioSummary: string;
   dignitaryLinkedInOrWebsite: string;
   dignitaryCountry: string;
+  dignitaryCountryCode: string; // Added for country code
   dignitaryState: string;
   dignitaryCity: string;
   dignitaryHasMetGurudev: boolean;
@@ -130,7 +144,7 @@ const steps = ['Initial Information', 'Add Dignitary Information', 'Appointment 
 export const AppointmentRequestForm: React.FC = () => {
   const { userInfo, updateUserInfo } = useAuth();
   const [activeStep, setActiveStep] = useState(0);
-  const [selectedCountryCode, setSelectedCountryCode] = useState<string>('');
+  const [selectedCountryCode, setSelectedCountryCode] = useState<string | undefined>(undefined);
   const [dignitaries, setDignitaries] = useState<Dignitary[]>([]);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [submittedAppointment, setSubmittedAppointment] = useState<AppointmentResponse | null>(null);
@@ -195,6 +209,20 @@ export const AppointmentRequestForm: React.FC = () => {
     },
   });
   
+  // Fetch countries
+  const { data: countries = [], isLoading: isLoadingCountries } = useQuery<Country[]>({
+    queryKey: ['countries'],
+    queryFn: async () => {
+      try {
+        const { data } = await api.get<Country[]>('/countries/all');
+        return data;
+      } catch (error) {
+        enqueueSnackbar('Failed to fetch countries', { variant: 'error' });
+        throw error;
+      }
+    }
+  });
+  
   // Forms for each step
   const pocForm = useForm<PocFormData>({
     defaultValues: {
@@ -222,6 +250,7 @@ export const AppointmentRequestForm: React.FC = () => {
       dignitaryBioSummary: '',
       dignitaryLinkedInOrWebsite: '',
       dignitaryCountry: '',
+      dignitaryCountryCode: '',
       dignitaryState: '',
       dignitaryCity: '',
       dignitaryHasMetGurudev: false,
@@ -269,6 +298,13 @@ export const AppointmentRequestForm: React.FC = () => {
     dignitaryForm.setValue('dignitaryBioSummary', dignitary.bio_summary);
     dignitaryForm.setValue('dignitaryLinkedInOrWebsite', dignitary.linked_in_or_website || '');
     dignitaryForm.setValue('dignitaryCountry', dignitary.country || '');
+    dignitaryForm.setValue('dignitaryCountryCode', dignitary.country_code || '');
+    
+    // If we have a country code, update the selected country code for location autocomplete
+    if (dignitary.country_code) {
+      setSelectedCountryCode(dignitary.country_code);
+    }
+    
     dignitaryForm.setValue('dignitaryState', dignitary.state || '');
     dignitaryForm.setValue('dignitaryCity', dignitary.city || '');
     dignitaryForm.setValue('dignitaryHasMetGurudev', dignitary.has_dignitary_met_gurudev);
@@ -307,6 +343,7 @@ export const AppointmentRequestForm: React.FC = () => {
           selectedDignitary.bio_summary !== currentValues.dignitaryBioSummary ||
           selectedDignitary.linked_in_or_website !== currentValues.dignitaryLinkedInOrWebsite ||
           selectedDignitary.country !== currentValues.dignitaryCountry ||
+          selectedDignitary.country_code !== currentValues.dignitaryCountryCode ||
           selectedDignitary.state !== currentValues.dignitaryState ||
           selectedDignitary.city !== currentValues.dignitaryCity ||
           selectedDignitary.has_dignitary_met_gurudev !== currentValues.dignitaryHasMetGurudev ||
@@ -496,6 +533,7 @@ export const AppointmentRequestForm: React.FC = () => {
             bio_summary: formData.dignitaryBioSummary,
             linked_in_or_website: formData.dignitaryLinkedInOrWebsite,
             country: formData.dignitaryCountry,
+            country_code: formData.dignitaryCountryCode,
             state: formData.dignitaryState,
             city: formData.dignitaryCity,
             has_dignitary_met_gurudev: formData.dignitaryHasMetGurudev,
@@ -551,6 +589,7 @@ export const AppointmentRequestForm: React.FC = () => {
           bio_summary: formData.dignitaryBioSummary,
           linked_in_or_website: formData.dignitaryLinkedInOrWebsite,
           country: formData.dignitaryCountry,
+          country_code: formData.dignitaryCountryCode,
           state: formData.dignitaryState,
           city: formData.dignitaryCity,
           poc_relationship_type: formData.pocRelationshipType,
@@ -662,6 +701,7 @@ export const AppointmentRequestForm: React.FC = () => {
       dignitaryBioSummary: '',
       dignitaryLinkedInOrWebsite: '',
       dignitaryCountry: '',
+      dignitaryCountryCode: '',
       dignitaryState: '',
       dignitaryCity: '',
       dignitaryHasMetGurudev: false,
@@ -672,6 +712,9 @@ export const AppointmentRequestForm: React.FC = () => {
     });
     setSelectedDignitary(null);
     setIsDignitaryModified(false);
+    
+    // Reset the selected country code
+    setSelectedCountryCode(undefined);
   };
 
   const handleNext = async (skipExistingCheck: boolean = false) => {
@@ -1118,6 +1161,7 @@ export const AppointmentRequestForm: React.FC = () => {
                               dignitaryBioSummary: '',
                               dignitaryLinkedInOrWebsite: '',
                               dignitaryCountry: '',
+                              dignitaryCountryCode: '',
                               dignitaryState: '',
                               dignitaryCity: '',
                               dignitaryHasMetGurudev: false,
@@ -1391,39 +1435,49 @@ export const AppointmentRequestForm: React.FC = () => {
                       helperText={dignitaryForm.formState.errors.dignitaryLinkedInOrWebsite?.message}
                     />
                   </Grid>
-                  
-                  <Grid item xs={12} md={4}>
-                    <Controller
-                      name="dignitaryCountry"
-                      control={dignitaryForm.control}
-                      render={({ field }) => (
-                        <LocationAutocomplete
-                          label="Country"
-                          value={field.value}
-                          onChange={(value) => {
-                            field.onChange(value);
-                            // Reset state and city when country changes
-                            dignitaryForm.setValue('dignitaryState', '');
-                            dignitaryForm.setValue('dignitaryCity', '');
-                          }}
-                          error={!!dignitaryForm.formState.errors.dignitaryCountry}
-                          helperText={dignitaryForm.formState.errors.dignitaryCountry?.message}
-                          types={['country']}
-                          autoComplete="off"
-                          onPlaceSelect={(place) => {
-                            if (!place?.address_components) return;
-                            
-                            const countryComponent = place.address_components.find(
-                              component => component.types.includes('country')
-                            );
 
-                            if (countryComponent) {
-                              setSelectedCountryCode(countryComponent.short_name);
-                            }
-                          }}
-                        />
+                  <Grid item xs={12} md={4}>
+                    <FormControl fullWidth>
+                      <InputLabel id="country-select-label">Country</InputLabel>
+                      <Controller
+                        name="dignitaryCountryCode"
+                        control={dignitaryForm.control}
+                        render={({ field }) => (
+                          <Select
+                            labelId="country-select-label"
+                            id="country-select"
+                            label="Country"
+                            value={field.value || ''}
+                            onChange={(e) => {
+                              const countryCode = e.target.value;
+                              field.onChange(countryCode);
+                              
+                              // Find the selected country to get its name
+                              const selectedCountry = countries.find(c => c.iso2_code === countryCode);
+                              if (selectedCountry) {
+                                dignitaryForm.setValue('dignitaryCountry', selectedCountry.name);
+                                // Update selectedCountryCode for state and city autocomplete
+                                setSelectedCountryCode(countryCode);
+                              }
+                              
+                              // Reset state and city when country changes
+                              dignitaryForm.setValue('dignitaryState', '');
+                              dignitaryForm.setValue('dignitaryCity', '');
+                            }}
+                            disabled={isLoadingCountries}
+                          >
+                            {countries.map((country) => (
+                              <MenuItem key={country.iso2_code} value={country.iso2_code}>
+                                {country.name}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        )}
+                      />
+                      {isLoadingCountries && (
+                        <FormHelperText>Loading countries...</FormHelperText>
                       )}
-                    />
+                    </FormControl>
                   </Grid>
                   
                   <Grid item xs={12} md={4}>
@@ -1466,7 +1520,7 @@ export const AppointmentRequestForm: React.FC = () => {
                         />
                       )}
                     />
-                  </Grid>                  
+                  </Grid>
 
                   <Grid item xs={12} md={6} lg={4}>
                     <FormControl component="fieldset">

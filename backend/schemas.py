@@ -89,6 +89,7 @@ class DignitaryBase(BaseModel):
     bio_summary: Optional[str] = None
     linked_in_or_website: Optional[str] = None
     country: Optional[str] = None
+    country_code: Optional[str] = None
     state: Optional[str] = None
     city: Optional[str] = None
     has_dignitary_met_gurudev: Optional[bool] = False

@@ -42,6 +42,7 @@ interface Dignitary {
   poc_email: string;
   poc_phone: string;
   linked_in_or_website: string;
+  country_code: string;
   country: string;
   state: string;
   city: string;
