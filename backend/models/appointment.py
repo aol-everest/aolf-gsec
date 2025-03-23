@@ -151,3 +151,8 @@ class Appointment(Base):
         back_populates="updated_appointments",
         foreign_keys=[last_updated_by]
     )
+    created_by_user = relationship(
+        "User",
+        back_populates="created_appointments",
+        foreign_keys=[created_by]
+    )

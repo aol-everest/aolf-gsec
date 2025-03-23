@@ -512,21 +512,21 @@ def get_appointment_changes_summary(old_data: Dict[str, Any], new_data: Dict[str
 
 def notify_appointment_creation(db: Session, appointment: Appointment):
     """Send notifications when a new appointment is created."""
-    # Notify the requesting user
-    requester = appointment.requester
     
     context = {
         'appointment': appointment_to_dict(appointment)
     }
     
-    # Notify the requester
-    send_notification_email(
-        db=db,
-        trigger_type=EmailTrigger.APPOINTMENT_CREATED,
-        recipient=requester,
-        context=context,
-        appointment_id=appointment.id
-    )
+    # Notify the requesting user
+    requester = appointment.requester
+    if requester:
+        send_notification_email(
+            db=db,
+            trigger_type=EmailTrigger.APPOINTMENT_CREATED,
+            recipient=requester,
+            context=context,
+            appointment_id=appointment.id
+        )
 
     # Notify all SECRETARIAT users who have enabled new appointment notifications
     secretariat_users = db.query(User).filter(
@@ -654,77 +654,78 @@ def notify_appointment_update(db: Session, appointment: Appointment, old_data: D
         'appointment': appointment_to_dict(appointment)
     }
     
-    if need_more_info:
-        # Special handling for "Need more info" case
-        send_notification_email(
-            db=db,
-            trigger_type=EmailTrigger.APPOINTMENT_MORE_INFO_NEEDED,
-            recipient=requester,
-            context=context,
-            appointment_id=appointment.id
-        )
-    elif is_cancelled:
-        # Special handling for "Cancelled" case
-        send_notification_email(
-            db=db,
-            trigger_type=EmailTrigger.APPOINTMENT_CANCELLED,
-            recipient=requester,
-            context=context,
-            appointment_id=appointment.id
-        )
-    elif is_rescheduled:
-        # Special handling for "Rescheduled" case
-        logger.info(f"Sending rescheduled notification for appointment ID: {appointment.id}")
-        send_notification_email(
-            db=db,
-            trigger_type=EmailTrigger.APPOINTMENT_RESCHEDULED,
-            recipient=requester,
-            context=context,
-            appointment_id=appointment.id
-        )
-    elif is_confirmed:
-        # Special handling for "Confirmed" case
-        send_notification_email(
-            db=db,
-            trigger_type=EmailTrigger.APPOINTMENT_CONFIRMED,
-            recipient=requester,
-            context=context,
-            appointment_id=appointment.id
-        )
-    elif is_rejected_low_priority:
-        # Special handling for "Rejected - Low priority" case
-        send_notification_email(
-            db=db,
-            trigger_type=EmailTrigger.APPOINTMENT_REJECTED_LOW_PRIORITY,
-            recipient=requester,
-            context=context,
-            appointment_id=appointment.id
-        )
-    elif is_rejected_met_already:
-        # Special handling for "Rejected - Met Gurudev already" case
-        send_notification_email(
-            db=db,
-            trigger_type=EmailTrigger.APPOINTMENT_REJECTED_MET_ALREADY,
-            recipient=requester,
-            context=context,
-            appointment_id=appointment.id
-        )
-    # elif status_changed:
-    #     # Add change data to context
-    #     context.update({
-    #         'old_data': old_data,
-    #         'new_data': new_data
-    #     })
-        
-    #     send_notification_email(
-    #         db=db,
-    #         trigger_type=EmailTrigger.APPOINTMENT_STATUS_CHANGED,
-    #         recipient=requester,
-    #         context=context,
-    #         appointment_id=appointment.id
-    #     )
-    else:
-        logger.info(f"Skipped sending email for appointment update (ID: {appointment.id})")
+    if requester:
+        if need_more_info:
+            # Special handling for "Need more info" case
+            send_notification_email(
+                db=db,
+                trigger_type=EmailTrigger.APPOINTMENT_MORE_INFO_NEEDED,
+                recipient=requester,
+                context=context,
+                appointment_id=appointment.id
+            )
+        elif is_cancelled:
+            # Special handling for "Cancelled" case
+            send_notification_email(
+                db=db,
+                trigger_type=EmailTrigger.APPOINTMENT_CANCELLED,
+                recipient=requester,
+                context=context,
+                appointment_id=appointment.id
+            )
+        elif is_rescheduled:
+            # Special handling for "Rescheduled" case
+            logger.info(f"Sending rescheduled notification for appointment ID: {appointment.id}")
+            send_notification_email(
+                db=db,
+                trigger_type=EmailTrigger.APPOINTMENT_RESCHEDULED,
+                recipient=requester,
+                context=context,
+                appointment_id=appointment.id
+            )
+        elif is_confirmed:
+            # Special handling for "Confirmed" case
+            send_notification_email(
+                db=db,
+                trigger_type=EmailTrigger.APPOINTMENT_CONFIRMED,
+                recipient=requester,
+                context=context,
+                appointment_id=appointment.id
+            )
+        elif is_rejected_low_priority:
+            # Special handling for "Rejected - Low priority" case
+            send_notification_email(
+                db=db,
+                trigger_type=EmailTrigger.APPOINTMENT_REJECTED_LOW_PRIORITY,
+                recipient=requester,
+                context=context,
+                appointment_id=appointment.id
+            )
+        elif is_rejected_met_already:
+            # Special handling for "Rejected - Met Gurudev already" case
+            send_notification_email(
+                db=db,
+                trigger_type=EmailTrigger.APPOINTMENT_REJECTED_MET_ALREADY,
+                recipient=requester,
+                context=context,
+                appointment_id=appointment.id
+            )
+        # elif status_changed:
+        #     # Add change data to context
+        #     context.update({
+        #         'old_data': old_data,
+        #         'new_data': new_data
+        #     })
+            
+        #     send_notification_email(
+        #         db=db,
+        #         trigger_type=EmailTrigger.APPOINTMENT_STATUS_CHANGED,
+        #         recipient=requester,
+        #         context=context,
+        #         appointment_id=appointment.id
+        #     )
+        else:
+            logger.info(f"Skipped sending email for appointment update (ID: {appointment.id})")
 
 # Initialize the email worker when module is imported
 start_email_worker()

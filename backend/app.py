@@ -500,6 +500,7 @@ async def create_appointment(
         # Create appointment
         db_appointment = models.Appointment(
             requester_id=current_user.id,
+            created_by=current_user.id,
             status=models.AppointmentStatus.PENDING,
             purpose=appointment.purpose,
             preferred_date=appointment.preferred_date,
@@ -552,6 +553,7 @@ async def create_appointment(
         # Log the full exception traceback in debug mode
         logger.debug(f"Exception details:", exc_info=True)
         raise
+
 
 @app.post("/dignitaries/new", response_model=schemas.Dignitary)
 async def new_dignitary(
@@ -1358,6 +1360,136 @@ def admin_check_appointment_for_access_level(current_user: models.User, db: Sess
 # Admin endpoints
 # ------------------------------------------------------------------------------------------------------------------------------------------------------
 
+@app.post("/admin/appointments/new", response_model=schemas.AppointmentAdmin)
+async def create_appointment(
+    appointment: schemas.AdminAppointmentCreate,
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
+):
+    start_time = datetime.utcnow()
+    logger.info(f"Creating new appointment for user {current_user.email} (ID: {current_user.id})")
+    logger.debug(f"Appointment data: {appointment.dict()}")
+    
+    try:
+        # Log timing for database operations
+        db_start_time = datetime.utcnow()
+        
+        # Create appointment
+        db_appointment = models.Appointment(
+            created_by=current_user.id,
+            status=appointment.status,
+            sub_status=appointment.sub_status,
+            appointment_type=appointment.appointment_type,
+            purpose=appointment.purpose,
+            appointment_date=appointment.appointment_date,
+            appointment_time=appointment.appointment_time,
+            location_id=appointment.location_id,
+            secretariat_meeting_notes=appointment.secretariat_meeting_notes,
+            secretariat_follow_up_actions=appointment.secretariat_follow_up_actions,
+            secretariat_notes_to_requester=appointment.secretariat_notes_to_requester,
+        )
+        db.add(db_appointment)
+        db.commit()
+        db.refresh(db_appointment)
+        
+        # Calculate DB operation time
+        db_time = (datetime.utcnow() - db_start_time).total_seconds() * 1000
+        logger.debug(f"Database operation for creating appointment took {db_time:.2f}ms")
+
+        # Associate dignitaries with the appointment
+        dignitary_start_time = datetime.utcnow()
+        dignitary_count = 0
+        
+        for dignitary_id in appointment.dignitary_ids:
+            appointment_dignitary = models.AppointmentDignitary(
+                appointment_id=db_appointment.id,
+                dignitary_id=dignitary_id
+            )
+            db.add(appointment_dignitary)
+            dignitary_count += 1
+            
+        db.commit()
+        
+        # Calculate dignitary association time
+        dignitary_time = (datetime.utcnow() - dignitary_start_time).total_seconds() * 1000
+        logger.debug(f"Associated {dignitary_count} dignitaries with appointment in {dignitary_time:.2f}ms")
+
+        # Send email notifications
+        notification_start_time = datetime.utcnow()
+        try:
+            notify_appointment_creation(db, db_appointment)
+            notification_time = (datetime.utcnow() - notification_start_time).total_seconds() * 1000
+            logger.debug(f"Email notifications sent in {notification_time:.2f}ms")
+        except Exception as e:
+            logger.error(f"Error sending email notifications: {str(e)}", exc_info=True)
+
+        # Calculate total operation time
+        total_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+        logger.info(f"Appointment created successfully (ID: {db_appointment.id}) in {total_time:.2f}ms")
+        
+        return db_appointment
+    except Exception as e:
+        logger.error(f"Error creating appointment: {str(e)}", exc_info=True)
+        # Log the full exception traceback in debug mode
+        logger.debug(f"Exception details:", exc_info=True)
+        raise
+
+
+@app.patch("/admin/appointments/update/{appointment_id}", response_model=schemas.AppointmentAdmin)
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def update_appointment(
+    appointment_id: int,
+    appointment_update: schemas.AdminAppointmentUpdate,
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
+):
+    """Update an appointment with access control restrictions"""
+    appointment = admin_get_appointment(
+        current_user=current_user,
+        db=db,
+        appointment_id=appointment_id,
+        required_access_level=models.AccessLevel.READ_WRITE
+    )
+    
+    # Save old data for notifications
+    old_data = {}
+    for key, value in appointment_update.dict(exclude_unset=True).items():
+        old_data[key] = getattr(appointment, key)
+    
+    if appointment.status != models.AppointmentStatus.APPROVED and appointment_update.status == models.AppointmentStatus.APPROVED:
+        logger.info("Appointment is approved")
+        appointment.approved_datetime = datetime.utcnow()
+        appointment.approved_by = current_user.id
+
+    # Update appointment with new data
+    update_data = appointment_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(appointment, key, value)
+    appointment.last_updated_by = current_user.id
+    
+    db.commit()
+    db.refresh(appointment)
+
+    if appointment_update.dignitary_ids:
+        for dignitary_id in appointment_update.dignitary_ids:
+            appointment_dignitary = models.AppointmentDignitary(
+                appointment_id=appointment.id,
+                dignitary_id=dignitary_id
+            )
+            db.add(appointment_dignitary)
+            
+        db.commit()
+
+    # Send email notifications about the update
+    try:
+        notify_appointment_update(db, appointment, old_data, update_data)
+    except Exception as e:
+        logger.error(f"Error sending email notifications: {str(e)}")
+    
+    return appointment
+
+
+
 @app.get("/admin/dignitaries/all", response_model=List[schemas.DignitaryAdminWithAppointments])
 @requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
 async def get_all_dignitaries(
@@ -1570,50 +1702,6 @@ async def get_appointment(
         appointment_id=appointment_id,
         required_access_level=models.AccessLevel.READ
     )
-    return appointment
-
-
-@app.patch("/admin/appointments/update/{appointment_id}", response_model=schemas.AppointmentAdmin)
-@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
-async def update_appointment(
-    appointment_id: int,
-    appointment_update: schemas.AppointmentAdminUpdate,
-    current_user: models.User = Depends(get_current_user_for_write),
-    db: Session = Depends(get_db)
-):
-    """Update an appointment with access control restrictions"""
-    appointment = admin_get_appointment(
-        current_user=current_user,
-        db=db,
-        appointment_id=appointment_id,
-        required_access_level=models.AccessLevel.READ_WRITE
-    )
-    
-    # Save old data for notifications
-    old_data = {}
-    for key, value in appointment_update.dict(exclude_unset=True).items():
-        old_data[key] = getattr(appointment, key)
-    
-    if appointment.status != models.AppointmentStatus.APPROVED and appointment_update.status == models.AppointmentStatus.APPROVED:
-        logger.info("Appointment is approved")
-        appointment.approved_datetime = datetime.utcnow()
-        appointment.approved_by = current_user.id
-
-    # Update appointment with new data
-    update_data = appointment_update.dict(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(appointment, key, value)
-    appointment.last_updated_by = current_user.id
-    
-    db.commit()
-    db.refresh(appointment)
-    
-    # Send email notifications about the update
-    try:
-        notify_appointment_update(db, appointment, old_data, update_data)
-    except Exception as e:
-        logger.error(f"Error sending email notifications: {str(e)}")
-    
     return appointment
 
 

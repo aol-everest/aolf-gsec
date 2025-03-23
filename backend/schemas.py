@@ -278,6 +278,8 @@ class AppointmentCreate(AppointmentBase):
     preferred_time_of_day: Optional[AppointmentTimeOfDay] = None
     requester_notes_to_secretariat: Optional[str] = None
 
+
+
 class Appointment(AppointmentBase):
     id: int
     requester_id: int
@@ -304,8 +306,21 @@ class Appointment(AppointmentBase):
         }
 
 
+class AdminAppointmentCreate(AppointmentBase):
+    dignitary_ids: List[int]
+    purpose: str
+    appointment_date: date
+    appointment_time: Optional[str] = None
+    status: AppointmentStatus
+    sub_status: AppointmentSubStatus
+    appointment_type: Optional[AppointmentType] = None
+    secretariat_meeting_notes: Optional[str] = None
+    secretariat_follow_up_actions: Optional[str] = None
+    secretariat_notes_to_requester: Optional[str] = None
 
-class AppointmentAdminUpdate(AppointmentBase):
+
+class AdminAppointmentUpdate(AppointmentBase):
+    dignitary_ids: Optional[List[int]] = None
     appointment_date: Optional[date] = None
     appointment_time: Optional[str] = None
     location: Optional[Location] = None
