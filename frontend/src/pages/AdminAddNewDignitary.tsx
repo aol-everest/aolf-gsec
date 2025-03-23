@@ -54,6 +54,7 @@ import { useNavigate } from 'react-router-dom';
 import { HomeRoute } from '../config/routes';
 import LocationAutocomplete from '../components/LocationAutocomplete';
 import { getLocalDateString } from '../utils/dateUtils';
+import { useQuery } from '@tanstack/react-query';
 
 interface BusinessCardExtraction {
   honorific_title?: string;
@@ -72,6 +73,7 @@ interface BusinessCardExtraction {
   city?: string;
   state?: string;
   country?: string;
+  country_code?: string;
   has_dignitary_met_gurudev?: boolean;
   gurudev_meeting_date?: string;
   gurudev_meeting_location?: string;
@@ -98,6 +100,12 @@ interface DignitaryResponse {
   first_name: string;
   last_name: string;
   // Add other fields as needed
+}
+
+interface Country {
+  iso2_code: string;
+  name: string;
+  is_enabled: boolean;
 }
 
 // Fix the Google Maps script loading hook to check for an existing script and prevent duplicate loading
@@ -412,6 +420,15 @@ const AddNewDignitary: React.FC = () => {
     const { name, value } = e.target;
     if (extraction) {
       setExtraction({ ...extraction, [name]: value });
+      
+      // Clear validation error for this field if it exists
+      if (formErrors[name]) {
+        setFormErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[name];
+          return newErrors;
+        });
+      }
     }
   };
 
@@ -568,6 +585,12 @@ const AddNewDignitary: React.FC = () => {
 
   const handleSaveDignitaryClick = async () => {
     if (!extraction) return;
+    
+    // Validate the form before submission
+    if (!validateForm()) {
+      enqueueSnackbar('Please fill in all required fields', { variant: 'error' });
+      return;
+    }
     
     // Get updated extraction with dictionaries
     const updatedExtraction = updateDictionariesInExtraction();
@@ -1065,6 +1088,8 @@ const AddNewDignitary: React.FC = () => {
                 value={extraction.first_name || ''}
                 onChange={handleInputChange}
                 required
+                error={!!formErrors.first_name}
+                helperText={formErrors.first_name || ''}
               />
             </Grid>
             
@@ -1076,6 +1101,8 @@ const AddNewDignitary: React.FC = () => {
                 value={extraction.last_name || ''}
                 onChange={handleInputChange}
                 required
+                error={!!formErrors.last_name}
+                helperText={formErrors.last_name || ''}
               />
             </Grid>
             
@@ -1235,12 +1262,50 @@ const AddNewDignitary: React.FC = () => {
             
             <Grid item xs={12} md={4}>
               <TextField
+                select
                 fullWidth
                 label="Country"
-                name="country"
-                value={extraction.country || ''}
-                onChange={handleInputChange}
-              />
+                name="country_code"
+                value={extraction.country_code || ''}
+                onChange={(e) => {
+                  const countryCode = e.target.value;
+                  
+                  // Update both country_code and country fields
+                  const updatedData = { ...extraction };
+                  updatedData.country_code = countryCode;
+                  
+                  // Also update country name field
+                  const selectedCountry = countries.find(c => c.iso2_code === countryCode);
+                  if (selectedCountry) {
+                    updatedData.country = selectedCountry.name;
+                  }
+                  
+                  // Set the extraction data directly
+                  setExtraction(updatedData);
+                  
+                  // Clear any validation error
+                  if (formErrors.country_code) {
+                    setFormErrors(prev => {
+                      const newErrors = { ...prev };
+                      delete newErrors.country_code;
+                      return newErrors;
+                    });
+                  }
+                }}
+                error={!!formErrors.country_code}
+                helperText={formErrors.country_code || (countriesLoading ? "Loading countries..." : "")}
+                disabled={countriesLoading}
+                required
+              >
+                <MenuItem value="">
+                  <em>Select a country</em>
+                </MenuItem>
+                {countries.map((country) => (
+                  <MenuItem key={country.iso2_code} value={country.iso2_code}>
+                    {country.name} ({country.iso2_code})
+                  </MenuItem>
+                ))}
+              </TextField>
             </Grid>
             
             {/* Additional Information */}
@@ -1504,6 +1569,53 @@ const AddNewDignitary: React.FC = () => {
       }
     };
   }, []);
+
+  // Add countries API query
+  const { data: countries = [], isLoading: countriesLoading } = useQuery<Country[]>({
+    queryKey: ['countries'],
+    queryFn: async () => {
+      try {
+        const { data } = await api.get<Country[]>('/countries/all');
+        return data;
+      } catch (error) {
+        console.error('Error fetching countries:', error);
+        enqueueSnackbar('Failed to fetch countries', { variant: 'error' });
+        return [];
+      }
+    },
+  });
+  
+  // Add country_code validation in validateForm function
+  const validateForm = () => {
+    if (!extraction) return false;
+    
+    const errors: Record<string, string> = {};
+    
+    // Required fields validation
+    if (!extraction.first_name?.trim()) {
+      errors.first_name = 'First name is required';
+    }
+    
+    if (!extraction.last_name?.trim()) {
+      errors.last_name = 'Last name is required';
+    }
+    
+    if (!extraction.country_code) {
+      errors.country_code = 'Country is required';
+    }
+    
+    // Email validation if provided
+    if (extraction.email && !/^\S+@\S+\.\S+$/.test(extraction.email)) {
+      errors.email = 'Please enter a valid email address';
+    }
+    
+    // Update form errors state
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  }
+
+  // Add state for form errors
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   return (
     <Layout>
