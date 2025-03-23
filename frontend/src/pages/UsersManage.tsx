@@ -51,6 +51,7 @@ interface User {
   last_name: string;
   phone_number: string;
   role: string;
+  country_code?: string;
   created_at: string;
   last_login_at: string;
   created_by: number;
@@ -73,6 +74,7 @@ interface UserFormData {
   last_name: string;
   phone_number: string;
   role: string;
+  country_code: string;
 }
 
 interface UserAccess {
@@ -131,6 +133,7 @@ const initialFormData: UserFormData = {
   last_name: '',
   phone_number: '',
   role: 'GENERAL', // Default role
+  country_code: '', // Default empty country code
 };
 
 const initialAccessFormData: UserAccessFormData = {
@@ -198,7 +201,7 @@ const UsersManage: React.FC = () => {
     queryKey: ['countries'],
     queryFn: async () => {
       try {
-        const { data } = await api.get<any[]>('/countries/enabled');
+        const { data } = await api.get<any[]>('/admin/countries/enabled');
         return data;
       } catch (error) {
         console.error('Error fetching countries:', error);
@@ -411,6 +414,7 @@ const UsersManage: React.FC = () => {
         last_name: user.last_name,
         phone_number: user.phone_number || '',
         role: user.role,
+        country_code: user.country_code || '',
       });
       setEditingId(user.id);
     } else {
@@ -834,6 +838,25 @@ const UsersManage: React.FC = () => {
                           </MenuItem>
                         ))
                       )}
+                    </TextField>
+                  </Grid>
+                  <Grid item xs={12} md={6} lg={4}>
+                    <TextField
+                      select
+                      fullWidth
+                      label="Country"
+                      name="country_code"
+                      value={formData.country_code}
+                      onChange={handleChange}
+                      disabled={countriesLoading}
+                      helperText={countriesLoading ? "Loading countries..." : ""}
+                      required
+                    >
+                      {countries.map((country) => (
+                        <MenuItem key={country.iso2_code} value={country.iso2_code}>
+                          {country.name} ({country.iso2_code})
+                        </MenuItem>
+                      ))}
                     </TextField>
                   </Grid>
                 </Grid>

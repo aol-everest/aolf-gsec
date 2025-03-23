@@ -2648,6 +2648,25 @@ async def get_user_access_summary(
         "access_count": len(access_records)
     }
 
+@app.get("/admin/countries/enabled", response_model=List[schemas.CountryResponse])
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def get_enabled_countries(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_read_db)
+):
+    """Get all enabled countries for dropdowns and selectors"""
+    countries = admin_get_country_list_for_access_level(
+        db=db,
+        current_user=current_user,
+        required_access_level=models.AccessLevel.ADMIN
+    )
+    # Get all countries
+    countries = db.query(models.Country).filter(
+        models.Country.is_enabled == True,
+        models.Country.iso2_code.in_(countries)
+    ).order_by(models.Country.name).all()
+    return countries
+
 
 # ------------------------------------------------------------------------------------------------------------------------------------------------------
 # Enum endpoints
