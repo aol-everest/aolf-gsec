@@ -9,7 +9,6 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy.orm import Session
 from models.user import User, UserRole
 from models.appointment import Appointment, AppointmentStatus, AppointmentSubStatus
-from schemas import AppointmentAdminUpdate
 from utils.utils import str_to_bool, as_dict, appointment_to_dict
 from models.dignitary import Dignitary, HonorificTitle
 from enum import Enum, auto

@@ -830,11 +830,8 @@ export const SecretariatAppointmentRequestForm: React.FC = () => {
   };
 
   // Handle file selection
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files) {
-      const filesArray = Array.from(event.target.files);
-      setSelectedFiles(prev => [...prev, ...filesArray]);
-    }
+  const handleFileSelect = (files: File[]) => {
+    setSelectedFiles(prev => [...prev, ...files]);
   };
 
   // Function to remove a file from the selected files
@@ -1818,9 +1815,6 @@ export const SecretariatAppointmentRequestForm: React.FC = () => {
                   control={appointmentForm.control}
                   validationErrors={validationErrors}
                   locations={locations}
-                  watchStatus={watchStatus}
-                  watchSubStatus={watchSubStatus}
-                  watchAppointmentDate={watchAppointmentDate}
                   statusMap={statusMap}
                   subStatusMap={subStatusMap}
                   allSubStatusOptions={allSubStatusOptions}
@@ -1828,33 +1822,14 @@ export const SecretariatAppointmentRequestForm: React.FC = () => {
                   getValues={appointmentForm.getValues}
                   setValue={appointmentForm.setValue}
                   defaultAppointmentDetails={true}
-
-                  // Optional section toggles
                   showNotesFields={true}
-
-                  showBusinessCards={true}
+                  showBusinessCards={false} 
                   showAttachments={true}
-                    
-                    // // Attachment and business card handling
-                    // appointmentId={id}
-                    // attachments={attachments}
-                    // onFileUpload={handleFileUpload}
-                    // onDeleteAttachment={handleDeleteAttachment}
-                    // onDownloadAttachment={handleDownloadAttachment}
-                    
-                    // // Business card specific handlers
-                    // onBusinessCardUpload={handleBusinessCardUpload}
-                    // onCreateDignitaryFromBusinessCard={handleCreateDignitaryFromBusinessCard}
-                    // businessCardExtraction={businessCardExtraction}
-                    // onDismissExtraction={handleDismissExtraction}
-                    
-                    // // Selected files before upload
-                    // selectedFiles={selectedFiles}
-                    // onRemoveFile={handleRemoveFile}
-                    
-                    // // Loading states
-                    // uploading={isUploading}
-                    // extractionLoading={extractionLoading}
+                  uploadStrategy="deferred"
+                  selectedFiles={selectedFiles}
+                  onRemoveFile={handleRemoveFile}
+                  onFileSelect={handleFileSelect}
+                  uploading={isUploading}
                 />
               </Grid>
             </Grid>

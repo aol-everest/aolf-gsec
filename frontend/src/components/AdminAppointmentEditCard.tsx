@@ -25,10 +25,10 @@ import {
   Alert,
   Divider,
 } from '@mui/material';
-import { Controller, Control, UseFormGetValues, UseFormSetValue, UseFormWatch } from 'react-hook-form';
+import { Controller, Control, UseFormGetValues, UseFormSetValue, UseFormWatch, useWatch } from 'react-hook-form';
 import { Location } from '../models/types';
 import { EnumSelect } from './EnumSelect';
-import { getLocalDateString, getLocalTimeString, getTimeOptions, findTimeOption, parseUTCDate } from '../utils/dateUtils';
+import { getLocalDateString, getLocalTimeString, findTimeOption, parseUTCDate } from '../utils/dateUtils';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -41,6 +41,10 @@ import ContactMailIcon from '@mui/icons-material/ContactMail';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import BusinessIcon from '@mui/icons-material/Business';
 import { StatusMap, StatusSubStatusMapping, SubStatusMap } from '../models/types';
+import { defaultTimeOptions } from '../utils/dateUtils';
+import { formatFileSize } from '../utils/fileUtils';
+// import { statusSubStatusMapping } from '../constants/appointmentStatuses';
+
 
 interface ValidationErrors {
   appointment_date?: string;
@@ -86,13 +90,12 @@ interface BusinessCardExtractionResponse {
   appointment_id: number;
 }
 
+type UploadStrategy = 'immediate' | 'deferred';
+
 interface AdminAppointmentEditCardProps {
   control: Control<any>;
   validationErrors: ValidationErrors;
   locations: Location[];
-  watchStatus: string;
-  watchSubStatus: string;
-  watchAppointmentDate: string;
   statusMap: StatusMap;
   subStatusMap: SubStatusMap;
   allSubStatusOptions: string[];
@@ -105,6 +108,7 @@ interface AdminAppointmentEditCardProps {
   defaultAppointmentDetails?: boolean;
   appointmentId?: number;
   attachments?: Attachment[];
+  uploadStrategy?: UploadStrategy;
   onFileUpload?: (files: FileList, attachmentType?: string) => Promise<void>;
   onDeleteAttachment?: (attachment: Attachment) => void;
   onDownloadAttachment?: (attachmentId: number, fileName: string) => Promise<void>;
@@ -120,15 +124,164 @@ interface AdminAppointmentEditCardProps {
   selectedFiles?: File[];
   onRemoveFile?: (index: number) => void;
   uploading?: boolean;
+  onFileSelect?: (files: File[]) => void;
+  initialFormValues?: Record<string, any>;
 }
+
+// Common file types and their corresponding icons
+const fileTypeIcons: Record<string, React.ReactNode> = {
+  'image': <ImageIcon />,
+  'application/pdf': <PictureAsPdfIcon />,
+  'text': <DescriptionIcon />,
+  'default': <InsertDriveFileIcon />
+};
+
+// File type validation
+const allowedFileTypes = [
+  'image/jpeg', 
+  'image/png', 
+  'image/gif', 
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/plain',
+  'text/csv'
+];
+
+// Maximum file size (10MB)
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
+// BusinessCardExtraction component (extracted for reusability)
+interface BusinessCardExtractionProps {
+  extraction: BusinessCardExtraction;
+  onCreateContact?: () => void;
+  onDismiss?: () => void;
+}
+
+const BusinessCardExtractionDisplay: React.FC<BusinessCardExtractionProps> = ({
+  extraction,
+  onCreateContact,
+  onDismiss
+}) => {
+  return (
+    <Card variant="outlined" sx={{ mb: 3, mt: 2 }}>
+      <CardContent>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6" color="primary" sx={{ display: 'flex', alignItems: 'center' }}>
+            <BusinessIcon sx={{ mr: 1 }} />
+            Business Card Information
+          </Typography>
+          <Box>
+            <Button 
+              variant="contained" 
+              color="primary" 
+              startIcon={<PersonAddIcon />}
+              onClick={onCreateContact}
+              sx={{ mr: 1 }}
+              disabled={!onCreateContact}
+            >
+              Create Contact
+            </Button>
+            <Button 
+              variant="outlined"
+              onClick={onDismiss}
+              disabled={!onDismiss}
+            >
+              Dismiss
+            </Button>
+          </Box>
+        </Box>
+        
+        <Divider sx={{ mb: 2 }} />
+        
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6}>
+            <Typography variant="subtitle2" color="text.secondary">Name</Typography>
+            <Typography variant="body1">{extraction.first_name} {extraction.last_name}</Typography>
+          </Grid>
+          
+          {extraction.title && (
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">Title</Typography>
+              <Typography variant="body1">{extraction.title}</Typography>
+            </Grid>
+          )}
+          
+          {extraction.company && (
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">Company</Typography>
+              <Typography variant="body1">{extraction.company}</Typography>
+            </Grid>
+          )}
+          
+          {extraction.email && (
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">Email</Typography>
+              <Typography variant="body1">{extraction.email}</Typography>
+            </Grid>
+          )}
+          
+          {extraction.phone && (
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">Phone</Typography>
+              <Typography variant="body1">{extraction.phone}</Typography>
+            </Grid>
+          )}
+          
+          {extraction.other_phone && (
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">Other Phone</Typography>
+              <Typography variant="body1">{extraction.other_phone}</Typography>
+            </Grid>
+          )}
+          
+          {extraction.website && (
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle2" color="text.secondary">Website</Typography>
+              <Typography variant="body1">{extraction.website}</Typography>
+            </Grid>
+          )}
+          
+          {extraction.address && (
+            <Grid item xs={12}>
+              <Typography variant="subtitle2" color="text.secondary">Address</Typography>
+              <Typography variant="body1">{extraction.address}</Typography>
+            </Grid>
+          )}
+
+          {extraction.social_media && extraction.social_media.length > 0 && (
+            <Grid item xs={12}>
+              <Typography variant="subtitle2" color="text.secondary">Social Media</Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                {extraction.social_media.map((handle, index) => (
+                  <Chip key={index} label={handle} size="small" />
+                ))}
+              </Box>
+            </Grid>
+          )}
+          
+          {extraction.extra_fields && extraction.extra_fields.length > 0 && (
+            <Grid item xs={12}>
+              <Typography variant="subtitle2" color="text.secondary">Additional Information</Typography>
+              <Box sx={{ mt: 1 }}>
+                {extraction.extra_fields.map((field, index) => (
+                  <Typography key={index} variant="body2">{field}</Typography>
+                ))}
+              </Box>
+            </Grid>
+          )}
+        </Grid>
+      </CardContent>
+    </Card>
+  );
+};
 
 const AdminAppointmentEditCard: React.FC<AdminAppointmentEditCardProps> = ({
   control,
   validationErrors,
   locations,
-  watchStatus,
-  watchSubStatus,
-  watchAppointmentDate,
   statusMap,
   subStatusMap,
   allSubStatusOptions,
@@ -138,9 +291,10 @@ const AdminAppointmentEditCard: React.FC<AdminAppointmentEditCardProps> = ({
   showNotesFields = true,
   showBusinessCards = false,
   showAttachments = false,
-  appointmentId,
   defaultAppointmentDetails = false,
+  appointmentId,
   attachments = [],
+  uploadStrategy = 'immediate',
   onFileUpload,
   onDeleteAttachment,
   onDownloadAttachment,
@@ -156,35 +310,89 @@ const AdminAppointmentEditCard: React.FC<AdminAppointmentEditCardProps> = ({
   selectedFiles = [],
   onRemoveFile,
   uploading = false,
+  onFileSelect,
+  initialFormValues
 }) => {
   // File input refs
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const businessCardInputRef = useRef<HTMLInputElement>(null);
   const businessCardCameraInputRef = useRef<HTMLInputElement>(null);
+  const [localSelectedFiles, setLocalSelectedFiles] = useState<File[]>([]);
+  const [initialSetupComplete, setInitialSetupComplete] = useState(false);
+
+  // Manage watch variables internally instead of receiving them as props
+  const watchStatus = useWatch({ control, name: 'status' });
+  const watchSubStatus = useWatch({ control, name: 'sub_status' });
+  const watchAppointmentDate = useWatch({ control, name: 'appointment_date' });
 
   const today = getLocalDateString();
   const now = getLocalTimeString();
-  console.log('now', now);
+
+  // Handle initial form values if provided by parent
+  useEffect(() => {
+    if (initialFormValues && !initialSetupComplete) {
+      Object.entries(initialFormValues).forEach(([field, value]) => {
+        if (value !== undefined && value !== null) {
+          setValue(field, value);
+        }
+      });
+      setInitialSetupComplete(true);
+    }
+  }, [initialFormValues, setValue, initialSetupComplete]);
 
   // Set default values for status and sub-status when defaultAppointmentDetails is true
+  // and there are no existing values
   useEffect(() => {
-    if (defaultAppointmentDetails) {
-      // Set the default status value
-      const defaultStatus = statusMap['COMPLETED'];
-      setValue('status', defaultStatus);
+    if (defaultAppointmentDetails && !initialSetupComplete) {
+      const existingStatus = getValues('status');
+      const existingSubStatus = getValues('sub_status');
       
-      // Get the appropriate sub-status options for this status
-      if (statusSubStatusMapping && statusSubStatusMapping[defaultStatus]) {
-        // Use the default sub-status for this status
-        const defaultSubStatus = statusSubStatusMapping[defaultStatus].default_sub_status || subStatusMap['NO_FURTHER_ACTION'];
-        setValue('sub_status', defaultSubStatus);
+      // Only set defaults if values don't already exist
+      if (!existingStatus && statusMap && 'COMPLETED' in statusMap) {
+        const defaultStatus = statusMap['COMPLETED'];
+        setValue('status', defaultStatus);
+        
+        // Only set default sub_status if it doesn't already exist
+        if (!existingSubStatus && statusSubStatusMapping && statusSubStatusMapping[defaultStatus]) {
+          const defaultSubStatus = statusSubStatusMapping[defaultStatus].default_sub_status || 
+            (subStatusMap && 'NO_FURTHER_ACTION' in subStatusMap ? subStatusMap['NO_FURTHER_ACTION'] : '');
+          setValue('sub_status', defaultSubStatus);
+        }
+      }
+      
+      // Set default date and time if they're not already set
+      const currentDate = getValues('appointment_date');
+      const currentTime = getValues('appointment_time');
+      
+      if (!currentDate) {
+        setValue('appointment_date', today);
+      }
+      
+      if (!currentTime) {
+        setValue('appointment_time', now);
+      }
+      
+      setInitialSetupComplete(true);
+    }
+  }, [defaultAppointmentDetails, statusMap, subStatusMap, statusSubStatusMapping, setValue, getValues, today, now, initialSetupComplete]);
+
+  // Unified status-substatus relationship management
+  useEffect(() => {
+    if (!initialSetupComplete) return;
+    
+    if (watchStatus && statusSubStatusMapping && statusSubStatusMapping[watchStatus]) {
+      const { default_sub_status, valid_sub_statuses } = statusSubStatusMapping[watchStatus];
+      
+      // Only set default if current sub_status is not valid for the new status
+      const currentSubStatus = getValues('sub_status');
+      
+      if (!currentSubStatus || !valid_sub_statuses.includes(currentSubStatus)) {
+        console.log(`Setting sub_status to default: ${default_sub_status}`);
+        setValue('sub_status', default_sub_status);
       }
     }
-  }, [defaultAppointmentDetails, statusMap, subStatusMap, statusSubStatusMapping, setValue]);
-
-  // Generate time options in 15-minute increments
-  const timeOptions = getTimeOptions();
+  }, [watchStatus, statusSubStatusMapping, getValues, setValue, initialSetupComplete]);
 
   // Separate attachments by type
   const businessCardAttachments = React.useMemo(() => {
@@ -221,14 +429,44 @@ const AdminAppointmentEditCard: React.FC<AdminAppointmentEditCardProps> = ({
   };
 
   const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files.length > 0 && onFileUpload) {
-      onFileUpload(event.target.files);
+    if (event.target.files && event.target.files.length > 0) {
+      if (uploadStrategy === 'immediate' && onFileUpload) {
+        onFileUpload(event.target.files);
+      } else {
+        // For deferred uploads, store files locally
+        const files = Array.from(event.target.files).filter(file => {
+          const validation = validateFileBeforeUpload(file);
+          return validation.valid;
+        });
+
+        if (files.length > 0) {
+          setLocalSelectedFiles(prev => [...prev, ...files]);
+          if (onFileSelect) {
+            onFileSelect(files);
+          }
+        }
+      }
     }
   };
 
   const handleCameraInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files.length > 0 && onFileUpload) {
-      onFileUpload(event.target.files);
+    if (event.target.files && event.target.files.length > 0) {
+      if (uploadStrategy === 'immediate' && onFileUpload) {
+        onFileUpload(event.target.files);
+      } else {
+        // For deferred uploads, store files locally
+        const files = Array.from(event.target.files).filter(file => {
+          const validation = validateFileBeforeUpload(file);
+          return validation.valid;
+        });
+
+        if (files.length > 0) {
+          setLocalSelectedFiles(prev => [...prev, ...files]);
+          if (onFileSelect) {
+            onFileSelect(files);
+          }
+        }
+      }
     }
   };
 
@@ -244,136 +482,50 @@ const AdminAppointmentEditCard: React.FC<AdminAppointmentEditCardProps> = ({
     }
   };
 
+  const handleLocalRemoveFile = (index: number) => {
+    setLocalSelectedFiles(prev => {
+      const newFiles = [...prev];
+      newFiles.splice(index, 1);
+      return newFiles;
+    });
+  };
+
+  // Get the files to display based on whether we're using parent-managed or local files
+  const filesToDisplay = onRemoveFile ? selectedFiles : localSelectedFiles;
+  const handleRemoveFile = onRemoveFile || handleLocalRemoveFile;
+
+  // Validate file size and type before upload
+  const validateFileBeforeUpload = (file: File): { valid: boolean; message?: string } => {
+    // Check file size (max 10MB)
+    if (file.size > MAX_FILE_SIZE) {
+      return {
+        valid: false,
+        message: `File size exceeds 10MB (${formatFileSize(file.size)})`
+      };
+    }
+
+    // Check file type if needed
+    if (!allowedFileTypes.includes(file.type)) {
+      return {
+        valid: false,
+        message: `File type ${file.type} is not allowed`
+      };
+    }
+
+    return { valid: true };
+  };
+
   // Get file icon based on file type
   const getFileIcon = (fileType: string) => {
     if (fileType.startsWith('image/')) {
-      return <ImageIcon />;
+      return fileTypeIcons['image'];
     } else if (fileType === 'application/pdf') {
-      return <PictureAsPdfIcon />;
+      return fileTypeIcons['application/pdf'];
     } else if (fileType.startsWith('text/')) {
-      return <DescriptionIcon />;
+      return fileTypeIcons['text'];
     } else {
-      return <InsertDriveFileIcon />;
+      return fileTypeIcons['default'];
     }
-  };
-
-  // Render business card extraction UI
-  const renderBusinessCardExtraction = () => {
-    if (!businessCardExtraction) return null;
-    
-    const { extraction } = businessCardExtraction;
-    
-    return (
-      <Card variant="outlined" sx={{ mb: 3, mt: 2 }}>
-        <CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h6" color="primary" sx={{ display: 'flex', alignItems: 'center' }}>
-              <BusinessIcon sx={{ mr: 1 }} />
-              Business Card Information
-            </Typography>
-            <Box>
-              <Button 
-                variant="contained" 
-                color="primary" 
-                startIcon={<PersonAddIcon />}
-                onClick={onCreateDignitaryFromBusinessCard}
-                sx={{ mr: 1 }}
-                disabled={!onCreateDignitaryFromBusinessCard}
-              >
-                Create Contact
-              </Button>
-              <Button 
-                variant="outlined"
-                onClick={onDismissExtraction}
-                disabled={!onDismissExtraction}
-              >
-                Dismiss
-              </Button>
-            </Box>
-          </Box>
-          
-          <Divider sx={{ mb: 2 }} />
-          
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="subtitle2" color="text.secondary">Name</Typography>
-              <Typography variant="body1">{extraction.first_name} {extraction.last_name}</Typography>
-            </Grid>
-            
-            {extraction.title && (
-              <Grid item xs={12} sm={6}>
-                <Typography variant="subtitle2" color="text.secondary">Title</Typography>
-                <Typography variant="body1">{extraction.title}</Typography>
-              </Grid>
-            )}
-            
-            {extraction.company && (
-              <Grid item xs={12} sm={6}>
-                <Typography variant="subtitle2" color="text.secondary">Company</Typography>
-                <Typography variant="body1">{extraction.company}</Typography>
-              </Grid>
-            )}
-            
-            {extraction.email && (
-              <Grid item xs={12} sm={6}>
-                <Typography variant="subtitle2" color="text.secondary">Email</Typography>
-                <Typography variant="body1">{extraction.email}</Typography>
-              </Grid>
-            )}
-            
-            {extraction.phone && (
-              <Grid item xs={12} sm={6}>
-                <Typography variant="subtitle2" color="text.secondary">Phone</Typography>
-                <Typography variant="body1">{extraction.phone}</Typography>
-              </Grid>
-            )}
-            
-            {extraction.other_phone && (
-              <Grid item xs={12} sm={6}>
-                <Typography variant="subtitle2" color="text.secondary">Other Phone</Typography>
-                <Typography variant="body1">{extraction.other_phone}</Typography>
-              </Grid>
-            )}
-            
-            {extraction.website && (
-              <Grid item xs={12} sm={6}>
-                <Typography variant="subtitle2" color="text.secondary">Website</Typography>
-                <Typography variant="body1">{extraction.website}</Typography>
-              </Grid>
-            )}
-            
-            {extraction.address && (
-              <Grid item xs={12}>
-                <Typography variant="subtitle2" color="text.secondary">Address</Typography>
-                <Typography variant="body1">{extraction.address}</Typography>
-              </Grid>
-            )}
-
-            {extraction.social_media && extraction.social_media.length > 0 && (
-              <Grid item xs={12}>
-                <Typography variant="subtitle2" color="text.secondary">Social Media</Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-                  {extraction.social_media.map((handle, index) => (
-                    <Chip key={index} label={handle} size="small" />
-                  ))}
-                </Box>
-              </Grid>
-            )}
-            
-            {extraction.extra_fields && extraction.extra_fields.length > 0 && (
-              <Grid item xs={12}>
-                <Typography variant="subtitle2" color="text.secondary">Additional Information</Typography>
-                <Box sx={{ mt: 1 }}>
-                  {extraction.extra_fields.map((field, index) => (
-                    <Typography key={index} variant="body2">{field}</Typography>
-                  ))}
-                </Box>
-              </Grid>
-            )}
-          </Grid>
-        </CardContent>
-      </Card>
-    );
   };
 
   return (
@@ -389,7 +541,6 @@ const AdminAppointmentEditCard: React.FC<AdminAppointmentEditCardProps> = ({
               fullWidth
               label="Appointment Date"
               type="date"
-              value={defaultAppointmentDetails ? today : field.value}
               InputLabelProps={{ shrink: true }}
               error={!!validationErrors.appointment_date}
               helperText={validationErrors.appointment_date}
@@ -403,10 +554,10 @@ const AdminAppointmentEditCard: React.FC<AdminAppointmentEditCardProps> = ({
           name="appointment_time"
           control={control}
           render={({ field }) => {
-            const timeOption = findTimeOption(defaultAppointmentDetails ? now : field.value, timeOptions);
+            const timeOption = findTimeOption(field.value, defaultTimeOptions);
             return (
               <Autocomplete
-                options={timeOptions}
+                options={defaultTimeOptions}
                 getOptionLabel={(option) => typeof option === 'string' ? option : option.label}
                 isOptionEqualToValue={(option, value) => 
                   option.value === (typeof value === 'string' ? value : value.value)
@@ -479,16 +630,6 @@ const AdminAppointmentEditCard: React.FC<AdminAppointmentEditCardProps> = ({
                 enumType="appointmentStatus"
                 label="Status"
                 {...field}
-                onChange={(e) => {
-                  field.onChange(e);
-                  
-                  // When status changes, update sub-status to default for that status
-                  const newStatus = e.target.value as string;
-                  if (statusSubStatusMapping && statusSubStatusMapping[newStatus]) {
-                    const defaultSubStatus = statusSubStatusMapping[newStatus].default_sub_status;
-                    setValue('sub_status', defaultSubStatus);
-                  }
-                }}
               />
               {validationErrors.status && (
                 <FormHelperText error>{validationErrors.status}</FormHelperText>
@@ -509,6 +650,7 @@ const AdminAppointmentEditCard: React.FC<AdminAppointmentEditCardProps> = ({
               <Select
                 {...field}
                 label="Sub-Status"
+                value={field.value || ''}
               >
                 {allSubStatusOptions.map((option) => {
                   // Determine if this option should be disabled based on the API mapping
@@ -713,7 +855,13 @@ const AdminAppointmentEditCard: React.FC<AdminAppointmentEditCardProps> = ({
           </Box>
           
           {/* Business Card Extraction Result */}
-          {businessCardExtraction && renderBusinessCardExtraction()}
+          {businessCardExtraction && (
+            <BusinessCardExtractionDisplay 
+              extraction={businessCardExtraction.extraction}
+              onCreateContact={onCreateDignitaryFromBusinessCard}
+              onDismiss={onDismissExtraction}
+            />
+          )}
           
           {extractionError && (
             <Alert severity="error" sx={{ mb: 3 }}>
@@ -748,7 +896,7 @@ const AdminAppointmentEditCard: React.FC<AdminAppointmentEditCardProps> = ({
               variant="outlined"
               startIcon={<AttachFileIcon />}
               onClick={handleChooseFile}
-              disabled={uploading || !onFileUpload}
+              disabled={uploading}
             >
               Choose Files
             </Button>
@@ -756,7 +904,7 @@ const AdminAppointmentEditCard: React.FC<AdminAppointmentEditCardProps> = ({
               variant="outlined"
               startIcon={<PhotoCameraIcon />}
               onClick={handleTakePhoto}
-              disabled={uploading || !onFileUpload}
+              disabled={uploading}
             >
               Take Photo
             </Button>
@@ -783,13 +931,13 @@ const AdminAppointmentEditCard: React.FC<AdminAppointmentEditCardProps> = ({
           </Box>
           
           {/* Selected Files before upload */}
-          {selectedFiles.length > 0 && onRemoveFile && (
+          {filesToDisplay.length > 0 && handleRemoveFile && (
             <Paper variant="outlined" sx={{ mt: 2, p: 2, mb: 2 }}>
               <Typography variant="subtitle2" gutterBottom>
-                Selected Files ({selectedFiles.length})
+                Selected Files ({filesToDisplay.length})
               </Typography>
               <List dense>
-                {selectedFiles.map((file, index) => (
+                {filesToDisplay.map((file, index) => (
                   <ListItem key={index}>
                     <ListItemIcon>
                       {file.type.startsWith('image/') ? (
@@ -798,9 +946,9 @@ const AdminAppointmentEditCard: React.FC<AdminAppointmentEditCardProps> = ({
                         <InsertDriveFileIcon />
                       )}
                     </ListItemIcon>
-                    <ListItemText primary={file.name} secondary={`${(file.size / 1024).toFixed(2)} KB`} />
+                    <ListItemText primary={file.name} secondary={`${formatFileSize(file.size)}`} />
                     <ListItemSecondaryAction>
-                      <IconButton edge="end" onClick={() => onRemoveFile(index)}>
+                      <IconButton edge="end" onClick={() => handleRemoveFile(index)}>
                         <DeleteIcon />
                       </IconButton>
                     </ListItemSecondaryAction>
@@ -922,7 +1070,7 @@ const AdminAppointmentEditCard: React.FC<AdminAppointmentEditCardProps> = ({
             </Card>
           )}
           
-          {attachments.length === 0 && !selectedFiles.length && (
+          {attachments.length === 0 && filesToDisplay.length === 0 && (
             <Box sx={{ p: 2, textAlign: 'center' }}>
               <Typography color="text.secondary">No attachments yet</Typography>
             </Box>

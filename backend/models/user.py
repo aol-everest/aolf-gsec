@@ -86,6 +86,11 @@ class User(Base):
         back_populates="last_updated_by_user",
         foreign_keys="[Appointment.last_updated_by]"
     )
+    created_appointments = relationship(
+        "Appointment",
+        back_populates="created_by_user",
+        foreign_keys="[Appointment.created_by]"
+    )
     point_of_contacts = relationship(
         "DignitaryPointOfContact",
         back_populates="poc",

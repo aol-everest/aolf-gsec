@@ -28,6 +28,8 @@ export const getTimeOptions = (interval = 15): { value: string; label: string }[
   return options;
 };
 
+export const defaultTimeOptions = getTimeOptions();
+
 // Helper function to find the time option object from a time string
 export const findTimeOption = (timeString: string | null, timeOptions: { value: string; label: string }[]) => {
   if (!timeString) return null;
