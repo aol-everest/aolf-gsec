@@ -2660,16 +2660,23 @@ async def get_enabled_countries(
     db: Session = Depends(get_read_db)
 ):
     """Get all enabled countries for dropdowns and selectors"""
-    countries = admin_get_country_list_for_access_level(
-        db=db,
-        current_user=current_user,
-        required_access_level=models.AccessLevel.ADMIN
+    query = db.query(models.Country).filter(
+        models.Country.is_enabled == True
     )
+
     # Get all countries
-    countries = db.query(models.Country).filter(
-        models.Country.is_enabled == True,
-        models.Country.iso2_code.in_(countries)
-    ).order_by(models.Country.name).all()
+    if current_user.role != models.UserRole.ADMIN:
+        countries = admin_get_country_list_for_access_level(
+            db=db,
+            current_user=current_user,
+            required_access_level=models.AccessLevel.ADMIN
+        )
+        query = query.filter(
+            models.Country.iso2_code.in_(countries)
+        )
+
+    # Get countries
+    countries = query.order_by(models.Country.name).all()
     return countries
 
 
