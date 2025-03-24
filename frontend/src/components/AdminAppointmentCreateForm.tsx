@@ -243,7 +243,7 @@ export const AdminAppointmentCreateForm: React.FC = () => {
 
   // Fetch dignitaries assigned to the user
   const { data: fetchedDignitaries = [], isLoading: isLoadingDignitaries } = useQuery<Dignitary[]>({
-    queryKey: ['assigned-dignitaries'],
+    queryKey: ['admin-assigned-dignitaries'],
     queryFn: async () => {
       const { data } = await api.get<Dignitary[]>('/admin/dignitaries/all');
       return data;
@@ -465,7 +465,7 @@ export const AdminAppointmentCreateForm: React.FC = () => {
       dignitaryForm.setValue('selectedDignitaryId', newDignitary.id);
       setSelectedDignitary(newDignitary);
       
-      queryClient.invalidateQueries({ queryKey: ['assigned-dignitaries'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-assigned-dignitaries'] });
       enqueueSnackbar('New dignitary created successfully', { variant: 'success' });
     },
     onError: (error: any) => {
@@ -485,7 +485,7 @@ export const AdminAppointmentCreateForm: React.FC = () => {
     },
     onSuccess: (updatedDignitary) => {
       setSelectedDignitary(updatedDignitary);
-      queryClient.invalidateQueries({ queryKey: ['assigned-dignitaries'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-assigned-dignitaries'] });
       enqueueSnackbar('Dignitary updated successfully', { variant: 'success' });
     },
     onError: (error: any) => {

@@ -34,7 +34,7 @@ const AdminDignitaryList: React.FC = () => {
   const { enqueueSnackbar } = useSnackbar();
 
   const { data: dignitaries = [], isLoading } = useQuery({
-    queryKey: ['dignitaries'],
+    queryKey: ['admin-assigned-dignitaries'],
     queryFn: async () => {
       try {
         const { data } = await api.get<Dignitary[]>('/admin/dignitaries/all');
