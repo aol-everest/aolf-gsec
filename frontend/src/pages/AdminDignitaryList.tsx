@@ -27,6 +27,7 @@ interface Dignitary {
   state: string;
   city: string;
   has_dignitary_met_gurudev: boolean;
+  name?: string;
 }
 
 const AdminDignitaryList: React.FC = () => {
@@ -38,7 +39,10 @@ const AdminDignitaryList: React.FC = () => {
     queryFn: async () => {
       try {
         const { data } = await api.get<Dignitary[]>('/admin/dignitaries/all');
-        return data;
+        return data.map(dignitary => ({
+          ...dignitary,
+          name: `${formatHonorificTitle(dignitary.honorific_title)} ${dignitary.first_name} ${dignitary.last_name}`,
+        }));
       } catch (error) {
         console.error('Error fetching dignitaries:', error);
         enqueueSnackbar('Failed to fetch dignitaries', { variant: 'error' });
@@ -53,14 +57,12 @@ const AdminDignitaryList: React.FC = () => {
       headerName: 'ID',
       width: 50,
       flex: 0.25,
-      renderCell: (params) => params.row.id
     },
     { 
-      field: 'Name', 
+      field: 'name', 
       headerName: 'Name', 
       width: 200,
       flex: 1.5,
-      renderCell: (params) => `${formatHonorificTitle(params.row.honorific_title)} ${params.row.first_name} ${params.row.last_name}`
     },
     { field: 'email', headerName: 'Email', width: 200, flex: 1 },
     { field: 'phone', headerName: 'Phone', width: 130, flex: 1 },
@@ -113,7 +115,7 @@ const AdminDignitaryList: React.FC = () => {
             rows={dignitaries}
             columns={columns}
             loading={isLoading}
-            defaultVisibleColumns={['Name', 'title_in_organization', 'organization', 'has_dignitary_met_gurudev']}
+            defaultVisibleColumns={['name', 'title_in_organization', 'organization', 'has_dignitary_met_gurudev']}
           />
         </Box>
       </Container>

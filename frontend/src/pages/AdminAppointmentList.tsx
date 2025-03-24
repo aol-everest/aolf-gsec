@@ -72,11 +72,15 @@ const StatusEditCell = (props: StatusEditCellProps) => {
   );
 };
 
+interface AppointmentWithNames extends Appointment {
+  dignitary_names?: string;
+}
+
 const AdminAppointmentList: React.FC = () => {
   const [rowModesModel, setRowModesModel] = useState<GridRowModesModel>({});
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
-  const [filteredAppointments, setFilteredAppointments] = useState<Appointment[]>([]);
+  const [filteredAppointments, setFilteredAppointments] = useState<AppointmentWithNames[]>([]);
   const theme = useTheme();
   const api = useApi();
   const { enqueueSnackbar } = useSnackbar();
@@ -129,7 +133,15 @@ const AdminAppointmentList: React.FC = () => {
           include_location: true
         }
       });
-      return data;
+      
+      // Add calculated dignitary_names field
+      return data.map(appointment => ({
+        ...appointment,
+        dignitary_names: appointment.appointment_dignitaries?.map(ad => {
+          const dig = ad.dignitary;
+          return `${formatHonorificTitle(dig.honorific_title)} ${dig.first_name} ${dig.last_name}`;
+        }).join(', ') || 'N/A'
+      }));
     },
   });
 
@@ -233,7 +245,7 @@ const AdminAppointmentList: React.FC = () => {
     setRowModesModel(newRowModesModel);
   };
 
-  const columns: GridColDef<Appointment>[] = [
+  const columns: GridColDef<AppointmentWithNames>[] = [
     {
       field: 'actions',
       type: 'actions',
@@ -280,34 +292,11 @@ const AdminAppointmentList: React.FC = () => {
       editable: false,
     },
     {
-      field: 'dignitary',
+      field: 'dignitary_names',
       headerName: 'Dignitary',
       width: 130,
       flex: 1,
       editable: false,
-      renderCell: (params: GridRenderCellParams<Appointment>) => {
-        // Check for appointment_dignitaries first (multiple dignitaries case)
-        if (params.row.appointment_dignitaries && params.row.appointment_dignitaries.length > 0) {
-          const dignitariesNames = params.row.appointment_dignitaries.map((ad: any) => {
-            const dig = ad.dignitary;
-            return `${formatHonorificTitle(dig.honorific_title)} ${dig.first_name} ${dig.last_name}`;
-          });
-          
-          // Display only first dignitary with count if there are multiple
-          if (dignitariesNames.length > 1) {
-            return (
-              <div>
-                <div>{dignitariesNames[0]}</div>
-                <div style={{ color: 'gray', fontSize: '0.8rem' }}>+{dignitariesNames.length - 1} more</div>
-              </div>
-            );
-          } else {
-            return dignitariesNames[0];
-          }
-        } else {
-          return 'N/A';
-        }
-      },
     },
     {
       field: 'preferred_date_and_time',
@@ -606,7 +595,7 @@ const AdminAppointmentList: React.FC = () => {
               onRowModesModelChange={handleRowModesModelChange}
               onRowEditStop={handleRowEditStop}
               processRowUpdate={processRowUpdate}
-              defaultVisibleColumns={['id', 'dignitary', 'has_dignitary_met_gurudev', 'preferred_date_and_time', 'appointment_date', 'appointment_time', 'status', 'sub_status']}
+              defaultVisibleColumns={['id', 'dignitary_names', 'has_dignitary_met_gurudev', 'preferred_date_and_time', 'appointment_date', 'appointment_time', 'status', 'sub_status']}
               initialState={{
                 pagination: {
                   paginationModel: {

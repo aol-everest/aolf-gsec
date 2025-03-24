@@ -19,7 +19,6 @@ export interface GenericDataGridProps extends Omit<DataGridProps, 'rows' | 'colu
   containerHeight?: number | string;
   defaultDensity?: GridDensity;
   defaultVisibleColumns?: string[];
-  getQuickFilterMatchesAmount?: (filter: string, row: any, isDetailPanel: boolean) => number;
 }
 
 const GenericDataGridStyles = {
@@ -62,7 +61,7 @@ function CustomToolbar() {
     <GridToolbarContainer>
       <GridToolbarColumnsButton />
       <GridToolbarDensitySelector />
-      <GridToolbarQuickFilter debounceMs={300} />
+      <GridToolbarQuickFilter />
     </GridToolbarContainer>
   );
 }
@@ -159,12 +158,6 @@ const GenericDataGrid: React.FC<GenericDataGridProps> = ({
         [col.field]: false,
       }), {})),
     },
-    filter: {
-      filterModel: {
-        items: [],
-        quickFilterValues: [],
-      },
-    },
     ...initialState,
   };
 
@@ -176,12 +169,7 @@ const GenericDataGrid: React.FC<GenericDataGridProps> = ({
       standard: 100,
       comfortable: 130,
     };
-
-    // console.log(params);
-    // console.log(currentDensity);
-    // console.log(densityRowHeights[currentDensity]);
   
-    // return Math.min((params.densityFactor || 1) * 100, params.model.size || 100);
     return Math.min(densityRowHeights[currentDensity] || 100, params.model.size || 100);
   };
 
@@ -190,11 +178,9 @@ const GenericDataGrid: React.FC<GenericDataGridProps> = ({
       <Box 
         sx={{ 
           width: '100%',
-          // height: containerHeight,
         }}
       >
         <DataGrid
-          // getRowHeight={() => 'auto'}
           getRowHeight={getRowHeight}
           rows={rows}
           columns={columns}
@@ -211,7 +197,9 @@ const GenericDataGrid: React.FC<GenericDataGridProps> = ({
           slotProps={{
             toolbar: {
               showQuickFilter: true,
-              quickFilterProps: { debounceMs: 300 },
+              quickFilterProps: { 
+                debounceMs: 300,
+              },
             },
             ...slotProps,
           }}
