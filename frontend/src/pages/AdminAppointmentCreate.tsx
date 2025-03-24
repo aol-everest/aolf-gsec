@@ -1,9 +1,9 @@
 import React from 'react';
-import { SecretariatAppointmentRequestForm } from '../components/SecretariatAppointmentRequestForm';
+import { AdminAppointmentCreateForm } from '../components/AdminAppointmentCreateForm';
 import { Container, Typography, Box } from '@mui/material';
 import Layout from '../components/Layout';
 
-const SecretariatAppointmentRequest: React.FC = () => {
+const AdminAppointmentCreate: React.FC = () => {
   return (
     <Layout>
       <Container maxWidth="md">
@@ -11,11 +11,11 @@ const SecretariatAppointmentRequest: React.FC = () => {
           <Typography variant="h4" component="h1" gutterBottom align="center">
             Create Appointment Request
           </Typography>
-          <SecretariatAppointmentRequestForm />
+          <AdminAppointmentCreateForm />
         </Box>
       </Container>
     </Layout>
   );
 };
 
-export default SecretariatAppointmentRequest; 
+export default AdminAppointmentCreate;

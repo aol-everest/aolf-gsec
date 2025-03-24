@@ -186,7 +186,7 @@ const useGoogleMapsScript = () => {
   return { isLoaded, error };
 };
 
-export default function LocationsManage() {
+export default function AdminLocationsManage() {
   const [formOpen, setFormOpen] = useState(false);
   const [formData, setFormData] = useState<LocationFormData>(initialFormData);
   const [editingId, setEditingId] = useState<number | null>(null);

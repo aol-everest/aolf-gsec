@@ -29,7 +29,7 @@ interface Dignitary {
   has_dignitary_met_gurudev: boolean;
 }
 
-const DignitaryListAll: React.FC = () => {
+const AdminDignitaryList: React.FC = () => {
   const api = useApi();
   const { enqueueSnackbar } = useSnackbar();
 
@@ -121,4 +121,4 @@ const DignitaryListAll: React.FC = () => {
   );
 };
 
-export default DignitaryListAll; 
+export default AdminDignitaryList; 

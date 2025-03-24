@@ -24,7 +24,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Appointment, AppointmentDignitary } from '../models/types';
 import AppointmentCard from '../components/AppointmentCard';
 
-const AppointmentDayView: React.FC = () => {
+const AdminAppointmentSchedule: React.FC = () => {
+  
   const [selectedDate, setSelectedDate] = useState(getLocalDateString(0));
   const [expandedAppointmentId, setExpandedAppointmentId] = useState<number | null>(null);
   const theme = useTheme();
@@ -203,4 +204,4 @@ const AppointmentDayView: React.FC = () => {
   );
 };
 
-export default AppointmentDayView; 
+export default AdminAppointmentSchedule; 

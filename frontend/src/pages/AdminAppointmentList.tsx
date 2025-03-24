@@ -72,7 +72,7 @@ const StatusEditCell = (props: StatusEditCellProps) => {
   );
 };
 
-const AppointmentStatusAll: React.FC = () => {
+const AdminAppointmentList: React.FC = () => {
   const [rowModesModel, setRowModesModel] = useState<GridRowModesModel>({});
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
@@ -623,4 +623,4 @@ const AppointmentStatusAll: React.FC = () => {
   );
 };
 
-export default AppointmentStatusAll;
+export default AdminAppointmentList;

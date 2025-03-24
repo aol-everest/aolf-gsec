@@ -3,7 +3,7 @@ import { Container, Typography, Paper, Box, Alert } from '@mui/material';
 import { AppointmentRequestForm } from '../components/AppointmentRequestForm';
 import Layout from '../components/Layout';
 
-const AppointmentForm: React.FC = () => {
+const AppointmentRequest: React.FC = () => {
   return (
     <Layout>
       <Container>
@@ -39,4 +39,4 @@ const AppointmentForm: React.FC = () => {
   );
 };
 
-export default AppointmentForm; 
+export default AppointmentRequest; 

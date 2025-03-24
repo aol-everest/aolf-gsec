@@ -43,7 +43,7 @@ interface AppointmentDignitaryUsherView {
   dignitary: DignitaryUsherView;
 }
 
-interface AppointmentUsherView {
+interface UsherAppointmentSchedule {
   id: number;
   appointment_date?: string;
   appointment_time?: string;
@@ -55,7 +55,7 @@ interface AppointmentUsherView {
   };
 }
 
-const AppointmentUsherView: React.FC = () => {
+const UsherAppointmentSchedule: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const theme = useTheme();
   const api = useApi();
@@ -96,7 +96,7 @@ const AppointmentUsherView: React.FC = () => {
           ? `/usher/appointments?date=${selectedDate}`
           : '/usher/appointments';
         const response = await api.get(url);
-        return response.data as AppointmentUsherView[];
+        return response.data as UsherAppointmentSchedule[];
       } catch (error) {
         console.error('Error fetching appointments:', error);
         enqueueSnackbar('Failed to fetch appointments', { variant: 'error' });
@@ -116,7 +116,7 @@ const AppointmentUsherView: React.FC = () => {
     }
     acc[appointment.appointment_date].push(appointment);
     return acc;
-  }, {} as Record<string, AppointmentUsherView[]>) || {};
+  }, {} as Record<string, UsherAppointmentSchedule[]>) || {};
 
   // Handle date change
   const handleDateChange = (date: string) => {
@@ -132,7 +132,7 @@ const AppointmentUsherView: React.FC = () => {
   };
 
   // Format dignitary name - updated to handle multiple dignitaries with collapsible list
-  const formatDignitaryName = (appointment: AppointmentUsherView): ReactNode => {
+  const formatDignitaryName = (appointment: UsherAppointmentSchedule): ReactNode => {
     // First check for appointment_dignitaries
     if (appointment.appointment_dignitaries && appointment.appointment_dignitaries.length > 0) {
       const primaryDignitary = appointment.appointment_dignitaries[0].dignitary;
@@ -348,4 +348,4 @@ const AppointmentUsherView: React.FC = () => {
   );
 };
 
-export default AppointmentUsherView; 
+export default UsherAppointmentSchedule; 

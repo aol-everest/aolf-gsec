@@ -138,7 +138,7 @@ interface SubStatusMap {
   [key: string]: string;
 }
 
-const AppointmentEdit: React.FC = () => {
+const AdminAppointmentEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const api = useApi();
@@ -712,4 +712,4 @@ const AppointmentEdit: React.FC = () => {
   );
 };
 
-export default AppointmentEdit; 
+export default AdminAppointmentEdit; 

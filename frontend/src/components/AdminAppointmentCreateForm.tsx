@@ -180,7 +180,7 @@ interface SubStatusMap {
 
 const steps = ['Initial Information', 'Add Dignitary Information', 'Appointment Details'];
 
-export const SecretariatAppointmentRequestForm: React.FC = () => {
+export const AdminAppointmentCreateForm: React.FC = () => {
   const { userInfo } = useAuth();
   const [activeStep, setActiveStep] = useState(0);
   const [selectedCountryCode, setSelectedCountryCode] = useState<string | undefined>(undefined);
@@ -1993,4 +1993,4 @@ export const SecretariatAppointmentRequestForm: React.FC = () => {
   );
 };
 
-export default SecretariatAppointmentRequestForm; 
+export default AdminAppointmentCreateForm; 

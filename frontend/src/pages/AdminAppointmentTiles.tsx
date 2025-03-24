@@ -207,7 +207,7 @@ interface Location {
   state: string;
 }
 
-const AppointmentTiles: React.FC = () => {
+const AdminAppointmentTiles: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
@@ -918,4 +918,4 @@ const AppointmentTiles: React.FC = () => {
   );
 };
 
-export default AppointmentTiles; 
+export default AdminAppointmentTiles; 

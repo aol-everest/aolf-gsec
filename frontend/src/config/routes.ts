@@ -6,20 +6,20 @@ import FileCopyIcon from '@mui/icons-material/FileCopy';
 
 // Page imports
 import Home from '../pages/Home';
-import AppointmentForm from '../pages/AppointmentForm';
+import AppointmentRequest from '../pages/AppointmentRequest';
 import AppointmentStatus from '../pages/AppointmentStatus';
 import DignitaryList from '../pages/DignitaryList';
 import Profile from '../pages/Profile';
 import UsersManage from '../pages/UsersManage';
-import DignitaryListAll from '../pages/DignitaryListAll';
-import AppointmentStatusAll from '../pages/AppointmentStatusAll';
-import AppointmentTiles from '../pages/AppointmentTiles';
-import AppointmentEdit from '../pages/AppointmentEdit';
-import AppointmentDayView from '../pages/AppointmentDayView';
-import LocationsManage from '../pages/LocationsManage';
-import AppointmentUsherView from '../pages/AppointmentUsherView';
+import AdminDignitaryList from '../pages/AdminDignitaryList';
+import AdminAppointmentList from '../pages/AdminAppointmentList';
+import AdminAppointmentTiles from '../pages/AdminAppointmentTiles';
+import AdminAppointmentEdit from '../pages/AdminAppointmentEdit';
+import AdminAppointmentSchedule from '../pages/AdminAppointmentSchedule';
+import AdminLocationsManage from '../pages/AdminLocationsManage';
+import UsherAppointmentSchedule from '../pages/UsherAppointmentSchedule';
 import LocationAttachmentView from '../pages/LocationAttachmentView';
-import SecretariatAppointmentRequest from '../pages/SecretariatAppointmentRequest';
+import AdminAppointmentCreate from '../pages/AdminAppointmentCreate';
 import AddNewDignitary from '../pages/AdminAddNewDignitary';
 
 import { 
@@ -80,7 +80,7 @@ export const AppointmentRequestRoute: RouteConfig = {
   label: 'Request Appointment',
   icon: CalendarAddIconV2,
   showInSidebar: true,
-  component: AppointmentForm
+  component: AppointmentRequest
 }
 
 export const AppointmentsRoute: RouteConfig = {
@@ -123,7 +123,7 @@ export const AdminLocationsRoute: RouteConfig = {
   icon: LocationThinIconV2,
   roles: [ADMIN_ROLE, SECRETARIAT_ROLE],
   showInSidebar: true,
-  component: LocationsManage
+  component: AdminLocationsManage
 }
 
 export const AdminAppointmentsRoute: RouteConfig = {
@@ -132,7 +132,7 @@ export const AdminAppointmentsRoute: RouteConfig = {
   icon: ListIconV2,
   roles: [ADMIN_ROLE, SECRETARIAT_ROLE],
   showInSidebar: true,
-  component: AppointmentStatusAll
+  component: AdminAppointmentList
 }
 
 export const AdminAppointmentsReviewRoute: RouteConfig = {
@@ -141,7 +141,7 @@ export const AdminAppointmentsReviewRoute: RouteConfig = {
   icon: MemoCheckIconV2,
   roles: [ADMIN_ROLE, SECRETARIAT_ROLE],
   showInSidebar: true,
-  component: AppointmentTiles
+  component: AdminAppointmentTiles
 }
 
 export const AdminAppointmentReviewWithIdRoute: RouteConfig = {
@@ -150,7 +150,7 @@ export const AdminAppointmentReviewWithIdRoute: RouteConfig = {
   icon: MemoCheckIconV2,
   roles: [ADMIN_ROLE, SECRETARIAT_ROLE],
   showInSidebar: false,
-  component: AppointmentTiles
+  component: AdminAppointmentTiles
 }
 
 export const AdminAppointmentsCalendarRoute: RouteConfig = {
@@ -159,7 +159,7 @@ export const AdminAppointmentsCalendarRoute: RouteConfig = {
   icon: CalendarIconV2,
   roles: [ADMIN_ROLE, SECRETARIAT_ROLE],
   showInSidebar: true,
-  component: AppointmentDayView
+  component: AdminAppointmentSchedule
 }
 
 export const AdminAppointmentsEditRoute: RouteConfig = {
@@ -168,7 +168,7 @@ export const AdminAppointmentsEditRoute: RouteConfig = {
   icon: EditIcon,
   roles: [ADMIN_ROLE, SECRETARIAT_ROLE],
   showInSidebar: false,
-  component: AppointmentEdit
+  component: AdminAppointmentEdit
 }
 
 export const AdminUsersRoute: RouteConfig = {
@@ -186,7 +186,7 @@ export const AdminDignitariesRoute: RouteConfig = {
   icon: PersonListIconV2,
   roles: [ADMIN_ROLE, SECRETARIAT_ROLE],
   showInSidebar: true,
-  component: DignitaryListAll
+  component: AdminDignitaryList
 }
 
 export const AdminAddNewDignitaryRoute: RouteConfig = {
@@ -212,7 +212,7 @@ export const AdminAppointmentRequestRoute: RouteConfig = {
   icon: CalendarAddIconV2,
   roles: [ADMIN_ROLE, SECRETARIAT_ROLE],
   showInSidebar: true,
-  component: SecretariatAppointmentRequest
+  component: AdminAppointmentCreate
 }
 
 // Usher routes ---------------------------------------------------------------------------------------
@@ -222,7 +222,7 @@ export const UsherAppointmentsRoute: RouteConfig = {
   icon: CalendarIconV2,
   roles: [USHER_ROLE, ADMIN_ROLE, SECRETARIAT_ROLE],
   showInSidebar: true,
-  component: AppointmentUsherView
+  component: UsherAppointmentSchedule
 }
 
 export const UsherHeaderRoute: RouteConfig = {
