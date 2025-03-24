@@ -217,6 +217,9 @@ export const AdminAppointmentCreateForm: React.FC = () => {
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const [showValidationSummary, setShowValidationSummary] = useState(false);
   
+  // Track if validation should happen on change
+  const [enableValidateOnChange, setEnableValidateOnChange] = useState(false);
+  
   // Add ref for AdminAppointmentEditCard
   const appointmentEditCardRef = useRef<AdminAppointmentEditCardRef>(null);
 
@@ -891,6 +894,11 @@ export const AdminAppointmentCreateForm: React.FC = () => {
       
       setActiveStep(2);
     } else if (activeStep === 2) {
+      // Enable validation on change after first submit attempt
+      if (!enableValidateOnChange) {
+        setEnableValidateOnChange(true);
+      }
+      
       // Validate appointment form
       const isValid = await appointmentForm.trigger();
       if (!isValid) {
@@ -1730,7 +1738,7 @@ export const AdminAppointmentCreateForm: React.FC = () => {
                       ...errors
                     }));
                   }}
-                  validateOnChange={true}
+                  validateOnChange={enableValidateOnChange}
                 />
               </Grid>
             </Grid>
