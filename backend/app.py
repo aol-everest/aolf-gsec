@@ -1489,6 +1489,23 @@ async def update_appointment(
     return appointment
 
 
+@app.post("/admin/dignitaries/new", response_model=schemas.AdminDignitary)
+async def new_dignitary(
+    dignitary: schemas.AdminDignitaryCreate,
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
+):
+    # Create new dignitary
+    new_dignitary = models.Dignitary(
+        **dignitary.dict(),
+        created_by=current_user.id
+    )
+    db.add(new_dignitary)
+    db.commit()
+    db.refresh(new_dignitary)
+
+    return new_dignitary
+
 
 @app.get("/admin/dignitaries/all", response_model=List[schemas.AdminDignitaryWithAppointments])
 @requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])

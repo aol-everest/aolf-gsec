@@ -144,10 +144,6 @@ const AdminAppointmentEdit: React.FC = () => {
   const api = useApi();
   const { enqueueSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
-  const businessCardInputRef = useRef<HTMLInputElement>(null);
-  const businessCardCameraInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [attachmentToDelete, setAttachmentToDelete] = useState<Attachment | null>(null);
@@ -158,6 +154,9 @@ const AdminAppointmentEdit: React.FC = () => {
   const [dignitaryCreationError, setDignitaryCreationError] = useState<string | null>(null);
   const [isExtractionDisabled, setIsExtractionDisabled] = useState(false);
   const theme = useTheme();
+  
+  // Reference to AdminAppointmentEditCard component
+  const appointmentEditCardRef = useRef<{ validate: () => ValidationErrors }>(null);
   
   // Add state for validation errors
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
@@ -175,12 +174,6 @@ const AdminAppointmentEdit: React.FC = () => {
   } = useForm<AppointmentFormData>({
     mode: 'onSubmit',
   });
-
-  // The following watch variables are now handled internally by AdminAppointmentEditCard
-  // Keep them for the validateForm function which still needs them
-  const watchStatus = watch('status');
-  const watchSubStatus = watch('sub_status');
-  const watchAppointmentDate = watch('appointment_date');
 
   // Fetch status map from the API
   const { data: statusMap = {} } = useQuery<StatusMap>({
@@ -296,83 +289,18 @@ const AdminAppointmentEdit: React.FC = () => {
     },
   });
 
-
-  // ----------------------------------------------------------------------------------------------------------------------------------------------
-  // VALIDATION RULES
-  // ----------------------------------------------------------------------------------------------------------------------------------------------
-
-  // Validate form based on status and substatus combinations
-  const validateForm = (data: AppointmentFormData): ValidationErrors => {
-    const errors: ValidationErrors = {};
-    
-    // Common validation for all statuses
-    if (!data.status) {
-      errors.status = 'Status is required';
-    }
-
-    // Specific validation based on status and substatus combinations
-    if (data.status === statusMap['APPROVED']) {
-      if (!data.appointment_type) {
-        errors.appointment_type = 'Appointment type is required for Approved status';
-      }
-      
-      if (data.sub_status === subStatusMap['SCHEDULED']) {
-        if (!data.appointment_date) {
-          errors.appointment_date = 'Appointment date is required for Scheduled appointments';
-        }
-        
-        if (!data.appointment_time) {
-          errors.appointment_time = 'Appointment time is required for Scheduled appointments';
-        }
-        
-        if (!data.location_id) {
-          errors.location_id = 'Location is required for Scheduled appointments';
-        }
-      }
-    }
-
-    if (data.status === statusMap['COMPLETED']) {
-      if (!data.appointment_date) {
-        errors.appointment_date = 'Appointment date is required for Completed appointments';
-      }
-
-      if (data.appointment_date && parseUTCDate(data.appointment_date) > new Date()) {
-        errors.appointment_date = 'Appointment date cannot be in the future for Completed appointments';
-      }
-
-      if (!data.location_id) {
-        errors.location_id = 'Location is required for Completed appointments';
-      }
-
-      if (data.sub_status === subStatusMap['FOLLOW_UP_REQUIRED'] && !data.secretariat_follow_up_actions) {
-        errors.secretariat_follow_up_actions = 'Follow-up actions are required for Completed appointments';
-      }
-    }
-    
-    if (data.status === statusMap['REJECTED']) {
-      if (data.sub_status === subStatusMap['DARSHAN_LINE'] && (!data.secretariat_notes_to_requester || !data.secretariat_notes_to_requester.trim())) {
-        errors.secretariat_notes_to_requester = 'Please add notes about Darshan Line in the notes to requester input';
-      }
-    }
-    
-    if (data.status === statusMap['PENDING']) {
-      if (data.sub_status === subStatusMap['NEED_MORE_INFO'] && (!data.secretariat_notes_to_requester || !data.secretariat_notes_to_requester.trim())) {
-        errors.secretariat_notes_to_requester = 'Notes to requester are required when requesting more information';
-      }
-    }
-    
-    return errors;
+  // Handle validation results from the AdminAppointmentEditCard component
+  const handleValidationResult = (errors: ValidationErrors) => {
+    setValidationErrors(errors);
+    setShowValidationSummary(Object.keys(errors).length > 0);
   };
 
   const onSubmit = (data: AppointmentFormData) => {
-    // Validate form data based on status and substatus
-    const validationErrors = validateForm(data);
+    // Use the validate method from the AdminAppointmentEditCard ref instead of local validateForm
+    const validationErrors = appointmentEditCardRef.current?.validate() || {};
     
     // If there are validation errors, prevent submission
     if (Object.keys(validationErrors).length > 0) {
-      setValidationErrors(validationErrors);
-      setShowValidationSummary(true);
-      
       // Show error notification
       enqueueSnackbar('Please fix the errors before submitting', { variant: 'error' });
       return;
@@ -657,6 +585,8 @@ const AdminAppointmentEdit: React.FC = () => {
                       secretariat_meeting_notes: appointment.secretariat_meeting_notes,
                       secretariat_notes_to_requester: appointment.secretariat_notes_to_requester,
                     } : undefined}
+                    ref={appointmentEditCardRef}
+                    onValidationResult={handleValidationResult}
                   />
                 </Grid>
 

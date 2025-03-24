@@ -201,6 +201,10 @@ class AdminDignitary(DignitaryBase):
     class Config:
         orm_mode = True
 
+class AdminDignitaryCreate(DignitaryBase):
+    country_code: str
+
+
 class LocationBase(BaseModel):
     name: str
     street_address: str

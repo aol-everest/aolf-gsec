@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import {
   Grid,
   TextField,
@@ -92,6 +92,10 @@ interface BusinessCardExtractionResponse {
 
 type UploadStrategy = 'immediate' | 'deferred';
 
+export interface AdminAppointmentEditCardRef {
+  validate: () => ValidationErrors;
+}
+
 interface AdminAppointmentEditCardProps {
   control: Control<any>;
   validationErrors: ValidationErrors;
@@ -126,6 +130,8 @@ interface AdminAppointmentEditCardProps {
   uploading?: boolean;
   onFileSelect?: (files: File[]) => void;
   initialFormValues?: Record<string, any>;
+  onValidationResult?: (errors: ValidationErrors) => void;
+  validateOnChange?: boolean;
 }
 
 // Common file types and their corresponding icons
@@ -278,7 +284,7 @@ const BusinessCardExtractionDisplay: React.FC<BusinessCardExtractionProps> = ({
   );
 };
 
-const AdminAppointmentEditCard: React.FC<AdminAppointmentEditCardProps> = ({
+const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAppointmentEditCardProps>(({
   control,
   validationErrors,
   locations,
@@ -311,8 +317,10 @@ const AdminAppointmentEditCard: React.FC<AdminAppointmentEditCardProps> = ({
   onRemoveFile,
   uploading = false,
   onFileSelect,
-  initialFormValues
-}) => {
+  initialFormValues,
+  onValidationResult,
+  validateOnChange = false
+}, ref) => {
   // File input refs
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -328,6 +336,87 @@ const AdminAppointmentEditCard: React.FC<AdminAppointmentEditCardProps> = ({
 
   const today = getLocalDateString();
   const now = getLocalTimeString();
+
+  // Validate form based on status and substatus combinations
+  const validateForm = (): ValidationErrors => {
+    const data = getValues();
+    const errors: ValidationErrors = {};
+    
+    // Common validation for all statuses
+    if (!data.status) {
+      errors.status = 'Status is required';
+    }
+
+    // Specific validation based on status and substatus combinations
+    if (data.status === statusMap['APPROVED']) {
+      if (!data.appointment_type) {
+        errors.appointment_type = 'Appointment type is required for Approved status';
+      }
+      
+      if (data.sub_status === subStatusMap['SCHEDULED']) {
+        if (!data.appointment_date) {
+          errors.appointment_date = 'Appointment date is required for Scheduled appointments';
+        }
+        
+        if (!data.appointment_time) {
+          errors.appointment_time = 'Appointment time is required for Scheduled appointments';
+        }
+        
+        if (!data.location_id) {
+          errors.location_id = 'Location is required for Scheduled appointments';
+        }
+      }
+    }
+
+    if (data.status === statusMap['COMPLETED']) {
+      if (!data.appointment_date) {
+        errors.appointment_date = 'Appointment date is required for Completed appointments';
+      }
+
+      if (data.appointment_date && parseUTCDate(data.appointment_date) > new Date()) {
+        errors.appointment_date = 'Appointment date cannot be in the future for Completed appointments';
+      }
+
+      if (!data.location_id) {
+        errors.location_id = 'Location is required for Completed appointments';
+      }
+
+      if (data.sub_status === subStatusMap['FOLLOW_UP_REQUIRED'] && !data.secretariat_follow_up_actions) {
+        errors.secretariat_follow_up_actions = 'Follow-up actions are required for Completed appointments';
+      }
+    }
+    
+    if (data.status === statusMap['REJECTED']) {
+      if (data.sub_status === subStatusMap['DARSHAN_LINE'] && (!data.secretariat_notes_to_requester || !data.secretariat_notes_to_requester.trim())) {
+        errors.secretariat_notes_to_requester = 'Please add notes about Darshan Line in the notes to requester input';
+      }
+    }
+    
+    if (data.status === statusMap['PENDING']) {
+      if (data.sub_status === subStatusMap['NEED_MORE_INFO'] && (!data.secretariat_notes_to_requester || !data.secretariat_notes_to_requester.trim())) {
+        errors.secretariat_notes_to_requester = 'Notes to requester are required when requesting more information';
+      }
+    }
+    
+    // Report validation results to parent component if callback provided
+    if (onValidationResult) {
+      onValidationResult(errors);
+    }
+    
+    return errors;
+  };
+
+  // Expose validateForm as a public method via ref
+  useImperativeHandle(ref, () => ({
+    validate: validateForm
+  }), [validateForm]);
+
+  // Trigger validation when specific fields change if validateOnChange is true
+  useEffect(() => {
+    if (validateOnChange) {
+      validateForm();
+    }
+  }, [watchStatus, watchSubStatus, watchAppointmentDate, validateOnChange]);
 
   // Handle initial form values if provided by parent
   useEffect(() => {
@@ -1079,6 +1168,6 @@ const AdminAppointmentEditCard: React.FC<AdminAppointmentEditCardProps> = ({
       )}
     </Grid>
   );
-};
+});
 
 export default AdminAppointmentEditCard; 

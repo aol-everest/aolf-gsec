@@ -64,7 +64,7 @@ import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import ImageIcon from '@mui/icons-material/Image';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import DescriptionIcon from '@mui/icons-material/Description';
-import AdminAppointmentEditCard from './AdminAppointmentEditCard';
+import AdminAppointmentEditCard, { AdminAppointmentEditCardRef } from './AdminAppointmentEditCard';
 
 // Interfaces
 interface AppointmentResponse extends Omit<Appointment, 'dignitary' | 'requester' | 'location' | 'approved_by_user' | 'last_updated_by_user' | 'attachments'> {
@@ -216,6 +216,9 @@ export const AdminAppointmentCreateForm: React.FC = () => {
   // Add state for validation errors
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const [showValidationSummary, setShowValidationSummary] = useState(false);
+  
+  // Add ref for AdminAppointmentEditCard
+  const appointmentEditCardRef = useRef<AdminAppointmentEditCardRef>(null);
 
   // Fetch status options
   const { data: statusOptions = [] } = useQuery<string[]>({
@@ -447,7 +450,7 @@ export const AdminAppointmentCreateForm: React.FC = () => {
   // Mutation for creating new dignitary
   const createDignitaryMutation = useMutation<Dignitary, Error, any>({
     mutationFn: async (data: any) => {
-      const { data: response } = await api.post<Dignitary>('/dignitaries/new', data);
+      const { data: response } = await api.post<Dignitary>('/admin/dignitaries/new', data);
       return response;
     },
     onSuccess: (newDignitary) => {
@@ -713,120 +716,10 @@ export const AdminAppointmentCreateForm: React.FC = () => {
 
   // Validate form based on status and substatus combinations
   const validateForm = () => {
-    const formData = appointmentForm.getValues();
-    let isValid = true;
-    const newErrors: ValidationErrors = {};
-
-    // Common validation for all statuses
-    if (!formData.status) {
-      newErrors.status = 'Status is required';
-      isValid = false;
-    }
-
-    // Specific validation based on status and substatus combinations
-    if (formData.status === statusMap['APPROVED']) {
-      if (!formData.appointment_type) {
-        newErrors.appointment_type = 'Appointment type is required for Approved status';
-        isValid = false;
-      }
-      
-      if (formData.sub_status === subStatusMap['SCHEDULED']) {
-        if (!formData.appointment_date) {
-          newErrors.appointment_date = 'Appointment date is required for Scheduled appointments';
-          isValid = false;
-        }
-        
-        if (!formData.appointment_time) {
-          newErrors.appointment_time = 'Appointment time is required for Scheduled appointments';
-          isValid = false;
-        }
-        
-        if (!formData.location_id) {
-          newErrors.location_id = 'Location is required for Scheduled appointments';
-          isValid = false;
-        }
-      }
-    }
-
-    if (formData.status === statusMap['COMPLETED']) {
-      if (!formData.appointment_date) {
-        newErrors.appointment_date = 'Appointment date is required for Completed appointments';
-        isValid = false;
-      }
-
-      if (formData.appointment_date && parseUTCDate(formData.appointment_date) > new Date()) {
-        newErrors.appointment_date = 'Appointment date cannot be in the future for Completed appointments';
-        isValid = false;
-      }
-
-      if (!formData.location_id) {
-        newErrors.location_id = 'Location is required for Completed appointments';
-        isValid = false;
-      }
-
-      if (formData.sub_status === subStatusMap['FOLLOW_UP_REQUIRED'] && !formData.secretariat_follow_up_actions) {
-        newErrors.secretariat_follow_up_actions = 'Follow-up actions are required for Completed appointments';
-        isValid = false;
-      }
-    }
-    
-    if (formData.status === statusMap['REJECTED']) {
-      if (formData.sub_status === subStatusMap['DARSHAN_LINE'] && (!formData.secretariat_notes_to_requester || !formData.secretariat_notes_to_requester.trim())) {
-        newErrors.secretariat_notes_to_requester = 'Please add notes about Darshan Line in the notes to requester input';
-        isValid = false;
-      }
-    }
-    
-    if (formData.status === statusMap['PENDING']) {
-      if (formData.sub_status === subStatusMap['NEED_MORE_INFO'] && (!formData.secretariat_notes_to_requester || !formData.secretariat_notes_to_requester.trim())) {
-        newErrors.secretariat_notes_to_requester = 'Notes to requester are required when requesting more information';
-        isValid = false;
-      }
-    }
-    
-    if (activeStep === 2) {
-      // Add validation for purpose_of_meeting
-      if (!formData.purpose_of_meeting?.trim()) {
-        newErrors.purpose_of_meeting = 'Purpose of meeting is required';
-        isValid = false;
-      }
-      
-      // Add validation rules for secretariat fields
-      if (!formData.status) {
-        newErrors.status = 'Status is required';
-        isValid = false;
-      }
-      
-      if (!formData.appointment_date) {
-        newErrors.appointment_date = 'Appointment date is required';
-        isValid = false;
-      }
-      
-      if (!formData.appointment_time) {
-        newErrors.appointment_time = 'Appointment time is required';
-        isValid = false;
-      }
-      
-      if (!formData.location_id) {
-        newErrors.location_id = 'Location is required';
-        isValid = false;
-      }
-      
-      // Specific validation based on status and substatus combinations
-      if (formData.status === statusMap['APPROVED']) {
-        if (!formData.appointment_type) {
-          newErrors.appointment_type = 'Appointment type is required for Approved status';
-          isValid = false;
-        }
-        
-        // ... other status-specific validations ...
-      }
-      
-      // ... other status-specific validations ...
-    }
-
-    setValidationErrors(newErrors);
-    return isValid;
+    // Simply use the card's validate method for all validation
+    const cardErrors = appointmentEditCardRef.current?.validate() || {};
+    setValidationErrors(cardErrors);
+    return Object.keys(cardErrors).length === 0;
   };
 
   // Handle file selection
@@ -1010,7 +903,6 @@ export const AdminAppointmentCreateForm: React.FC = () => {
       }
       
       // Validate form data based on status and substatus
-      const formData = appointmentForm.getValues();
       const isFormValid = validateForm();
       
       // If there are validation errors, prevent submission
@@ -1030,6 +922,8 @@ export const AdminAppointmentCreateForm: React.FC = () => {
           enqueueSnackbar('No dignitaries selected for appointment', { variant: 'error' });
           return;
         }
+        
+        const formData = appointmentForm.getValues();
         
         const appointmentCreateData = {
           dignitary_ids: dignitary_ids,
@@ -1797,8 +1691,7 @@ export const AdminAppointmentCreateForm: React.FC = () => {
                       label="Purpose of Meeting"
                       multiline
                       rows={3}
-                      error={!!validationErrors.purpose_of_meeting}
-                      helperText={validationErrors.purpose_of_meeting}
+                      required
                     />
                   )}
                 />
@@ -1812,6 +1705,7 @@ export const AdminAppointmentCreateForm: React.FC = () => {
                 
                 {/* Using the reusable component for secretariat fields */}
                 <AdminAppointmentEditCard
+                  ref={appointmentEditCardRef}
                   control={appointmentForm.control}
                   validationErrors={validationErrors}
                   locations={locations}
@@ -1830,6 +1724,13 @@ export const AdminAppointmentCreateForm: React.FC = () => {
                   onRemoveFile={handleRemoveFile}
                   onFileSelect={handleFileSelect}
                   uploading={isUploading}
+                  onValidationResult={(errors) => {
+                    setValidationErrors(prevErrors => ({
+                      ...prevErrors,
+                      ...errors
+                    }));
+                  }}
+                  validateOnChange={true}
                 />
               </Grid>
             </Grid>
@@ -1976,7 +1877,7 @@ export const AdminAppointmentCreateForm: React.FC = () => {
               // If the active step is the last step, disable the next button
               activeStep === steps.length || 
               // At step 2, if the dignitary form is expanded, disable the next button
-              (activeStep === 1 && isDignitaryFormExpanded) || 
+              (activeStep === 1 && isDignitaryFormExpanded) ||
               // At step 2, if no dignitaries are selected, disable the next button
               (activeStep === 1 && selectedDignitaries.length === 0) ||
               // At step 2, if not enough dignitaries are added, disable the next button
