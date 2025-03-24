@@ -245,7 +245,7 @@ export const AdminAppointmentCreateForm: React.FC = () => {
   const { data: fetchedDignitaries = [], isLoading: isLoadingDignitaries } = useQuery<Dignitary[]>({
     queryKey: ['assigned-dignitaries'],
     queryFn: async () => {
-      const { data } = await api.get<Dignitary[]>('/dignitaries/assigned');
+      const { data } = await api.get<Dignitary[]>('/admin/dignitaries/all');
       return data;
     },
   });

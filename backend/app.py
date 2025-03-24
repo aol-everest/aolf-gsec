@@ -1525,9 +1525,9 @@ async def get_all_dignitaries(
         models.UserAccess.user_id == current_user.id,
         models.UserAccess.is_active == True,
         # Only consider records that grant access to dignitaries
-        or_(
-            models.UserAccess.entity_type == models.EntityType.APPOINTMENT_AND_DIGNITARY
-        )
+        models.UserAccess.entity_type == models.EntityType.APPOINTMENT_AND_DIGNITARY,
+        # Only consider records that are not location-specific
+        models.UserAccess.location_id == None,
     ).all()
     
     if not user_access:
