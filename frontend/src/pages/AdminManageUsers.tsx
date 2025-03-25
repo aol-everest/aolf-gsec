@@ -22,7 +22,9 @@ import {
   ListItem,
   ListItemText,
   ListItemSecondaryAction,
-  Divider
+  Divider,
+  FormControlLabel,
+  Switch
 } from '@mui/material';
 import {
   DataGrid,
@@ -162,6 +164,10 @@ const AdminManageUsers: React.FC = () => {
   const [accessFormErrors, setAccessFormErrors] = useState<Record<string, string>>({});
   const [editingAccessId, setEditingAccessId] = useState<number | null>(null);
   const [showAccessForm, setShowAccessForm] = useState(false);
+  const [isAdvancedMode, setIsAdvancedMode] = useState(false);
+  
+  // Get user role from localStorage
+  const userRole = localStorage.getItem('role');
   
   // Using useEnums hooks for all needed enums
   const { values: userRoles, isLoading: rolesLoading } = useEnums('userRole');
@@ -436,6 +442,27 @@ const AdminManageUsers: React.FC = () => {
     setAccessFormErrors({});
   };
   
+  // Function to determine access level and entity type based on user role
+  const determineAccessSettings = (role: string): { access_level: string; entity_type: string } => {
+    switch (role) {
+      case 'USHER':
+        return {
+          access_level: 'Read',
+          entity_type: 'Appointment'
+        };
+      case 'SECRETARIAT':
+        return {
+          access_level: 'ReadWrite',
+          entity_type: 'Appointment and Dignitary'
+        };
+      default:
+        return {
+          access_level: 'Read',
+          entity_type: 'Appointment'
+        };
+    }
+  };
+
   const handleAccessFormOpen = (accessRecord?: UserAccess) => {
     if (accessRecord) {
       // Editing existing access
@@ -451,11 +478,17 @@ const AdminManageUsers: React.FC = () => {
       });
       setEditingAccessId(accessRecord.id);
     } else {
-      // Creating new access
-      setAccessFormData({
-        ...initialAccessFormData,
-        user_id: editingId || 0
-      });
+      // Creating new access - determine settings based on user role
+      const user = users.find(u => u.id === editingId);
+      if (user) {
+        const { access_level, entity_type } = determineAccessSettings(user.role);
+        setAccessFormData({
+          ...initialAccessFormData,
+          user_id: editingId || 0,
+          access_level,
+          entity_type
+        });
+      }
       setEditingAccessId(null);
     }
     setAccessFormErrors({});
@@ -873,20 +906,34 @@ const AdminManageUsers: React.FC = () => {
                     
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                       <Typography variant="h6">Access Management</Typography>
-                      {!showAccessForm && (
-                        <Button
-                          variant="outlined"
-                          startIcon={<AddIcon />}
-                          onClick={() => handleAccessFormOpen()}
-                          size="small"
-                        >
-                          Add Access
-                        </Button>
-                      )}
+                      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                        {userRole === 'ADMIN' && (
+                          <FormControlLabel
+                            control={
+                              <Switch
+                                checked={isAdvancedMode}
+                                onChange={(e) => setIsAdvancedMode(e.target.checked)}
+                                name="advancedMode"
+                              />
+                            }
+                            label="Advanced Mode"
+                          />
+                        )}
+                        {!showAccessForm && (
+                          <Button
+                            variant="outlined"
+                            startIcon={<AddIcon />}
+                            onClick={() => handleAccessFormOpen()}
+                            size="small"
+                          >
+                            Add Access
+                          </Button>
+                        )}
+                      </Box>
                     </Box>
                     
                     {/* USHER role restriction notice */}
-                    {formData.role === 'USHER' && (
+                    {/* {formData.role === 'USHER' && (
                       <Paper 
                         sx={{ 
                           p: 2, 
@@ -898,7 +945,7 @@ const AdminManageUsers: React.FC = () => {
                           <strong>Note:</strong> Users with the USHER role will only have Read access and can only access Appointments, regardless of the settings below. Access level and entity type selections will be overridden by the system.
                         </Typography>
                       </Paper>
-                    )}
+                    )} */}
                     
                     {userAccessSummaryLoading ? (
                       <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
@@ -961,12 +1008,10 @@ const AdminManageUsers: React.FC = () => {
                                 value={accessFormData.country_code}
                                 onChange={(e) => {
                                   const value = e.target.value;
-                                  console.log("Selected country:", value);
-                                  // Clear any previously selected locations when changing country
                                   setAccessFormData(prev => ({
                                     ...prev,
                                     country_code: value,
-                                    location_ids: [] // Reset selected locations
+                                    location_ids: []
                                   }));
                                 }}
                                 required
@@ -1025,72 +1070,6 @@ const AdminManageUsers: React.FC = () => {
                             </Grid>
                             <Grid item xs={12} md={6}>
                               <TextField
-                                select
-                                fullWidth
-                                label="Access Level"
-                                name="access_level"
-                                value={formData.role === 'USHER' ? 'Read' : accessFormData.access_level}
-                                onChange={handleAccessFormChange}
-                                required
-                                disabled={accessLevelsLoading || formData.role === 'USHER'}
-                                error={!!accessFormErrors.access_level}
-                                helperText={
-                                  formData.role === 'USHER' 
-                                    ? 'USHER users are restricted to Read access' 
-                                    : accessFormErrors.access_level || ''
-                                }
-                              >
-                                {accessLevels.length > 0 ? (
-                                  accessLevels.map((level) => (
-                                    <MenuItem key={level} value={level}>
-                                      {level}
-                                    </MenuItem>
-                                  ))
-                                ) : (
-                                  // Fallback options
-                                  ['Read', 'ReadWrite', 'Admin'].map((level) => (
-                                    <MenuItem key={level} value={level}>
-                                      {level}
-                                    </MenuItem>
-                                  ))
-                                )}
-                              </TextField>
-                            </Grid>
-                            <Grid item xs={12} md={6}>
-                              <TextField
-                                select
-                                fullWidth
-                                label="Entity Type"
-                                name="entity_type"
-                                value={formData.role === 'USHER' ? 'Appointment' : accessFormData.entity_type}
-                                onChange={handleAccessFormChange}
-                                required
-                                disabled={entityTypesLoading || formData.role === 'USHER'}
-                                error={!!accessFormErrors.entity_type}
-                                helperText={
-                                  formData.role === 'USHER' 
-                                    ? 'USHER users are restricted to Appointment access only' 
-                                    : accessFormErrors.entity_type || ''
-                                }
-                              >
-                                {entityTypes.length > 0 ? (
-                                  entityTypes.map((type) => (
-                                    <MenuItem key={type} value={type}>
-                                      {type}
-                                    </MenuItem>
-                                  ))
-                                ) : (
-                                  // Fallback options
-                                  ['Appointment', 'Appointment and Dignitary'].map((type) => (
-                                    <MenuItem key={type} value={type}>
-                                      {type}
-                                    </MenuItem>
-                                  ))
-                                )}
-                              </TextField>
-                            </Grid>
-                            <Grid item xs={12} md={6}>
-                              <TextField
                                 fullWidth
                                 label="Expiry Date (Optional)"
                                 name="expiry_date"
@@ -1102,6 +1081,50 @@ const AdminManageUsers: React.FC = () => {
                                 }}
                               />
                             </Grid>
+                            {isAdvancedMode && userRole === 'ADMIN' && (
+                              <>
+                                <Grid item xs={12} md={6}>
+                                  <TextField
+                                    select
+                                    fullWidth
+                                    label="Access Level"
+                                    name="access_level"
+                                    value={accessFormData.access_level}
+                                    onChange={handleAccessFormChange}
+                                    required
+                                    disabled={accessLevelsLoading}
+                                    error={!!accessFormErrors.access_level}
+                                    helperText={accessFormErrors.access_level || ''}
+                                  >
+                                    {accessLevels.map((level) => (
+                                      <MenuItem key={level} value={level}>
+                                        {level}
+                                      </MenuItem>
+                                    ))}
+                                  </TextField>
+                                </Grid>
+                                <Grid item xs={12} md={6}>
+                                  <TextField
+                                    select
+                                    fullWidth
+                                    label="Entity Type"
+                                    name="entity_type"
+                                    value={accessFormData.entity_type}
+                                    onChange={handleAccessFormChange}
+                                    required
+                                    disabled={entityTypesLoading}
+                                    error={!!accessFormErrors.entity_type}
+                                    helperText={accessFormErrors.entity_type || ''}
+                                  >
+                                    {entityTypes.map((type) => (
+                                      <MenuItem key={type} value={type}>
+                                        {type}
+                                      </MenuItem>
+                                    ))}
+                                  </TextField>
+                                </Grid>
+                              </>
+                            )}
                             <Grid item xs={12}>
                               <TextField
                                 fullWidth
