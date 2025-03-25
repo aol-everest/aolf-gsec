@@ -1952,18 +1952,10 @@ async def get_location(
     db: Session = Depends(get_read_db)
 ):
     """Get a specific location with creator and updater information"""
-    # Get the list of countries for the current user
-    admin_check_access_to_location(
-        current_user=current_user,
-        db=db,
-        location_id=location_id,
-        required_access_level=models.AccessLevel.READ
-    )
-
     # Create aliases for the User table for creator and updater
     CreatorUser = aliased(models.User)
     UpdaterUser = aliased(models.User)
-    
+
     # Query location with joins to get creator and updater information
     result = (
         db.query(models.Location, CreatorUser, UpdaterUser)
@@ -1975,9 +1967,18 @@ async def get_location(
     
     if not result:
         raise HTTPException(status_code=404, detail="Location not found")
-    
+
     location, creator, updater = result
     
+    # Check if the user has access to the location
+    admin_check_access_to_location(
+        current_user=current_user,
+        db=db,
+        country_code=location.country_code,
+        location_id=location_id,
+        required_access_level=models.AccessLevel.READ
+    )
+
     if creator:
         setattr(location, "created_by_user", creator)
     if updater:
@@ -1993,18 +1994,20 @@ async def update_location(
     current_user: models.User = Depends(get_current_user_for_write),
     db: Session = Depends(get_db)
 ):
-    admin_check_access_to_location(
-        current_user=current_user,
-        db=db,
-        location_id=location_id,
-        required_access_level=models.AccessLevel.ADMIN
-    )
-
     """Update a location"""
     location = db.query(models.Location).filter(models.Location.id == location_id).first()
     if not location:
         raise HTTPException(status_code=404, detail="Location not found")
-    
+
+    # Check if the user has access to the location
+    admin_check_access_to_location(
+        current_user=current_user,
+        db=db,
+        country_code=location.country_code,
+        location_id=location_id,
+        required_access_level=models.AccessLevel.ADMIN
+    )
+
     update_data = location_update.dict(exclude_unset=True)
     for key, value in update_data.items():
         setattr(location, key, value)
@@ -2034,18 +2037,20 @@ async def upload_location_attachment(
     db: Session = Depends(get_db)
 ):
     """Upload an attachment for a location"""
-    admin_check_access_to_location(
-        current_user=current_user,
-        db=db,
-        location_id=location_id,
-        required_access_level=models.AccessLevel.ADMIN
-    )
-
     # Check if location exists
     location = db.query(models.Location).filter(models.Location.id == location_id).first()
     if not location:
         raise HTTPException(status_code=404, detail="Location not found")
     
+    # Check if the user has access to the location
+    admin_check_access_to_location(
+        current_user=current_user,
+        db=db,
+        country_code=location.country_code,
+        location_id=location_id,
+        required_access_level=models.AccessLevel.ADMIN
+    )
+
     try:
         # Read file content
         file_content = await file.read()
@@ -2082,17 +2087,20 @@ async def remove_location_attachment(
     db: Session = Depends(get_db)
 ):
     """Remove an attachment from a location"""
+    # Retrieve location for the given ID
+    location = db.query(models.Location).filter(models.Location.id == location_id).first()
+    if not location:
+        raise HTTPException(status_code=404, detail="Location not found")
+
+    # Check if the user has access to the location
     admin_check_access_to_location(
         current_user=current_user,
         db=db,
+        country_code=location.country_code,
         location_id=location_id,
         required_access_level=models.AccessLevel.ADMIN
     )
 
-    location = db.query(models.Location).filter(models.Location.id == location_id).first()
-    if not location:
-        raise HTTPException(status_code=404, detail="Location not found")
-    
     # Clear attachment fields
     location.attachment_path = None
     location.attachment_name = None
