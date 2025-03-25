@@ -1526,8 +1526,6 @@ async def get_all_dignitaries(
         models.UserAccess.is_active == True,
         # Only consider records that grant access to dignitaries
         models.UserAccess.entity_type == models.EntityType.APPOINTMENT_AND_DIGNITARY,
-        # Only consider records that are not location-specific
-        models.UserAccess.location_id == None,
     ).all()
     
     if not user_access:
@@ -1539,14 +1537,66 @@ async def get_all_dignitaries(
     # Start with a "false" condition that ensures no records are returned if no access is configured
     country_filters.append(false())
     
-    for access in user_access:
-        # Add country filter for each access record
-        country_filters.append(
-            models.Dignitary.country_code == access.country_code
-        )
+    # Create location filters based on user's access permissions
+    location_filters = []
     
-    # Apply the filters to the query
-    dignitaries = db.query(models.Dignitary).filter(or_(*country_filters)).all()
+    for access in user_access:
+        # If location-specific access exists, add to location filters
+        if access.location_id is not None:
+            location_filters.append(
+                and_(
+                    models.Appointment.location_id == access.location_id,
+                )
+            )
+        else:
+            # Add country filters for querying dignitaries
+            country_filters.append(
+                models.Dignitary.country_code == access.country_code
+            )
+
+            # Country-level access for appointments
+            location_filters.append(
+                models.Location.country_code == access.country_code
+            )
+    
+    # Calculate date threshold for recent appointments (30 days ago)
+    thirty_days_ago = datetime.now().date() - timedelta(days=30)
+    
+    # Find dignitaries associated with recent appointments the user has access to
+    appointment_dignitary_query = db.query(
+        models.AppointmentDignitary.dignitary_id
+    ).join(
+        models.Appointment, 
+        models.AppointmentDignitary.appointment_id == models.Appointment.id,
+    ).join(
+        models.Location,
+        models.Appointment.location_id == models.Location.id
+    ).filter(
+        or_(*location_filters),
+        or_(
+            models.Appointment.preferred_date >= thirty_days_ago,
+            models.Appointment.appointment_date >= thirty_days_ago
+        )
+    ).distinct()
+    
+    # Get dignitary IDs from the subquery
+    dignitary_ids_from_appointments = [row[0] for row in appointment_dignitary_query.all()]
+    logger.debug(f"Dignitary IDs from appointments: {dignitary_ids_from_appointments}")
+    
+    if not dignitary_ids_from_appointments or len(dignitary_ids_from_appointments) == 0:
+        # If there are no appointment-related dignitaries, get and combine all dignitaries from countries the user has access to
+        dignitaries = db.query(models.Dignitary).filter(or_(*country_filters)).all()
+    else:
+        # If there are appointment-related dignitaries, get and combine them
+        dignitaries = db.query(models.Dignitary).filter(
+            or_(
+                # Combine with appointment-related dignitaries
+                models.Dignitary.id.in_(dignitary_ids_from_appointments),
+                # Apply country filters to get dignitaries from countries the user has access to
+                or_(*country_filters)
+            )
+        ).all()
+    
     return dignitaries
 
 
@@ -2890,12 +2940,14 @@ async def get_user_role_map(
 @app.get("/admin/access-level-options", response_model=List[str])
 async def get_access_levels():
     """Get all possible access level options"""
-    return [level.value for level in models.AccessLevel]
+    # Exclude ADMIN access level for now
+    return [level.value for level in models.AccessLevel if level != models.AccessLevel.ADMIN]
 
 @app.get("/admin/access-level-options-map")
 async def get_access_level_map():
     """Get a dictionary mapping of access level enum names to their display values"""
-    return {level.name: level.value for level in models.AccessLevel}
+    # Exclude ADMIN access level for now
+    return {level.name: level.value for level in models.AccessLevel if level != models.AccessLevel.ADMIN}
 
 @app.get("/admin/entity-type-options", response_model=List[str])
 async def get_entity_types():

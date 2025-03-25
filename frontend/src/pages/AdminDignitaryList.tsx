@@ -115,7 +115,8 @@ const AdminDignitaryList: React.FC = () => {
             rows={dignitaries}
             columns={columns}
             loading={isLoading}
-            defaultVisibleColumns={['name', 'title_in_organization', 'organization', 'has_dignitary_met_gurudev']}
+            defaultVisibleColumns={['name', 'title_in_organization', 'organization', 'country', 'has_dignitary_met_gurudev']}
+            customRowHeight={56}
           />
         </Box>
       </Container>
