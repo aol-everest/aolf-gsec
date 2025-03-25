@@ -2326,7 +2326,7 @@ async def create_dignitary_from_business_card_admin(
 # Usher endpoints
 # ------------------------------------------------------------------------------------------------------------------------------------------------------
 
-@app.get("/usher/appointments/all", response_model=List[schemas.AppointmentUsherView])
+@app.get("/usher/appointments", response_model=List[schemas.AppointmentUsherView])
 @requires_any_role([models.UserRole.USHER, models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
 async def get_usher_appointments(
     db: Session = Depends(get_read_db),
@@ -2340,15 +2340,16 @@ async def get_usher_appointments(
     """
     # If specific date is provided, use that
     if date:
-        if date < datetime.now().date()-timedelta(days=1) or date > datetime.now().date()+timedelta(days=2):
-            raise HTTPException(status_code=400, detail="Date beyond allowed range")
-
         try:
             target_date = datetime.strptime(date, "%Y-%m-%d").date()
-            start_date = target_date
-            end_date = target_date
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+        
+        if target_date < datetime.now().date()-timedelta(days=1) or target_date > datetime.now().date()+timedelta(days=2):
+            raise HTTPException(status_code=400, detail="Date beyond allowed range")
+
+        start_date = target_date
+        end_date = target_date
     else:
         # Default: today and next two days
         today = datetime.now().date()
@@ -2363,7 +2364,10 @@ async def get_usher_appointments(
     
     # USHER specific filters - apply to all roles using this endpoint
     # Only show confirmed appointments for the usher view
-    query = query.filter(models.Appointment.status == models.AppointmentStatus.CONFIRMED)
+    query = query.filter(
+        models.Appointment.status == models.AppointmentStatus.APPROVED,
+        models.Appointment.sub_status == models.AppointmentSubStatus.SCHEDULED,
+    )
     
     # ADMIN role has full access to all appointments within the date range
     if current_user.role != models.UserRole.ADMIN:
