@@ -120,6 +120,19 @@ interface Location {
   is_active?: boolean;
 }
 
+// Add interfaces for the enum maps
+interface RoleMap {
+  [key: string]: string;
+}
+
+interface AccessLevelMap {
+  [key: string]: string;
+}
+
+interface EntityTypeMap {
+  [key: string]: string;
+}
+
 const initialFormData: UserFormData = {
   email: '',
   first_name: '',
@@ -165,6 +178,48 @@ const AdminManageUsers: React.FC = () => {
   const { values: userRoles, isLoading: rolesLoading } = useEnums('userRole');
   const { values: accessLevels, isLoading: accessLevelsLoading } = useEnums('accessLevel');
   const { values: entityTypes, isLoading: entityTypesLoading } = useEnums('entityType');
+  
+  // Fetch role map from the API
+  const { data: roleMap = {} } = useQuery<RoleMap>({
+    queryKey: ['role-map'],
+    queryFn: async () => {
+      try {
+        const { data } = await api.get<RoleMap>('/admin/user-role-options-map');
+        return data;
+      } catch (error) {
+        console.error('Error fetching role map:', error);
+        return {};
+      }
+    },
+  });
+  
+  // Fetch access level map from the API
+  const { data: accessLevelMap = {} } = useQuery<AccessLevelMap>({
+    queryKey: ['access-level-map'],
+    queryFn: async () => {
+      try {
+        const { data } = await api.get<AccessLevelMap>('/admin/access-level-options-map');
+        return data;
+      } catch (error) {
+        console.error('Error fetching access level map:', error);
+        return {};
+      }
+    },
+  });
+  
+  // Fetch entity type map from the API
+  const { data: entityTypeMap = {} } = useQuery<EntityTypeMap>({
+    queryKey: ['entity-type-map'],
+    queryFn: async () => {
+      try {
+        const { data } = await api.get<EntityTypeMap>('/admin/entity-type-options-map');
+        return data;
+      } catch (error) {
+        console.error('Error fetching entity type map:', error);
+        return {};
+      }
+    },
+  });
   
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['users'],
@@ -416,20 +471,20 @@ const AdminManageUsers: React.FC = () => {
   // Function to determine access level and entity type based on user role
   const determineAccessSettings = (role: string): { access_level: string; entity_type: string } => {
     switch (role) {
-      case 'USHER':
+      case roleMap['USHER']:
         return {
-          access_level: 'Read',
-          entity_type: 'Appointment'
+          access_level: accessLevelMap['READ'],
+          entity_type: entityTypeMap['APPOINTMENT']
         };
-      case 'SECRETARIAT':
+      case roleMap['SECRETARIAT']:
         return {
-          access_level: 'ReadWrite',
-          entity_type: 'Appointment and Dignitary'
+          access_level: accessLevelMap['READWRITE'],
+          entity_type: entityTypeMap['APPOINTMENT_AND_DIGNITARY']
         };
       default:
         return {
-          access_level: 'Read',
-          entity_type: 'Appointment'
+          access_level: accessLevelMap['READ'],
+          entity_type: entityTypeMap['APPOINTMENT']
         };
     }
   };
@@ -617,7 +672,16 @@ const AdminManageUsers: React.FC = () => {
     },
     { field: 'email', headerName: 'Email', width: 200, flex: 1 },
     { field: 'phone_number', headerName: 'Phone Number', width: 130, flex: 1 },
-    { field: 'role', headerName: 'Role', width: 130, flex: 0.81 },
+    { 
+      field: 'role', 
+      headerName: 'Role', 
+      width: 130, 
+      flex: 0.81,
+      renderCell: (params) => {
+        // Display the user-friendly value from the map if available
+        return Object.keys(roleMap).find(key => roleMap[key] === params.value) || params.value;
+      }
+    },
     { 
       field: 'created_at', 
       headerName: 'Created On', 
@@ -725,10 +789,29 @@ const AdminManageUsers: React.FC = () => {
     },
   ];
   
+  // Update access record columns to use maps
   const advancedAccessColumns: GridColDef[] = [
     ...basicAccessColumns.slice(0, 2), // Include country and location columns
-    { field: 'access_level', headerName: 'Access Level', width: 120, flex: 0.81 },
-    { field: 'entity_type', headerName: 'Entity Type', width: 180, flex: 0.81 },
+    { 
+      field: 'access_level', 
+      headerName: 'Access Level', 
+      width: 120, 
+      flex: 0.81,
+      renderCell: (params) => {
+        // Display the user-friendly value from the map if available
+        return Object.keys(accessLevelMap).find(key => accessLevelMap[key] === params.value) || params.value;
+      }
+    },
+    { 
+      field: 'entity_type', 
+      headerName: 'Entity Type', 
+      width: 180, 
+      flex: 0.81,
+      renderCell: (params) => {
+        // Display the user-friendly value from the map if available
+        return Object.keys(entityTypeMap).find(key => entityTypeMap[key] === params.value) || params.value;
+      }
+    },
     ...basicAccessColumns.slice(2), // Include expiry date, status, and actions columns
   ];
 
@@ -738,11 +821,11 @@ const AdminManageUsers: React.FC = () => {
   // Get role explanation text based on selected role
   const getRoleExplanationText = (role: string): string => {
     switch (role) {
-      case 'USHER':
+      case roleMap['USHER']:
         return 'Users with the USHER role will have Read-only access to Appointments. You can control which countries and locations they can access.';
-      case 'SECRETARIAT':
+      case roleMap['SECRETARIAT']:
         return 'Users with the SECRETARIAT role will have Read and Edit access to Appointments and Dignitaries. You can control which countries and locations they can access.';
-      case 'GENERAL':
+      case roleMap['GENERAL']:
         return 'Users with the GENERAL role have default access permissions and do not require specific access configuration.';
       default:
         return '';
@@ -885,12 +968,20 @@ const AdminManageUsers: React.FC = () => {
                         error={!!formErrors.role}
                         helperText={formErrors.role || (rolesLoading ? "Loading roles..." : "")}
                       >
-                        {userRoles.length > 0 && (
+                        {Object.entries(roleMap).length > 0 ? (
+                          Object.entries(roleMap).map(([key, value]) => (
+                            <MenuItem key={key} value={value}>
+                              {value}
+                            </MenuItem>
+                          ))
+                        ) : userRoles.length > 0 ? (
                           userRoles.map((role) => (
                             <MenuItem key={role} value={role}>
                               {role}
                             </MenuItem>
                           ))
+                        ) : (
+                          <MenuItem disabled>Loading roles...</MenuItem>
                         )}
                       </TextField>
                       <IconButton 
@@ -927,43 +1018,28 @@ const AdminManageUsers: React.FC = () => {
                 </Grid>
                 
                 {/* Access Management Section - Only show for existing users that are NOT GENERAL role */}
-                {editingId && formData.role !== 'GENERAL' && (
+                {editingId && formData.role !== (roleMap['GENERAL']) && (
                   <Box sx={{ mt: 4 }}>
                     <Divider sx={{ my: 2 }} />
-                    
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                      <Typography variant="h6">Access Management</Typography>
-                      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                        {userRole === 'ADMIN' && (
-                          <FormControlLabel
-                            control={
-                              <Switch
-                                checked={isAdvancedMode}
-                                onChange={(e) => setIsAdvancedMode(e.target.checked)}
-                                name="advancedMode"
-                              />
-                            }
-                            label="Advanced Mode"
-                          />
-                        )}
-                      </Box>
-                    </Box>
                     
                     {/* Access Records Table - Show this first */}
                     <Box sx={{ mb: 3 }}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                        <Typography variant="subtitle1">Current Access</Typography>
-                        {!showAccessForm && (
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            startIcon={<AddIcon />}
-                            onClick={() => handleAccessFormOpen()}
-                            size="small"
-                          >
-                            Add Access
-                          </Button>
-                        )}
+                        <Typography variant="subtitle1">Access Management</Typography>
+                        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                          {userRole === 'ADMIN' && (
+                            <FormControlLabel
+                              control={
+                                <Switch
+                                  checked={isAdvancedMode}
+                                  onChange={(e) => setIsAdvancedMode(e.target.checked)}
+                                  name="advancedMode"
+                                />
+                              }
+                              label="Advanced Mode"
+                            />
+                          )}
+                        </Box>
                       </Box>
                       
                       {userAccessLoading ? (
@@ -1001,10 +1077,21 @@ const AdminManageUsers: React.FC = () => {
                         </Paper>
                       )}
                     </Box>
-                    
+                    {!showAccessForm && (
+                          <Button
+                            variant="contained"
+                            color="primary"
+                            startIcon={<AddIcon />}
+                            onClick={() => handleAccessFormOpen()}
+                            size="small"
+                          >
+                            Add Access
+                          </Button>
+                    )}
+
                     {/* New/Edit Access Form - Show this after the table */}
                     <Collapse in={showAccessForm}>
-                      <Card variant="outlined" sx={{ mb: 3, bgcolor: '#f9f9f9' }}>
+                      <Card variant="outlined" sx={{ mb: 3 }}>
                         <CardContent>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                             <Typography variant="h6">{editingAccessId ? 'Edit Access' : 'Add New Access'}</Typography>
@@ -1014,7 +1101,7 @@ const AdminManageUsers: React.FC = () => {
                           </Box>
                           
                           <Grid container spacing={2}>
-                            <Grid item xs={12} md={6}>
+                            <Grid item xs={12} md={6} lg={4}>
                               <TextField
                                 select
                                 fullWidth
@@ -1047,11 +1134,11 @@ const AdminManageUsers: React.FC = () => {
                                 )}
                               </TextField>
                             </Grid>
-                            <Grid item xs={12} md={6}>
+                            <Grid item xs={12} md={6} lg={5}>
                               <TextField
                                 select
                                 fullWidth
-                                label="Locations (Multiple)"
+                                label="Locations (select multiple if needed)"
                                 name="location_ids"
                                 value={accessFormData.location_ids}
                                 onChange={(e) => {
@@ -1083,7 +1170,7 @@ const AdminManageUsers: React.FC = () => {
                                 Leave empty for all locations. {filteredLocations.length} locations available for this country.
                               </Typography>
                             </Grid>
-                            <Grid item xs={12} md={6}>
+                            <Grid item xs={12} md={6} lg={3}>
                               <TextField
                                 fullWidth
                                 label="Expiry Date (Optional)"
@@ -1096,21 +1183,9 @@ const AdminManageUsers: React.FC = () => {
                                 }}
                               />
                             </Grid>
-                            <Grid item xs={12} md={6}>
-                              <TextField
-                                fullWidth
-                                label="Reason"
-                                name="reason"
-                                value={accessFormData.reason}
-                                onChange={handleAccessFormChange}
-                                required
-                                error={!!accessFormErrors.reason}
-                                helperText={accessFormErrors.reason || ''}
-                              />
-                            </Grid>
                             {isAdvancedMode && userRole === 'ADMIN' && (
                               <>
-                                <Grid item xs={12} md={6}>
+                                <Grid item xs={12} md={6} lg={4}>
                                   <TextField
                                     select
                                     fullWidth
@@ -1123,14 +1198,24 @@ const AdminManageUsers: React.FC = () => {
                                     error={!!accessFormErrors.access_level}
                                     helperText={accessFormErrors.access_level || ''}
                                   >
-                                    {accessLevels.map((level) => (
-                                      <MenuItem key={level} value={level}>
-                                        {level}
-                                      </MenuItem>
-                                    ))}
+                                    {Object.entries(accessLevelMap).length > 0 ? (
+                                      Object.entries(accessLevelMap).map(([key, value]) => (
+                                        <MenuItem key={key} value={value}>
+                                          {value}
+                                        </MenuItem>
+                                      ))
+                                    ) : accessLevels.length > 0 ? (
+                                      accessLevels.map((level) => (
+                                        <MenuItem key={level} value={level}>
+                                          {level}
+                                        </MenuItem>
+                                      ))
+                                    ) : (
+                                      <MenuItem disabled>Loading access levels...</MenuItem>
+                                    )}
                                   </TextField>
                                 </Grid>
-                                <Grid item xs={12} md={6}>
+                                <Grid item xs={12} md={6} lg={4}>
                                   <TextField
                                     select
                                     fullWidth
@@ -1143,15 +1228,39 @@ const AdminManageUsers: React.FC = () => {
                                     error={!!accessFormErrors.entity_type}
                                     helperText={accessFormErrors.entity_type || ''}
                                   >
-                                    {entityTypes.map((type) => (
-                                      <MenuItem key={type} value={type}>
-                                        {type}
-                                      </MenuItem>
-                                    ))}
+                                    {Object.entries(entityTypeMap).length > 0 ? (
+                                      Object.entries(entityTypeMap).map(([key, value]) => (
+                                        <MenuItem key={key} value={value}>
+                                          {value}
+                                        </MenuItem>
+                                      ))
+                                    ) : entityTypes.length > 0 ? (
+                                      entityTypes.map((type) => (
+                                        <MenuItem key={type} value={type}>
+                                          {type}
+                                        </MenuItem>
+                                      ))
+                                    ) : (
+                                      <MenuItem disabled>Loading entity types...</MenuItem>
+                                    )}
                                   </TextField>
                                 </Grid>
                               </>
                             )}
+                            <Grid item xs={12}>
+                              <TextField
+                                fullWidth
+                                multiline
+                                rows={2}
+                                label="Reason"
+                                name="reason"
+                                value={accessFormData.reason}
+                                onChange={handleAccessFormChange}
+                                required
+                                error={!!accessFormErrors.reason}
+                                helperText={accessFormErrors.reason || ''}
+                              />
+                            </Grid>
                           </Grid>
                         </CardContent>
                         <CardActions sx={{ justifyContent: 'flex-end', p: 2 }}>
@@ -1175,7 +1284,7 @@ const AdminManageUsers: React.FC = () => {
                 )}
                 
                 {/* Show explanation for GENERAL users */}
-                {editingId && formData.role === 'GENERAL' && (
+                {editingId && formData.role === (roleMap['GENERAL']) && (
                   <Box sx={{ mt: 4 }}>
                     <Divider sx={{ my: 2 }} />
                     <Paper sx={{ p: 2, mt: 1, bgcolor: '#f5f5f5', borderRadius: 1, border: '1px solid #e0e0e0' }}>
