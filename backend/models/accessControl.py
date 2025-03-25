@@ -10,8 +10,8 @@ schema_prefix = f"{schema}." if schema != 'public' else ''
 
 class AccessLevel(str, enum.Enum):
     """Access level enum with proper case values"""
-    READ = "Read"
-    READ_WRITE = "ReadWrite"
+    READ = "Read Only"
+    READ_WRITE = "Read and Edit"
     ADMIN = "Admin"
 
     def __str__(self):
