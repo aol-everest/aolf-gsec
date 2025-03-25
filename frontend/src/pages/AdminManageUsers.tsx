@@ -118,17 +118,6 @@ interface Location {
   is_active?: boolean;
 }
 
-interface UserAccessSummary {
-  user_id: number;
-  user_email: string;
-  user_name: string;
-  countries: string[];
-  location_count: number;
-  entity_types: string[];
-  max_access_level: string | null;
-  access_count: number;
-}
-
 const initialFormData: UserFormData = {
   email: '',
   first_name: '',
@@ -237,24 +226,6 @@ const AdminManageUsers: React.FC = () => {
     },
     enabled: !!editingId,
   });
-  
-  const { 
-    data: userAccessSummary, 
-    isLoading: userAccessSummaryLoading 
-  } = useQuery({
-    queryKey: ['user-access-summary', editingId],
-    queryFn: async () => {
-      if (!editingId) return null;
-      try {
-        const { data } = await api.get<UserAccessSummary>(`/admin/users/${editingId}/access/summary`);
-        return data;
-      } catch (error) {
-        console.error('Error fetching user access summary:', error);
-        return null;
-      }
-    },
-    enabled: !!editingId,
-  });
 
   // Mutation for creating/updating users
   const userMutation = useMutation({
@@ -334,7 +305,6 @@ const AdminManageUsers: React.FC = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-access', editingId] });
-      queryClient.invalidateQueries({ queryKey: ['user-access-summary', editingId] });
       enqueueSnackbar(
         editingAccessId 
           ? 'Access updated successfully'
@@ -365,7 +335,6 @@ const AdminManageUsers: React.FC = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['user-access', editingId] });
-      queryClient.invalidateQueries({ queryKey: ['user-access-summary', editingId] });
       enqueueSnackbar(
         data.is_active 
           ? 'Access activated successfully'
@@ -392,7 +361,6 @@ const AdminManageUsers: React.FC = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-access', editingId] });
-      queryClient.invalidateQueries({ queryKey: ['user-access-summary', editingId] });
       enqueueSnackbar('Access removed successfully', { variant: 'success' });
     },
     onError: (error: any) => {
@@ -696,8 +664,8 @@ const AdminManageUsers: React.FC = () => {
   ];
   
   // Access record data grid columns
-  const accessColumns: GridColDef[] = [
-    { field: 'country_code', headerName: 'Country', width: 100, flex: 0.5  },
+  const basicAccessColumns: GridColDef[] = [
+    { field: 'country_code', headerName: 'Country', width: 100, flex: 0.5 },
     { 
       field: 'location_id', 
       headerName: 'Location', 
@@ -709,8 +677,6 @@ const AdminManageUsers: React.FC = () => {
         return location ? location.name : `Location #${params.value}`;
       }
     },
-    { field: 'access_level', headerName: 'Access Level', width: 120, flex: 0.81  },
-    { field: 'entity_type', headerName: 'Entity Type', width: 180, flex: 0.81 },
     { 
       field: 'expiry_date', 
       headerName: 'Expires', 
@@ -755,6 +721,16 @@ const AdminManageUsers: React.FC = () => {
       ],
     },
   ];
+  
+  const advancedAccessColumns: GridColDef[] = [
+    ...basicAccessColumns.slice(0, 2), // Include country and location columns
+    { field: 'access_level', headerName: 'Access Level', width: 120, flex: 0.81 },
+    { field: 'entity_type', headerName: 'Entity Type', width: 180, flex: 0.81 },
+    ...basicAccessColumns.slice(2), // Include expiry date, status, and actions columns
+  ];
+
+  // Use the appropriate columns based on mode
+  const accessColumns = isAdvancedMode && userRole === 'ADMIN' ? advancedAccessColumns : basicAccessColumns;
 
   return (
     <Layout>
@@ -899,8 +875,8 @@ const AdminManageUsers: React.FC = () => {
                   </Grid>
                 </Grid>
                 
-                {/* Access Management Section - Only show for existing users */}
-                {editingId && (
+                {/* Access Management Section - Only show for existing users that are NOT GENERAL role */}
+                {editingId && formData.role !== 'GENERAL' && (
                   <Box sx={{ mt: 4 }}>
                     <Divider sx={{ my: 2 }} />
                     
@@ -932,60 +908,18 @@ const AdminManageUsers: React.FC = () => {
                       </Box>
                     </Box>
                     
-                    {/* USHER role restriction notice */}
-                    {/* {formData.role === 'USHER' && (
-                      <Paper 
-                        sx={{ 
-                          p: 2, 
-                          mb: 3, 
-                          color: 'info.dark' 
-                        }}
-                      >
+                    {/* Add an explanation for SECRETARIAT and USHER users */}
+                    <Box sx={{ mb: 3 }}>
+                      <Paper sx={{ p: 2, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
                         <Typography variant="body2">
-                          <strong>Note:</strong> Users with the USHER role will only have Read access and can only access Appointments, regardless of the settings below. Access level and entity type selections will be overridden by the system.
+                          {formData.role === 'USHER' 
+                            ? 'Users with the USHER role will have Read-only access to Appointments. You can control which countries and locations they can access.'
+                            : formData.role === 'SECRETARIAT'
+                              ? 'Users with the SECRETARIAT role will have Read and Edit access to Appointments and Dignitaries. You can control which countries and locations they can access.'
+                              : ''}
                         </Typography>
                       </Paper>
-                    )} */}
-                    
-                    {userAccessSummaryLoading ? (
-                      <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-                        <CircularProgress size={24} />
-                      </Box>
-                    ) : userAccessSummary ? (
-                      <Box sx={{ mb: 3 }}>
-                        <Typography variant="subtitle2" gutterBottom>Access Summary</Typography>
-                        <Grid container spacing={2}>
-                          <Grid item xs={12} md={4}>
-                            <Paper sx={{ p: 2 }}>
-                              <Typography variant="body2" color="text.secondary">Countries</Typography>
-                              <Typography variant="body1">
-                                {userAccessSummary.countries.length > 0 
-                                  ? userAccessSummary.countries.join(', ') 
-                                  : 'None'}
-                              </Typography>
-                            </Paper>
-                          </Grid>
-                          <Grid item xs={12} md={4}>
-                            <Paper sx={{ p: 2 }}>
-                              <Typography variant="body2" color="text.secondary">Max Access Level</Typography>
-                              <Typography variant="body1">
-                                {userAccessSummary.max_access_level || 'None'}
-                              </Typography>
-                            </Paper>
-                          </Grid>
-                          <Grid item xs={12} md={4}>
-                            <Paper sx={{ p: 2 }}>
-                              <Typography variant="body2" color="text.secondary">Entity Types</Typography>
-                              <Typography variant="body1">
-                                {userAccessSummary.entity_types.length > 0 
-                                  ? userAccessSummary.entity_types.join(', ') 
-                                  : 'None'}
-                              </Typography>
-                            </Paper>
-                          </Grid>
-                        </Grid>
-                      </Box>
-                    ) : null}
+                    </Box>
                     
                     {/* New/Edit Access Form */}
                     <Collapse in={showAccessForm}>
@@ -1164,13 +1098,26 @@ const AdminManageUsers: React.FC = () => {
                         <CircularProgress size={24} />
                       </Box>
                     ) : userAccess.length > 0 ? (
-                      <CommonDataGrid
-                        rows={userAccess}
-                        columns={accessColumns}
-                        loading={userAccessLoading}
-                        autoHeight
-                        hideFooter={userAccess.length <= 10}
-                      />
+                      <>
+                        {!isAdvancedMode && (
+                          <Box sx={{ mb: 2 }}>
+                            <Typography variant="body2" color="text.secondary">
+                              {formData.role === 'USHER' 
+                                ? 'This user has Read access to Appointments only.'
+                                : formData.role === 'SECRETARIAT'
+                                  ? 'This user has Read and Edit access to Appointments and Dignitaries.'
+                                  : 'This user has Read access to Appointments only.'}
+                            </Typography>
+                          </Box>
+                        )}
+                        <CommonDataGrid
+                          rows={userAccess}
+                          columns={accessColumns}
+                          loading={userAccessLoading}
+                          autoHeight
+                          hideFooter={userAccess.length <= 10}
+                        />
+                      </>
                     ) : (
                       <Paper sx={{ p: 2, textAlign: 'center' }}>
                         <Typography variant="body1" color="text.secondary">
@@ -1178,6 +1125,17 @@ const AdminManageUsers: React.FC = () => {
                         </Typography>
                       </Paper>
                     )}
+                  </Box>
+                )}
+                
+                {/* Show explanation for GENERAL users */}
+                {editingId && formData.role === 'GENERAL' && (
+                  <Box sx={{ mt: 4 }}>
+                    <Paper sx={{ p: 1.3, mt: 1, bgcolor: '#f1f1f1', color: 'secondary.contrast', border: '1px solid #f1f1f1' }}>
+                      <Typography variant="body2">
+                        NOTE: Users with the GENERAL role have default access permissions and do not require specific access configuration.
+                      </Typography>
+                    </Paper>
                   </Box>
                 )}
               </CardContent>
