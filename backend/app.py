@@ -2865,14 +2865,19 @@ async def get_appointment_time_of_day_map():
     return {time.name: time.value for time in models.AppointmentTimeOfDay}
 
 @app.get("/admin/user-role-options", response_model=List[str])
-async def get_user_role_options():
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def get_user_role_options(
+    current_user: models.User = Depends(get_current_user),
+):
     """Get all possible user roles"""
-    return [role.value for role in models.UserRole]
+    return [role.value for role in models.UserRole if role.is_less_than(current_user.role) or current_user.role == models.UserRole.ADMIN]
 
 @app.get("/admin/user-role-options-map")
-async def get_user_role_map():
+async def get_user_role_map(
+    current_user: models.User = Depends(get_current_user),
+):
     """Get a dictionary mapping of user role enum names to their display values"""
-    return {role.name: role.value for role in models.UserRole}
+    return {role.name: role.value for role in models.UserRole if role.is_less_than(current_user.role) or current_user.role == models.UserRole.ADMIN}
 
 @app.get("/admin/access-level-options", response_model=List[str])
 async def get_access_levels():

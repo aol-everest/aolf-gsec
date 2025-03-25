@@ -859,11 +859,13 @@ const AdminManageUsers: React.FC = () => {
   const getRoleExplanationText = (role: string): string => {
     switch (role) {
       case roleMap['USHER']:
-        return 'Users with the USHER role will have Read-only access to Appointments. You can control which countries and locations they can access.';
+        return 'Users with the USHER role will have Read-only access to Appointments. You can control which locations they can access.';
       case roleMap['SECRETARIAT']:
-        return 'Users with the SECRETARIAT role will have Read and Edit access to Appointments and Dignitaries. You can control which countries and locations they can access.';
+        return 'Users with the SECRETARIAT role will have Read and Edit access to Appointments and Dignitaries. You can control which countries or locations they can access.';
       case roleMap['GENERAL']:
         return 'Users with the GENERAL role have default access permissions and do not require specific access configuration.';
+      case roleMap['ADMIN']:
+        return 'Users with the ADMIN role have full access to all features and can manage all users and access permissions.';
       default:
         return '';
     }

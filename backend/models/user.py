@@ -42,6 +42,12 @@ class UserRole(str, enum.Enum):
         """
         return self.get_int_value() >= other.get_int_value()
 
+    def is_less_than(self, other: "UserRole"):
+        """
+        Check if this user role is less than the other
+        """
+        return self.get_int_value() < other.get_int_value()
+
 
 # Define default notification preferences
 DEFAULT_EMAIL_NOTIFICATION_PREFERENCES = {
