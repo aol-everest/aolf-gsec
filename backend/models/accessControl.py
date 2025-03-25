@@ -98,11 +98,19 @@ class UserAccess(Base):
         
         # Get the user to check their role
         user = db.query(User).filter(User.id == user_id).first()
+
+        if not user:
+            raise ValueError("User not found")
         
-        if user and user.role == UserRole.USHER:
-            # Override settings for USHER role
-            access_level = AccessLevel.READ
-            entity_type = EntityType.APPOINTMENT
+        if user.role == UserRole.USHER:
+            if not location_id:
+                raise ValueError("Location is required for USHER users")
+        
+            if access_level != AccessLevel.READ:
+                raise ValueError("USHER users can only have read access")
+
+            if entity_type != EntityType.APPOINTMENT:
+                raise ValueError("USHER users can only have appointment access")
         
         # Create the access record
         access = cls(

@@ -581,6 +581,14 @@ const AdminManageUsers: React.FC = () => {
       errors.reason = 'Reason is required';
     }
     
+    // Check if the current user being edited is an USHER
+    const user = users.find(u => u.id === editingId);
+    if (user && (user.role === roleMap['USHER'] || user.role === 'USHER')) {
+      if (!accessFormData.location_ids || accessFormData.location_ids.length === 0) {
+        errors.location_ids = 'At least one location must be selected for USHER users';
+      }
+    }
+    
     setAccessFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -661,6 +669,35 @@ const AdminManageUsers: React.FC = () => {
     
     return locations.filter(loc => loc.country_code === accessFormData.country_code);
   }, [locations, accessFormData.country_code]);
+  
+  // Add the effect after the filteredLocations declaration
+  useEffect(() => {
+    if (showAccessForm && editingId) {
+      const user = users.find(u => u.id === editingId);
+      
+      // If user is an USHER and no location is selected, check for any pre-fill 
+      // opportunities or at least mark it as an error
+      if (user && (user.role === roleMap['USHER'] || user.role === 'USHER') && 
+          accessFormData.country_code && 
+          (!accessFormData.location_ids || accessFormData.location_ids.length === 0)) {
+        
+        // If there's only one location for the country, auto-select it
+        if (filteredLocations.length === 1) {
+          setAccessFormData(prev => ({
+            ...prev,
+            location_ids: [filteredLocations[0].id]
+          }));
+        }
+        // Otherwise, just note that the selection is required
+        else if (filteredLocations.length > 0) {
+          setAccessFormErrors(prev => ({
+            ...prev,
+            location_ids: 'At least one location must be selected for USHER users'
+          }));
+        }
+      }
+    }
+  }, [showAccessForm, editingId, users, accessFormData.country_code, filteredLocations, roleMap]);
 
   const columns: GridColDef[] = [
     { 
@@ -1151,6 +1188,17 @@ const AdminManageUsers: React.FC = () => {
                                 SelectProps={{
                                   multiple: true
                                 }}
+                                error={!!accessFormErrors.location_ids}
+                                helperText={
+                                  accessFormErrors.location_ids || 
+                                  (() => {
+                                    const user = users.find(u => u.id === editingId);
+                                    const isUsherUser = user && (user.role === roleMap['USHER'] || user.role === 'USHER');
+                                    return accessFormData.country_code ? 
+                                      `${filteredLocations.length} locations available${isUsherUser ? ' (required for USHER users)' : ''}` : 
+                                      'Select a country first';
+                                  })()
+                                }
                               >
                                 {accessFormData.country_code ? (
                                   filteredLocations.length > 0 ? (
@@ -1166,9 +1214,6 @@ const AdminManageUsers: React.FC = () => {
                                   <MenuItem disabled>Select a country first</MenuItem>
                                 )}
                               </TextField>
-                              <Typography variant="caption" color="text.secondary">
-                                Leave empty for all locations. {filteredLocations.length} locations available for this country.
-                              </Typography>
                             </Grid>
                             <Grid item xs={12} md={6} lg={3}>
                               <TextField
