@@ -10,7 +10,7 @@ import AppointmentRequest from '../pages/AppointmentRequest';
 import AppointmentStatus from '../pages/AppointmentStatus';
 import DignitaryList from '../pages/DignitaryList';
 import Profile from '../pages/Profile';
-import UsersManage from '../pages/UsersManage';
+import AdminManageUsers from '../pages/AdminManageUsers';
 import AdminDignitaryList from '../pages/AdminDignitaryList';
 import AdminAppointmentList from '../pages/AdminAppointmentList';
 import AdminAppointmentTiles from '../pages/AdminAppointmentTiles';
@@ -177,7 +177,7 @@ export const AdminUsersRoute: RouteConfig = {
   icon: PeopleIconV2,
   roles: [ADMIN_ROLE, SECRETARIAT_ROLE],
   showInSidebar: true,
-  component: UsersManage
+  component: AdminManageUsers
 }
 
 export const AdminDignitariesRoute: RouteConfig = {

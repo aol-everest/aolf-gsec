@@ -147,7 +147,7 @@ const initialAccessFormData: UserAccessFormData = {
   is_active: true,
 };
 
-const UsersManage: React.FC = () => {
+const AdminManageUsers: React.FC = () => {
   const api = useApi();
   const { enqueueSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
@@ -1185,4 +1185,4 @@ const UsersManage: React.FC = () => {
   );
 };
 
-export default UsersManage; 
+export default AdminManageUsers; 
