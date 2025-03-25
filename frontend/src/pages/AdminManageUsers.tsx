@@ -24,7 +24,8 @@ import {
   ListItemSecondaryAction,
   Divider,
   FormControlLabel,
-  Switch
+  Switch,
+  Popover
 } from '@mui/material';
 import {
   DataGrid,
@@ -43,6 +44,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
 import LockIcon from '@mui/icons-material/Lock';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import { useEnums } from '../hooks/useEnums';
 
 interface User {
@@ -154,6 +156,7 @@ const AdminManageUsers: React.FC = () => {
   const [editingAccessId, setEditingAccessId] = useState<number | null>(null);
   const [showAccessForm, setShowAccessForm] = useState(false);
   const [isAdvancedMode, setIsAdvancedMode] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   
   // Get user role from localStorage
   const userRole = localStorage.getItem('role');
@@ -732,6 +735,30 @@ const AdminManageUsers: React.FC = () => {
   // Use the appropriate columns based on mode
   const accessColumns = isAdvancedMode && userRole === 'ADMIN' ? advancedAccessColumns : basicAccessColumns;
 
+  // Get role explanation text based on selected role
+  const getRoleExplanationText = (role: string): string => {
+    switch (role) {
+      case 'USHER':
+        return 'Users with the USHER role will have Read-only access to Appointments. You can control which countries and locations they can access.';
+      case 'SECRETARIAT':
+        return 'Users with the SECRETARIAT role will have Read and Edit access to Appointments and Dignitaries. You can control which countries and locations they can access.';
+      case 'GENERAL':
+        return 'Users with the GENERAL role have default access permissions and do not require specific access configuration.';
+      default:
+        return '';
+    }
+  };
+
+  const handleRoleInfoClick = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleRoleInfoClose = () => {
+    setAnchorEl(null);
+  };
+
+  const openRoleInfo = Boolean(anchorEl);
+
   return (
     <Layout>
       <Container maxWidth="xl">
@@ -828,36 +855,7 @@ const AdminManageUsers: React.FC = () => {
                     <TextField
                       select
                       fullWidth
-                      label="Role"
-                      name="role"
-                      value={formData.role}
-                      onChange={handleChange}
-                      required
-                      disabled={rolesLoading}
-                      error={!!formErrors.role}
-                      helperText={formErrors.role || (rolesLoading ? "Loading roles..." : "")}
-                    >
-                      {userRoles.length > 0 ? (
-                        userRoles.map((role) => (
-                          <MenuItem key={role} value={role}>
-                            {role}
-                          </MenuItem>
-                        ))
-                      ) : (
-                        // Fallback options if API fails
-                        ['SECRETARIAT', 'GENERAL', 'USHER'].map((role) => (
-                          <MenuItem key={role} value={role}>
-                            {role}
-                          </MenuItem>
-                        ))
-                      )}
-                    </TextField>
-                  </Grid>
-                  <Grid item xs={12} md={6} lg={4}>
-                    <TextField
-                      select
-                      fullWidth
-                      label="Country"
+                      label="Residing Country"
                       name="country_code"
                       value={formData.country_code}
                       onChange={handleChange}
@@ -872,6 +870,59 @@ const AdminManageUsers: React.FC = () => {
                         </MenuItem>
                       ))}
                     </TextField>
+                  </Grid>
+                  <Grid item xs={12} md={6} lg={4}>
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
+                      <TextField
+                        select
+                        fullWidth
+                        label="Role"
+                        name="role"
+                        value={formData.role}
+                        onChange={handleChange}
+                        required
+                        disabled={rolesLoading}
+                        error={!!formErrors.role}
+                        helperText={formErrors.role || (rolesLoading ? "Loading roles..." : "")}
+                      >
+                        {userRoles.length > 0 && (
+                          userRoles.map((role) => (
+                            <MenuItem key={role} value={role}>
+                              {role}
+                            </MenuItem>
+                          ))
+                        )}
+                      </TextField>
+                      <IconButton 
+                        size="small" 
+                        onClick={handleRoleInfoClick}
+                        sx={{ mt: 1, ml: 1 }}
+                        aria-describedby="role-info-popover"
+                      >
+                        <HelpOutlineIcon color="primary" />
+                      </IconButton>
+                      <Popover
+                        id="role-info-popover"
+                        open={openRoleInfo}
+                        anchorEl={anchorEl}
+                        onClose={handleRoleInfoClose}
+                        anchorOrigin={{
+                          vertical: 'bottom',
+                          horizontal: 'left',
+                        }}
+                        transformOrigin={{
+                          vertical: 'top',
+                          horizontal: 'left',
+                        }}
+                      >
+                        <Box sx={{ p: 2, maxWidth: 320 }}>
+                          <Typography variant="subtitle2" gutterBottom>Role Information</Typography>
+                          <Typography variant="body2">
+                            {getRoleExplanationText(formData.role)}
+                          </Typography>
+                        </Box>
+                      </Popover>
+                    </Box>
                   </Grid>
                 </Grid>
                 
@@ -895,9 +946,17 @@ const AdminManageUsers: React.FC = () => {
                             label="Advanced Mode"
                           />
                         )}
+                      </Box>
+                    </Box>
+                    
+                    {/* Access Records Table - Show this first */}
+                    <Box sx={{ mb: 3 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                        <Typography variant="subtitle1">Current Access</Typography>
                         {!showAccessForm && (
                           <Button
-                            variant="outlined"
+                            variant="contained"
+                            color="primary"
                             startIcon={<AddIcon />}
                             onClick={() => handleAccessFormOpen()}
                             size="small"
@@ -906,27 +965,49 @@ const AdminManageUsers: React.FC = () => {
                           </Button>
                         )}
                       </Box>
+                      
+                      {userAccessLoading ? (
+                        <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                          <CircularProgress size={24} />
+                        </Box>
+                      ) : userAccess.length > 0 ? (
+                        <CommonDataGrid
+                          rows={userAccess}
+                          columns={accessColumns}
+                          loading={userAccessLoading}
+                          autoHeight
+                          hideFooter={userAccess.length <= 10}
+                          slots={{
+                            toolbar: null
+                          }}
+                          disableRowSelectionOnClick
+                          customRowHeight={45}
+                        />
+                      ) : (
+                        <Paper sx={{ p: 2, textAlign: 'center', bgcolor: '#f9f9f9', borderRadius: 1 }}>
+                          <Typography variant="body1" color="text.secondary">
+                            No access records found for this user
+                          </Typography>
+                          <Button
+                            variant="outlined"
+                            color="primary"
+                            startIcon={<AddIcon />}
+                            onClick={() => handleAccessFormOpen()}
+                            size="small"
+                            sx={{ mt: 2 }}
+                          >
+                            Grant Access
+                          </Button>
+                        </Paper>
+                      )}
                     </Box>
                     
-                    {/* Add an explanation for SECRETARIAT and USHER users */}
-                    <Box sx={{ mb: 3 }}>
-                      <Paper sx={{ p: 2, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
-                        <Typography variant="body2">
-                          {formData.role === 'USHER' 
-                            ? 'Users with the USHER role will have Read-only access to Appointments. You can control which countries and locations they can access.'
-                            : formData.role === 'SECRETARIAT'
-                              ? 'Users with the SECRETARIAT role will have Read and Edit access to Appointments and Dignitaries. You can control which countries and locations they can access.'
-                              : ''}
-                        </Typography>
-                      </Paper>
-                    </Box>
-                    
-                    {/* New/Edit Access Form */}
+                    {/* New/Edit Access Form - Show this after the table */}
                     <Collapse in={showAccessForm}>
-                      <Card variant="outlined" sx={{ mb: 3 }}>
+                      <Card variant="outlined" sx={{ mb: 3, bgcolor: '#f9f9f9' }}>
                         <CardContent>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                            <Typography variant="subtitle1">{editingAccessId ? 'Edit Access' : 'Add New Access'}</Typography>
+                            <Typography variant="h6">{editingAccessId ? 'Edit Access' : 'Add New Access'}</Typography>
                             <IconButton onClick={resetAccessForm} size="small">
                               <CloseIcon />
                             </IconButton>
@@ -1015,6 +1096,18 @@ const AdminManageUsers: React.FC = () => {
                                 }}
                               />
                             </Grid>
+                            <Grid item xs={12} md={6}>
+                              <TextField
+                                fullWidth
+                                label="Reason"
+                                name="reason"
+                                value={accessFormData.reason}
+                                onChange={handleAccessFormChange}
+                                required
+                                error={!!accessFormErrors.reason}
+                                helperText={accessFormErrors.reason || ''}
+                              />
+                            </Grid>
                             {isAdvancedMode && userRole === 'ADMIN' && (
                               <>
                                 <Grid item xs={12} md={6}>
@@ -1059,20 +1152,6 @@ const AdminManageUsers: React.FC = () => {
                                 </Grid>
                               </>
                             )}
-                            <Grid item xs={12}>
-                              <TextField
-                                fullWidth
-                                label="Reason"
-                                name="reason"
-                                value={accessFormData.reason}
-                                onChange={handleAccessFormChange}
-                                required
-                                multiline
-                                rows={2}
-                                error={!!accessFormErrors.reason}
-                                helperText={accessFormErrors.reason || ''}
-                              />
-                            </Grid>
                           </Grid>
                         </CardContent>
                         <CardActions sx={{ justifyContent: 'flex-end', p: 2 }}>
@@ -1082,63 +1161,29 @@ const AdminManageUsers: React.FC = () => {
                           <Button 
                             onClick={handleAccessSubmit} 
                             variant="contained"
+                            color="primary"
                             disabled={accessMutation.isPending}
                           >
                             {accessMutation.isPending ? (
                               <CircularProgress size={24} />
-                            ) : editingAccessId ? 'Update Access' : 'Create Access'}
+                            ) : editingAccessId ? 'Update Access' : 'Grant Access'}
                           </Button>
                         </CardActions>
                       </Card>
                     </Collapse>
-                    
-                    {/* Access Records Table */}
-                    {userAccessLoading ? (
-                      <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-                        <CircularProgress size={24} />
-                      </Box>
-                    ) : userAccess.length > 0 ? (
-                      <>
-                        {!isAdvancedMode && (
-                          <Box sx={{ mb: 2 }}>
-                            <Typography variant="body2" color="text.secondary">
-                              {formData.role === 'USHER' 
-                                ? 'This user has Read access to Appointments only.'
-                                : formData.role === 'SECRETARIAT'
-                                  ? 'This user has Read and Edit access to Appointments and Dignitaries.'
-                                  : 'This user has Read access to Appointments only.'}
-                            </Typography>
-                          </Box>
-                        )}
-                        <CommonDataGrid
-                          rows={userAccess}
-                          columns={accessColumns}
-                          loading={userAccessLoading}
-                          autoHeight
-                          hideFooter={userAccess.length <= 10}
-                          slots={{
-                            toolbar: null
-                          }}
-                          disableRowSelectionOnClick
-                          customRowHeight={56}
-                        />
-                      </>
-                    ) : (
-                      <Paper sx={{ p: 2, textAlign: 'center' }}>
-                        <Typography variant="body1" color="text.secondary">
-                          No access records found for this user
-                        </Typography>
-                      </Paper>
-                    )}
                   </Box>
                 )}
                 
                 {/* Show explanation for GENERAL users */}
                 {editingId && formData.role === 'GENERAL' && (
                   <Box sx={{ mt: 4 }}>
-                    <Paper sx={{ p: 1.3, mt: 1, bgcolor: '#f1f1f1', color: 'secondary.contrast', border: '1px solid #f1f1f1' }}>
+                    <Divider sx={{ my: 2 }} />
+                    <Paper sx={{ p: 2, mt: 1, bgcolor: '#f5f5f5', borderRadius: 1, border: '1px solid #e0e0e0' }}>
+                      <Typography variant="subtitle1" gutterBottom>
+                        Access Management
+                      </Typography>
                       <Typography variant="body2">
-                        NOTE: Users with the GENERAL role have default access permissions and do not require specific access configuration.
+                        Users with the GENERAL role have default access permissions and do not require specific access configuration.
                       </Typography>
                     </Paper>
                   </Box>
@@ -1149,11 +1194,12 @@ const AdminManageUsers: React.FC = () => {
                 <Button 
                   onClick={handleSubmit} 
                   variant="contained"
+                  color="primary"
                   disabled={userMutation.isPending}
                 >
                   {userMutation.isPending ? (
                     <CircularProgress size={24} />
-                  ) : editingId ? 'Update' : 'Create'}
+                  ) : editingId ? 'Update User' : 'Create User'}
                 </Button>
               </CardActions>
             </Card>
