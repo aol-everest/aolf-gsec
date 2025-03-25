@@ -57,6 +57,7 @@ class UserAdminView(UserBase):
 
 class UserAdminUpdate(BaseModel):
     role: Optional[str] = None
+    country_code: Optional[str] = None
     
     class Config:
         orm_mode = True

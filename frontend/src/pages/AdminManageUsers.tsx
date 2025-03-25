@@ -934,7 +934,8 @@ const AdminManageUsers: React.FC = () => {
                       name="first_name"
                       value={formData.first_name}
                       onChange={handleChange}
-                      required
+                      required={editingId ? false : true}
+                      disabled={editingId ? true : false}
                       error={!!formErrors.first_name}
                       helperText={formErrors.first_name || ''}
                     />
@@ -946,7 +947,8 @@ const AdminManageUsers: React.FC = () => {
                       name="last_name"
                       value={formData.last_name}
                       onChange={handleChange}
-                      required
+                      required={editingId ? false : true}
+                      disabled={editingId ? true : false}
                       error={!!formErrors.last_name}
                       helperText={formErrors.last_name || ''}
                     />
@@ -959,7 +961,8 @@ const AdminManageUsers: React.FC = () => {
                       type="email"
                       value={formData.email}
                       onChange={handleChange}
-                      required
+                      required={editingId ? false : true}
+                      disabled={editingId ? true : false}
                       error={!!formErrors.email}
                       helperText={formErrors.email || ''}
                     />
@@ -971,6 +974,7 @@ const AdminManageUsers: React.FC = () => {
                       name="phone_number"
                       value={formData.phone_number}
                       onChange={handleChange}
+                      disabled={editingId ? true : false}
                     />
                   </Grid>
                   <Grid item xs={12} md={6} lg={4}>
