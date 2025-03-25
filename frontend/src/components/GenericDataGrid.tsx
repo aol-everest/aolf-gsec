@@ -19,6 +19,7 @@ export interface GenericDataGridProps extends Omit<DataGridProps, 'rows' | 'colu
   containerHeight?: number | string;
   defaultDensity?: GridDensity;
   defaultVisibleColumns?: string[];
+  customRowHeight?: number;
 }
 
 const GenericDataGridStyles = {
@@ -74,6 +75,7 @@ const GenericDataGrid: React.FC<GenericDataGridProps> = ({
   initialState,
   defaultDensity = 'standard',
   defaultVisibleColumns,
+  customRowHeight,
   slots,
   slotProps,
   ...props
@@ -164,6 +166,10 @@ const GenericDataGrid: React.FC<GenericDataGridProps> = ({
   const densitySettings = getDensitySettings(currentDensity);
 
   const getRowHeight = (params: GridRowHeightParams) => {
+    if (customRowHeight) {
+      return customRowHeight;
+    }
+    
     const densityRowHeights = {
       compact: 56,
       standard: 100,

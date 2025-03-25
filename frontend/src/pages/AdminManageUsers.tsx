@@ -696,7 +696,7 @@ const AdminManageUsers: React.FC = () => {
     {
       field: 'actions',
       type: 'actions',
-      headerName: 'Actions',
+      headerName: 'Edit',
       width: 150,
       flex: 0.5,
       getActions: (params) => [
@@ -1116,6 +1116,11 @@ const AdminManageUsers: React.FC = () => {
                           loading={userAccessLoading}
                           autoHeight
                           hideFooter={userAccess.length <= 10}
+                          slots={{
+                            toolbar: null
+                          }}
+                          disableRowSelectionOnClick
+                          customRowHeight={56}
                         />
                       </>
                     ) : (
@@ -1159,6 +1164,7 @@ const AdminManageUsers: React.FC = () => {
             columns={columns}
             loading={isLoading}
             defaultVisibleColumns={['name', 'email', 'phone_number', 'role', 'actions']}
+            customRowHeight={56}
           />
         </Box>
       </Container>
