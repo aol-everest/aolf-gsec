@@ -289,5 +289,7 @@ terraform*/*.tfvars
 # - press ctrl+v and then press Enter
 # - repeat step 3
 # - save and exit (shortcut: ZZ)
-Icon
+Icon
 
+
+backend/creds/*
