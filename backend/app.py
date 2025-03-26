@@ -30,6 +30,7 @@ import uuid
 from logging.handlers import RotatingFileHandler
 import os.path
 import contextvars
+from utils.calendar_sync import check_and_sync_appointment, check_and_sync_updated_appointment
 
 # Create a context variable to store request IDs
 request_id_var = contextvars.ContextVar('request_id', default='')
@@ -542,6 +543,13 @@ async def create_appointment(
             logger.debug(f"Email notifications sent in {notification_time:.2f}ms")
         except Exception as e:
             logger.error(f"Error sending email notifications: {str(e)}", exc_info=True)
+
+        # Sync appointment to Google Calendar if it meets criteria
+        try:
+            await check_and_sync_appointment(db_appointment, db)
+            logger.debug(f"Appointment conditionally processed for Google Calendar sync")
+        except Exception as e:
+            logger.error(f"Error processing appointment for Google Calendar sync: {str(e)}", exc_info=True)
 
         # Calculate total operation time
         total_time = (datetime.utcnow() - start_time).total_seconds() * 1000
@@ -1423,6 +1431,13 @@ async def create_appointment(
         except Exception as e:
             logger.error(f"Error sending email notifications: {str(e)}", exc_info=True)
 
+        # Sync appointment to Google Calendar if it meets criteria
+        try:
+            await check_and_sync_appointment(db_appointment, db)
+            logger.debug(f"Admin appointment conditionally processed for Google Calendar sync")
+        except Exception as e:
+            logger.error(f"Error processing admin appointment for Google Calendar sync: {str(e)}", exc_info=True)
+
         # Calculate total operation time
         total_time = (datetime.utcnow() - start_time).total_seconds() * 1000
         logger.info(f"Appointment created successfully (ID: {db_appointment.id}) in {total_time:.2f}ms")
@@ -1485,6 +1500,13 @@ async def update_appointment(
         notify_appointment_update(db, appointment, old_data, update_data)
     except Exception as e:
         logger.error(f"Error sending email notifications: {str(e)}")
+    
+    # Handle calendar sync based on appointment status changes
+    try:
+        await check_and_sync_updated_appointment(appointment, old_data, update_data, db)
+        logger.debug(f"Appointment status changes processed for calendar sync")
+    except Exception as e:
+        logger.error(f"Error handling appointment calendar sync based on status changes: {str(e)}")
     
     return appointment
 
