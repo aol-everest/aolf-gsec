@@ -15,7 +15,10 @@ import asyncio
 from sqlalchemy.orm import Session
 from models.appointment import Appointment, AppointmentStatus, AppointmentSubStatus
 from models.dignitary import Dignitary, HonorificTitle
-from utils.utils import str_to_bool
+from models.country import Country
+from utils.utils import str_to_bool, convert_to_datetime_with_tz
+from zoneinfo import ZoneInfo
+from functools import lru_cache
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -93,15 +96,21 @@ def calendar_worker():
             except queue.Empty:
                 continue
             
-            # Process the calendar task
+            # Get a database session for timezone lookups
+            db = None
             try:
+                # Import here to avoid circular imports
+                from database import SessionLocal
+                db = SessionLocal()
+                
+                # Process the calendar task
                 task_type = task_data.get('type')
                 appointment_id = task_data.get('appointment_id')
                 
                 if task_type == 'create_or_update':
                     appointment_data = task_data.get('appointment_data')
                     if appointment_id and appointment_data:
-                        _sync_appointment_to_calendar(appointment_id, appointment_data)
+                        _sync_appointment_to_calendar(appointment_id, appointment_data, db)
                     else:
                         logger.error(f"Invalid calendar task data: {task_data}")
                 elif task_type == 'delete':
@@ -111,8 +120,13 @@ def calendar_worker():
                         logger.error(f"Invalid calendar delete task data: {task_data}")
                 else:
                     logger.error(f"Unknown calendar task type: {task_type}")
+                    
             except Exception as e:
                 logger.error(f"Error processing calendar task: {str(e)}")
+            finally:
+                # Close the database session
+                if db:
+                    db.close()
             
             # Mark task as done
             calendar_queue.task_done()
@@ -156,7 +170,32 @@ def _get_event_dignitaries_text(appointment_data):
     
     return dignitaries_text
 
-def _format_appointment_for_calendar(appointment_id, appointment_data):
+@lru_cache(maxsize=256)
+def get_country_timezone(db: Session, country_code: str) -> Optional[str]:
+    """
+    Get the default timezone for a country from the database.
+    Results are cached for improved performance.
+    
+    Args:
+        db: Database session
+        country_code: ISO 2-letter country code
+        
+    Returns:
+        Default timezone string or None if not found
+    """
+    if not db or not country_code:
+        return None
+    
+    try:
+        country = db.query(Country).filter(Country.iso2_code == country_code).first()
+        if country and country.default_timezone:
+            return country.default_timezone
+    except Exception as e:
+        logger.error(f"Error getting timezone for country {country_code}: {str(e)}")
+    
+    return None
+
+def _format_appointment_for_calendar(appointment_id, appointment_data, db: Session = None):
     """Format appointment data for Google Calendar event."""
     # Extract appointment details
     status = appointment_data.get('status')
@@ -179,9 +218,33 @@ def _format_appointment_for_calendar(appointment_id, appointment_data):
         # Default to noon if no specific time
         start_time = "12:00:00"
     
-    # Parse date and time strings to datetime
+    # Get location for timezone information
+    location = appointment_data.get('location')
+    location_timezone = None
+    
+    # Parse date and time strings to datetime with timezone
     try:
-        start_dt = datetime.fromisoformat(f"{appointment_date}T{start_time}")
+        # Get country default timezone if available
+        default_timezone = None
+        if location and db:
+            country_code = location.get('country_code')
+            if country_code:
+                default_timezone = get_country_timezone(db, country_code)
+                if default_timezone:
+                    logger.debug(f"Using country default timezone '{default_timezone}' for appointment {appointment_id}")
+        
+        # If we have location information, use it for timezone
+        if location:
+            # Convert to timezone-aware datetime using the location information and country default timezone
+            start_dt = convert_to_datetime_with_tz(appointment_date, start_time, location, default_timezone)
+            # Save timezone for consistent end time
+            location_timezone = start_dt.tzinfo
+        else:
+            # Fallback to the old method if no location
+            start_dt = datetime.fromisoformat(f"{appointment_date}T{start_time}")
+            location_timezone = ZoneInfo("America/New_York")  # Default timezone
+            start_dt = start_dt.replace(tzinfo=location_timezone)
+        
         # Default duration: 30 minutes
         end_dt = start_dt + timedelta(minutes=30)
     except ValueError as e:
@@ -195,8 +258,7 @@ def _format_appointment_for_calendar(appointment_id, appointment_data):
     
     # Get location information
     location_text = ""
-    if appointment_data.get('location'):
-        location = appointment_data['location']
+    if location:
         location_text = f"{location.get('name', '')}"
         if location.get('city'):
             location_text += f", {location.get('city')}"
@@ -214,6 +276,9 @@ def _format_appointment_for_calendar(appointment_id, appointment_data):
     # Add link to appointment in the app
     description += f"\nView in app: {APP_BASE_URL}/admin/appointments/{appointment_id}"
     
+    # Get the timezone identifier for Google Calendar
+    timezone_id = str(location_timezone) if location_timezone else "America/New_York"
+    
     # Create the event data
     event = {
         'id': _get_calendar_event_id(appointment_id),
@@ -222,11 +287,11 @@ def _format_appointment_for_calendar(appointment_id, appointment_data):
         'description': description,
         'start': {
             'dateTime': start_dt.isoformat(),
-            'timeZone': 'America/New_York',
+            'timeZone': timezone_id,
         },
         'end': {
             'dateTime': end_dt.isoformat(),
-            'timeZone': 'America/New_York',
+            'timeZone': timezone_id,
         },
         # Add metadata to track this event
         'extendedProperties': {
@@ -239,7 +304,7 @@ def _format_appointment_for_calendar(appointment_id, appointment_data):
     
     return event
 
-def _sync_appointment_to_calendar(appointment_id, appointment_data):
+def _sync_appointment_to_calendar(appointment_id, appointment_data, db: Session = None):
     """Sync an appointment to Google Calendar (create or update)."""
     if not ENABLE_CALENDAR_SYNC:
         logger.info(f"Calendar sync is disabled. Appointment {appointment_id} not synced.")
@@ -251,7 +316,7 @@ def _sync_appointment_to_calendar(appointment_id, appointment_data):
         return
     
     # Format appointment data for calendar
-    event = _format_appointment_for_calendar(appointment_id, appointment_data)
+    event = _format_appointment_for_calendar(appointment_id, appointment_data, db)
     if not event:
         # Not a syncable appointment or missing required data
         return
@@ -361,8 +426,8 @@ def appointment_to_calendar_dict(appointment):
         'id': appointment.id,
         'status': appointment.status,
         'sub_status': appointment.sub_status,
-        'appointment_date': appointment.appointment_date.isoformat() if appointment.appointment_date else None,
-        'appointment_time': appointment.appointment_time.isoformat() if appointment.appointment_time else None,
+        'appointment_date': appointment.appointment_date.isoformat() if hasattr(appointment.appointment_date, 'isoformat') else appointment.appointment_date,
+        'appointment_time': appointment.appointment_time.isoformat() if hasattr(appointment.appointment_time, 'isoformat') else appointment.appointment_time,
         'purpose': appointment.purpose,
         'requester_notes_to_secretariat': appointment.requester_notes_to_secretariat,
         'secretariat_meeting_notes': appointment.secretariat_meeting_notes,
@@ -375,6 +440,8 @@ def appointment_to_calendar_dict(appointment):
             'name': appointment.location.name,
             'city': appointment.location.city,
             'state': appointment.location.state,
+            'country_code': appointment.location.country_code if hasattr(appointment.location, 'country_code') else None,
+            'timezone': appointment.location.timezone if hasattr(appointment.location, 'timezone') else None,
         }
     
     # Add dignitaries if available
@@ -440,7 +507,7 @@ def sync_all_appointments(db: Session):
         appointment_data = appointment_to_calendar_dict(appointment)
         if appointment_data:
             # Process directly instead of queueing to avoid overwhelming the queue
-            _sync_appointment_to_calendar(appointment.id, appointment_data)
+            _sync_appointment_to_calendar(appointment.id, appointment_data, db)
     
     logger.info(f"Bulk calendar sync completed")
 

@@ -9,7 +9,7 @@ import asyncio
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from backend.database import SessionLocal
-from backend.utils.calendar_sync import conditional_sync_appointment
+from backend.utils.calendar_sync import check_and_sync_appointment
 from backend.models.appointment import Appointment, AppointmentStatus, AppointmentSubStatus
 
 # Configure logging
@@ -42,7 +42,7 @@ async def sync_all_appointments_async(db):
     
     for appointment in appointments:
         # Process each appointment according to its status
-        await conditional_sync_appointment(appointment, db)
+        await check_and_sync_appointment(appointment, db)
         
     logger.info(f"Bulk calendar sync completed")
 

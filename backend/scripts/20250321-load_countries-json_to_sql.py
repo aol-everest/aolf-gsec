@@ -14,7 +14,7 @@ def json_to_sql(json_file):
             countries_data = json.load(f)
         
         print("-- Generated SQL statements for countries")
-        print("INSERT INTO countries (iso2_code, name, iso3_code, region, sub_region, intermediate_region, country_groups, alt_names, is_enabled)")
+        print("INSERT INTO countries (iso2_code, name, iso3_code, region, sub_region, intermediate_region, country_groups, alt_names, timezones, default_timezone, is_enabled)")
         print("VALUES")
         
         inserts = []
@@ -22,6 +22,7 @@ def json_to_sql(json_file):
             # Format arrays properly for PostgreSQL
             country_groups = format_array(country.get('country_groups', []))
             alt_names = format_array(country.get('alt_names', []))
+            timezones = format_array(country.get('timezones', []))
             
             # Check if this country should be enabled (US and CA are enabled by default)
             is_enabled = "true" if country.get('iso2_code') in ['US', 'CA'] else "false"
@@ -30,7 +31,7 @@ def json_to_sql(json_file):
             sql_value = f"('{country.get('iso2_code', '')}', '{escape_sql(country.get('name', ''))}', " \
                       f"'{country.get('iso3_code', '')}', '{escape_sql(country.get('region', ''))}', " \
                       f"'{escape_sql(country.get('sub_region', ''))}', {null_or_str(country.get('intermediate_region'))}, " \
-                      f"{country_groups}, {alt_names}, {is_enabled})"
+                      f"{country_groups}, {alt_names}, {timezones}, {null_or_str(country.get('default_timezone'))}, {is_enabled})"
             
             # Add comma for all but the last entry
             if idx < len(countries_data) - 1:

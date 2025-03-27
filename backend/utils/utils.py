@@ -1,5 +1,13 @@
-
-from datetime import datetime
+from datetime import datetime, timedelta, timezone, date
+from typing import Optional, Union, List, Dict, Any, Tuple
+from zoneinfo import ZoneInfo
+import uuid
+import os
+import re
+import json
+import time
+import random
+import string
 
 def str_to_bool(value: str) -> bool:
     """Convert a string to a boolean."""
@@ -219,3 +227,105 @@ def dignitary_to_dict(dignitary):
     }
     
     return entity_to_dict(dignitary, relationship_config)
+
+
+def convert_to_datetime_with_tz(appointment_date: str, start_time: str, location, default_timezone: str = None) -> datetime:
+    """
+    Convert a date and time string along with a location into a timezone-aware datetime.
+    
+    Args:
+        appointment_date (str): Date in 'YYYY-MM-DD' format.
+        start_time (str): Time in 'HH24:MI' format (e.g., '14:30'). Seconds will be added if missing.
+        location: A location object (e.g., an instance of Location) that should have a 'country_code' attribute.
+        default_timezone (str): Optional default timezone to use if location doesn't have timezone info.
+    
+    Returns:
+        datetime: A timezone-aware datetime object.
+    """
+    # Ensure the time string includes seconds (append ':00' if needed)
+    if len(start_time.split(':')) == 2:
+        start_time = f"{start_time}:00"
+    
+    # Combine date and time into an ISO string and create a naive datetime object.
+    dt_str = f"{appointment_date}T{start_time}"
+    dt_naive = datetime.fromisoformat(dt_str)
+    
+    # Determine timezone string
+    tz_str = None
+    
+    # Use location's timezone field when available
+    if hasattr(location, 'timezone') and location.timezone:
+        tz_str = location.timezone
+    # If a default timezone was provided, use it next
+    elif default_timezone:
+        tz_str = default_timezone
+    # Otherwise use US state-specific timezone as fallback
+    elif hasattr(location, 'country_code') and location.country_code == "US" and hasattr(location, 'state') and location.state:
+        # More detailed mapping based on US states
+        us_state_timezone_map = {
+            "AL": "America/Chicago",     # Alabama
+            "AK": "America/Anchorage",   # Alaska
+            "AZ": "America/Phoenix",     # Arizona
+            "AR": "America/Chicago",     # Arkansas
+            "CA": "America/Los_Angeles", # California
+            "CO": "America/Denver",      # Colorado
+            "CT": "America/New_York",    # Connecticut
+            "DE": "America/New_York",    # Delaware
+            "FL": "America/New_York",    # Florida (mostly, some parts use Central)
+            "GA": "America/New_York",    # Georgia
+            "HI": "Pacific/Honolulu",    # Hawaii
+            "ID": "America/Denver",      # Idaho (partially Mountain, partially Pacific)
+            "IL": "America/Chicago",     # Illinois
+            "IN": "America/New_York",    # Indiana (mostly, some counties use Central)
+            "IA": "America/Chicago",     # Iowa
+            "KS": "America/Chicago",     # Kansas
+            "KY": "America/New_York",    # Kentucky (partly Eastern, partly Central)
+            "LA": "America/Chicago",     # Louisiana
+            "ME": "America/New_York",    # Maine
+            "MD": "America/New_York",    # Maryland
+            "MA": "America/New_York",    # Massachusetts
+            "MI": "America/New_York",    # Michigan (mostly, part is Central)
+            "MN": "America/Chicago",     # Minnesota
+            "MS": "America/Chicago",     # Mississippi
+            "MO": "America/Chicago",     # Missouri
+            "MT": "America/Denver",      # Montana
+            "NE": "America/Chicago",     # Nebraska
+            "NV": "America/Los_Angeles", # Nevada
+            "NH": "America/New_York",    # New Hampshire
+            "NJ": "America/New_York",    # New Jersey
+            "NM": "America/Denver",      # New Mexico
+            "NY": "America/New_York",    # New York
+            "NC": "America/New_York",    # North Carolina
+            "ND": "America/Chicago",     # North Dakota
+            "OH": "America/New_York",    # Ohio
+            "OK": "America/Chicago",     # Oklahoma
+            "OR": "America/Los_Angeles", # Oregon
+            "PA": "America/New_York",    # Pennsylvania
+            "RI": "America/New_York",    # Rhode Island
+            "SC": "America/New_York",    # South Carolina
+            "SD": "America/Chicago",     # South Dakota
+            "TN": "America/Chicago",     # Tennessee (Western part is Central, Eastern part is Eastern)
+            "TX": "America/Chicago",     # Texas (mostly, Western part is Mountain)
+            "UT": "America/Denver",      # Utah
+            "VT": "America/New_York",    # Vermont
+            "VA": "America/New_York",    # Virginia
+            "WA": "America/Los_Angeles", # Washington
+            "WV": "America/New_York",    # West Virginia
+            "WI": "America/Chicago",     # Wisconsin
+            "WY": "America/Denver",      # Wyoming
+        }
+        
+        # Try to use the state code directly or extract it from the state name
+        state_code = location.state
+        if len(state_code) > 2:  # It's probably a full state name
+            state_code = state_code[:2].upper()
+        
+        tz_str = us_state_timezone_map.get(state_code, "America/New_York")
+    else:
+        # Last resort - use UTC
+        tz_str = "UTC"
+    
+    # Attach timezone information to the naive datetime
+    dt_with_tz = dt_naive.replace(tzinfo=ZoneInfo(tz_str))
+    
+    return dt_with_tz

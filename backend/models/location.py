@@ -18,6 +18,7 @@ class Location(Base):
     country = Column(String, nullable=False)
     country_code = Column(String, nullable=False)
     zip_code = Column(String, nullable=False)
+    timezone = Column(String)  # Store IANA timezone identifier (e.g., 'America/New_York')
     driving_directions = Column(Text)
     secretariat_internal_notes = Column(Text)
     parking_info = Column(Text)

@@ -561,6 +561,8 @@ class CountryBase(BaseModel):
     country_groups: Optional[List[str]] = None
     alt_names: Optional[List[str]] = None
     is_enabled: bool = True
+    timezones: Optional[List[str]] = None
+    default_timezone: Optional[str] = None
 
 class Country(CountryBase):
     class Config:
@@ -578,6 +580,8 @@ class CountryUpdate(BaseModel):
     country_groups: Optional[List[str]] = None
     alt_names: Optional[List[str]] = None
     is_enabled: Optional[bool] = None
+    timezones: Optional[List[str]] = None
+    default_timezone: Optional[str] = None
 
 class CountryResponse(CountryBase):
     class Config:

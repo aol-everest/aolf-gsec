@@ -17,6 +17,8 @@ class Country(Base):
     intermediate_region = Column(String, nullable=True)
     country_groups = Column(ARRAY(String), nullable=True)
     alt_names = Column(ARRAY(String), nullable=True)
+    timezones = Column(ARRAY(String), nullable=True)
+    default_timezone = Column(String, nullable=True)
     
     # Flag to enable/disable a country in the system
     is_enabled = Column(Boolean, default=True, nullable=False)

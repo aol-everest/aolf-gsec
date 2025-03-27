@@ -64,6 +64,8 @@ def load_countries():
                 intermediate_region=country_data['intermediate_region'],
                 country_groups=country_data['country_groups'] if country_data['country_groups'] else [],
                 alt_names=country_data['alt_names'] if country_data['alt_names'] else [],
+                timezones=country_data['timezones'] if country_data['timezones'] else [],
+                default_timezone=country_data['default_timezone'] if country_data['default_timezone'] else None,
                 is_enabled=True if country_data['iso2_code'] in ['US', 'CA'] else False  # All countries are enabled by default
             )
             countries.append(country)
