@@ -42,14 +42,8 @@ if [ "$COUNT" -gt "0" ]; then
 fi
 
 # Check if timezones column exists, add it if it doesn't
-echo "Checking if timezone columns exist in countries table..."
-TIMEZONE_COL_EXISTS=$(PGPASSWORD="$DB_PASSWORD" psql -h $DB_HOST -U $DB_USER -d $DB_NAME -t -c "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='${SCHEMA}' AND table_name='countries' AND column_name='timezones';")
-TIMEZONE_COL_EXISTS=$(echo $TIMEZONE_COL_EXISTS | xargs) # Trim whitespace
-
-if [ "$TIMEZONE_COL_EXISTS" -eq "0" ]; then
-    echo "Adding timezones and default_timezone columns to countries table..."
-    PGPASSWORD="$DB_PASSWORD" psql -h $DB_HOST -U $DB_USER -d $DB_NAME -c "ALTER TABLE ${SCHEMA}.countries ADD COLUMN timezones VARCHAR[] DEFAULT '{}'; ALTER TABLE ${SCHEMA}.countries ADD COLUMN default_timezone VARCHAR;"
-fi
+echo "Adding timezones and default_timezone columns to countries table if it doesn't exist..."
+PGPASSWORD="$DB_PASSWORD" psql -h $DB_HOST -U $DB_USER -d $DB_NAME -c "ALTER TABLE ${SCHEMA}.countries ADD COLUMN IF NOT EXISTS timezones VARCHAR[] DEFAULT '{}'; ALTER TABLE ${SCHEMA}.countries ADD COLUMN IF NOT EXISTS default_timezone VARCHAR;"
 
 echo "Loading countries data from JSON file..."
 

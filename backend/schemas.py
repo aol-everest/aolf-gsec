@@ -210,6 +210,7 @@ class LocationBase(BaseModel):
     name: str
     street_address: str
     state: str
+    state_code: Optional[str] = None
     city: str
     country: str
     country_code: str
@@ -220,6 +221,8 @@ class LocationBase(BaseModel):
     attachment_name: Optional[str] = None
     attachment_file_type: Optional[str] = None
     attachment_thumbnail_path: Optional[str] = None
+    lat: Optional[float] = None
+    lng: Optional[float] = None
 
 class Location(LocationBase):
     id: int

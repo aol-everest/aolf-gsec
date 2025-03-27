@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -14,10 +14,13 @@ class Location(Base):
     name = Column(String, nullable=False)
     street_address = Column(String, nullable=False)
     state = Column(String, nullable=False)
+    state_code = Column(String, nullable=True)
     city = Column(String, nullable=False)
     country = Column(String, nullable=False)
     country_code = Column(String, nullable=False)
     zip_code = Column(String, nullable=False)
+    lat = Column(Float, nullable=True)
+    lng = Column(Float, nullable=True)
     timezone = Column(String)  # Store IANA timezone identifier (e.g., 'America/New_York')
     driving_directions = Column(Text)
     secretariat_internal_notes = Column(Text)

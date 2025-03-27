@@ -83,10 +83,13 @@ interface Location {
   name: string;
   street_address: string;
   state: string;
+  state_code?: string;
   city: string;
   country: string;
   country_code: string;
   zip_code: string;
+  lat?: number;
+  lng?: number;
   timezone?: string;
   driving_directions?: string;
   secretariat_internal_notes?: string;
@@ -115,10 +118,13 @@ interface LocationFormData {
   name: string;
   street_address: string;
   state: string;
+  state_code?: string;
   city: string;
   country: string;
   country_code: string;
   zip_code: string;
+  lat?: number;
+  lng?: number;
   timezone?: string;
   driving_directions?: string;
   secretariat_internal_notes?: string;
@@ -133,10 +139,13 @@ const initialFormData: LocationFormData = {
   name: '',
   street_address: '',
   state: '',
+  state_code: '',
   city: '',
   country: '',
   country_code: '',
   zip_code: '',
+  lat: 0,
+  lng: 0,
   timezone: '',
   driving_directions: '',
   secretariat_internal_notes: '',
@@ -206,6 +215,186 @@ export default function AdminLocationsManage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const { isLoaded: mapsLoaded, error: mapsError } = useGoogleMapsScript();
 
+  // Query for fetching countries
+  const { data: countries = [], isLoading: isLoadingCountries } = useQuery({
+    queryKey: ['countries'],
+    queryFn: async () => {
+      try {
+        const { data } = await api.get<Country[]>('/countries/all');
+        return data;
+      } catch (error) {
+        enqueueSnackbar('Failed to fetch countries', { variant: 'error' });
+        throw error;
+      }
+    }
+  });
+
+  // Derive timezone for a location based on country/state
+  const deriveTimezoneForLocation = useCallback((locationData: Partial<LocationFormData>, coordinates?: {lat: number, lng: number}) => {
+    console.log("Deriving timezone for location", locationData, coordinates);
+    // Default timezone value
+    let defaultTimezone = '';
+    let skipAPICall = false;
+    
+    // Find matching country in our dropdown list
+    const matchedCountry = countries.find(c => 
+      c.iso2_code === locationData.country_code || 
+      c.name === locationData.country
+    );
+    
+    // Use US state-based logic if applicable
+    if (locationData.country_code === 'US' && (locationData.state || locationData.state_code)) {
+      // US state-based timezone mapping
+      const stateCode = locationData.state_code || (
+        locationData.state && 
+        (
+          locationData.state.length > 2 ? 
+          locationData.state.substring(0, 2).toUpperCase() : 
+          locationData.state.toUpperCase()
+        )
+      );
+        
+      const usStateTimezones: {[key: string]: string} = {
+        'AL': 'America/Chicago',     // Alabama
+        'AK': 'America/Anchorage',   // Alaska
+        'AZ': 'America/Phoenix',     // Arizona
+        'AR': 'America/Chicago',     // Arkansas
+        'CA': 'America/Los_Angeles', // California
+        'CO': 'America/Denver',      // Colorado
+        'CT': 'America/New_York',    // Connecticut
+        'DE': 'America/New_York',    // Delaware
+        'FL': 'America/New_York',    // Florida
+        'GA': 'America/New_York',    // Georgia
+        'HI': 'Pacific/Honolulu',    // Hawaii
+        'ID': 'America/Denver',      // Idaho
+        'IL': 'America/Chicago',     // Illinois
+        'IN': 'America/New_York',    // Indiana
+        'IA': 'America/Chicago',     // Iowa
+        'KS': 'America/Chicago',     // Kansas
+        'KY': 'America/New_York',    // Kentucky
+        'LA': 'America/Chicago',     // Louisiana
+        'ME': 'America/New_York',    // Maine
+        'MD': 'America/New_York',    // Maryland
+        'MA': 'America/New_York',    // Massachusetts
+        'MI': 'America/New_York',    // Michigan
+        'MN': 'America/Chicago',     // Minnesota
+        'MS': 'America/Chicago',     // Mississippi
+        'MO': 'America/Chicago',     // Missouri
+        'MT': 'America/Denver',      // Montana
+        'NE': 'America/Chicago',     // Nebraska
+        'NV': 'America/Los_Angeles', // Nevada
+        'NH': 'America/New_York',    // New Hampshire
+        'NJ': 'America/New_York',    // New Jersey
+        'NM': 'America/Denver',      // New Mexico
+        'NY': 'America/New_York',    // New York
+        'NC': 'America/New_York',    // North Carolina
+        'ND': 'America/Chicago',     // North Dakota
+        'OH': 'America/New_York',    // Ohio
+        'OK': 'America/Chicago',     // Oklahoma
+        'OR': 'America/Los_Angeles', // Oregon
+        'PA': 'America/New_York',    // Pennsylvania
+        'RI': 'America/New_York',    // Rhode Island
+        'SC': 'America/New_York',    // South Carolina
+        'SD': 'America/Chicago',     // South Dakota
+        'TN': 'America/Chicago',     // Tennessee
+        'TX': 'America/Chicago',     // Texas
+        'UT': 'America/Denver',      // Utah
+        'VT': 'America/New_York',    // Vermont
+        'VA': 'America/New_York',    // Virginia
+        'WA': 'America/Los_Angeles', // Washington
+        'WV': 'America/New_York',    // West Virginia
+        'WI': 'America/Chicago',     // Wisconsin
+        'WY': 'America/Denver',      // Wyoming
+      };
+      
+      if (stateCode && usStateTimezones[stateCode]) {
+        defaultTimezone = usStateTimezones[stateCode];
+        skipAPICall = true; // US state mapping is reliable, no need for API
+      } else {
+        defaultTimezone = 'America/New_York'; // Default for US
+      }
+    } 
+    // Use country data if available
+    else if (matchedCountry && matchedCountry.default_timezone) {
+      defaultTimezone = matchedCountry.default_timezone;
+      // If country has only one timezone, it's reliable
+      skipAPICall = !!(matchedCountry.timezones && matchedCountry.timezones.length === 1);
+    } 
+    // Try first timezone from country list
+    else if (matchedCountry && matchedCountry.timezones && matchedCountry.timezones.length > 0) {
+      defaultTimezone = matchedCountry.timezones[0];
+    } 
+    // Last resort
+    else {
+      defaultTimezone = 'UTC';
+    }
+    
+    // Set initial timezone
+    const result = {
+      timezone: defaultTimezone,
+      updateTimezone: (newTimezone: string) => {
+        setFormData(prev => ({
+          ...prev,
+          timezone: newTimezone
+        }));
+      }
+    };
+    
+    // If coordinates are available and API call not skipped, fetch more precise timezone
+    if (coordinates && !skipAPICall) {
+      const { lat, lng } = coordinates;
+      const timestamp = Math.floor(Date.now() / 1000);
+      const timezoneApiUrl = `https://maps.googleapis.com/maps/api/timezone/json?location=${lat},${lng}&timestamp=${timestamp}&key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}`;
+      
+      // Initiate fetch but don't wait for it
+      fetch(timezoneApiUrl)
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === "OK" && data.timeZoneId) {
+            result.updateTimezone(data.timeZoneId);
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching timezone:', error);
+          // Default timezone already set, so no need to do anything here
+        });
+    }
+    // For existing locations without coordinates, try geocoding to get coordinates
+    else if (!coordinates && !skipAPICall && locationData.street_address && locationData.city && locationData.country_code) {
+      // Only do this if we have enough address information
+      const addressString = `${locationData.street_address}, ${locationData.city}, ${locationData.state || ''}, ${locationData.country}`;
+      const geocodingUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(addressString)}&key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}`;
+      
+      fetch(geocodingUrl)
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === "OK" && data.results && data.results.length > 0) {
+            const location = data.results[0].geometry.location;
+            const { lat, lng } = location;
+            
+            // Now use these coordinates to get the timezone
+            const timestamp = Math.floor(Date.now() / 1000);
+            const timezoneApiUrl = `https://maps.googleapis.com/maps/api/timezone/json?location=${lat},${lng}&timestamp=${timestamp}&key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}`;
+            
+            return fetch(timezoneApiUrl);
+          }
+          throw new Error('Geocoding failed');
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === "OK" && data.timeZoneId) {
+            result.updateTimezone(data.timeZoneId);
+          }
+        })
+        .catch(error => {
+          console.error('Error in geocoding/timezone lookup:', error);
+          // Default timezone already set, so no need to do anything here
+        });
+    }
+    
+    return result;
+  }, [countries, enqueueSnackbar]);
+
   // Function to close the form and reset state
   const handleClose = () => {
     setFormOpen(false);
@@ -225,20 +414,6 @@ export default function AdminLocationsManage() {
         return data;
       } catch (error) {
         enqueueSnackbar('Failed to fetch locations', { variant: 'error' });
-        throw error;
-      }
-    }
-  });
-
-  // Query for fetching countries
-  const { data: countries = [], isLoading: isLoadingCountries } = useQuery({
-    queryKey: ['countries'],
-    queryFn: async () => {
-      try {
-        const { data } = await api.get<Country[]>('/countries/all');
-        return data;
-      } catch (error) {
-        enqueueSnackbar('Failed to fetch countries', { variant: 'error' });
         throw error;
       }
     }
@@ -365,6 +540,7 @@ export default function AdminLocationsManage() {
         let route = '';
         let city = '';
         let state = '';
+        let stateCode = '';
         let country = '';
         let countryCode = '';
         let postalCode = '';
@@ -379,6 +555,7 @@ export default function AdminLocationsManage() {
             city = component.long_name;
           } else if (types.includes('administrative_area_level_1')) {
             state = component.long_name;
+            stateCode = component.short_name;
           } else if (types.includes('country')) {
             country = component.long_name;
             countryCode = component.short_name;
@@ -397,130 +574,40 @@ export default function AdminLocationsManage() {
           c.name.toLowerCase() === country.toLowerCase()
         );
 
-        // Set initial location data
-        const initialLocationData = {
+        // Create location data object
+        const locationData = {
           name: place.name || '',
           street_address: `${streetNumber} ${route}`.trim(),
           city,
           state,
+          state_code: stateCode,
           country: matchedCountry ? matchedCountry.name : country,
           country_code: matchedCountry ? matchedCountry.iso2_code : countryCode,
           zip_code: postalCode,
+          lat: 0,
+          lng: 0,
           driving_directions: directionsUrl,
         };
 
-        // Set default timezone based on country/state
-        let defaultTimezone = '';
-        let fetchedTimezoneFromAPI = true;
-        
-        // Try to get timezone from country data first
-        if (countryCode === 'US' && state) {
-          // US state-based timezone mapping (only used if country data doesn't have timezone)
-          const stateCode = state.length > 2 ? state.substring(0, 2).toUpperCase() : state.toUpperCase();
-          const usStateTimezones: {[key: string]: string} = {
-            'AL': 'America/Chicago',     // Alabama
-            'AK': 'America/Anchorage',   // Alaska
-            'AZ': 'America/Phoenix',     // Arizona
-            'AR': 'America/Chicago',     // Arkansas
-            'CA': 'America/Los_Angeles', // California
-            'CO': 'America/Denver',      // Colorado
-            'CT': 'America/New_York',    // Connecticut
-            'DE': 'America/New_York',    // Delaware
-            'FL': 'America/New_York',    // Florida
-            'GA': 'America/New_York',    // Georgia
-            'HI': 'Pacific/Honolulu',    // Hawaii
-            'ID': 'America/Denver',      // Idaho
-            'IL': 'America/Chicago',     // Illinois
-            'IN': 'America/New_York',    // Indiana
-            'IA': 'America/Chicago',     // Iowa
-            'KS': 'America/Chicago',     // Kansas
-            'KY': 'America/New_York',    // Kentucky
-            'LA': 'America/Chicago',     // Louisiana
-            'ME': 'America/New_York',    // Maine
-            'MD': 'America/New_York',    // Maryland
-            'MA': 'America/New_York',    // Massachusetts
-            'MI': 'America/New_York',    // Michigan
-            'MN': 'America/Chicago',     // Minnesota
-            'MS': 'America/Chicago',     // Mississippi
-            'MO': 'America/Chicago',     // Missouri
-            'MT': 'America/Denver',      // Montana
-            'NE': 'America/Chicago',     // Nebraska
-            'NV': 'America/Los_Angeles', // Nevada
-            'NH': 'America/New_York',    // New Hampshire
-            'NJ': 'America/New_York',    // New Jersey
-            'NM': 'America/Denver',      // New Mexico
-            'NY': 'America/New_York',    // New York
-            'NC': 'America/New_York',    // North Carolina
-            'ND': 'America/Chicago',     // North Dakota
-            'OH': 'America/New_York',    // Ohio
-            'OK': 'America/Chicago',     // Oklahoma
-            'OR': 'America/Los_Angeles', // Oregon
-            'PA': 'America/New_York',    // Pennsylvania
-            'RI': 'America/New_York',    // Rhode Island
-            'SC': 'America/New_York',    // South Carolina
-            'SD': 'America/Chicago',     // South Dakota
-            'TN': 'America/Chicago',     // Tennessee
-            'TX': 'America/Chicago',     // Texas
-            'UT': 'America/Denver',      // Utah
-            'VT': 'America/New_York',    // Vermont
-            'VA': 'America/New_York',    // Virginia
-            'WA': 'America/Los_Angeles', // Washington
-            'WV': 'America/New_York',    // West Virginia
-            'WI': 'America/Chicago',     // Wisconsin
-            'WY': 'America/Denver',      // Wyoming
+        // Get coordinates for timezone lookup if available
+        let coordinates;
+        if (place.geometry?.location) {
+          coordinates = {
+            lat: place.geometry.location.lat(),
+            lng: place.geometry.location.lng()
           };
-          if (usStateTimezones[stateCode]) {
-            defaultTimezone = usStateTimezones[stateCode];
-            fetchedTimezoneFromAPI = false;
-          } else {
-            defaultTimezone = 'America/New_York';
-          }
-        } else if (matchedCountry && matchedCountry.default_timezone) {
-          defaultTimezone = matchedCountry.default_timezone;
-        } else if (matchedCountry && matchedCountry.timezones && matchedCountry.timezones.length > 0) {
-          // Use first timezone from country's list
-          defaultTimezone = matchedCountry.timezones[0];
-        } else {
-          // Last resort, use UTC
-          defaultTimezone = 'UTC';
+          locationData.lat = coordinates.lat;
+          locationData.lng = coordinates.lng;
         }
 
-        if (matchedCountry && matchedCountry.timezones && matchedCountry.timezones.length === 1) {
-          fetchedTimezoneFromAPI = false;
-        }
-
-        // Set the form data with the timezone included
+        // Derive timezone from location data and coordinates
+        const result = deriveTimezoneForLocation(locationData, coordinates);
+        
+        // Set form data with all location information including derived timezone
         setFormData({
-          ...initialLocationData,
-          timezone: defaultTimezone
+          ...locationData,
+          timezone: result.timezone
         });
-
-        // If coordinates are available, try to get a more accurate timezone from Google's API
-        if (fetchedTimezoneFromAPI && place.geometry?.location) {
-          console.log("Fetching timezone from API");
-          const lat = place.geometry.location.lat();
-          const lng = place.geometry.location.lng();
-          
-          // Use Google's Timezone API to get the timezone ID
-          const timestamp = Math.floor(Date.now() / 1000);
-          const timezoneApiUrl = `https://maps.googleapis.com/maps/api/timezone/json?location=${lat},${lng}&timestamp=${timestamp}&key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}`;
-          
-          fetch(timezoneApiUrl)
-            .then(response => response.json())
-            .then(data => {
-              if (data.status === "OK" && data.timeZoneId) {
-                // Update only the timezone if API returns a valid timezone
-                setFormData(prev => ({
-                  ...prev,
-                  timezone: data.timeZoneId, // Store the IANA timezone identifier
-                }));
-              }
-            })
-            .catch(error => {
-              console.error('Error fetching timezone:', error);
-              // Default timezone already set, so no need to do anything here
-            });
-        }
 
         // Clear the input after selection
         if (inputRef.current) {
@@ -531,7 +618,7 @@ export default function AdminLocationsManage() {
       autocompleteRef.current = autocomplete;
     } catch (error) {
       console.error('Error initializing Google Places Autocomplete:', error);
-      enqueueSnackbar('Error initializing location search', { variant: 'error' });
+      enqueueSnackbar('Location search failed. Please enter the location manually.', { variant: 'error' });
     }
   }, [mapsLoaded, enqueueSnackbar, countries]);
 
@@ -554,14 +641,18 @@ export default function AdminLocationsManage() {
 
   const handleOpen = (location?: Location) => {
     if (location) {
-      setFormData({
+      // Create location data from existing location
+      const locationData = {
         name: location.name,
         street_address: location.street_address,
         state: location.state,
+        state_code: location.state_code || '',
         city: location.city,
         country: location.country,
         country_code: location.country_code,
         zip_code: location.zip_code,
+        lat: location.lat || 0,
+        lng: location.lng || 0,
         timezone: location.timezone || '',
         driving_directions: location.driving_directions || '',
         secretariat_internal_notes: location.secretariat_internal_notes || '',
@@ -570,8 +661,22 @@ export default function AdminLocationsManage() {
         attachment_name: location.attachment_name || '',
         attachment_file_type: location.attachment_file_type || '',
         attachment_thumbnail_path: location.attachment_thumbnail_path || '',
-      });
+      };
+      
+      // Set form data with existing values
+      setFormData(locationData);
       setEditingId(location.id);
+      
+      // If timezone is missing, derive it from location data
+      if (!location.timezone || location.timezone.trim() === '') {
+        const result = deriveTimezoneForLocation(locationData);
+        
+        // Update the form data with the derived timezone
+        setFormData(prev => ({
+          ...prev,
+          timezone: result.timezone
+        }));
+      }
     } else {
       setFormData(initialFormData);
       setEditingId(null);
@@ -588,37 +693,33 @@ export default function AdminLocationsManage() {
     });
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
+  // Handle regular form input changes
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent) => {
+    const name = e.target.name as keyof LocationFormData;
+    const value = e.target.value;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Add a handler for select changes
-  const handleSelectChange = (e: SelectChangeEvent) => {
-    const name = e.target.name as keyof LocationFormData;
-    const value = e.target.value;
+  // Handles changing the country in the dropdown
+  const handleCountryChange = (e: SelectChangeEvent<string>) => {
+    const countryName = e.target.value;
+    const selectedCountry = countries.find(c => c.name === countryName);
     
-    if (name === 'country_code') {
-      const selectedCountry = countries.find(c => c.iso2_code === value);
-      if (selectedCountry) {
-        // Create updated form data with country information
-        const updatedFormData = { 
-          ...formData, 
-          country_code: selectedCountry.iso2_code,
-          country: selectedCountry.name
-        };
-        
-        // Add timezone from country if not already set
-        if (selectedCountry.default_timezone && (!formData.timezone || formData.timezone === '')) {
-          updatedFormData.timezone = selectedCountry.default_timezone;
-        }
-        
-        // Update the form data
-        setFormData(updatedFormData);
-      }
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
-    }
+    setFormData(prev => {
+      const updatedFormData = {
+        ...prev,
+        country: countryName,
+        country_code: selectedCountry?.iso2_code || ''
+      };
+      
+      // Get timezone for the newly selected country
+      const result = deriveTimezoneForLocation(updatedFormData);
+      
+      return {
+        ...updatedFormData,
+        timezone: result.timezone
+      };
+    });
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -765,6 +866,23 @@ export default function AdminLocationsManage() {
     },
   ];
 
+  // Load countries data for new and existing locations
+  useEffect(() => {
+    if (!countries || countries.length === 0) {
+      // Re-fetch countries if needed
+      if (locations) {
+        // If we have location data and countries are now loaded, update default timezone
+        locations.forEach(location => {
+          const result = deriveTimezoneForLocation(location);
+          setFormData(prev => ({
+            ...prev,
+            timezone: result.timezone
+          }));
+        });
+      }
+    }
+  }, [countries, locations]);
+
   return (
     <Layout>
       <Container maxWidth="xl">
@@ -859,7 +977,7 @@ export default function AdminLocationsManage() {
                         id="country-select"
                         name="country_code"
                         value={formData.country_code}
-                        onChange={handleSelectChange}
+                        onChange={handleCountryChange}
                         label="Country"
                         disabled={isLoadingCountries}
                       >
@@ -907,7 +1025,7 @@ export default function AdminLocationsManage() {
                               id="timezone-select"
                               name="timezone"
                               value={formData.timezone || ''}
-                              onChange={handleSelectChange}
+                              onChange={handleChange}
                               label="Timezone"
                             >
                               {availableTimezones.map((timezone) => (
