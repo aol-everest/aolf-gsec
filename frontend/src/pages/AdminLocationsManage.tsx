@@ -221,6 +221,7 @@ export default function AdminLocationsManage() {
     queryFn: async () => {
       try {
         const { data } = await api.get<Location[]>('/admin/locations/all');
+        // console.log("locations", data);
         return data;
       } catch (error) {
         enqueueSnackbar('Failed to fetch locations', { variant: 'error' });
@@ -898,9 +899,6 @@ export default function AdminLocationsManage() {
                           availableTimezones = [formData.timezone, ...availableTimezones];
                         }
 
-                        console.log(availableTimezones);
-                        console.log(formData.timezone);
-                        
                         return (
                           <FormControl fullWidth>
                             <InputLabel id="timezone-select-label">Timezone</InputLabel>
