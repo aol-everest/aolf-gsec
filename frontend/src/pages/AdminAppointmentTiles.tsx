@@ -170,6 +170,69 @@ const SwipeIndicators: React.FC<{
   );
 };
 
+// Edge navigation buttons component for desktop
+const EdgeNavigationButtons: React.FC<{
+  onPrev: () => void,
+  onNext: () => void,
+  hasPrev: boolean,
+  hasNext: boolean
+}> = ({ onPrev, onNext, hasPrev, hasNext }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  
+  // Hide on mobile since we already have swipe indicators
+  if (isMobile) return null;
+  
+  return (
+    <>
+      {hasPrev && (
+        <IconButton
+          onClick={onPrev}
+          sx={{
+            position: 'absolute',
+            left: 8,
+            top: '230px', // Position in viewport rather than relative to parent
+            transform: 'translateY(-50%)',
+            zIndex: 100,
+            backgroundColor: 'rgba(255,255,255,0.8)',
+            '&:hover': {
+              backgroundColor: 'rgba(255,255,255,0.95)',
+            },
+            boxShadow: '0 2px 5px rgba(0,0,0,0.15)',
+            width: 48,
+            height: 48,
+          }}
+          aria-label="Previous appointment"
+        >
+          <ChevronLeftIcon />
+        </IconButton>
+      )}
+      {hasNext && (
+        <IconButton
+          onClick={onNext}
+          sx={{
+            position: 'absolute',
+            right: 8,
+            top: '230px', // Position in viewport rather than relative to parent
+            transform: 'translateY(-50%)',
+            zIndex: 100,
+            backgroundColor: 'rgba(255,255,255,0.8)',
+            '&:hover': {
+              backgroundColor: 'rgba(255,255,255,0.95)',
+            },
+            boxShadow: '0 2px 5px rgba(0,0,0,0.15)',
+            width: 48,
+            height: 48,
+          }}
+          aria-label="Next appointment"
+        >
+          <ChevronRightIcon />
+        </IconButton>
+      )}
+    </>
+  );
+};
+
 // Helper function for slide rendering with virtualization
 const slideRenderer = (
   filteredAppointments: Appointment[], 
@@ -826,6 +889,14 @@ const AdminAppointmentTiles: React.FC = () => {
               </Box>
             ) : filteredAppointments.length > 0 ? (
               <>
+                {/* Add the edge navigation buttons */}
+                <EdgeNavigationButtons
+                  onPrev={handleBack}
+                  onNext={handleNext}
+                  hasPrev={activeStep > 0}
+                  hasNext={activeStep < filteredAppointments.length - 1}
+                />
+                
                 {/* For smaller number of items use regular SwipeableViews */}
                 {filteredAppointments.length <= 20 ? (
                   <SwipeableViews
