@@ -308,7 +308,7 @@ resource "aws_elastic_beanstalk_application" "backend_app" {
 
 # Elastic Beanstalk Application Version linking to the S3 package
 resource "aws_elastic_beanstalk_application_version" "app_version" {
-  name             = "v6.1 (Added manual dignitary creation)"
+  name             = "v7 (User authentication, calendar sync, and minor improvements)"
   application      = aws_elastic_beanstalk_application.backend_app.name
   description      = "FastAPI Backend"
   bucket           = aws_s3_bucket.app_bucket.id
@@ -766,6 +766,30 @@ resource "aws_elastic_beanstalk_environment" "backend_env" {
     namespace = "aws:elasticbeanstalk:application:environment"
     name      = "APP_BASE_URL"
     value     = "https://meetgurudev.aolf.app"
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "GOOGLE_CALENDAR_ID"
+    value     = "9a1fb132a7dfbfb4fcd5df0d41a997b548cff730be5c83e98eba876d667cf1cc@group.calendar.google.com"
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "DEFAULT_APPOINTMENT_DURATION"
+    value     = "15"
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "GOOGLE_CREDENTIALS_FILE"
+    value     = "./creds/google_credentials-aolf_gsec_prod.json"
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "ENABLE_CALENDAR_SYNC"
+    value     = "true"
   }
 }
 
