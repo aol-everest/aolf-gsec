@@ -229,6 +229,38 @@ export default function AdminLocationsManage() {
     }
   });
 
+  // Helper function to geocode a location and return coordinates
+  const geocodeLocation = useCallback(async (locationData: Partial<LocationFormData>): Promise<{lat: number, lng: number} | null> => {
+    if (!locationData.street_address || !locationData.city || !locationData.country_code) {
+      console.log("Insufficient address data for geocoding");
+      return null;
+    }
+
+    try {
+      // Construct address string
+      const addressString = `${locationData.street_address}, ${locationData.city}, ${locationData.state || ''}, ${locationData.country}`;
+      console.log("Geocoding address:", addressString);
+      
+      // Call Google Maps Geocoding API
+      const geocodingUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(addressString)}&key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}`;
+      const response = await fetch(geocodingUrl);
+      const data = await response.json();
+      
+      if (data.status === "OK" && data.results && data.results.length > 0) {
+        const location = data.results[0].geometry.location;
+        const { lat, lng } = location;
+        console.log("Geocoded coordinates:", lat, lng);
+        return { lat, lng };
+      } else {
+        console.error("Geocoding failed:", data.status);
+        return null;
+      }
+    } catch (error) {
+      console.error("Error in geocoding:", error);
+      return null;
+    }
+  }, []);
+
   // Derive timezone for a location based on country/state
   const deriveTimezoneForLocation = useCallback((locationData: Partial<LocationFormData>, coordinates?: {lat: number, lng: number}) => {
     console.log("Deriving timezone for location", locationData, coordinates);
@@ -359,41 +391,9 @@ export default function AdminLocationsManage() {
           // Default timezone already set, so no need to do anything here
         });
     }
-    // For existing locations without coordinates, try geocoding to get coordinates
-    else if (!coordinates && !skipAPICall && locationData.street_address && locationData.city && locationData.country_code) {
-      // Only do this if we have enough address information
-      const addressString = `${locationData.street_address}, ${locationData.city}, ${locationData.state || ''}, ${locationData.country}`;
-      const geocodingUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(addressString)}&key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}`;
-      
-      fetch(geocodingUrl)
-        .then(response => response.json())
-        .then(data => {
-          if (data.status === "OK" && data.results && data.results.length > 0) {
-            const location = data.results[0].geometry.location;
-            const { lat, lng } = location;
-            
-            // Now use these coordinates to get the timezone
-            const timestamp = Math.floor(Date.now() / 1000);
-            const timezoneApiUrl = `https://maps.googleapis.com/maps/api/timezone/json?location=${lat},${lng}&timestamp=${timestamp}&key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}`;
-            
-            return fetch(timezoneApiUrl);
-          }
-          throw new Error('Geocoding failed');
-        })
-        .then(response => response.json())
-        .then(data => {
-          if (data.status === "OK" && data.timeZoneId) {
-            result.updateTimezone(data.timeZoneId);
-          }
-        })
-        .catch(error => {
-          console.error('Error in geocoding/timezone lookup:', error);
-          // Default timezone already set, so no need to do anything here
-        });
-    }
     
     return result;
-  }, [countries, enqueueSnackbar]);
+  }, [countries]);
 
   // Function to close the form and reset state
   const handleClose = () => {
@@ -433,7 +433,7 @@ export default function AdminLocationsManage() {
             attachment_path: '',
             attachment_name: '',
             attachment_file_type: '',
-          };
+          };  
         } catch (error) {
           enqueueSnackbar('Failed to remove attachment', { variant: 'error' });
           throw error;
@@ -574,7 +574,14 @@ export default function AdminLocationsManage() {
           c.name.toLowerCase() === country.toLowerCase()
         );
 
-        // Create location data object
+        // Get coordinates for timezone lookup and store them
+        let lat = 0, lng = 0;
+        if (place.geometry?.location) {
+          lat = place.geometry.location.lat();
+          lng = place.geometry.location.lng();
+        }
+
+        // Create location data object with coordinates
         const locationData = {
           name: place.name || '',
           street_address: `${streetNumber} ${route}`.trim(),
@@ -584,26 +591,16 @@ export default function AdminLocationsManage() {
           country: matchedCountry ? matchedCountry.name : country,
           country_code: matchedCountry ? matchedCountry.iso2_code : countryCode,
           zip_code: postalCode,
-          lat: 0,
-          lng: 0,
+          lat,
+          lng,
           driving_directions: directionsUrl,
         };
 
-        // Get coordinates for timezone lookup if available
-        let coordinates;
-        if (place.geometry?.location) {
-          coordinates = {
-            lat: place.geometry.location.lat(),
-            lng: place.geometry.location.lng()
-          };
-          locationData.lat = coordinates.lat;
-          locationData.lng = coordinates.lng;
-        }
-
-        // Derive timezone from location data and coordinates
+        // Use coordinates for timezone if available
+        const coordinates = lat && lng ? { lat, lng } : undefined;
         const result = deriveTimezoneForLocation(locationData, coordinates);
         
-        // Set form data with all location information including derived timezone
+        // Set form data with all location information including coordinates and derived timezone
         setFormData({
           ...locationData,
           timezone: result.timezone
@@ -640,6 +637,7 @@ export default function AdminLocationsManage() {
   }, []);
 
   const handleOpen = (location?: Location) => {
+    // First, prepare basic form data and open the form immediately
     if (location) {
       // Create location data from existing location
       const locationData = {
@@ -663,24 +661,66 @@ export default function AdminLocationsManage() {
         attachment_thumbnail_path: location.attachment_thumbnail_path || '',
       };
       
-      // Set form data with existing values
+      // Set form data with existing values immediately
       setFormData(locationData);
       setEditingId(location.id);
       
-      // If timezone is missing, derive it from location data
-      if (!location.timezone || location.timezone.trim() === '') {
-        const result = deriveTimezoneForLocation(locationData);
-        
-        // Update the form data with the derived timezone
-        setFormData(prev => ({
-          ...prev,
-          timezone: result.timezone
-        }));
-      }
+      // After setting the form data, handle geocoding and timezone updates asynchronously
+      // This allows the form to render immediately while these processes happen in the background
+      setTimeout(async () => {
+        // If coordinates are missing, try to geocode the address
+        if ((!location.lat || !location.lng) && location.street_address) {
+          try {
+            const coordinates = await geocodeLocation(locationData);
+            if (coordinates) {
+              // Update the form data with the new coordinates
+              setFormData(prev => ({
+                ...prev,
+                lat: coordinates.lat,
+                lng: coordinates.lng
+              }));
+              
+              // If we don't have a timezone yet, use the coordinates to derive one
+              if (!location.timezone || location.timezone.trim() === '') {
+                const result = deriveTimezoneForLocation(locationData, coordinates);
+                setFormData(prev => ({
+                  ...prev,
+                  timezone: result.timezone
+                }));
+              }
+            }
+          } catch (error) {
+            console.error("Error geocoding location:", error);
+          }
+        } 
+        // If timezone is missing but we have coordinates, derive timezone from the coordinates
+        else if ((!location.timezone || location.timezone.trim() === '') && location.lat && location.lng) {
+          const coordinates = { lat: location.lat, lng: location.lng };
+          const result = deriveTimezoneForLocation(locationData, coordinates);
+          
+          // Update the form data with the derived timezone
+          setFormData(prev => ({
+            ...prev,
+            timezone: result.timezone
+          }));
+        }
+        // If both coordinates and timezone are missing, just use default timezone
+        else if (!location.timezone || location.timezone.trim() === '') {
+          const result = deriveTimezoneForLocation(locationData);
+          
+          // Update the form data with the derived timezone
+          setFormData(prev => ({
+            ...prev,
+            timezone: result.timezone
+          }));
+        }
+      }, 0);
     } else {
       setFormData(initialFormData);
       setEditingId(null);
     }
+    
+    // Always set these immediately
     setSelectedFile(null);
     setAttachmentMarkedForDeletion(false);
     setFormOpen(true);
