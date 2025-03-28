@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 # Environment variables
 GOOGLE_CREDENTIALS_FILE = os.getenv('GOOGLE_CREDENTIALS_FILE', 'google_credentials.json')
+DEFAULT_APPOINTMENT_DURATION = int(os.getenv('DEFAULT_APPOINTMENT_DURATION', 15))
 CALENDAR_ID = os.getenv('GOOGLE_CALENDAR_ID')
 ENABLE_CALENDAR_SYNC = str_to_bool(os.getenv('ENABLE_CALENDAR_SYNC', 'True'))
 APP_BASE_URL = os.getenv('APP_BASE_URL', 'https://meetgurudev.aolf.app')
@@ -217,32 +218,30 @@ def _format_appointment_for_calendar(appointment_id, appointment_data, db: Sessi
     # Get location for timezone information
     location = appointment_data.get('location')
     location_timezone = None
+    timezone_id = "America/New_York"  # Default fallback
     
     # Parse date and time strings to datetime with timezone
     try:
-        # Get country default timezone if available
-        default_timezone = None
-        if location and db:
+        # Priority 1: Get location.timezone if available
+        if location and location.get('timezone'):
+            timezone_id = location.get('timezone')
+            logger.debug(f"Using location timezone '{timezone_id}' for appointment {appointment_id}")
+        
+        # Priority 2: Get country default timezone if available
+        elif location and db:
             country_code = location.get('country_code')
             if country_code:
                 default_timezone = get_country_timezone(db, country_code)
                 if default_timezone:
-                    logger.debug(f"Using country default timezone '{default_timezone}' for appointment {appointment_id}")
+                    timezone_id = default_timezone
+                    logger.debug(f"Using country default timezone '{timezone_id}' for appointment {appointment_id}")
         
-        # If we have location information, use it for timezone
-        if location:
-            # Convert to timezone-aware datetime using the location information and country default timezone
-            start_dt = convert_to_datetime_with_tz(appointment_date, start_time, location, default_timezone)
-            # Save timezone for consistent end time
-            location_timezone = start_dt.tzinfo
-        else:
-            # Fallback to the old method if no location
-            start_dt = datetime.fromisoformat(f"{appointment_date}T{start_time}")
-            location_timezone = ZoneInfo("America/New_York")  # Default timezone
-            start_dt = start_dt.replace(tzinfo=location_timezone)
+        # Convert to timezone-aware datetime
+        start_dt = convert_to_datetime_with_tz(appointment_date, start_time, location, timezone_id)
+        location_timezone = start_dt.tzinfo
+        timezone_id = str(location_timezone)
         
-        # Default duration: 30 minutes
-        end_dt = start_dt + timedelta(minutes=30)
+        end_dt = start_dt + timedelta(minutes=DEFAULT_APPOINTMENT_DURATION)
     except ValueError as e:
         logger.error(f"Error parsing appointment date/time for ID {appointment_id}: {str(e)}")
         return None
@@ -271,9 +270,6 @@ def _format_appointment_for_calendar(appointment_id, appointment_data, db: Sessi
     
     # Add link to appointment in the app
     description += f"\nView in app: {APP_BASE_URL}/admin/appointments/review/{appointment_id}"
-    
-    # Get the timezone identifier for Google Calendar
-    timezone_id = str(location_timezone) if location_timezone else "America/New_York"
     
     # Create the event data
     event = {
@@ -436,8 +432,11 @@ def appointment_to_calendar_dict(appointment):
             'name': appointment.location.name,
             'city': appointment.location.city,
             'state': appointment.location.state,
+            'state_code': appointment.location.state_code if hasattr(appointment.location, 'state_code') else None,
             'country_code': appointment.location.country_code if hasattr(appointment.location, 'country_code') else None,
             'timezone': appointment.location.timezone if hasattr(appointment.location, 'timezone') else None,
+            'lat': appointment.location.lat if hasattr(appointment.location, 'lat') else None,
+            'lng': appointment.location.lng if hasattr(appointment.location, 'lng') else None,
         }
     
     # Add dignitaries if available
@@ -589,8 +588,13 @@ async def check_and_sync_updated_appointment(appointment, old_data: Dict[str, An
     sub_status_changed = old_data.get('sub_status') != new_data.get('sub_status')
     appointment_date_changed = old_data.get('appointment_date') != new_data.get('appointment_date')
     appointment_time_changed = old_data.get('appointment_time') != new_data.get('appointment_time')
-    
-    if status_changed or sub_status_changed or appointment_date_changed or appointment_time_changed:
+    location_changed = old_data.get('location_id') != new_data.get('location_id')
+    dignitaries_changed = old_data.get('appointment_dignitaries') != new_data.get('appointment_dignitaries')
+    purpose_changed = old_data.get('purpose', '') != new_data.get('purpose', '')
+    requester_notes_to_secretariat_changed = old_data.get('requester_notes_to_secretariat', '') != new_data.get('requester_notes_to_secretariat', '')
+    secretariat_meeting_notes_changed = old_data.get('secretariat_meeting_notes', '') != new_data.get('secretariat_meeting_notes', '')
+
+    if status_changed or sub_status_changed or appointment_date_changed or appointment_time_changed or location_changed or dignitaries_changed or purpose_changed or requester_notes_to_secretariat_changed or secretariat_meeting_notes_changed:
         # Get old status values
         old_status = old_data.get('status')
         old_sub_status = old_data.get('sub_status')
