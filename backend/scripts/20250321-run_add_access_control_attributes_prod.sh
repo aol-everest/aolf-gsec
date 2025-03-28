@@ -34,6 +34,8 @@ RESET ROLE; -- Optional, resets back to your original role
 EOF
 
 PGPASSWORD="$MASTER_PASSWORD" psql -h $DB_HOST -U $DB_USER -d $DB_NAME << EOF
+SET search_path TO aolf_gsec_app, public;
+
 UPDATE users SET role = 'ADMIN' WHERE email IN (
     'amit.nair@artofliving.org', 
     'mrigank.nagar@artofliving.org', 

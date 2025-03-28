@@ -5,7 +5,7 @@
 
 # Variables - replace with actual values
 DB_PASSWORD=""
-DB_HOST="aolf-gsec-db-uat.cxg084kkue8o.us-east-2.rds.amazonaws.com"
+DB_HOST="aolf-gsec-db-prod.cxg084kkue8o.us-east-2.rds.amazonaws.com"
 DB_USER="aolf_gsec_user"
 DB_NAME="aolf_gsec"
 
