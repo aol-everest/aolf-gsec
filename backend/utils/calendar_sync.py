@@ -19,6 +19,7 @@ from models.country import Country
 from utils.utils import str_to_bool, convert_to_datetime_with_tz
 from zoneinfo import ZoneInfo
 from functools import lru_cache
+import hashlib
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -26,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 # Environment variables
 GOOGLE_CREDENTIALS_FILE = os.getenv('GOOGLE_CREDENTIALS_FILE', 'google_credentials.json')
-CALENDAR_ID = os.getenv('GOOGLE_CALENDAR_ID', 'Y19hMWM4OWZhZGM5YTRmOWUzOTc5ZmQ4NGY4N2FmYzM0OTc3ZjU3NmM3NmY2ZjVhOGRhZGVkNzVhNmExMDE3YzU0QGdyb3VwLmNhbGVuZGFyLmdvb2dsZS5jb20')
+CALENDAR_ID = os.getenv('GOOGLE_CALENDAR_ID')
 ENABLE_CALENDAR_SYNC = str_to_bool(os.getenv('ENABLE_CALENDAR_SYNC', 'True'))
 APP_BASE_URL = os.getenv('APP_BASE_URL', 'https://meetgurudev.aolf.app')
 
@@ -139,7 +140,9 @@ def calendar_worker():
 
 def _get_calendar_event_id(appointment_id):
     """Generate a consistent calendar event ID for an appointment."""
-    return f"appointment_{appointment_id}"
+    # return f"appointment_{appointment_id}"
+    raw = f"appointment-{appointment_id}"
+    return hashlib.sha1(raw.encode('utf-8')).hexdigest()
 
 def _get_event_dignitaries_text(appointment_data):
     """Get formatted text of dignitaries for calendar event."""
@@ -153,21 +156,14 @@ def _get_event_dignitaries_text(appointment_data):
             if dignitary:
                 title = dignitary.get('honorific_title', '')
                 if title:
+                    logger.debug(f"Formatting honorific title: {title}")
                     title = HonorificTitle.format_honorific_title(title)
                 name = f"{title} {dignitary.get('first_name', '')} {dignitary.get('last_name', '')}".strip()
                 dignitaries.append(name)
         
         if dignitaries:
             dignitaries_text = ", ".join(dignitaries)
-    
-    # Fallback to legacy dignitary if no appointment_dignitaries
-    elif appointment_data.get('dignitary'):
-        dignitary = appointment_data['dignitary']
-        title = dignitary.get('honorific_title', '')
-        if title:
-            title = HonorificTitle.format_honorific_title(title)
-        dignitaries_text = f"{title} {dignitary.get('first_name', '')} {dignitary.get('last_name', '')}".strip()
-    
+        
     return dignitaries_text
 
 @lru_cache(maxsize=256)
@@ -274,7 +270,7 @@ def _format_appointment_for_calendar(appointment_id, appointment_data, db: Sessi
         description += f"Meeting Notes: {appointment_data.get('secretariat_meeting_notes')}\n"
     
     # Add link to appointment in the app
-    description += f"\nView in app: {APP_BASE_URL}/admin/appointments/{appointment_id}"
+    description += f"\nView in app: {APP_BASE_URL}/admin/appointments/review/{appointment_id}"
     
     # Get the timezone identifier for Google Calendar
     timezone_id = str(location_timezone) if location_timezone else "America/New_York"
@@ -473,10 +469,12 @@ async def sync_appointment(appointment):
     """Sync a single appointment to Google Calendar (async wrapper)."""
     appointment_data = appointment_to_calendar_dict(appointment)
     if appointment_data:
+        logger.info(f"Syncing appointment {appointment.id} to calendar")
         queue_appointment_sync(appointment.id, appointment_data)
 
 async def delete_appointment(appointment_id):
     """Delete an appointment from Google Calendar (async wrapper)."""
+    logger.info(f"Deleting appointment {appointment_id} from calendar")
     queue_appointment_delete(appointment_id)
 
 def sync_all_appointments(db: Session):
@@ -542,6 +540,8 @@ async def check_and_sync_appointment(appointment, db: Session = None):
     if not appointment:
         return
     
+    logger.info(f"Checking appointment {appointment.id} for calendar sync")
+    
     # Check if appointment meets criteria for syncing
     should_sync = (
         (
@@ -587,8 +587,10 @@ async def check_and_sync_updated_appointment(appointment, old_data: Dict[str, An
     # Check if status or sub_status has changed
     status_changed = old_data.get('status') != new_data.get('status')
     sub_status_changed = old_data.get('sub_status') != new_data.get('sub_status')
+    appointment_date_changed = old_data.get('appointment_date') != new_data.get('appointment_date')
+    appointment_time_changed = old_data.get('appointment_time') != new_data.get('appointment_time')
     
-    if status_changed or sub_status_changed:
+    if status_changed or sub_status_changed or appointment_date_changed or appointment_time_changed:
         # Get old status values
         old_status = old_data.get('status')
         old_sub_status = old_data.get('sub_status')
