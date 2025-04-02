@@ -423,10 +423,8 @@ const AdminAppointmentTiles: React.FC = () => {
     if (hasAppliedFilters) {
       logger('Applying filters from URL parameters', newFilters);
       setFilters(newFilters);
-      isFilteringRef.current = true;
       // Reset this flag after a short delay
       setTimeout(() => {
-        isFilteringRef.current = false;
         isInitialLoadRef.current = false;
       }, 300);
     } else {
