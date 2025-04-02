@@ -102,6 +102,21 @@ const LoadingContainer = styled(Box)({
   width: '100%',
 });
 
+// Add cache duration constant (24 hours)
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
+// Add interface for cached thumbnail
+interface CachedThumbnail {
+  thumbnail: string;
+  timestamp: number;
+}
+
+// Add interface for thumbnail response
+interface ThumbnailResponse {
+  id: number;
+  thumbnail: string;
+}
+
 interface AttachmentSectionProps {
   attachments: AppointmentAttachment[];
 }
@@ -124,123 +139,91 @@ const AttachmentSection: React.FC<AttachmentSectionProps> = ({ attachments }) =>
   const [modalOpen, setModalOpen] = useState(false);
   const [thumbnailUrls, setThumbnailUrls] = useState<Record<number, string>>({});
   const [fullImageUrl, setFullImageUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState<Record<number, boolean>>({});
+  const [loading, setLoading] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
-  
-  // Create a cache reference that persists across renders
-  const thumbnailCache = React.useRef<Record<number, string>>({});
-  
+
+  // Function to get cache key for a thumbnail
+  const getThumbnailCacheKey = (appointmentId: number, attachmentId: number) => {
+    return `thumbnail_${appointmentId}_${attachmentId}`;
+  };
+
+  // Function to check if cached thumbnail is valid
+  const isValidCache = (cached: CachedThumbnail) => {
+    return cached && (Date.now() - cached.timestamp) < CACHE_DURATION;
+  };
+
   // Load thumbnails when component mounts or attachments change
   useEffect(() => {
-    let isMounted = true;
-    
     const loadThumbnails = async () => {
-      // Skip if there are no image attachments
+      if (!attachments.length || !attachments[0].appointment_id) return;
+
+      const appointmentId = attachments[0].appointment_id;
       const imageAttachments = attachments.filter(attachment => attachment.is_image);
       if (imageAttachments.length === 0) return;
-      
-      // Initialize loading state
-      const newLoading: Record<number, boolean> = {};
-      const newThumbnailUrls: Record<number, string> = {...thumbnailUrls};
-      
-      // Check which thumbnails need to be loaded
-      const attachmentsToLoad = imageAttachments.filter(att => 
-        !thumbnailCache.current[att.id] && !thumbnailUrls[att.id]
-      );
-      
-      // If all thumbnails are cached, use the cached values
-      if (attachmentsToLoad.length === 0) {
-        // Use cached thumbnails
-        imageAttachments.forEach(att => {
-          // Use cached URL if available
-          if (thumbnailCache.current[att.id]) {
-            newThumbnailUrls[att.id] = thumbnailCache.current[att.id];
-          }
-        });
-        
-        if (isMounted) {
-          setThumbnailUrls(newThumbnailUrls);
-        }
-        return;
-      }
-      
-      // Mark attachments that need loading
-      attachmentsToLoad.forEach(att => {
-        newLoading[att.id] = true;
-      });
-      
-      if (isMounted) {
-        setLoading(newLoading);
-      }
-      
-      // Load thumbnails in parallel using Promise.all
+
+      setLoading(true);
+
       try {
-        const loadPromises = attachmentsToLoad.map(async attachment => {
-          try {
-            console.log(`Loading thumbnail for attachment ${attachment.id}`);
-            const response = await api.get(`/appointments/attachments/${attachment.id}/thumbnail`, {
-              responseType: 'blob'
-            });
-            const url = URL.createObjectURL(response.data as Blob);
-            return { id: attachment.id, url };
-          } catch (error) {
-            console.error(`Error loading thumbnail for attachment ${attachment.id}:`, error);
-            return { id: attachment.id, url: null };
+        // Check cache first
+        const uncachedAttachments = imageAttachments.filter(att => {
+          const cacheKey = getThumbnailCacheKey(appointmentId, att.id);
+          const cached = localStorage.getItem(cacheKey);
+          if (!cached) return true;
+
+          const parsedCache = JSON.parse(cached) as CachedThumbnail;
+          if (!isValidCache(parsedCache)) {
+            localStorage.removeItem(cacheKey);
+            return true;
           }
+
+          // Use cached thumbnail
+          setThumbnailUrls(prev => ({
+            ...prev,
+            [att.id]: `data:image/jpeg;base64,${parsedCache.thumbnail}`
+          }));
+          return false;
         });
-        
-        const results = await Promise.all(loadPromises);
-        
-        if (isMounted) {
-          // Update the URLs and loading state
-          const updatedUrls = {...newThumbnailUrls};
-          const updatedLoading = {...newLoading};
-          
-          results.forEach(result => {
-            if (result.url) {
-              updatedUrls[result.id] = result.url;
-              thumbnailCache.current[result.id] = result.url; // Cache the URL
-            }
-            updatedLoading[result.id] = false;
-          });
-          
-          setThumbnailUrls(updatedUrls);
-          setLoading(updatedLoading);
+
+        if (uncachedAttachments.length === 0) {
+          setLoading(false);
+          return;
         }
+
+        // Fetch uncached thumbnails
+        const response = await api.get(`/appointments/${appointmentId}/attachments/thumbnails`);
+        const thumbnails = response.data as ThumbnailResponse[];
+
+        const newThumbnailUrls: Record<number, string> = {};
+        thumbnails.forEach(({ id, thumbnail }) => {
+          // Update URLs state
+          newThumbnailUrls[id] = `data:image/jpeg;base64,${thumbnail}`;
+
+          // Cache the thumbnail
+          const cacheKey = getThumbnailCacheKey(appointmentId, id);
+          localStorage.setItem(cacheKey, JSON.stringify({
+            thumbnail,
+            timestamp: Date.now()
+          }));
+        });
+
+        setThumbnailUrls(prev => ({ ...prev, ...newThumbnailUrls }));
       } catch (error) {
-        console.error("Error loading thumbnails:", error);
-        if (isMounted) {
-          // Mark all as not loading
-          const updatedLoading = {...newLoading};
-          Object.keys(updatedLoading).forEach(id => {
-            updatedLoading[Number(id)] = false;
-          });
-          setLoading(updatedLoading);
-        }
+        console.error('Error loading thumbnails:', error);
+      } finally {
+        setLoading(false);
       }
     };
-    
+
     loadThumbnails();
-    
-    // Cleanup function to revoke object URLs when component unmounts
+
+    // Cleanup function
     return () => {
-      isMounted = false;
-    };
-  }, [attachments, api]);
-  
-  // Cleanup URLs when component unmounts
-  useEffect(() => {
-    return () => {
-      // Revoke all URLs
-      Object.values(thumbnailUrls).forEach(url => {
-        URL.revokeObjectURL(url);
-      });
-      
+      // Cleanup is handled by the browser for localStorage
       if (fullImageUrl) {
         URL.revokeObjectURL(fullImageUrl);
       }
     };
-  }, []);
+  }, [attachments, api]);
   
   if (!attachments || attachments.length === 0) {
     return null;
@@ -327,7 +310,7 @@ const AttachmentSection: React.FC<AttachmentSectionProps> = ({ attachments }) =>
               <AttachmentItem onClick={() => handleAttachmentClick(attachment)}>
                 <ThumbnailContainer>
                   {attachment.is_image ? (
-                    loading[attachment.id] ? (
+                    loading ? (
                       <LoadingContainer>
                         <CircularProgress size={40} />
                       </LoadingContainer>

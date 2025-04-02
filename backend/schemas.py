@@ -420,6 +420,13 @@ class AppointmentAttachment(AppointmentAttachmentBase):
     class Config:
         orm_mode = True
 
+class AdminAppointmentAttachmentThumbnail(BaseModel):
+    id: int
+    thumbnail: str
+
+    class Config:
+        orm_mode = True
+
 class BusinessCardExtraction(BaseModel):
     honorific_title: Optional[HonorificTitle] = None
     first_name: Optional[str] = None

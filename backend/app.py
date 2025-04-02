@@ -31,6 +31,7 @@ from logging.handlers import RotatingFileHandler
 import os.path
 import contextvars
 from utils.calendar_sync import check_and_sync_appointment, check_and_sync_updated_appointment
+import base64
 
 # Create a context variable to store request IDs
 request_id_var = contextvars.ContextVar('request_id', default='')
@@ -3072,6 +3073,64 @@ async def get_all_countries(
 #     db.commit()
     
 #     return {"message": f"Updated {updated} countries", "updated_count": updated}
+
+@app.get("/appointments/{appointment_id}/attachments/thumbnails", response_model=List[schemas.AdminAppointmentAttachmentThumbnail])
+async def get_appointment_attachment_thumbnails(
+    appointment_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_read_db)
+):
+    """Get all thumbnails for an appointment's attachments in a single request."""
+    # First verify the appointment exists and user has access
+    appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    # Check user access (add check similar to get_attachment_thumbnail)
+    if appointment.requester_id != current_user.id:
+        admin_access_check = admin_check_appointment_for_access_level(
+            current_user=current_user,
+            db=db,
+            appointment_id=appointment_id,
+            required_access_level=models.AccessLevel.READ
+        )
+        if not admin_access_check:
+            raise HTTPException(status_code=403, detail="Not authorized to view attachments for this appointment")
+
+    # Get all image attachments for this appointment
+    query = db.query(models.AppointmentAttachment).filter(
+        models.AppointmentAttachment.appointment_id == appointment_id,
+        models.AppointmentAttachment.is_image == True,
+        models.AppointmentAttachment.thumbnail_path != None  # Ensure thumbnail exists
+    )
+
+    # Add uploaded_by filter only for non-SECRETARIAT users
+    if current_user.role.is_general_role_type():
+        query = query.filter(models.AppointmentAttachment.uploaded_by == current_user.id)
+
+    # Execute the query
+    attachments = query.all()
+
+    # Prepare the response
+    thumbnails = []
+    for attachment in attachments:
+        try:
+            # Get the thumbnail data from S3
+            file_data = get_file(attachment.thumbnail_path)
+            thumbnail_bytes = file_data['file_data']
+            
+            # Encode it as base64
+            encoded_thumbnail = base64.b64encode(thumbnail_bytes).decode('utf-8')
+                
+            thumbnails.append({
+                "id": attachment.id,
+                "thumbnail": encoded_thumbnail
+            })
+        except Exception as e:
+            logger.error(f"Error getting thumbnail for attachment {attachment.id} (path: {attachment.thumbnail_path}): {str(e)}")
+            continue
+
+    return thumbnails
 
 
 
