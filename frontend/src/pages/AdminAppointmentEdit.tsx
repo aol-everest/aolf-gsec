@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -155,6 +155,10 @@ const AdminAppointmentEdit: React.FC = () => {
   const [isExtractionDisabled, setIsExtractionDisabled] = useState(false);
   const theme = useTheme();
   
+  // Get redirect URL from query parameters
+  const searchParams = new URLSearchParams(window.location.search);
+  const redirectTo = searchParams.get('redirectTo') || `/admin/appointments/review/${id}`;
+  
   // Reference to AdminAppointmentEditCard component
   const appointmentEditCardRef = useRef<{ validate: () => ValidationErrors }>(null);
   
@@ -174,6 +178,49 @@ const AdminAppointmentEdit: React.FC = () => {
   } = useForm<AppointmentFormData>({
     mode: 'onSubmit',
   });
+
+  // Function to handle redirecting back to the original URL with all parameters
+  const handleRedirect = useCallback((stripAppointmentId: boolean = true) => {
+    if (redirectTo) {
+      try {
+        // Parse the URL to properly handle all components
+        const redirectUrl = new URL(redirectTo, window.location.origin);
+        
+        // Check if we need to strip out the appointmentId from the URL
+        if (stripAppointmentId && redirectUrl.pathname.includes('/review/')) {
+          // Extract the base path without the appointment ID
+          const pathParts = redirectUrl.pathname.split('/');
+          const reviewIndex = pathParts.indexOf('review');
+          
+          if (reviewIndex >= 0 && reviewIndex < pathParts.length - 1) {
+            // Remove the appointmentId part but keep the 'review' part
+            pathParts.splice(reviewIndex + 1, 1);
+            redirectUrl.pathname = pathParts.join('/');
+          }
+        }
+        
+        debugLog(`Redirecting to: ${redirectUrl.pathname}${redirectUrl.search}`);
+        navigate(redirectUrl.pathname + redirectUrl.search, { replace: true });
+      } catch (e) {
+        // Fallback if URL parsing fails
+        navigate(redirectTo, { replace: true });
+      }
+    } else {
+      // If stripAppointmentId is true, go to the general appointments page
+      if (stripAppointmentId) {
+        navigate('/admin/appointments/review', { replace: true });
+      } else {
+        navigate(`/admin/appointments/review/${id}`, { replace: true });
+      }
+    }
+  }, [redirectTo, navigate, id]);
+
+  // Debug log function
+  const debugLog = (message: string, data?: any) => {
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[AppointmentEdit] ${message}`, data || '');
+    }
+  };
 
   // Fetch status map from the API
   const { data: statusMap = {} } = useQuery<StatusMap>({
@@ -281,7 +328,8 @@ const AdminAppointmentEdit: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       queryClient.invalidateQueries({ queryKey: ['appointment-attachments', id] });
       enqueueSnackbar('Appointment updated successfully', { variant: 'success' });
-      navigate(AdminAppointmentsReviewRoute.path || '');
+      // When saving, strip the appointment ID from the redirect URL
+      handleRedirect(true);
     },
     onError: (error) => {
       console.error('Error updating appointment:', error);
@@ -595,7 +643,7 @@ const AdminAppointmentEdit: React.FC = () => {
                   <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
                     <Button
                       variant="outlined"
-                      onClick={() => navigate(AdminAppointmentsReviewRoute.path || '')}
+                      onClick={() => handleRedirect(false)}
                     >
                       Cancel
                     </Button>

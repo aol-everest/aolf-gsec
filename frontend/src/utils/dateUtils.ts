@@ -40,7 +40,7 @@ export const parseUTCDate = (dateStr: string): Date => {
   if (!dateStr) return new Date(NaN); // Return invalid date for empty strings
   
   try {
-    console.log('dateStr', dateStr);
+    // console.log('dateStr', dateStr);
     let safeDateStr = dateStr.trim();
     
     // Handle specific date formats
@@ -54,7 +54,7 @@ export const parseUTCDate = (dateStr: string): Date => {
     
     // Try parsing with date-fns first (best cross-platform compatibility)
     const parsedDate = parseISO(safeDateStr);
-    console.log('parsedDate', parsedDate);
+    // console.log('parsedDate', parsedDate);
     
     // Check if date is valid
     if (isValid(parsedDate)) {

@@ -53,6 +53,8 @@ import { EnumFilterChipGroup } from '../components/EnumFilterChipGroup';
 import SwipeableViews from 'react-swipeable-views';
 import { virtualize, bindKeyboard } from 'react-swipeable-views-utils';
 import ButtonWithBadge from '../components/ButtonWithBadge';
+import { AdminAppointmentsEditRoute } from '../config/routes';
+import { debugLog, createDebugLogger } from '../utils/debugUtils';
 
 import { Appointment, AppointmentDignitary } from '../models/types';
 
@@ -270,13 +272,28 @@ interface Location {
   state: string;
 }
 
+// Define interface for filters state object
+interface FilterState {
+  status: string | null;
+  locationId: number | null;
+  searchTerm: string;
+  startDate: Date | null;
+  endDate: Date | null;
+}
+
 const AdminAppointmentTiles: React.FC = () => {
+  // Create a component-specific logger
+  const logger = createDebugLogger('AdminAppointmentTiles');
+  
   const [activeStep, setActiveStep] = useState(0);
-  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
-  const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [startDate, setStartDate] = useState<Date | null>(subDays(new Date(), 1));
-  const [endDate, setEndDate] = useState<Date | null>(addDays(new Date(), 7));
+  // Combine all filter states into a single object to reduce re-renders
+  const [filters, setFilters] = useState<FilterState>({
+    status: null,
+    locationId: null,
+    searchTerm: '',
+    startDate: subDays(new Date(), 1),
+    endDate: addDays(new Date(), 7)
+  });
   const [filteredAppointments, setFilteredAppointments] = useState<Appointment[]>([]);
   const theme = useTheme();
   const navigate = useNavigate();
@@ -288,19 +305,156 @@ const AdminAppointmentTiles: React.FC = () => {
   const isNavigatingRef = useRef(false);
   const isFilteringRef = useRef(false);
   const isManualNavigationRef = useRef(false); // Track Next/Back button clicks
+  const isInitialLoadRef = useRef(true);
   
   // Define searchable fields based on the config
   const searchableFields = SEARCH_CONFIG.appointmentFields as unknown as (keyof Appointment)[];
   
-  // DEBUG: Add console logs for important state changes
-  const debugLog = (message: string, data?: any) => {
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(`[AppointmentTiles] ${message}`, data || '');
-    }
-  };
-
   // Fetch status options using useEnums hook
   const { values: statusOptions = [], isLoading: isLoadingStatusOptions } = useEnums('appointmentStatus');
+
+  // Helper function to update URL with current filters
+  const updateUrlWithFilters = useCallback(() => {
+    if (isNavigatingRef.current || isInitialLoadRef.current) return;
+    
+    // Debug the status of filters when updating URL
+    logger('Updating URL with filters', filters);
+    
+    const searchParams = new URLSearchParams();
+    
+    logger(`Selected status: ${filters.status}`);
+    if (filters.status) {
+      searchParams.set('status', filters.status);
+      logger(`Adding status parameter to URL: ${filters.status}`);
+    }
+    
+    if (filters.locationId) {
+      searchParams.set('locationId', filters.locationId.toString());
+    }
+    
+    if (filters.searchTerm) {
+      searchParams.set('search', filters.searchTerm);
+    }
+    
+    if (filters.startDate) {
+      searchParams.set('startDate', filters.startDate.toISOString().split('T')[0]);
+    }
+    
+    if (filters.endDate) {
+      searchParams.set('endDate', filters.endDate.toISOString().split('T')[0]);
+    }
+    
+    const paramString = searchParams.toString();
+    logger(`URL params: ${paramString}`);
+    
+    // Don't update URL if we're in an appointment detail view (with ID)
+    // as we only want to update filter params without changing the ID
+    const url = id 
+      ? `/admin/appointments/review/${id}?${paramString}`
+      : `/admin/appointments/review?${paramString}`;
+    
+    // Use replace to avoid building up browser history
+    isNavigatingRef.current = true;
+    navigate(url, { replace: true });
+    logger(`Navigated to: ${url}`);
+    
+    setTimeout(() => {
+      isNavigatingRef.current = false;
+    }, 100);
+  }, [navigate, filters, id]);
+
+  // Parse URL parameters on initial load
+  useEffect(() => {
+    if (!isInitialLoadRef.current) return;
+    logger('Parsing URL parameters on initial load');
+    
+    const searchParams = new URLSearchParams(window.location.search);
+    let hasAppliedFilters = false;
+    
+    // Build a new filters object from URL parameters
+    const newFilters: FilterState = {
+      status: null,
+      locationId: null,
+      searchTerm: '',
+      startDate: filters.startDate,
+      endDate: filters.endDate
+    };
+    
+    // Parse status filter
+    const statusParam = searchParams.get('status');
+    if (statusParam) {
+      logger(`Setting status from URL: ${statusParam}`);
+      newFilters.status = statusParam;
+      hasAppliedFilters = true;
+    }
+    
+    // Parse location filter
+    const locationParam = searchParams.get('locationId');
+    if (locationParam) {
+      logger(`Setting location from URL: ${locationParam}`);
+      newFilters.locationId = parseInt(locationParam, 10);
+      hasAppliedFilters = true;
+    }
+    
+    // Parse search term
+    const searchParam = searchParams.get('search');
+    if (searchParam) {
+      logger(`Setting search term from URL: ${searchParam}`);
+      newFilters.searchTerm = searchParam;
+      hasAppliedFilters = true;
+    }
+    
+    // Parse date filters
+    const startDateParam = searchParams.get('startDate');
+    if (startDateParam) {
+      logger(`Setting start date from URL: ${startDateParam}`);
+      newFilters.startDate = new Date(startDateParam);
+      hasAppliedFilters = true;
+    }
+    
+    const endDateParam = searchParams.get('endDate');
+    if (endDateParam) {
+      logger(`Setting end date from URL: ${endDateParam}`);
+      newFilters.endDate = new Date(endDateParam);
+      hasAppliedFilters = true;
+    }
+    
+    // Set all filters at once to avoid multiple re-renders
+    if (hasAppliedFilters) {
+      logger('Applying filters from URL parameters', newFilters);
+      setFilters(newFilters);
+      isFilteringRef.current = true;
+      // Reset this flag after a short delay
+      setTimeout(() => {
+        isFilteringRef.current = false;
+        isInitialLoadRef.current = false;
+      }, 300);
+    } else {
+      logger('No filters applied from URL parameters');
+      isInitialLoadRef.current = false;
+    }
+  }, []);
+
+  // Update URL whenever filters change - but protect against initial load race conditions
+  useEffect(() => {
+    if (isInitialLoadRef.current) {
+      logger('Skipping URL update during initial load');
+      return;
+    }
+    
+    // Add an extra check for recent initialization
+    // This gives time for the state updates from URL parsing to be applied
+    // This subtracts the result of performance.now() (which gives time in milliseconds 
+    // since page load) from Date.now() (which gives the current time in Unix epoch milliseconds).
+    const isRecentlyInitialized = Date.now() - performance.now() < 500;
+    if (isRecentlyInitialized) {
+      logger('Skipping URL update - recently initialized');
+      return;
+    }
+    
+    logger('Running updateUrlWithFilters with current state', filters);
+    updateUrlWithFilters();
+  }, [filters, updateUrlWithFilters]);
 
   // Fetch locations using React Query
   const { data: locations = [], isLoading: isLoadingLocations } = useQuery({
@@ -321,10 +475,10 @@ const AdminAppointmentTiles: React.FC = () => {
 
   // Fetch appointments using React Query with proper configuration
   const { data: appointments = [], isLoading } = useQuery({
-    queryKey: ['appointments', startDate, endDate],
+    queryKey: ['appointments', filters.startDate, filters.endDate],
     queryFn: async () => {
       try {
-        debugLog('Fetching appointments');
+        logger('Fetching appointments');
         // Prepare parameters with optional date range
         const params: Record<string, any> = {
           include_location: true,
@@ -332,16 +486,16 @@ const AdminAppointmentTiles: React.FC = () => {
         };
 
         // Add date range parameters if they exist
-        if (startDate) {
-          params.start_date = startDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+        if (filters.startDate) {
+          params.start_date = filters.startDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD
         }
-        if (endDate) {
-          params.end_date = endDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+        if (filters.endDate) {
+          params.end_date = filters.endDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD
         }
 
         // Make sure we're getting the full appointment data including location
         const { data } = await api.get<Appointment[]>('/admin/appointments/all', { params });
-        debugLog(`Fetched ${data.length} appointments`);
+        logger(`Fetched ${data.length} appointments`);
         return data;
       } catch (error) {
         console.error('Error fetching appointments:', error);
@@ -356,28 +510,28 @@ const AdminAppointmentTiles: React.FC = () => {
 
   // Memoized function to get filtered appointments
   const getFilteredAppointments = useCallback(() => {
-    console.log(`Called getFilteredAppointments`);
+    logger(`Called getFilteredAppointments`);
 
     let filtered = [...appointments];
    
     // Apply status filter if selected
-    if (selectedStatus) {
-      console.log(`Filtering by status: ${selectedStatus}`);
-      filtered = filtered.filter(appointment => appointment.status === selectedStatus);
+    if (filters.status) {
+      logger(`Filtering by status: ${filters.status}`);
+      filtered = filtered.filter(appointment => appointment.status === filters.status);
     }
     
     // Apply location filter if selected
-    if (selectedLocation) {
-      console.log(`Filtering by location: ${selectedLocation}`);
+    if (filters.locationId) {
+      logger(`Filtering by location: ${filters.locationId}`);
       filtered = filtered.filter(appointment => 
-        appointment.location && appointment.location.id === selectedLocation
+        appointment.location && appointment.location.id === filters.locationId
       );
     }
     
     // Apply search filter if search term exists
-    if (searchTerm.trim()) {
-      console.log(`Filtering by search term: ${searchTerm}`);
-      const searchLower = searchTerm.toLowerCase().trim();
+    if (filters.searchTerm.trim()) {
+      logger(`Filtering by search term: ${filters.searchTerm}`);
+      const searchLower = filters.searchTerm.toLowerCase().trim();
       
       filtered = filtered.filter(appointment => {
         // Check each searchable field
@@ -420,14 +574,13 @@ const AdminAppointmentTiles: React.FC = () => {
     }
     
     return filtered;
-  }, [appointments, selectedStatus, selectedLocation, searchTerm, searchableFields]);
+  }, [appointments, filters, searchableFields]);
 
-  // Apply filters and handle URL ID
+  // Apply filters and handle appointment selection
   useEffect(() => {
     if (appointments.length === 0) return;
     
-    // isFilteringRef.current = true;
-    debugLog('Filtering appointments', { selectedStatus, selectedLocation, searchTerm, startDate, endDate });
+    logger('Filtering appointments', filters);
     
     const filtered = getFilteredAppointments();
     setFilteredAppointments(filtered);
@@ -439,59 +592,80 @@ const AdminAppointmentTiles: React.FC = () => {
       
       if (index !== -1) {
         // ID exists in filtered results
-        debugLog(`Setting activeStep to ${index} for appointment ID ${appointmentId}`);
+        logger(`Setting activeStep to ${index} for appointment ID ${appointmentId}`);
         setActiveStep(index);
       } else {
         // ID doesn't exist in filtered results - check if it exists at all
         const existsInAllAppointments = appointments.some(apt => apt.id === appointmentId);
         
-        if (existsInAllAppointments && (selectedStatus || selectedLocation || startDate || endDate)) {
+        if (existsInAllAppointments && (filters.status || filters.locationId || filters.searchTerm || filters.startDate || filters.endDate)) {
           // It exists but is filtered out - clear filters
-          debugLog(`Clearing filters to show appointment ID ${appointmentId}`);
-          setSelectedStatus(null);
-          setSelectedLocation(null);
-          setStartDate(null);
-          setEndDate(null);
+          logger(`Clearing filters to show appointment ID ${appointmentId}`);
+          // Don't clear status if that's the filter that was just applied from URL
+          if (!isInitialLoadRef.current) {
+            setFilters(prev => ({
+              ...prev,
+              status: null,
+              locationId: null,
+              searchTerm: '',
+              startDate: null,
+              endDate: null
+            }));
+          }
           return; // Exit early - the effect will run again with cleared filters
         } else {
           // It doesn't exist at all - go to first appointment
-          debugLog(`Appointment ID ${appointmentId} not found, going to first appointment`);
+          logger(`Appointment ID ${appointmentId} not found, going to first appointment`);
           setActiveStep(0);
           if (filtered.length > 0) {
             // Navigate to the first appointment
             const firstAppointmentId = filtered[0].id;
             isNavigatingRef.current = true;
-            navigate(`/admin/appointments/review/${firstAppointmentId}`, { replace: true });
+            // Preserve any filter parameters that were set
+            const currentParams = new URLSearchParams(window.location.search);
+            const url = `/admin/appointments/review/${firstAppointmentId}?${currentParams.toString()}`;
+            navigate(url, { replace: true });
+            logger(`Navigated to first appointment: ${url}`);
             setTimeout(() => {
               isNavigatingRef.current = false;
             }, 100);
           } else {
             // No appointments after filtering
-            navigate('/admin/appointments/review', { replace: true });
+            // Preserve filter parameters in the URL
+            const currentParams = new URLSearchParams(window.location.search);
+            navigate(`/admin/appointments/review?${currentParams.toString()}`, { replace: true });
+            logger(`No appointments to show, navigated to review page with filters preserved`);
           }
         }
       }
     } else if (filtered.length > 0) {
       // No ID in URL or manual navigation - ensure activeStep is valid
       if (activeStep >= filtered.length) {
-        debugLog('Resetting activeStep to 0 - current step is invalid');
+        logger('Resetting activeStep to 0 - current step is invalid');
         setActiveStep(0);
       }
       
       // If there's no ID in URL but we have appointments, update URL
-      // if (!id && !isNavigatingRef.current && filtered.length > 0 && !isManualNavigationRef.current) {
-      if (!isNavigatingRef.current && (isFilteringRef.current || isManualNavigationRef.current)) {
+      if (!id && !isNavigatingRef.current && filtered.length > 0) {
         const appointmentId = filtered[activeStep < filtered.length ? activeStep : 0].id;
-        debugLog(`Updating URL to appointment ID ${appointmentId}`);
+        logger(`Updating URL to appointment ID ${appointmentId}`);
+        
+        // Get current search params and preserve them
+        const searchParams = new URLSearchParams(window.location.search);
+        
         isNavigatingRef.current = true;
-        navigate(`/admin/appointments/review/${appointmentId}`, { replace: true });
+        navigate(`/admin/appointments/review/${appointmentId}?${searchParams.toString()}`, { replace: true });
+        logger(`Navigated to: /admin/appointments/review/${appointmentId}?${searchParams.toString()}`);
         setTimeout(() => {
           isNavigatingRef.current = false;
         }, 100);
       }
     } else {
-      debugLog('No appointments after filtering');
-      navigate('/admin/appointments/review', { replace: true });
+      logger('No appointments after filtering');
+      // Preserve filter parameters in the URL
+      const currentParams = new URLSearchParams(window.location.search);
+      navigate(`/admin/appointments/review?${currentParams.toString()}`, { replace: true });
+      logger(`Navigated to review page with filters preserved`);
     }
     
     // Always reset the manual navigation flag when filtering completes
@@ -502,20 +676,24 @@ const AdminAppointmentTiles: React.FC = () => {
       isFilteringRef.current = false;
     }, 100);
     
-  }, [appointments, selectedStatus, selectedLocation, searchTerm, startDate, endDate, id, navigate, getFilteredAppointments]);
+  }, [appointments, filters, id, navigate, getFilteredAppointments]);
 
-  // Update URL when activeStep changes due to Next/Back button clicks
+  // Update URL when activeStep changes
   useEffect(() => {
-    // Only run this effect when manual navigation occurred
-    if (!isManualNavigationRef.current) return;
-    
-    // Skip if we're in the middle of filtering or navigating
-    if (isFilteringRef.current || isNavigatingRef.current) return;
+    logger(`Updating URL after step change to ${activeStep} - pre check`);
+    // Skip if we're in the middle of filtering or navigating or initial load
+    if (isFilteringRef.current || isNavigatingRef.current || isInitialLoadRef.current) {
+      logger(`Skipping URL update - ${isFilteringRef.current ? 'filtering' : ''}${isNavigatingRef.current ? ' navigating' : ''}${isInitialLoadRef.current ? ' initial load' : ''}`);
+      return;
+    }
     
     // Skip invalid states
-    if (filteredAppointments.length === 0 || activeStep >= filteredAppointments.length) return;
+    if (filteredAppointments.length === 0 || activeStep >= filteredAppointments.length) {
+      logger(`Skipping URL update - invalid state: ${filteredAppointments.length === 0 ? 'no appointments' : 'step out of range'}`);
+      return;
+    }
     
-    debugLog(`Updating URL after manual navigation to step ${activeStep}`);
+    logger(`Updating URL after step change to ${activeStep}`);
     const appointment = filteredAppointments[activeStep];
     
     if (appointment && appointment.id) {
@@ -524,14 +702,16 @@ const AdminAppointmentTiles: React.FC = () => {
         return;
       }
       
-      // Update URL
+      // Get current search params and preserve them
+      const searchParams = new URLSearchParams(window.location.search);
+      
+      // Update URL with appointment ID while preserving filter params
       isNavigatingRef.current = true;
-      navigate(`/admin/appointments/review/${appointment.id}`, { replace: true });
+      navigate(`/admin/appointments/review/${appointment.id}?${searchParams.toString()}`, { replace: true });
       
       // Reset flags after navigation
       setTimeout(() => {
         isNavigatingRef.current = false;
-        isManualNavigationRef.current = false;
       }, 100);
     }
   }, [activeStep, filteredAppointments, navigate, id]);
@@ -539,7 +719,7 @@ const AdminAppointmentTiles: React.FC = () => {
   // Simplified Next/Back handlers
   const handleNext = () => {
     if (activeStep < filteredAppointments.length - 1) {
-      debugLog('Next button clicked');
+      logger('Next button clicked');
       isManualNavigationRef.current = true;
       const nextStep = activeStep + 1;
       setActiveStep(nextStep);
@@ -548,7 +728,7 @@ const AdminAppointmentTiles: React.FC = () => {
 
   const handleBack = () => {
     if (activeStep > 0) {
-      debugLog('Back button clicked');
+      logger('Back button clicked');
       isManualNavigationRef.current = true;
       const prevStep = activeStep - 1;
       setActiveStep(prevStep);
@@ -556,23 +736,45 @@ const AdminAppointmentTiles: React.FC = () => {
   };
 
   const handleStatusFilter = (status: string | null) => {
-    debugLog(`Setting status filter: ${status}`);
+    logger(`Setting status filter: ${status}`);
     isFilteringRef.current = true;
-    setSelectedStatus(status);
+    setFilters(prev => ({ ...prev, status }));
     setActiveStep(0);
   };
 
   const handleLocationFilter = (locationId: number | null) => {
-    debugLog(`Setting location filter: ${locationId}`);
+    logger(`Setting location filter: ${locationId}`);
     isFilteringRef.current = true;
-    setSelectedLocation(locationId);
+    setFilters(prev => ({ ...prev, locationId }));
     setActiveStep(0);
   };
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    debugLog(`Setting search term: ${event.target.value}`);
+    logger(`Setting search term: ${event.target.value}`);
     isFilteringRef.current = true;
-    setSearchTerm(event.target.value);
+    setFilters(prev => ({ ...prev, searchTerm: event.target.value }));
+    setActiveStep(0);
+  };
+
+  // Handle date filter changes
+  const handleStartDateChange = (date: Date | null) => {
+    logger(`Setting start date: ${date}`);
+    isFilteringRef.current = true;
+    setFilters(prev => ({ ...prev, startDate: date }));
+    setActiveStep(0);
+  };
+
+  const handleEndDateChange = (date: Date | null) => {
+    logger(`Setting end date: ${date}`);
+    isFilteringRef.current = true;
+    setFilters(prev => ({ ...prev, endDate: date }));
+    setActiveStep(0);
+  };
+
+  const clearDateFilters = () => {
+    logger('Clearing date filters');
+    isFilteringRef.current = true;
+    setFilters(prev => ({ ...prev, startDate: null, endDate: null }));
     setActiveStep(0);
   };
 
@@ -592,7 +794,17 @@ const AdminAppointmentTiles: React.FC = () => {
   };
 
   // Updated AppointmentTile component to safely handle undefined appointments
-  const AppointmentTile = ({ appointment }: { appointment: Appointment }) => {
+  const AppointmentTile: React.FC<{ appointment: Appointment }> = ({ appointment }) => {
+    const navigate = useNavigate();
+    const theme = useTheme();
+
+    const handleEdit = (appointmentId: number) => {
+      // Include the current URL with all query parameters as a redirectTo parameter
+      const currentUrl = window.location.pathname + window.location.search;
+      navigate(`${AdminAppointmentsEditRoute.path?.replace(':id', appointmentId.toString())}?redirectTo=${encodeURIComponent(currentUrl)}` || '');
+      logger(`Editing appointment with ID: ${appointmentId}`);
+    };
+
     // Safety check - if appointment is undefined, show a message instead
     if (!appointment) {
       return (
@@ -607,29 +819,6 @@ const AdminAppointmentTiles: React.FC = () => {
     
     // If we have a valid appointment, render the normal card
     return <AppointmentCard appointment={appointment} theme={theme} />;
-  };
-
-  // Handle date filter changes
-  const handleStartDateChange = (date: Date | null) => {
-    debugLog(`Setting start date: ${date}`);
-    isFilteringRef.current = true;
-    setStartDate(date);
-    setActiveStep(0);
-  };
-
-  const handleEndDateChange = (date: Date | null) => {
-    debugLog(`Setting end date: ${date}`);
-    isFilteringRef.current = true;
-    setEndDate(date);
-    setActiveStep(0);
-  };
-
-  const clearDateFilters = () => {
-    debugLog('Clearing date filters');
-    isFilteringRef.current = true;
-    setStartDate(null);
-    setEndDate(null);
-    setActiveStep(0);
   };
 
   return (
@@ -649,7 +838,7 @@ const AdminAppointmentTiles: React.FC = () => {
                 <Stack direction="row" spacing={2} alignItems="center">
                   <DatePicker
                     label="Start Date"
-                    value={startDate}
+                    value={filters.startDate}
                     onChange={handleStartDateChange}
                     slotProps={{
                       textField: {
@@ -666,7 +855,7 @@ const AdminAppointmentTiles: React.FC = () => {
                   />
                   <DatePicker
                     label="End Date"
-                    value={endDate}
+                    value={filters.endDate}
                     onChange={handleEndDateChange}
                     slotProps={{
                       textField: {
@@ -681,7 +870,7 @@ const AdminAppointmentTiles: React.FC = () => {
                       }
                     }}
                   />
-                  {(startDate || endDate) && (
+                  {(filters.startDate || filters.endDate) && (
                     <Button 
                       size="small" 
                       onClick={clearDateFilters}
@@ -697,16 +886,7 @@ const AdminAppointmentTiles: React.FC = () => {
             {/* Status Filters as Tabs */}
             <Box sx={{ borderBottom: 1, borderColor: 'divider', width: '100%' }}>
               <Tabs 
-                value={selectedStatus || 'All'} 
-                // Commenting this out because it's handled by the Tab component
-                // Using below onChange event had issues when deploying to UAT
-                // onChange={(_, newValue) => {
-                //   if (newValue === 'All') {
-                //     handleStatusFilter(null);
-                //   } else {
-                //     handleStatusFilter(newValue);
-                //   }
-                // }}
+                value={filters.status || 'All'} 
                 variant="scrollable"
                 scrollButtons="auto"
                 allowScrollButtonsMobile
@@ -718,7 +898,7 @@ const AdminAppointmentTiles: React.FC = () => {
                     <ButtonWithBadge
                       label="All"
                       count={appointments.length}
-                      isSelected={selectedStatus === null}
+                      isSelected={filters.status === null}
                       onClick={() => {
                         handleStatusFilter(null);
                       }}
@@ -734,7 +914,7 @@ const AdminAppointmentTiles: React.FC = () => {
                       <ButtonWithBadge
                         label={status}
                         count={getStatusAppointmentCount(status)}
-                        isSelected={selectedStatus === status}
+                        isSelected={filters.status === status}
                         onClick={() => {
                           handleStatusFilter(status);
                         }}
@@ -753,7 +933,7 @@ const AdminAppointmentTiles: React.FC = () => {
                 fullWidth
                 placeholder="Search appointments..."
                 variant="outlined"
-                value={searchTerm}
+                value={filters.searchTerm}
                 onChange={handleSearchChange}
                 InputProps={{
                   startAdornment: (
@@ -761,10 +941,10 @@ const AdminAppointmentTiles: React.FC = () => {
                       <SearchIcon />
                     </InputAdornment>
                   ),
-                  endAdornment: searchTerm && (
+                  endAdornment: filters.searchTerm && (
                     <InputAdornment position="end">
                       <Button 
-                        onClick={() => setSearchTerm('')}
+                        onClick={() => setFilters(prev => ({ ...prev, searchTerm: '' }))}
                         size="small"
                       >
                         Clear
@@ -776,38 +956,38 @@ const AdminAppointmentTiles: React.FC = () => {
               />
               
               {/* Show search results count when searching */}
-              {searchTerm && (
+              {filters.searchTerm && (
                 <Box sx={{ mb: 1 }}>
                   <Typography variant="body2" color="text.secondary">
                     Found {filteredAppointments.length} {filteredAppointments.length === 1 ? 'appointment' : 'appointments'} 
-                    {selectedStatus ? ` with status "${selectedStatus}"` : ''} 
-                    {selectedLocation ? ` at ${locations.find(l => l.id === selectedLocation)?.name || 'selected location'}` : ''}
-                    {startDate ? ` from ${startDate.toLocaleDateString()}` : ''}
-                    {endDate ? ` to ${endDate.toLocaleDateString()}` : ''}
-                    {searchTerm ? ` matching "${searchTerm}"` : ''}
+                    {filters.status ? ` with status "${filters.status}"` : ''} 
+                    {filters.locationId ? ` at ${locations.find(l => l.id === filters.locationId)?.name || 'selected location'}` : ''}
+                    {filters.startDate ? ` from ${filters.startDate.toLocaleDateString()}` : ''}
+                    {filters.endDate ? ` to ${filters.endDate.toLocaleDateString()}` : ''}
+                    {filters.searchTerm ? ` matching "${filters.searchTerm}"` : ''}
                   </Typography>
                 </Box>
               )}
             </Box>
 
             {/* Active Date Filters Summary */}
-            {(startDate || endDate) && (
+            {(filters.startDate || filters.endDate) && (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                 <Typography variant="body2">Date Filters:</Typography>
-                {startDate && (
+                {filters.startDate && (
                   <Chip 
-                    label={`From: ${startDate.toLocaleDateString()}`}
+                    label={`From: ${filters.startDate.toLocaleDateString()}`}
                     size="small" 
-                    onDelete={() => setStartDate(null)}
+                    onDelete={() => setFilters(prev => ({ ...prev, startDate: null }))}
                     icon={<CalendarTodayIcon fontSize="small" />}
                     sx={{ color: theme.palette.primary.main }}
                   />
                 )}
-                {endDate && (
+                {filters.endDate && (
                   <Chip 
-                    label={`To: ${endDate.toLocaleDateString()}`}
+                    label={`To: ${filters.endDate.toLocaleDateString()}`}
                     size="small" 
-                    onDelete={() => setEndDate(null)}
+                    onDelete={() => setFilters(prev => ({ ...prev, endDate: null }))}
                     icon={<CalendarTodayIcon fontSize="small" />}
                     sx={{ color: theme.palette.primary.main }}
                   />
@@ -832,7 +1012,7 @@ const AdminAppointmentTiles: React.FC = () => {
               ) : locations.length > 0 ? (
                 <FilterChipGroup
                   options={locations.map(loc => loc.id)}
-                  selectedValue={selectedLocation}
+                  selectedValue={filters.locationId}
                   getLabel={(locationId) => {
                     const location = locations.find(l => l.id === locationId);
                     return location ? location.name : `Location ${locationId}`;
@@ -850,13 +1030,13 @@ const AdminAppointmentTiles: React.FC = () => {
             </Box>
             
             {/* Active Location Filters Summary - Only shown for location filters */}
-            {selectedLocation && (
+            {filters.locationId && (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Typography variant="body2">Active Filters:</Typography>
                 <Chip 
-                  label={locations.find(l => l.id === selectedLocation)?.name || `Location ID: ${selectedLocation}`} 
+                  label={locations.find(l => l.id === filters.locationId)?.name || `Location ID: ${filters.locationId}`} 
                   size="small" 
-                  onDelete={() => setSelectedLocation(null)}
+                  onDelete={() => setFilters(prev => ({ ...prev, locationId: null }))}
                   icon={<LocationOnIcon fontSize="small" />}
                   sx={{ 
                     color: theme.palette.primary.main,
@@ -865,7 +1045,7 @@ const AdminAppointmentTiles: React.FC = () => {
                 <Button 
                   size="small" 
                   onClick={() => {
-                    setSelectedLocation(null);
+                    setFilters(prev => ({ ...prev, locationId: null }));
                   }}
                 >
                   Clear
@@ -902,7 +1082,7 @@ const AdminAppointmentTiles: React.FC = () => {
                   <SwipeableViews
                     index={activeStep}
                     onChangeIndex={(index) => {
-                      debugLog(`Swipe detected, changing to index ${index}`);
+                      logger(`Swipe detected, changing to index ${index}`);
                       isManualNavigationRef.current = true;
                       setActiveStep(index);
                     }}
@@ -931,7 +1111,7 @@ const AdminAppointmentTiles: React.FC = () => {
                   <VirtualizedSwipeableViews
                     index={activeStep}
                     onChangeIndex={(index) => {
-                      debugLog(`Virtualized swipe detected, changing to index ${index}`);
+                      logger(`Virtualized swipe detected, changing to index ${index}`);
                       isManualNavigationRef.current = true;
                       setActiveStep(index);
                     }}
@@ -968,7 +1148,7 @@ const AdminAppointmentTiles: React.FC = () => {
                   backButton={
                     <Button 
                       size="small" 
-                      onClick={handleBack} 
+                      onClick={handleBack}
                       disabled={activeStep === 0}
                     >
                       <NavigateBeforeIcon />
