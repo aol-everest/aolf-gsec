@@ -21,6 +21,7 @@ import time
 import atexit
 import re
 from dataclasses import dataclass, field
+from sqlalchemy import or_
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -99,7 +100,7 @@ class NotificationConfig:
     
     def get_template_for_role(self, role: UserRole) -> EmailTemplate:
         """Get the appropriate template based on user role."""
-        if role == UserRole.SECRETARIAT and self.secretariat_template:
+        if (role == UserRole.SECRETARIAT or role == UserRole.ADMIN) and self.secretariat_template:
             return self.secretariat_template
         elif self.requester_template:
             return self.requester_template
@@ -414,10 +415,13 @@ def send_notification_email(
         bcc_emails.append(FROM_EMAIL)
     
     # If this is not an email to a secretariat user, find secretariat users to BCC
-    if recipient.role != UserRole.SECRETARIAT:
+    if recipient.role != UserRole.SECRETARIAT and recipient.role != UserRole.ADMIN:
         # Find all secretariat users who have opted into BCC for all emails
         secretariat_bccs = db.query(User).filter(
-            User.role == UserRole.SECRETARIAT,
+            or_(
+                User.role == UserRole.SECRETARIAT,
+                User.role == UserRole.ADMIN
+            ),
             User.email_notification_preferences['bcc_on_all_emails'].as_boolean() == True
         ).all()
         
@@ -529,7 +533,10 @@ def notify_appointment_creation(db: Session, appointment: Appointment):
 
     # Notify all SECRETARIAT users who have enabled new appointment notifications
     secretariat_users = db.query(User).filter(
-        User.role == UserRole.SECRETARIAT,
+        or_(
+            User.role == UserRole.SECRETARIAT,
+            User.role == UserRole.ADMIN
+        ),
         User.email_notification_preferences['new_appointment_request'].as_boolean() == True
     ).all()
 

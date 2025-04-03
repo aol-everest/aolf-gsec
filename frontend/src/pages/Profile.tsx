@@ -221,7 +221,7 @@ const Profile: React.FC = () => {
               <FormGroup>
                 {Object.keys(notificationPreferences).map((key) => {
                   // Only show new_appointment_request and bcc_on_all_emails to secretariat users
-                  if ((key === 'new_appointment_request' || key === 'bcc_on_all_emails') && userData?.role !== 'SECRETARIAT') {
+                  if ((key === 'new_appointment_request' || key === 'bcc_on_all_emails') && userData?.role !== 'SECRETARIAT' && userData?.role !== 'ADMIN') {
                     return null;
                   }
                   

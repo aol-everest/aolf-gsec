@@ -51,13 +51,14 @@ import Layout from '../components/Layout';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { HomeRoute } from '../config/routes';
+import { AdminDignitariesRoute, HomeRoute } from '../config/routes';
 import LocationAutocomplete from '../components/LocationAutocomplete';
 import { getLocalDateString } from '../utils/dateUtils';
 import { useQuery } from '@tanstack/react-query';
 import { createDebugLogger } from '../utils/debugUtils';
 import { HonorificTitleMap } from '../models/types';
 import { useEnums, useEnumsMap } from '../hooks/useEnums';
+import { DoneIconV2 } from '../components/icons';
 
 interface BusinessCardExtraction {
   honorific_title?: string;
@@ -780,15 +781,19 @@ const AddNewDignitary: React.FC = () => {
         logger(`Updating dignitary with ID ${id}`);
         response = await api.patch<DignitaryCreateResponse>(`/admin/dignitaries/update/${id}`, updatedExtraction);
         enqueueSnackbar('Dignitary updated successfully!', { variant: 'success' });
-        
-        // If redirectTo is set, navigate back to that page
+
         if (redirectTo) {
-          logger(`Redirecting to ${redirectTo}`);
-          navigate(redirectTo);
+          // Extract appointment ID from the URL if it exists
+          const appointmentIdMatch = redirectTo.match(/\/appointments\/review\/(\d+)/);
+          const appointmentId = appointmentIdMatch ? parseInt(appointmentIdMatch[1], 10) : null;
+          
+          navigate(redirectTo, {
+            state: appointmentId ? { refreshAppointmentId: appointmentId } : undefined
+          });
         } else {
-          // Otherwise show success message
           setSuccessMessage(`Dignitary "${extraction?.first_name} ${extraction?.last_name}" has been updated successfully!`);
         }
+
       } else {
         // Create new dignitary
         logger('Creating new dignitary');
@@ -823,8 +828,8 @@ const AddNewDignitary: React.FC = () => {
     setCreatedDignitaryName(null);
   };
 
-  const handleGoHome = () => {
-    navigate(HomeRoute.path || '/home');
+  const handleDone = () => {
+    navigate(AdminDignitariesRoute.path || '/');
   };
 
   // Add a utility function for reverse geocoding using Google Maps API
@@ -1713,10 +1718,10 @@ const AddNewDignitary: React.FC = () => {
               <Button
                 variant="contained"
                 color="primary"
-                startIcon={<HomeIcon />}
-                onClick={handleGoHome}
+                startIcon={<DoneIconV2 />}
+                onClick={handleDone}
               >
-                Home
+                Done
               </Button>
               <Button
                 variant="outlined"

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
   Box,
   Card,
@@ -46,7 +46,7 @@ import { getStatusChipSx, getStatusColor } from '../utils/formattingUtils';
 import { EmailIcon, ContactPhoneIcon, EmailIconSmall, ContactPhoneIconSmall, WorkIcon, LocationIconV2 } from '../components/icons';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEnums } from '../hooks/useEnums';
 import { FilterChip, FilterChipGroup } from '../components/FilterChip';
 import { EnumFilterChipGroup } from '../components/EnumFilterChipGroup';
@@ -284,6 +284,8 @@ interface FilterState {
 const AdminAppointmentTiles: React.FC = () => {
   // Create a component-specific logger
   const logger = createDebugLogger('AdminAppointmentTiles');
+  const location = useLocation();
+  const queryClient = useQueryClient();
   
   const [activeStep, setActiveStep] = useState(0);
   // Combine all filter states into a single object to reduce re-renders
@@ -454,6 +456,24 @@ const AdminAppointmentTiles: React.FC = () => {
     updateUrlWithFilters();
   }, [filters, updateUrlWithFilters]);
 
+  // Check if we're returning from an edit with a specific appointment to refresh
+  useEffect(() => {
+    const state = location.state as { refreshAppointmentId?: number } | null;
+    if (state?.refreshAppointmentId) {
+      logger(`Returning from edit, refreshing appointment ${state.refreshAppointmentId}`);
+      // Invalidate the specific appointment query
+      queryClient.invalidateQueries({
+        queryKey: ['appointment', state.refreshAppointmentId]
+      });
+      // Also invalidate the appointments list to ensure consistency
+      queryClient.invalidateQueries({
+        queryKey: ['appointments']
+      });
+      // Clear the state to prevent repeated refreshes
+      navigate(location.pathname + location.search, { replace: true });
+    }
+  }, [location, queryClient, navigate]);
+
   // Fetch locations using React Query
   const { data: locations = [], isLoading: isLoadingLocations } = useQuery({
     queryKey: ['locations'],
@@ -477,13 +497,11 @@ const AdminAppointmentTiles: React.FC = () => {
     queryFn: async () => {
       try {
         logger('Fetching appointments');
-        // Prepare parameters with optional date range
         const params: Record<string, any> = {
           include_location: true,
           include_attachments: true
         };
 
-        // Add date range parameters if they exist
         if (filters.startDate) {
           params.start_date = filters.startDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD
         }
@@ -491,9 +509,14 @@ const AdminAppointmentTiles: React.FC = () => {
           params.end_date = filters.endDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD
         }
 
-        // Make sure we're getting the full appointment data including location
         const { data } = await api.get<Appointment[]>('/admin/appointments/all', { params });
         logger(`Fetched ${data.length} appointments`);
+
+        // For each appointment, set up an individual query
+        data.forEach(appointment => {
+          queryClient.setQueryData(['appointment', appointment.id], appointment);
+        });
+
         return data;
       } catch (error) {
         console.error('Error fetching appointments:', error);
@@ -501,10 +524,29 @@ const AdminAppointmentTiles: React.FC = () => {
         throw error;
       }
     },
-    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
-    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes (gcTime is the replacement for cacheTime)
-    refetchOnWindowFocus: false // Don't refetch when window regains focus
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false
   });
+
+  // Add individual appointment query for the current appointment
+  const currentAppointmentId = filteredAppointments[activeStep]?.id;
+  const { data: currentAppointment } = useQuery({
+    queryKey: ['appointment', currentAppointmentId],
+    queryFn: async () => {
+      if (!currentAppointmentId) return null;
+      const { data } = await api.get<Appointment>(`/admin/appointments/${currentAppointmentId}`);
+      return data;
+    },
+    enabled: !!currentAppointmentId,
+    staleTime: 5 * 60 * 1000
+  });
+
+  // Use the individual appointment data if available, otherwise fall back to the list data
+  const getCurrentAppointment = useCallback(() => {
+    if (!currentAppointmentId) return null;
+    return currentAppointment || filteredAppointments[activeStep];
+  }, [currentAppointment, filteredAppointments, activeStep, currentAppointmentId]);
 
   // Memoized function to get filtered appointments
   const getFilteredAppointments = useCallback(() => {
@@ -797,14 +839,15 @@ const AdminAppointmentTiles: React.FC = () => {
     const theme = useTheme();
 
     const handleEdit = (appointmentId: number) => {
-      // Include the current URL with all query parameters as a redirectTo parameter
       const currentUrl = window.location.pathname + window.location.search;
       navigate(`${AdminAppointmentsEditRoute.path?.replace(':id', appointmentId.toString())}?redirectTo=${encodeURIComponent(currentUrl)}` || '');
       logger(`Editing appointment with ID: ${appointmentId}`);
     };
 
-    // Safety check - if appointment is undefined, show a message instead
-    if (!appointment) {
+    // Get the most up-to-date appointment data
+    const currentData = appointment.id === currentAppointmentId ? getCurrentAppointment() || appointment : appointment;
+
+    if (!currentData) {
       return (
         <Paper sx={{ p: 3, textAlign: 'center' }}>
           <Typography>No appointment found with the current filters.</Typography>
@@ -815,8 +858,7 @@ const AdminAppointmentTiles: React.FC = () => {
       );
     }
     
-    // If we have a valid appointment, render the normal card
-    return <AppointmentCard appointment={appointment} theme={theme} />;
+    return <AppointmentCard appointment={currentData} theme={theme} />;
   };
 
   return (

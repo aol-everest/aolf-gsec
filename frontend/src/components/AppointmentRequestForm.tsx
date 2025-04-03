@@ -53,6 +53,8 @@ import AddIcon from '@mui/icons-material/LibraryAdd';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
+import PrimaryButton from './PrimaryButton';
+import SecondaryButton from './SecondaryButton';
 
 // Remove the hardcoded enum and add a state for time of day options
 // const AppointmentTimeOfDay = {
@@ -1050,9 +1052,8 @@ export const AppointmentRequestForm: React.FC = () => {
               {/* Button to expand the dignitary form when it's collapsed */}
               {!isDignitaryFormExpanded && (
                 <Grid item xs={12}>
-                  <Button
-                    variant="contained"
-                    color="primary"
+                  <PrimaryButton
+                    size="medium"
                     startIcon={<AddIcon />}
                     onClick={() => {
                       setIsDignitaryFormExpanded(true);
@@ -1085,7 +1086,7 @@ export const AppointmentRequestForm: React.FC = () => {
                     {selectedDignitaries.length < requiredDignitariesCount
                       ? `Add Dignitary ${selectedDignitaries.length + 1} of ${requiredDignitariesCount}`
                       : `All ${requiredDignitariesCount} dignitaries added`}
-                  </Button>
+                  </PrimaryButton>
                 </Grid>
               )}
 
@@ -1592,9 +1593,8 @@ export const AppointmentRequestForm: React.FC = () => {
                       }}
                     >
                       {/* Cancel button */}
-                      <Button
-                        variant="contained"
-                        color="primary"
+                      <SecondaryButton
+                        size="medium"
                         startIcon={<CancelIcon />}
                         onClick={() => {
                           if (isEditMode) {
@@ -1607,17 +1607,16 @@ export const AppointmentRequestForm: React.FC = () => {
                         sx={{ width: { xs: '100%', sm: 'auto' } }} // Full width on mobile, auto width on larger screens
                       >
                         Cancel
-                      </Button>
+                      </SecondaryButton>
                       {/* Save/Add button */}
-                      <Button
-                        variant="contained"
+                      <PrimaryButton
+                        size="medium"
                         startIcon={isEditMode ? <SaveIcon /> : <AddIcon />}
-                        color="primary"
                         onClick={addDignitaryToList}
                         sx={{ width: { xs: '100%', sm: 'auto' } }} // Full width on mobile, auto width on larger screens
                       >
                         {getButtonText()}
-                      </Button>
+                      </PrimaryButton>
                     </Box>
                   </Grid>
                 </>
@@ -1756,13 +1755,13 @@ export const AppointmentRequestForm: React.FC = () => {
                     ref={fileInputRef}
                     accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
                   />
-                  <Button
-                    variant="outlined"
+                  <SecondaryButton
+                    size="medium"
                     onClick={() => fileInputRef.current?.click()}
                     startIcon={<Box component="span" sx={{ fontSize: '1.25rem' }}>📎</Box>}
                   >
                     Select Files
-                  </Button>
+                  </SecondaryButton>
                 </Box>
                 
                 {selectedFiles.length > 0 && (
@@ -2028,16 +2027,15 @@ export const AppointmentRequestForm: React.FC = () => {
         
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
           {activeStep !== 0 && (
-            <Button 
+            <SecondaryButton 
               onClick={handleBack} 
               sx={{ mr: 1 }}
               disabled={(activeStep === 1 && isDignitaryFormExpanded)}
             >
               Back
-            </Button>
+            </SecondaryButton>
           )}
-          <Button
-            variant="contained"
+          <PrimaryButton
             onClick={() => handleNext(false)}
             disabled={
               // If the active step is the last step, disable the next button
@@ -2051,7 +2049,7 @@ export const AppointmentRequestForm: React.FC = () => {
             }
           >
             {activeStep === steps.length - 1 ? 'Submit' : 'Next'}
-          </Button>
+          </PrimaryButton>
         </Box>
       </Paper>
 
