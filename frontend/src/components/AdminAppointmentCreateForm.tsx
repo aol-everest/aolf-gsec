@@ -65,6 +65,7 @@ import ImageIcon from '@mui/icons-material/Image';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import DescriptionIcon from '@mui/icons-material/Description';
 import AdminAppointmentEditCard, { AdminAppointmentEditCardRef } from './AdminAppointmentEditCard';
+import { StatusMap, SubStatusMap, StatusSubStatusMapping } from '../models/types';
 
 // Interfaces
 interface AppointmentResponse extends Omit<Appointment, 'dignitary' | 'requester' | 'location' | 'approved_by_user' | 'last_updated_by_user' | 'attachments'> {
@@ -159,23 +160,6 @@ interface ValidationErrors {
   secretariat_follow_up_actions?: string;
   secretariat_meeting_notes?: string;
   purpose_of_meeting?: string;
-}
-
-// Status to substatus mapping
-interface StatusSubStatusMapping {
-  [key: string]: {
-    default_sub_status: string;
-    valid_sub_statuses: string[];
-  }
-}
-
-// Add interfaces for the status maps
-interface StatusMap {
-  [key: string]: string;
-}
-
-interface SubStatusMap {
-  [key: string]: string;
 }
 
 const steps = ['Initial Information', 'Add Dignitary Information', 'Appointment Details'];

@@ -1113,6 +1113,66 @@ async def get_attachment_file(
         headers={"Content-Disposition": f"attachment; filename={attachment.file_name}"}
     )
 
+
+@app.get("/appointments/{appointment_id}/attachments/thumbnails", response_model=List[schemas.AdminAppointmentAttachmentThumbnail])
+async def get_appointment_attachment_thumbnails(
+    appointment_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_read_db)
+):
+    """Get all thumbnails for an appointment's attachments in a single request."""
+    # First verify the appointment exists and user has access
+    appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    # Check user access (add check similar to get_attachment_thumbnail)
+    if appointment.requester_id != current_user.id:
+        admin_access_check = admin_check_appointment_for_access_level(
+            current_user=current_user,
+            db=db,
+            appointment_id=appointment_id,
+            required_access_level=models.AccessLevel.READ
+        )
+        if not admin_access_check:
+            raise HTTPException(status_code=403, detail="Not authorized to view attachments for this appointment")
+
+    # Get all image attachments for this appointment
+    query = db.query(models.AppointmentAttachment).filter(
+        models.AppointmentAttachment.appointment_id == appointment_id,
+        models.AppointmentAttachment.is_image == True,
+        models.AppointmentAttachment.thumbnail_path != None  # Ensure thumbnail exists
+    )
+
+    # Add uploaded_by filter only for non-SECRETARIAT users
+    if current_user.role.is_general_role_type():
+        query = query.filter(models.AppointmentAttachment.uploaded_by == current_user.id)
+
+    # Execute the query
+    attachments = query.all()
+
+    # Prepare the response
+    thumbnails = []
+    for attachment in attachments:
+        try:
+            # Get the thumbnail data from S3
+            file_data = get_file(attachment.thumbnail_path)
+            thumbnail_bytes = file_data['file_data']
+            
+            # Encode it as base64
+            encoded_thumbnail = base64.b64encode(thumbnail_bytes).decode('utf-8')
+                
+            thumbnails.append({
+                "id": attachment.id,
+                "thumbnail": encoded_thumbnail
+            })
+        except Exception as e:
+            logger.error(f"Error getting thumbnail for attachment {attachment.id} (path: {attachment.thumbnail_path}): {str(e)}")
+            continue
+
+    return thumbnails
+
+
 @app.get("/appointments/attachments/{attachment_id}/thumbnail")
 async def get_attachment_thumbnail(
     attachment_id: int,
@@ -1653,30 +1713,13 @@ async def new_dignitary(
     return new_dignitary
 
 
-@app.get("/admin/dignitaries/{id}", response_model=schemas.AdminDignitaryWithAppointments)
-@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
-async def get_dignitary(
-    id: int,
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_read_db)
-):
-    """Get a dignitary by ID with access control restrictions based on user permissions"""
-    # Use the helper function to get the dignitary with READ access check
-    dignitary = admin_get_dignitary(
-        current_user=current_user,
-        db=db,
-        dignitary_id=id,
-        required_access_level=models.AccessLevel.READ
-    )
-    return dignitary
-
-
-@app.get("/admin/dignitaries/all", response_model=List[schemas.AdminDignitaryWithAppointments])
+@app.get("/admin/dignitaries/all", response_model=List[schemas.AdminDignitary])
 @requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
 async def get_all_dignitaries(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_read_db)
 ):
+    logger.debug(f"Getting all dignitaries for user {current_user.email}")
     """Get all dignitaries with access control restrictions based on user permissions"""
     # ADMIN role has full access to all dignitaries
     if current_user.role == models.UserRole.ADMIN:
@@ -1762,6 +1805,121 @@ async def get_all_dignitaries(
         ).all()
     
     return dignitaries
+
+
+@app.get("/admin/dignitaries/{id}", response_model=schemas.AdminDignitaryWithAppointments)
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def get_dignitary(
+    id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_read_db)
+):
+    """Get a dignitary by ID with access control restrictions based on user permissions"""
+    # Use the helper function to get the dignitary with READ access check
+    dignitary = admin_get_dignitary(
+        current_user=current_user,
+        db=db,
+        dignitary_id=id,
+        required_access_level=models.AccessLevel.READ
+    )
+    return dignitary
+
+
+
+@app.patch("/admin/dignitaries/update/{dignitary_id}", response_model=schemas.AdminDignitary)
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def update_admin_dignitary(
+    dignitary_id: int,
+    dignitary_update: schemas.AdminDignitaryUpdate,
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
+):
+    """Update dignitary information (Admin/Secretariat only)"""
+    logger.info(f"User {current_user.email} attempting to update dignitary ID {dignitary_id}")
+    
+    # Use the helper function to get the dignitary and check for WRITE access
+    dignitary = admin_get_dignitary(
+        current_user=current_user,
+        db=db,
+        dignitary_id=dignitary_id,
+        required_access_level=models.AccessLevel.READ_WRITE 
+    )
+    
+    # If trying to change country, check access to the new country as well
+    if current_user.role != models.UserRole.ADMIN and dignitary_update.country_code and dignitary_update.country_code != dignitary.country_code:
+        admin_check_access_to_country(
+            current_user=current_user,
+            db=db,
+            country_code=dignitary_update.country_code, 
+            required_access_level=models.AccessLevel.READ_WRITE
+        )
+    
+    # Update dignitary attributes
+    update_data = dignitary_update.dict(exclude_unset=True)
+    logger.debug(f"Applying update data for dignitary {dignitary_id}: {update_data}")
+    
+    # Handle special fields like social_media and additional_info
+    if 'social_media' in update_data and isinstance(update_data['social_media'], str):
+        try:
+            # If it's a string, try to convert it to a dictionary
+            if update_data['social_media'].startswith('{') and update_data['social_media'].endswith('}'):
+                # Simple string parsing - assuming valid JSON-like format
+                entries = update_data['social_media'][1:-1].split(',')
+                social_media_dict = {}
+                for entry in entries:
+                    if ':' in entry:
+                        k, v = entry.split(':', 1)
+                        # Strip quotes and whitespace
+                        k = k.strip().strip('"').strip("'")
+                        v = v.strip().strip('"').strip("'")
+                        social_media_dict[k] = v
+                update_data['social_media'] = social_media_dict
+        except Exception as e:
+            logger.warning(f"Failed to parse social_media string: {e}", exc_info=True)
+            # Keep original string if parsing fails
+    
+    if 'additional_info' in update_data and isinstance(update_data['additional_info'], str):
+        try:
+            # If it's a string, try to convert it to a dictionary
+            if update_data['additional_info'].startswith('{') and update_data['additional_info'].endswith('}'):
+                # Simple string parsing - assuming valid JSON-like format
+                entries = update_data['additional_info'][1:-1].split(',')
+                additional_info_dict = {}
+                for entry in entries:
+                    if ':' in entry:
+                        k, v = entry.split(':', 1)
+                        # Strip quotes and whitespace
+                        k = k.strip().strip('"').strip("'")
+                        v = v.strip().strip('"').strip("'")
+                        additional_info_dict[k] = v
+                update_data['additional_info'] = additional_info_dict
+        except Exception as e:
+            logger.warning(f"Failed to parse additional_info string: {e}", exc_info=True)
+            # Keep original string if parsing fails
+    
+    try:
+        for key, value in update_data.items():
+            if key in ("id", "created_by", "created_at", "updated_at"):
+                logger.debug(f"Skipping protected field: {key}")
+                continue
+                
+            if hasattr(dignitary, key):
+                setattr(dignitary, key, value)
+            else:
+                logger.warning(f"Field {key} not found in Dignitary model, skipping")
+        
+        # Set the last updated user
+        dignitary.updated_by = current_user.id
+        dignitary.updated_at = datetime.now()
+        
+        db.commit()
+        db.refresh(dignitary)
+        logger.info(f"Dignitary {dignitary_id} updated successfully by user {current_user.email}")
+        return dignitary
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error updating dignitary {dignitary_id}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to update dignitary: {str(e)}")
 
 
 @app.get("/admin/appointments/all", response_model=List[schemas.AdminAppointment])
@@ -3214,159 +3372,3 @@ async def get_all_countries(
 #     db.commit()
     
 #     return {"message": f"Updated {updated} countries", "updated_count": updated}
-
-@app.get("/appointments/{appointment_id}/attachments/thumbnails", response_model=List[schemas.AdminAppointmentAttachmentThumbnail])
-async def get_appointment_attachment_thumbnails(
-    appointment_id: int,
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_read_db)
-):
-    """Get all thumbnails for an appointment's attachments in a single request."""
-    # First verify the appointment exists and user has access
-    appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
-    if not appointment:
-        raise HTTPException(status_code=404, detail="Appointment not found")
-
-    # Check user access (add check similar to get_attachment_thumbnail)
-    if appointment.requester_id != current_user.id:
-        admin_access_check = admin_check_appointment_for_access_level(
-            current_user=current_user,
-            db=db,
-            appointment_id=appointment_id,
-            required_access_level=models.AccessLevel.READ
-        )
-        if not admin_access_check:
-            raise HTTPException(status_code=403, detail="Not authorized to view attachments for this appointment")
-
-    # Get all image attachments for this appointment
-    query = db.query(models.AppointmentAttachment).filter(
-        models.AppointmentAttachment.appointment_id == appointment_id,
-        models.AppointmentAttachment.is_image == True,
-        models.AppointmentAttachment.thumbnail_path != None  # Ensure thumbnail exists
-    )
-
-    # Add uploaded_by filter only for non-SECRETARIAT users
-    if current_user.role.is_general_role_type():
-        query = query.filter(models.AppointmentAttachment.uploaded_by == current_user.id)
-
-    # Execute the query
-    attachments = query.all()
-
-    # Prepare the response
-    thumbnails = []
-    for attachment in attachments:
-        try:
-            # Get the thumbnail data from S3
-            file_data = get_file(attachment.thumbnail_path)
-            thumbnail_bytes = file_data['file_data']
-            
-            # Encode it as base64
-            encoded_thumbnail = base64.b64encode(thumbnail_bytes).decode('utf-8')
-                
-            thumbnails.append({
-                "id": attachment.id,
-                "thumbnail": encoded_thumbnail
-            })
-        except Exception as e:
-            logger.error(f"Error getting thumbnail for attachment {attachment.id} (path: {attachment.thumbnail_path}): {str(e)}")
-            continue
-
-    return thumbnails
-
-@app.patch("/admin/dignitaries/update/{dignitary_id}", response_model=schemas.AdminDignitary)
-@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
-async def update_admin_dignitary(
-    dignitary_id: int,
-    dignitary_update: schemas.AdminDignitaryUpdate,
-    current_user: models.User = Depends(get_current_user_for_write),
-    db: Session = Depends(get_db)
-):
-    """Update dignitary information (Admin/Secretariat only)"""
-    logger.info(f"User {current_user.email} attempting to update dignitary ID {dignitary_id}")
-    
-    # Use the helper function to get the dignitary and check for WRITE access
-    dignitary = admin_get_dignitary(
-        current_user=current_user,
-        db=db,
-        dignitary_id=dignitary_id,
-        required_access_level=models.AccessLevel.READ_WRITE 
-    )
-    
-    # If trying to change country, check access to the new country as well
-    if current_user.role != models.UserRole.ADMIN and dignitary_update.country_code and dignitary_update.country_code != dignitary.country_code:
-        admin_check_access_to_country(
-            current_user=current_user,
-            db=db,
-            country_code=dignitary_update.country_code, 
-            required_access_level=models.AccessLevel.READ_WRITE
-        )
-    
-    # Update dignitary attributes
-    update_data = dignitary_update.dict(exclude_unset=True)
-    logger.debug(f"Applying update data for dignitary {dignitary_id}: {update_data}")
-    
-    # Handle special fields like social_media and additional_info
-    if 'social_media' in update_data and isinstance(update_data['social_media'], str):
-        try:
-            # If it's a string, try to convert it to a dictionary
-            if update_data['social_media'].startswith('{') and update_data['social_media'].endswith('}'):
-                # Simple string parsing - assuming valid JSON-like format
-                entries = update_data['social_media'][1:-1].split(',')
-                social_media_dict = {}
-                for entry in entries:
-                    if ':' in entry:
-                        k, v = entry.split(':', 1)
-                        # Strip quotes and whitespace
-                        k = k.strip().strip('"').strip("'")
-                        v = v.strip().strip('"').strip("'")
-                        social_media_dict[k] = v
-                update_data['social_media'] = social_media_dict
-        except Exception as e:
-            logger.warning(f"Failed to parse social_media string: {e}", exc_info=True)
-            # Keep original string if parsing fails
-    
-    if 'additional_info' in update_data and isinstance(update_data['additional_info'], str):
-        try:
-            # If it's a string, try to convert it to a dictionary
-            if update_data['additional_info'].startswith('{') and update_data['additional_info'].endswith('}'):
-                # Simple string parsing - assuming valid JSON-like format
-                entries = update_data['additional_info'][1:-1].split(',')
-                additional_info_dict = {}
-                for entry in entries:
-                    if ':' in entry:
-                        k, v = entry.split(':', 1)
-                        # Strip quotes and whitespace
-                        k = k.strip().strip('"').strip("'")
-                        v = v.strip().strip('"').strip("'")
-                        additional_info_dict[k] = v
-                update_data['additional_info'] = additional_info_dict
-        except Exception as e:
-            logger.warning(f"Failed to parse additional_info string: {e}", exc_info=True)
-            # Keep original string if parsing fails
-    
-    try:
-        for key, value in update_data.items():
-            if key in ("id", "created_by", "created_at", "updated_at"):
-                logger.debug(f"Skipping protected field: {key}")
-                continue
-                
-            if hasattr(dignitary, key):
-                setattr(dignitary, key, value)
-            else:
-                logger.warning(f"Field {key} not found in Dignitary model, skipping")
-        
-        # Set the last updated user
-        dignitary.updated_by = current_user.id
-        dignitary.updated_at = datetime.now()
-        
-        db.commit()
-        db.refresh(dignitary)
-        logger.info(f"Dignitary {dignitary_id} updated successfully by user {current_user.email}")
-        return dignitary
-    except Exception as e:
-        db.rollback()
-        logger.error(f"Error updating dignitary {dignitary_id}: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to update dignitary: {str(e)}")
-
-
-

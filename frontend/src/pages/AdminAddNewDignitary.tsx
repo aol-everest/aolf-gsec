@@ -56,6 +56,8 @@ import LocationAutocomplete from '../components/LocationAutocomplete';
 import { getLocalDateString } from '../utils/dateUtils';
 import { useQuery } from '@tanstack/react-query';
 import { createDebugLogger } from '../utils/debugUtils';
+import { HonorificTitleMap } from '../models/types';
+import { useEnums, useEnumsMap } from '../hooks/useEnums';
 
 interface BusinessCardExtraction {
   honorific_title?: string;
@@ -220,16 +222,22 @@ const AddNewDignitary: React.FC = () => {
   
   // Get today's date in YYYY-MM-DD format for default meeting date
   const today = getLocalDateString();
-  
-  const [extraction, setExtraction] = useState<BusinessCardExtraction | null>({
-    first_name: '',
-    last_name: '',
-    has_dignitary_met_gurudev: true,
-    gurudev_meeting_date: today
-  });
+
+  // Fetch honorific title and primary domain options
+  const { values: honorificTitleOptions = [], isLoading: isLoadingHonorificTitleOptions } = useEnums('honorificTitle');
+  logger('honorificTitleOptions', honorificTitleOptions);
+  const { values: primaryDomainOptions = [], isLoading: isLoadingPrimaryDomainOptions } = useEnums('primaryDomain');
+  logger('primaryDomainOptions', primaryDomainOptions);
+
+  // Fetch honorific title map and primary domain map
+  const { values: honorificTitleMap = {}, isLoading: isLoadingHonorificTitleMap } = useEnumsMap('honorificTitle');
+  logger('honorificTitleMap', honorificTitleMap);
+  const { values: primaryDomainMap = {}, isLoading: isLoadingPrimaryDomainMap } = useEnumsMap('primaryDomain');
+  logger('primaryDomainMap', primaryDomainMap);
+
+  const [extraction, setExtraction] = useState<BusinessCardExtraction | null>(null);
+
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [honorificTitleOptions, setHonorificTitleOptions] = useState<string[]>([]);
-  const [primaryDomainOptions, setPrimaryDomainOptions] = useState<string[]>([]);
   const [showDomainOther, setShowDomainOther] = useState(false);
   const [saveInProgress, setSaveInProgress] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -282,26 +290,6 @@ const AddNewDignitary: React.FC = () => {
     }
   }, [extraction]);
 
-  // Fetch honorific title and primary domain options
-  useEffect(() => {
-    const fetchOptions = async () => {
-      try {
-        const [honorificResponse, domainResponse] = await Promise.all([
-          api.get<string[]>('/dignitaries/honorific-title-options'),
-          api.get<string[]>('/dignitaries/primary-domain-options'),
-        ]);
-        
-        setHonorificTitleOptions(honorificResponse.data);
-        setPrimaryDomainOptions(domainResponse.data);
-      } catch (error) {
-        console.error('Failed to fetch dropdown options:', error);
-        enqueueSnackbar('Failed to load form options', { variant: 'error' });
-      }
-    };
-    
-    fetchOptions();
-  }, [enqueueSnackbar, api]);
-
   // Update showDomainOther when extraction changes
   useEffect(() => {
     if (extraction?.primary_domain === 'Other') {
@@ -341,7 +329,32 @@ const AddNewDignitary: React.FC = () => {
     let isMounted = true;
     let fetchInProgress = false;
     
-    if (id && !fetchInProgress) {
+    if (!id) {
+      // Reset all state to initial values
+      setExtraction({
+        honorific_title: honorificTitleMap["NA"],
+        first_name: '',
+        last_name: '',
+        has_dignitary_met_gurudev: true,
+        gurudev_meeting_date: today
+      });
+      logger('extraction', extraction);
+      setPreviewUrl(null);
+      setSocialMediaEntries([]);
+      setAdditionalInfoEntries([]);
+      setIsEditMode(false);
+      setIsLoading(false);
+      setShowDomainOther(false);
+      setSaveInProgress(false);
+      setSuccessMessage(null);
+      setCreatedDignitaryId(null);
+      setCreatedDignitaryName(null);
+      setIsDetailedMode(false);
+      setShowBusinessCardUploader(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (cameraInputRef.current) cameraInputRef.current.value = '';
+
+    } else if (id && !fetchInProgress) {
       const fetchDignitaryData = async () => {
         if (isMounted) {
           setIsEditMode(true);
@@ -356,7 +369,7 @@ const AddNewDignitary: React.FC = () => {
           if (isMounted) {
             // Convert dignitary data to BusinessCardExtraction format
             const extractionData: BusinessCardExtraction = {
-              honorific_title: data.honorific_title,
+              honorific_title: data.honorific_title || honorificTitleMap["NA"],
               first_name: data.first_name,
               last_name: data.last_name,
               title_in_organization: data.title_in_organization,
@@ -443,7 +456,7 @@ const AddNewDignitary: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [id, api, enqueueSnackbar]); // Removed isLoading from dependencies
+  }, [id, api, enqueueSnackbar]);
 
   const handleOpenBusinessCardUploader = () => {
     setShowBusinessCardUploader(true);
@@ -1218,7 +1231,7 @@ const AddNewDignitary: React.FC = () => {
                 <InputLabel>Honorific Title</InputLabel>
                 <Select
                   name="honorific_title"
-                  value={extraction.honorific_title || '(Not Applicable)'}
+                  value={extraction.honorific_title}
                   label="Honorific Title"
                   onChange={handleSelectChange}
                 >
@@ -1791,9 +1804,11 @@ const AddNewDignitary: React.FC = () => {
     <Layout>
       <Container>
         <Box sx={{ display: 'flex', mb: 3, alignItems: 'center' }}>
-          <IconButton onClick={handleCancel} sx={{ mr: 1 }}>
-            <ArrowBackIcon />
-          </IconButton>
+          {id && (
+            <IconButton onClick={handleCancel} sx={{ mr: 1 }}>
+              <ArrowBackIcon />
+            </IconButton>
+          )}
           <Typography variant="h4">{isEditMode ? 'Edit Dignitary Details' : 'Add New Dignitary'}</Typography>
         </Box>
         

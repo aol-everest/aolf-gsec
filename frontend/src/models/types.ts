@@ -120,5 +120,21 @@ interface SubStatusMap {
   [key: string]: string;
 }
 
-export type { Location, User, Dignitary, Appointment, AppointmentAttachment, AppointmentDignitary, StatusSubStatusMapping, StatusMap, SubStatusMap };
+interface RoleMap {
+  [key: string]: string;
+}
+
+interface AccessLevelMap {
+  [key: string]: string;
+}
+
+interface EntityTypeMap {
+  [key: string]: string;
+}
+
+interface HonorificTitleMap {
+  [key: string]: string;
+}
+
+export type { Location, User, Dignitary, Appointment, AppointmentAttachment, AppointmentDignitary, StatusSubStatusMapping, StatusMap, SubStatusMap, RoleMap, AccessLevelMap, EntityTypeMap, HonorificTitleMap };
 

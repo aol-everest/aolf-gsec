@@ -57,3 +57,39 @@ export const useEnums = (enumType: EnumType) => {
     error
   };
 }; 
+
+const enumMapEndpoints: Record<EnumType, string> = {
+  userRole: '/admin/user-role-options-map',
+  appointmentStatus: '/appointments/status-options-map',
+  appointmentSubStatus: '/appointments/sub-status-options-map',
+  appointmentType: '/appointments/type-options-map',
+  appointmentTimeOfDay: '/appointments/time-of-day-options-map',
+  honorificTitle: '/dignitaries/honorific-title-options-map',
+  primaryDomain: '/dignitaries/primary-domain-options-map',
+  relationshipType: '/dignitaries/relationship-type-options-map',
+  attachmentType: '/attachments/type-options-map',
+  accessLevel: '/admin/access-level-options-map',
+  entityType: '/admin/entity-type-options-map'
+};
+
+export const useEnumsMap = (enumType: EnumType) => {
+  const api = useApi();
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['enums-map', enumType],
+    queryFn: async () => {
+      const endpoint = enumMapEndpoints[enumType];
+      if (!endpoint) {
+        throw new Error(`Unknown enum type: ${enumType}`);
+      }
+
+      const { data } = await api.get<Record<string, string>>(endpoint);
+      return data;
+    }
+  });
+
+  return {
+    values: data,
+    isLoading,
+    error
+  };
+};

@@ -167,7 +167,7 @@ class AdminDignitaryWithAppointments(DignitaryBase):
     id: int
     created_by: int
     created_at: datetime
-    appointment_dignitaries: List[AdminAppointmentDignitaryWithAppointment]
+    appointment_dignitaries: Optional[List[AdminAppointmentDignitaryWithAppointment]] = None
     fax: Optional[str] = None
     other_phone: Optional[str] = None
     street_address: Optional[str] = None
@@ -185,6 +185,8 @@ class AdminDignitaryWithAppointments(DignitaryBase):
 
 class AdminDignitary(DignitaryBase):
     id: int
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
     created_by: int
     created_at: datetime
     fax: Optional[str] = None
@@ -202,10 +204,8 @@ class AdminDignitary(DignitaryBase):
     class Config:
         orm_mode = True
 
-class AdminDignitaryCreate(AdminDignitary):
+class AdminDignitaryCreate(DignitaryBase):
     country_code: str
-
-class AdminDignitaryUpdate(DignitaryBase):
     honorific_title: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
@@ -218,7 +218,33 @@ class AdminDignitaryUpdate(DignitaryBase):
     bio_summary: Optional[str] = None
     linked_in_or_website: Optional[str] = None
     country: Optional[str] = None
-    country_code: Optional[str] = None
+    state: Optional[str] = None
+    city: Optional[str] = None
+    has_dignitary_met_gurudev: Optional[bool] = None
+    gurudev_meeting_date: Optional[date] = None
+    gurudev_meeting_location: Optional[str] = None
+    gurudev_meeting_notes: Optional[str] = None
+    fax: Optional[str] = None
+    other_phone: Optional[str] = None
+    street_address: Optional[str] = None
+    social_media: Optional[Union[Dict[str, str], str]] = None
+    additional_info: Optional[Union[Dict[str, str], str]] = None
+    secretariat_notes: Optional[str] = None
+
+class AdminDignitaryUpdate(DignitaryBase):
+    country_code: str
+    honorific_title: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    primary_domain: Optional[str] = None
+    primary_domain_other: Optional[str] = None
+    title_in_organization: Optional[str] = None
+    organization: Optional[str] = None
+    bio_summary: Optional[str] = None
+    linked_in_or_website: Optional[str] = None
+    country: Optional[str] = None
     state: Optional[str] = None
     city: Optional[str] = None
     has_dignitary_met_gurudev: Optional[bool] = None

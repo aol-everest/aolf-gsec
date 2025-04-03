@@ -62,6 +62,7 @@ import { formatHonorificTitle } from '../utils/formattingUtils';
 import { formatDate, formatDateWithTimezone, parseUTCDate } from '../utils/dateUtils';
 import AdminAppointmentEditCard from '../components/AdminAppointmentEditCard';
 import AppointmentDignitaryDisplay from '../components/AppointmentDignitaryDisplay';
+import { StatusMap, SubStatusMap, StatusSubStatusMapping } from '../models/types';
 
 interface AppointmentFormData {
   appointment_date: string;
@@ -119,23 +120,6 @@ interface ValidationErrors {
   secretariat_notes_to_requester?: string;
   secretariat_follow_up_actions?: string;
   secretariat_meeting_notes?: string;
-}
-
-// Status to substatus mapping
-interface StatusSubStatusMapping {
-  [key: string]: {
-    default_sub_status: string;
-    valid_sub_statuses: string[];
-  }
-}
-
-// Add interfaces for the new maps
-interface StatusMap {
-  [key: string]: string;
-}
-
-interface SubStatusMap {
-  [key: string]: string;
 }
 
 const AdminAppointmentEdit: React.FC = () => {

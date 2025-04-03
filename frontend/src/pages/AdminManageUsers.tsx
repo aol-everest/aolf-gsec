@@ -46,6 +46,7 @@ import LockIcon from '@mui/icons-material/Lock';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import { useEnums } from '../hooks/useEnums';
+import { RoleMap, AccessLevelMap, EntityTypeMap } from '../models/types';
 
 interface User {
   id: number;
@@ -118,19 +119,6 @@ interface Location {
   state?: string;
   zip_code?: string;
   is_active?: boolean;
-}
-
-// Add interfaces for the enum maps
-interface RoleMap {
-  [key: string]: string;
-}
-
-interface AccessLevelMap {
-  [key: string]: string;
-}
-
-interface EntityTypeMap {
-  [key: string]: string;
 }
 
 const initialFormData: UserFormData = {
