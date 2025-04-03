@@ -11,7 +11,8 @@ import {
   FormControlLabel,
   Switch,
   Divider,
-  CircularProgress
+  CircularProgress,
+  MenuItem
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import Layout from '../components/Layout';
@@ -34,6 +35,7 @@ interface NotificationPreferences {
 interface UserUpdateData {
   phone_number: string;
   email_notification_preferences: NotificationPreferences;
+  country_code: string;
 }
 
 const DEFAULT_PREFERENCES: NotificationPreferences = {
@@ -69,13 +71,30 @@ const Profile: React.FC = () => {
     enabled: !!userInfo // Only run the query if userInfo exists
   });
 
+  // Fetch countries from the backend
+  const { data: countries = [], isLoading: countriesLoading } = useQuery({
+    queryKey: ['countries'],
+    queryFn: async () => {
+      try {
+        const { data } = await api.get<any[]>('/countries/all');
+        return data;
+      } catch (error) {
+        console.error('Error fetching countries:', error);
+        enqueueSnackbar('Failed to fetch countries', { variant: 'error' });
+        return [];
+      }
+    },
+  });
+
   const [phoneNumber, setPhoneNumber] = useState(userData?.phone_number || '');
+  const [countryCode, setCountryCode] = useState(userData?.country_code || '');
   const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>(DEFAULT_PREFERENCES);
 
   // Update local state when userData changes
   useEffect(() => {
     if (userData) {
       setPhoneNumber(userData.phone_number || '');
+      setCountryCode(userData.country_code || '');
       // Cast the empty object as a partial NotificationPreferences
       const userPrefs = (userData.email_notification_preferences || {}) as Partial<NotificationPreferences>;
       
@@ -110,6 +129,7 @@ const Profile: React.FC = () => {
   const handleSave = () => {
     updateProfileMutation.mutate({ 
       phone_number: phoneNumber,
+      country_code: countryCode,
       email_notification_preferences: notificationPreferences
     });
   };
@@ -117,6 +137,7 @@ const Profile: React.FC = () => {
   const handleCancel = () => {
     setIsEditing(false);
     setPhoneNumber(userData?.phone_number || '');
+    setCountryCode(userData?.country_code || '');
     
     // Cast the empty object as a partial NotificationPreferences
     const userPrefs = (userData?.email_notification_preferences || {}) as Partial<NotificationPreferences>;
@@ -211,15 +232,34 @@ const Profile: React.FC = () => {
                 Contact Information
               </Typography>
               
-              <Box sx={{ mb: 3 }}>
-                <TextField
-                  label="Phone Number"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  disabled={!isEditing}
-                  fullWidth
-                />
-              </Box>
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    label="Phone Number"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    disabled={!isEditing}
+                    fullWidth
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    select
+                    fullWidth
+                    label="Country"
+                    value={countryCode}
+                    onChange={(e) => setCountryCode(e.target.value)}
+                    disabled={!isEditing || countriesLoading}
+                    helperText={countriesLoading ? "Loading countries..." : ""}
+                  >
+                    {countries.map((country) => (
+                      <MenuItem key={country.iso2_code} value={country.iso2_code}>
+                        {country.name} ({country.iso2_code})
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Grid>
+              </Grid>
             </Box>
 
             <Divider sx={{ my: 4 }} />

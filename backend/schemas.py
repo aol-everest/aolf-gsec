@@ -27,6 +27,7 @@ class User(UserBase):
     created_at: datetime
     role: str
     last_login_at: Optional[datetime] = None
+    country_code: Optional[str] = None
 
     class Config:
         orm_mode = True

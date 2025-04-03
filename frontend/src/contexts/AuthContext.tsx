@@ -9,10 +9,12 @@ interface UserInfo {
   first_name?: string;
   last_name?: string;
   role?: string;
+  country_code?: string;
   email_notification_preferences?: {
     appointment_created: boolean;
     appointment_updated: boolean;
     new_appointment_request: boolean;
+    bcc_on_all_emails: boolean;
   };
 }
 
