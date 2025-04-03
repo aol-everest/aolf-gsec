@@ -264,20 +264,18 @@ export const AddPersonIconV2 = React.memo(() => (
 ));
 
 export const DoneIconV2 = React.memo(() => (
-    <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" id="Layer_1" data-name="Layer 1" viewBox="0 0 24 24" style="enable-background:new 0 0 512 512;" >
-<g>
-	<path fill="currentColor" d="M394.667,512H117.333C52.561,511.929,0.071,459.439,0,394.667V117.333C0.071,52.561,52.561,0.071,117.333,0h277.333   C459.439,0.071,511.929,52.561,512,117.333v277.333C511.929,459.439,459.439,511.929,394.667,512z M117.333,64   C87.878,64,64,87.878,64,117.333v277.333C64,424.122,87.878,448,117.333,448h277.333C424.122,448,448,424.122,448,394.667V117.333   C448,87.878,424.122,64,394.667,64H117.333z"/>
-	<path fill="currentColor" d="M206.229,379.456c-13.462,0.009-26.368-5.368-35.84-14.933l-63.723-63.616c-12.501-12.493-12.507-32.754-0.014-45.255   c0.005-0.005,0.01-0.01,0.014-0.015l0,0c12.496-12.492,32.752-12.492,45.248,0l54.315,54.293l153.856-153.856   c12.496-12.492,32.752-12.492,45.248,0l0,0c12.501,12.493,12.507,32.754,0.014,45.255c-0.005,0.005-0.01,0.01-0.014,0.014   L242.048,364.629C232.566,374.154,219.669,379.493,206.229,379.456z"/>
-</g>
+    <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" id="Layer_1" data-name="Layer 1" viewBox="0 0 24 24" >
+        <path fill="currentColor" stroke="currentColor" strokeWidth="0.81" d="M19,0H5A5.006,5.006,0,0,0,0,5V19a5.006,5.006,0,0,0,5,5H19a5.006,5.006,0,0,0,5-5V5A5.006,5.006,0,0,0,19,0Zm3,19a3,3,0,0,1-3,3H5a3,3,0,0,1-3-3V5A3,3,0,0,1,5,2H19a3,3,0,0,1,3,3Z"/>
+        <path fill="currentColor" stroke="currentColor" strokeWidth="0.81" d="M9.333,15.919,5.414,12A1,1,0,0,0,4,12H4a1,1,0,0,0,0,1.414l3.919,3.919a2,2,0,0,0,2.829,0L20,8.081a1,1,0,0,0,0-1.414h0a1,1,0,0,0-1.414,0Z"/>
     </svg>
 ));
 
 
 export const LogoutIconV2 = React.memo(() => (
     <svg width="25" height="24" viewBox="0 0 25 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path stroke="currentColor" d="M9.40039 7.55999C9.71039 3.95999 11.5604 2.48999 15.6104 2.48999H15.7404C20.2104 2.48999 22.0004 4.27999 22.0004 8.74999V15.27C22.0004 19.74 20.2104 21.53 15.7404 21.53H15.6104C11.5904 21.53 9.74039 20.08 9.41039 16.54" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        <path stroke="currentColor" d="M15.4991 12H4.11914" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        <path stroke="currentColor" d="M6.35 8.64999L3 12L6.35 15.35" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path stroke="currentColor" d="M9.40039 7.55999C9.71039 3.95999 11.5604 2.48999 15.6104 2.48999H15.7404C20.2104 2.48999 22.0004 4.27999 22.0004 8.74999V15.27C22.0004 19.74 20.2104 21.53 15.7404 21.53H15.6104C11.5904 21.53 9.74039 20.08 9.41039 16.54" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        <path stroke="currentColor" d="M15.4991 12H4.11914" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        <path stroke="currentColor" d="M6.35 8.64999L3 12L6.35 15.35" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
 ));
 

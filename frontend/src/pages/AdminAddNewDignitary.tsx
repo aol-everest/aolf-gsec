@@ -58,7 +58,7 @@ import { useQuery } from '@tanstack/react-query';
 import { createDebugLogger } from '../utils/debugUtils';
 import { HonorificTitleMap } from '../models/types';
 import { useEnums, useEnumsMap } from '../hooks/useEnums';
-import { DoneIconV2 } from '../components/icons';
+import { AddPersonIconV2, DoneIconV2 } from '../components/icons';
 import { WarningButton } from '../components/WarningButton';
 import { SecondaryButton } from '../components/SecondaryButton';
 import { PrimaryButton } from '../components/PrimaryButton';
@@ -1714,13 +1714,13 @@ const AddNewDignitary: React.FC = () => {
                 mt: 2 
               }}>
               <PrimaryButton
-                startIcon={<DoneIconV2 />}
+                leftIcon={<DoneIconV2 />}
                 onClick={handleDone}
               >
                 Done
               </PrimaryButton>
               <SecondaryButton
-                startIcon={<RefreshIcon />}
+                leftIcon={<AddPersonIconV2 />}
                 onClick={handleResetForm}
               >
                 Add Another Dignitary

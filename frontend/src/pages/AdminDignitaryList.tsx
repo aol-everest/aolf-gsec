@@ -1,5 +1,5 @@
 import React from 'react';
-import { Container, Typography, Paper, Box, Checkbox } from '@mui/material';
+import { Container, Typography, Paper, Box, Checkbox, IconButton } from '@mui/material';
 import {
   DataGrid,
   GridColDef,
@@ -8,9 +8,11 @@ import {
 import Layout from '../components/Layout';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import GenericDataGrid from '../components/GenericDataGrid';
 import { formatHonorificTitle } from '../utils/formattingUtils';
+import { PencilIconV2 } from '../components/icons';
 
 interface Dignitary {
   id: number;
@@ -33,6 +35,7 @@ interface Dignitary {
 const AdminDignitaryList: React.FC = () => {
   const api = useApi();
   const { enqueueSnackbar } = useSnackbar();
+  const navigate = useNavigate();
 
   const { data: dignitaries = [], isLoading } = useQuery({
     queryKey: ['admin-assigned-dignitaries'],
@@ -50,6 +53,10 @@ const AdminDignitaryList: React.FC = () => {
       }
     },
   });
+
+  const handleEditClick = (id: number) => {
+    navigate(`/admin/dignitaries/edit/${id}`);
+  };
 
   const columns: GridColDef[] = [
     {
@@ -102,6 +109,24 @@ const AdminDignitaryList: React.FC = () => {
       width: 130,
       flex: 1.3,
     },
+    {
+      field: 'actions',
+      headerName: 'Edit',
+      width: 70,
+      flex: 0.5,
+      sortable: false,
+      filterable: false,
+      renderCell: (params: GridRenderCellParams) => (
+        <IconButton
+          color="primary"
+          onClick={() => handleEditClick(params.row.id)}
+          size="small"
+          aria-label="edit"
+        >
+          <PencilIconV2 />
+        </IconButton>
+      ),
+    },
   ];
 
   return (
@@ -115,7 +140,7 @@ const AdminDignitaryList: React.FC = () => {
             rows={dignitaries}
             columns={columns}
             loading={isLoading}
-            defaultVisibleColumns={['name', 'title_in_organization', 'organization', 'country', 'has_dignitary_met_gurudev']}
+            defaultVisibleColumns={['name', 'title_in_organization', 'organization', 'country', 'has_dignitary_met_gurudev', 'actions']}
             customRowHeight={56}
           />
         </Box>
