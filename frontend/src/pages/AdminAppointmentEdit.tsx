@@ -63,6 +63,9 @@ import { formatDate, formatDateWithTimezone, parseUTCDate } from '../utils/dateU
 import AdminAppointmentEditCard from '../components/AdminAppointmentEditCard';
 import AppointmentDignitaryDisplay from '../components/AppointmentDignitaryDisplay';
 import { StatusMap, SubStatusMap, StatusSubStatusMapping } from '../models/types';
+import { SecondaryButton } from '../components/SecondaryButton';
+import { PrimaryButton } from '../components/PrimaryButton';
+import WarningButton from '../components/WarningButton';
 
 interface AppointmentFormData {
   appointment_date: string;
@@ -625,19 +628,16 @@ const AdminAppointmentEdit: React.FC = () => {
                 {/* Buttons */}
                 <Grid item xs={12} sx={{ mt: 2 }}>
                   <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-                    <Button
-                      variant="outlined"
+                    <SecondaryButton
                       onClick={() => handleRedirect(false)}
                     >
                       Cancel
-                    </Button>
-                    <Button
+                    </SecondaryButton>
+                    <PrimaryButton
                       type="submit"
-                      variant="contained"
-                      color="primary"
                     >
                       Save Changes
-                    </Button>
+                    </PrimaryButton>
                   </Box>
                 </Grid>
               </Grid>
@@ -662,12 +662,12 @@ const AdminAppointmentEdit: React.FC = () => {
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={cancelDeleteAttachment} color="primary">
+          <SecondaryButton onClick={cancelDeleteAttachment}>
             Cancel
-          </Button>
-          <Button onClick={confirmDeleteAttachment} color="error" autoFocus>
+          </SecondaryButton>
+          <WarningButton onClick={confirmDeleteAttachment} color="error" autoFocus>
             Delete
-          </Button>
+          </WarningButton>
         </DialogActions>
       </Dialog>
     </Layout>

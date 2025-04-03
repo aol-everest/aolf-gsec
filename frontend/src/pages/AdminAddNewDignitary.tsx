@@ -59,6 +59,9 @@ import { createDebugLogger } from '../utils/debugUtils';
 import { HonorificTitleMap } from '../models/types';
 import { useEnums, useEnumsMap } from '../hooks/useEnums';
 import { DoneIconV2 } from '../components/icons';
+import { WarningButton } from '../components/WarningButton';
+import { SecondaryButton } from '../components/SecondaryButton';
+import { PrimaryButton } from '../components/PrimaryButton';
 
 interface BusinessCardExtraction {
   honorific_title?: string;
@@ -1050,7 +1053,7 @@ const AddNewDignitary: React.FC = () => {
         <CardContent>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Typography variant="h6">Upload Business Card</Typography>
-            <IconButton onClick={handleCloseBusinessCardUploader} size="small">
+            <IconButton onClick={handleCloseBusinessCardUploader}>
               <CloseIcon />
             </IconButton>
           </Box>
@@ -1062,24 +1065,24 @@ const AddNewDignitary: React.FC = () => {
           <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
             <Grid container spacing={2}>
               <Grid item xs={12} md={4}>
-                <Button
-                  variant="outlined"
+                <PrimaryButton
+                  size="medium"
                   startIcon={<ContactMailIcon />}
                   onClick={handleChooseFile}
                   disabled={uploading}
                 >
                   Choose Business Card
-                </Button>
+                </PrimaryButton>
               </Grid>
               <Grid item xs={12} md={4}>
-                <Button
-                  variant="outlined"
+                <PrimaryButton
+                  size="medium"
                   startIcon={<PhotoCameraIcon />}
                   onClick={handleTakePhoto}
                   disabled={uploading}
-                  >
-                    Take Photo
-                </Button>
+                >
+                  Take Photo
+                </PrimaryButton>
               </Grid>
               <Grid item xs={12} md={4}>
                 {uploading && <CircularProgress size={24} sx={{ ml: 2 }} />}
@@ -1137,24 +1140,23 @@ const AddNewDignitary: React.FC = () => {
             <Typography variant="h5">{isEditMode ? 'Edit Dignitary Details' : 'Add New Dignitary'}</Typography>
             
             <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button
-                variant="outlined"
+              <SecondaryButton
+                size="small"
                 startIcon={<RefreshIcon />}
                 onClick={handleResetForm}
                 disabled={isLoading || saveInProgress}
               >
                 Reset
-              </Button>
+              </SecondaryButton>
               
-              <Button
-                variant="contained"
-                color="error"
+              <WarningButton
+                size="small"
                 startIcon={<CloseIcon />}
                 onClick={handleCancel}
                 disabled={isLoading || saveInProgress}
               >
                 Cancel
-              </Button>
+              </WarningButton>
             </Box>
           </Box>
           
@@ -1586,14 +1588,13 @@ const AddNewDignitary: React.FC = () => {
                     />
                   </Grid>
                   <Grid item xs={2}>
-                    <Button
-                      variant="outlined"
+                    <PrimaryButton
                       size="small"
                       onClick={handleAddSocialMedia}
                       disabled={!newSocialMediaKey.trim()}
                     >
                       Add
-                    </Button>
+                    </PrimaryButton>
                   </Grid>
                 </Grid>
                 
@@ -1655,14 +1656,13 @@ const AddNewDignitary: React.FC = () => {
                     />
                   </Grid>
                   <Grid item xs={2}>
-                    <Button
-                      variant="outlined"
+                    <PrimaryButton
                       size="small"
                       onClick={handleAddAdditionalInfo}
                       disabled={!newAdditionalInfoKey.trim()}
                     >
                       Add
-                    </Button>
+                    </PrimaryButton>
                   </Grid>
                 </Grid>
               </>
@@ -1670,9 +1670,7 @@ const AddNewDignitary: React.FC = () => {
           </Grid>
           
           <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-            <Button
-              variant="contained"
-              color="primary"
+            <PrimaryButton
               size="large"
               startIcon={<SaveIcon />}
               onClick={handleSaveDignitaryClick}
@@ -1687,7 +1685,7 @@ const AddNewDignitary: React.FC = () => {
               ) : (
                 isEditMode ? 'Update Dignitary' : 'Save Dignitary'
               )}
-            </Button>
+            </PrimaryButton>
           </Box>
         </Paper>
       </Box>
@@ -1715,21 +1713,18 @@ const AddNewDignitary: React.FC = () => {
                 gap: 2, // Space between buttons
                 mt: 2 
               }}>
-              <Button
-                variant="contained"
-                color="primary"
+              <PrimaryButton
                 startIcon={<DoneIconV2 />}
                 onClick={handleDone}
               >
                 Done
-              </Button>
-              <Button
-                variant="outlined"
+              </PrimaryButton>
+              <SecondaryButton
                 startIcon={<RefreshIcon />}
                 onClick={handleResetForm}
               >
                 Add Another Dignitary
-              </Button>
+              </SecondaryButton>
             </Box>
           </Box>
         </CardContent>

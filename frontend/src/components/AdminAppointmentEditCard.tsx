@@ -31,8 +31,6 @@ import { EnumSelect } from './EnumSelect';
 import { getLocalDateString, getLocalTimeString, findTimeOption, parseUTCDate } from '../utils/dateUtils';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
-import DeleteIcon from '@mui/icons-material/Delete';
-import DownloadIcon from '@mui/icons-material/Download';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import ImageIcon from '@mui/icons-material/Image';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
@@ -43,6 +41,9 @@ import BusinessIcon from '@mui/icons-material/Business';
 import { StatusMap, StatusSubStatusMapping, SubStatusMap } from '../models/types';
 import { defaultTimeOptions } from '../utils/dateUtils';
 import { formatFileSize } from '../utils/fileUtils';
+import SecondaryButton from './SecondaryButton';
+import { PrimaryButton } from './PrimaryButton';
+import { DownloadIconV2, ImageIconV2, PDFIconV2, TextFileIconV2, TrashIconV2, GenericFileIconV2 } from './icons';
 // import { statusSubStatusMapping } from '../constants/appointmentStatuses';
 
 
@@ -136,10 +137,10 @@ interface AdminAppointmentEditCardProps {
 
 // Common file types and their corresponding icons
 const fileTypeIcons: Record<string, React.ReactNode> = {
-  'image': <ImageIcon />,
-  'application/pdf': <PictureAsPdfIcon />,
-  'text': <DescriptionIcon />,
-  'default': <InsertDriveFileIcon />
+  'image': <ImageIconV2 />,
+  'application/pdf': <PDFIconV2 />,
+  'text': <TextFileIconV2 />,
+  'default': <GenericFileIconV2 />
 };
 
 // File type validation
@@ -180,23 +181,22 @@ const BusinessCardExtractionDisplay: React.FC<BusinessCardExtractionProps> = ({
             Business Card Information
           </Typography>
           <Box>
-            <Button 
-              variant="contained" 
-              color="primary" 
+            <PrimaryButton 
+              size="small"
               startIcon={<PersonAddIcon />}
               onClick={onCreateContact}
               sx={{ mr: 1 }}
               disabled={!onCreateContact}
             >
               Create Contact
-            </Button>
-            <Button 
-              variant="outlined"
+            </PrimaryButton>
+            <SecondaryButton 
+              size="small"
               onClick={onDismiss}
               disabled={!onDismiss}
             >
               Dismiss
-            </Button>
+            </SecondaryButton>
           </Box>
         </Box>
         
@@ -905,22 +905,22 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
           )}
           
           <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-            <Button
-              variant="outlined"
+            <SecondaryButton
+              size="small"
               startIcon={<ContactMailIcon />}
               onClick={handleUploadBusinessCard}
               disabled={uploading || extractionLoading || !onBusinessCardUpload}
             >
               Upload Business Card
-            </Button>
-            <Button
-              variant="outlined"
+            </SecondaryButton>
+            <SecondaryButton
+              size="small"
               startIcon={<PhotoCameraIcon />}
               onClick={handleTakeBusinessCardPhoto}
               disabled={uploading || extractionLoading || !onBusinessCardUpload}
             >
               Take Business Card Photo
-            </Button>
+            </SecondaryButton>
             
             <input
               type="file"
@@ -981,22 +981,22 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
           
           {/* File Upload Buttons */}
           <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-            <Button
-              variant="outlined"
+            <SecondaryButton
+              size="small"
               startIcon={<AttachFileIcon />}
               onClick={handleChooseFile}
               disabled={uploading}
             >
               Choose Files
-            </Button>
-            <Button
-              variant="outlined"
+            </SecondaryButton>
+            <SecondaryButton
+              size="small"
               startIcon={<PhotoCameraIcon />}
               onClick={handleTakePhoto}
               disabled={uploading}
             >
               Take Photo
-            </Button>
+            </SecondaryButton>
             
             {/* Hidden file inputs */}
             <input
@@ -1038,7 +1038,7 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
                     <ListItemText primary={file.name} secondary={`${formatFileSize(file.size)}`} />
                     <ListItemSecondaryAction>
                       <IconButton edge="end" onClick={() => handleRemoveFile(index)}>
-                        <DeleteIcon />
+                        <TrashIconV2 />
                       </IconButton>
                     </ListItemSecondaryAction>
                   </ListItem>
@@ -1082,7 +1082,7 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
                                   onClick={() => onDownloadAttachment(attachment.id, attachment.file_name)}
                                   sx={{ mr: 1 }}
                                 >
-                                  <DownloadIcon />
+                                  <DownloadIconV2 />
                                 </IconButton>
                               )}
                               {onDeleteAttachment && (
@@ -1092,7 +1092,7 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
                                   onClick={() => onDeleteAttachment(attachment)}
                                   color="error"
                                 >
-                                  <DeleteIcon />
+                                  <TrashIconV2 />
                                 </IconButton>
                               )}
                             </ListItemSecondaryAction>
@@ -1134,7 +1134,7 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
                                   onClick={() => onDownloadAttachment(attachment.id, attachment.file_name)}
                                   sx={{ mr: 1 }}
                                 >
-                                  <DownloadIcon />
+                                  <DownloadIconV2 />
                                 </IconButton>
                               )}
                               {onDeleteAttachment && (
@@ -1144,7 +1144,7 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
                                   onClick={() => onDeleteAttachment(attachment)}
                                   color="error"
                                 >
-                                  <DeleteIcon />
+                                  <TrashIconV2 />
                                 </IconButton>
                               )}
                             </ListItemSecondaryAction>

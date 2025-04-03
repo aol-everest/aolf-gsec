@@ -43,14 +43,14 @@ const StyledWarningButton = styled(MuiButton, {
   }),
   
   ...(customSize === 'medium' && {
-    padding: '6px 28px',
+    padding: '6px 25px',
     height: '42px',
     fontSize: '15px',
     lineHeight: '22px',
   }),
   
   ...(customSize === 'large' && {
-    padding: '10px 35px',
+    padding: '10px 30px',
     height: '44px',
     fontSize: '17px',
     lineHeight: '24px',

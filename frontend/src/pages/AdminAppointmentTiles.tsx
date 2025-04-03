@@ -60,6 +60,7 @@ import { Appointment, AppointmentDignitary } from '../models/types';
 
 import { AppointmentCard } from '../components/AppointmentCard';
 import { subDays, addDays } from 'date-fns';
+import { SecondaryButton } from '../components/SecondaryButton';
 
 // Search configuration - customize this to include or exclude fields from search
 const SEARCH_CONFIG = {
@@ -911,13 +912,12 @@ const AdminAppointmentTiles: React.FC = () => {
                     }}
                   />
                   {(filters.startDate || filters.endDate) && (
-                    <Button 
+                    <SecondaryButton 
                       size="small" 
                       onClick={clearDateFilters}
-                      variant="outlined"
                     >
                       Clear Dates
-                    </Button>
+                    </SecondaryButton>
                   )}
                 </Stack>
               </LocalizationProvider>
@@ -983,12 +983,12 @@ const AdminAppointmentTiles: React.FC = () => {
                   ),
                   endAdornment: filters.searchTerm && (
                     <InputAdornment position="end">
-                      <Button 
+                      <SecondaryButton 
                         onClick={() => setFilters(prev => ({ ...prev, searchTerm: '' }))}
                         size="small"
                       >
                         Clear
-                      </Button>
+                      </SecondaryButton>
                     </InputAdornment>
                   )
                 }}
