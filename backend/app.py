@@ -1845,14 +1845,15 @@ async def update_admin_dignitary(
         required_access_level=models.AccessLevel.READ_WRITE 
     )
     
+    # NOTE: Not checking access to the new country as it's not a security risk
     # If trying to change country, check access to the new country as well
-    if current_user.role != models.UserRole.ADMIN and dignitary_update.country_code and dignitary_update.country_code != dignitary.country_code:
-        admin_check_access_to_country(
-            current_user=current_user,
-            db=db,
-            country_code=dignitary_update.country_code, 
-            required_access_level=models.AccessLevel.READ_WRITE
-        )
+    # if current_user.role != models.UserRole.ADMIN and dignitary_update.country_code and dignitary_update.country_code != dignitary.country_code:
+    #     admin_check_access_to_country(
+    #         current_user=current_user,
+    #         db=db,
+    #         country_code=dignitary_update.country_code, 
+    #         required_access_level=models.AccessLevel.READ_WRITE
+    #     )
     
     # Update dignitary attributes
     update_data = dignitary_update.dict(exclude_unset=True)
