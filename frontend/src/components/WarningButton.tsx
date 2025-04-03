@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button as MuiButton, ButtonProps as MuiButtonProps, styled } from '@mui/material';
 
-export interface SecondaryButtonProps extends Omit<MuiButtonProps, 'variant' | 'size'> {
+export interface WarningButtonProps extends Omit<MuiButtonProps, 'variant' | 'size'> {
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   size?: 'small' | 'medium' | 'large';
@@ -11,26 +11,26 @@ interface StyledButtonProps {
   customSize?: 'small' | 'medium' | 'large';
 }
 
-const StyledSecondaryButton = styled(MuiButton, {
+const StyledWarningButton = styled(MuiButton, {
   shouldForwardProp: (prop) => prop !== 'customSize',
-})<StyledButtonProps>(({ theme, customSize = 'large' }) => ({
+})<StyledButtonProps>(({ theme, customSize = 'medium' }) => ({
   boxSizing: 'border-box',
   display: 'flex',
   flexDirection: 'row',
   justifyContent: 'center',
   alignItems: 'center',
-  gap: '8px',
-  background: '#F7F7F7',
+  gap: '6px',
+  background: '#FFFFFF',
   border: '1px solid #E9E9E9',
   borderRadius: '81px',
   fontFamily: 'Work Sans',
   fontStyle: 'normal',
   fontWeight: 600,
-  color: '#6F7283',
+  color: '#F16462', // Danger/error color from the image
   textTransform: 'none',
   boxShadow: 'none',
   '&:hover': {
-    background: '#EEEEEE',
+    background: '#FFF8F8', // Slight red tint on hover
     boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.05)',
     border: '1px solid #E9E9E9',
   },
@@ -57,15 +57,15 @@ const StyledSecondaryButton = styled(MuiButton, {
   }),
 }));
 
-export const SecondaryButton: React.FC<SecondaryButtonProps> = ({
+export const WarningButton: React.FC<WarningButtonProps> = ({
   children,
   leftIcon,
   rightIcon,
-  size = 'large',
+  size = 'medium',
   ...props
 }) => {
   return (
-    <StyledSecondaryButton 
+    <StyledWarningButton 
       variant="outlined" 
       customSize={size}
       {...props}
@@ -81,8 +81,8 @@ export const SecondaryButton: React.FC<SecondaryButtonProps> = ({
           {rightIcon}
         </span>
       )}
-    </StyledSecondaryButton>
+    </StyledWarningButton>
   );
 };
 
-export default SecondaryButton; 
+export default WarningButton; 

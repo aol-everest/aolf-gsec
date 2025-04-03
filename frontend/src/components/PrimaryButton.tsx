@@ -33,22 +33,22 @@ const StyledPrimaryButton = styled(MuiButton, {
   },
   
   ...(customSize === 'small' && {
-    padding: '6px 20px',
-    height: '36px',
-    fontSize: '14px',
+    padding: '3px 20px',
+    height: '40px',
+    fontSize: '13px',
     lineHeight: '20px',
   }),
   
   ...(customSize === 'medium' && {
-    padding: '8px 28px',
+    padding: '6px 28px',
     height: '42px',
-    fontSize: '16px',
+    fontSize: '15px',
     lineHeight: '22px',
   }),
   
   ...(customSize === 'large' && {
     padding: '10px 35px',
-    height: '47px',
+    height: '44px',
     fontSize: '17px',
     lineHeight: '24px',
   }),

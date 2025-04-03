@@ -2,10 +2,12 @@ import React from 'react';
 import { Box, Stack, Typography, Divider } from '@mui/material';
 import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
+import DangerButton from './WarningButton';
 
 // Icon imports
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { LogoutIconV2 } from './icons';
 
 const ButtonExample: React.FC = () => {
   return (
@@ -109,6 +111,38 @@ const ButtonExample: React.FC = () => {
           <Box sx={{ width: '100%' }}>
             <SecondaryButton fullWidth>Full Width Secondary Button</SecondaryButton>
           </Box>
+        </Stack>
+
+        <Typography variant="h5" sx={{ mt: 4 }}>Danger Buttons</Typography>
+        
+        <Typography variant="subtitle2">Sizes</Typography>
+        <Stack direction="row" spacing={2} alignItems="center">
+          <DangerButton size="small">Small</DangerButton>
+          <DangerButton size="medium">Medium</DangerButton>
+          <DangerButton size="large">Large</DangerButton>
+        </Stack>
+        
+        <Divider />
+        
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Typography variant="subtitle1" sx={{ width: 200 }}>
+            Basic:
+          </Typography>
+          <DangerButton>Delete</DangerButton>
+        </Stack>
+        
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Typography variant="subtitle1" sx={{ width: 200 }}>
+            With Icon:
+          </Typography>
+          <DangerButton leftIcon={<LogoutIconV2 />}>Logout</DangerButton>
+        </Stack>
+        
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Typography variant="subtitle1" sx={{ width: 200 }}>
+            Disabled:
+          </Typography>
+          <DangerButton disabled>Delete</DangerButton>
         </Stack>
       </Stack>
     </Box>

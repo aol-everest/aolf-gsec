@@ -4,11 +4,8 @@ import {
   Typography, 
   Paper, 
   Box, 
-  Button, 
   Avatar, 
   TextField, 
-  Snackbar, 
-  Alert,
   FormGroup,
   FormControlLabel,
   Switch,
@@ -20,6 +17,11 @@ import Layout from '../components/Layout';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { SecondaryButton } from '../components/SecondaryButton';
+import { PrimaryButton } from '../components/PrimaryButton';
+import WarningButton from '../components/WarningButton';
+import { LogoutIconV2 } from '../components/icons';
+import ProfileBackground from '../components/ProfileBackground';
 
 interface NotificationPreferences {
   appointment_created: boolean;
@@ -164,14 +166,19 @@ const Profile: React.FC = () => {
 
   return (
     <Layout>
+      <ProfileBackground />
       <Container maxWidth="md">
-        <Box>
+        <Box sx={{ mt: -8, position: 'relative', zIndex: 1 }}>
           <Paper sx={{ p: 4, position: 'relative' }}>
             {/* Logout button in top right corner */}
             <Box sx={{ position: 'absolute', top: 30, right: 30 }}>
-              <Button variant="outlined" color="error" onClick={logout}>
+              <WarningButton 
+                size="small" 
+                onClick={logout}
+                leftIcon={<LogoutIconV2 />}
+              >
                 Logout
-              </Button>
+              </WarningButton>
             </Box>
 
             {/* User info section */}
@@ -180,11 +187,11 @@ const Profile: React.FC = () => {
                 <Avatar
                   src={userData.picture}
                   alt={userData.name}
-                  sx={{ width: 80, height: 80, mr: 2 }}
+                  sx={{ width: 130, height: 130, mr: 4, border: '5px solid #fff', boxShadow: '0px 12px 16px -4px rgba(16, 24, 40, 0.08), 0px 4px 6px -2px rgba(16, 24, 40, 0.03)' }}
                 />
               )}
               <Box>
-                <Typography variant="h5" gutterBottom>
+                <Typography variant="h1" gutterBottom>
                   {(userData?.first_name || 'User Name') + " " + (userData?.last_name || 'User Name')}
                 </Typography>
                 <Typography color="textSecondary">
@@ -245,16 +252,15 @@ const Profile: React.FC = () => {
             {/* Action buttons at bottom */}
             <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
               {!isEditing ? (
-                <Button variant="contained" onClick={() => setIsEditing(true)}>
+                <PrimaryButton onClick={() => setIsEditing(true)}>
                   Edit Profile
-                </Button>
+                </PrimaryButton>
               ) : (
                 <>
-                  <Button variant="outlined" onClick={handleCancel}>
+                  <SecondaryButton onClick={handleCancel}>
                     Cancel
-                  </Button>
-                  <Button 
-                    variant="contained" 
+                  </SecondaryButton>
+                  <PrimaryButton 
                     onClick={handleSave}
                     disabled={updateProfileMutation.isPending}
                   >
@@ -263,7 +269,7 @@ const Profile: React.FC = () => {
                     ) : (
                       'Save Changes'
                     )}
-                  </Button>
+                  </PrimaryButton>
                 </>
               )}
             </Box>
