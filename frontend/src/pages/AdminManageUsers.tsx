@@ -47,6 +47,9 @@ import LockOpenIcon from '@mui/icons-material/LockOpen';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import { useEnums } from '../hooks/useEnums';
 import { RoleMap, AccessLevelMap, EntityTypeMap } from '../models/types';
+import PrimaryButton from '../components/PrimaryButton';
+import SecondaryButton from '../components/SecondaryButton';
+import { PencilIconV2 } from '../components/icons';
 
 interface User {
   id: number;
@@ -747,7 +750,7 @@ const AdminManageUsers: React.FC = () => {
       flex: 0.3,
       getActions: (params) => [
         <GridActionsCellItem
-          icon={<EditIcon />}
+          icon={<PencilIconV2 />}
           label="Edit"
           onClick={() => handleOpen(params.row)}
         />
@@ -878,13 +881,13 @@ const AdminManageUsers: React.FC = () => {
               All Users
             </Typography>
             {!formOpen && (
-              <Button
-                variant="contained"
+              <PrimaryButton
+                size="medium"
                 startIcon={<AddIcon />}
                 onClick={() => handleOpen()}
               >
                 Add User
-              </Button>
+              </PrimaryButton>
             )}
           </Box>
 
@@ -1095,29 +1098,25 @@ const AdminManageUsers: React.FC = () => {
                           <Typography variant="body1" color="text.secondary">
                             No access records found for this user
                           </Typography>
-                          <Button
-                            variant="outlined"
-                            color="primary"
+                          <PrimaryButton
                             startIcon={<AddIcon />}
                             onClick={() => handleAccessFormOpen()}
                             size="small"
                             sx={{ mt: 2 }}
                           >
                             Grant Access
-                          </Button>
+                          </PrimaryButton>
                         </Paper>
                       )}
                     </Box>
                     {!showAccessForm && (
-                          <Button
-                            variant="contained"
-                            color="primary"
+                          <PrimaryButton
                             startIcon={<AddIcon />}
                             onClick={() => handleAccessFormOpen()}
                             size="small"
                           >
                             Add Access
-                          </Button>
+                          </PrimaryButton>
                     )}
 
                     {/* New/Edit Access Form - Show this after the table */}
@@ -1303,19 +1302,22 @@ const AdminManageUsers: React.FC = () => {
                           </Grid>
                         </CardContent>
                         <CardActions sx={{ justifyContent: 'flex-end', p: 2 }}>
-                          <Button onClick={resetAccessForm} disabled={accessMutation.isPending}>
+                          <SecondaryButton 
+                            size="small"
+                            onClick={resetAccessForm} 
+                            disabled={accessMutation.isPending}
+                          >
                             Cancel
-                          </Button>
-                          <Button 
+                          </SecondaryButton>
+                          <PrimaryButton 
                             onClick={handleAccessSubmit} 
-                            variant="contained"
-                            color="primary"
+                            size="small"
                             disabled={accessMutation.isPending}
                           >
                             {accessMutation.isPending ? (
                               <CircularProgress size={24} />
                             ) : editingAccessId ? 'Update Access' : 'Grant Access'}
-                          </Button>
+                          </PrimaryButton>
                         </CardActions>
                       </Card>
                     </Collapse>
@@ -1338,17 +1340,22 @@ const AdminManageUsers: React.FC = () => {
                 )}
               </CardContent>
               <CardActions sx={{ justifyContent: 'flex-end', p: 2 }}>
-                <Button onClick={handleClose} disabled={userMutation.isPending}>Cancel</Button>
-                <Button 
+                <SecondaryButton 
+                  size="medium"
+                  onClick={handleClose} 
+                  disabled={userMutation.isPending}
+                >
+                  Cancel
+                </SecondaryButton>
+                <PrimaryButton 
+                  size="medium"
                   onClick={handleSubmit} 
-                  variant="contained"
-                  color="primary"
                   disabled={userMutation.isPending}
                 >
                   {userMutation.isPending ? (
                     <CircularProgress size={24} />
                   ) : editingId ? 'Update User' : 'Create User'}
-                </Button>
+                </PrimaryButton>
               </CardActions>
             </Card>
           </Collapse>

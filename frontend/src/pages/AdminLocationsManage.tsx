@@ -21,7 +21,6 @@ import {
   FormHelperText,
   SelectChangeEvent,
 } from '@mui/material';
-import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -33,6 +32,9 @@ import { useApi } from '../hooks/useApi';
 import Layout from '../components/Layout';
 import GenericDataGrid from '../components/GenericDataGrid';
 import { GridColDef, GridActionsCellItem } from '@mui/x-data-grid';
+import PrimaryButton from '../components/PrimaryButton';
+import SecondaryButton from '../components/SecondaryButton';
+import { PencilIconV2, TrashIconV2, DownloadIconV2 } from '../components/icons';
 
 // Google Maps types
 interface AddressComponent {
@@ -898,7 +900,7 @@ export default function AdminLocationsManage() {
       width: 80,
       getActions: (params) => [
         <GridActionsCellItem
-          icon={<EditIcon />}
+          icon={<PencilIconV2 />}
           label="Edit"
           onClick={() => handleOpen(params.row)}
         />,
@@ -930,13 +932,13 @@ export default function AdminLocationsManage() {
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="h4">Manage Locations</Typography>
             {!formOpen && (
-              <Button
-                variant="contained"
+              <PrimaryButton
+                size="medium"
                 startIcon={<AddIcon />}
                 onClick={() => handleOpen()}
               >
                 Add Location
-              </Button>
+              </PrimaryButton>
             )}
           </Box>
 
@@ -1181,14 +1183,14 @@ export default function AdminLocationsManage() {
                                     size="small"
                                     sx={{ mr: 1 }}
                                   >
-                                    <UploadFileIcon fontSize="small" />
+                                    <DownloadIconV2 />
                                   </IconButton>
                                 )}
                                 <IconButton 
                                   onClick={handleRemoveAttachment} 
                                   size="small"
                                 >
-                                  <DeleteIcon fontSize="small" />
+                                  <TrashIconV2 />
                                 </IconButton>
                               </Box>
                             </Paper>
@@ -1212,7 +1214,7 @@ export default function AdminLocationsManage() {
                                 <Typography variant="body2">
                                   Attachment will be removed when you save this location
                                 </Typography>
-                                <Button 
+                                <SecondaryButton 
                                   size="small" 
                                   onClick={() => {
                                     // Restore the original attachment data
@@ -1229,17 +1231,17 @@ export default function AdminLocationsManage() {
                                   }}
                                 >
                                   Undo
-                                </Button>
+                                </SecondaryButton>
                               </Paper>
                             )}
-                            <Button
-                              variant="outlined"
+                            <SecondaryButton
+                              size="small"
                               startIcon={<UploadFileIcon />}
                               onClick={triggerFileInput}
                               disabled={attachmentMarkedForDeletion}
                             >
                               Upload Attachment
-                            </Button>
+                            </SecondaryButton>
                           </Box>
                         );
                       })()}
@@ -1248,16 +1250,22 @@ export default function AdminLocationsManage() {
                 </Grid>
               </CardContent>
               <CardActions sx={{ justifyContent: 'flex-end', p: 2 }}>
-                <Button onClick={handleClose} disabled={locationMutation.isPending || isUploading}>Cancel</Button>
-                <Button 
+                <SecondaryButton 
+                  size="medium"
+                  onClick={handleClose} 
+                  disabled={locationMutation.isPending || isUploading}
+                >
+                  Cancel
+                </SecondaryButton>
+                <PrimaryButton 
+                  size="medium"
                   onClick={handleSubmit} 
-                  variant="contained"
                   disabled={locationMutation.isPending || isUploading}
                 >
                   {(locationMutation.isPending || isUploading) ? (
                     <CircularProgress size={24} />
                   ) : editingId ? 'Update' : 'Create'}
-                </Button>
+                </PrimaryButton>
               </CardActions>
             </Card>
           </Collapse>

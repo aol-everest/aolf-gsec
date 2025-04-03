@@ -66,6 +66,9 @@ import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import DescriptionIcon from '@mui/icons-material/Description';
 import AdminAppointmentEditCard, { AdminAppointmentEditCardRef } from './AdminAppointmentEditCard';
 import { StatusMap, SubStatusMap, StatusSubStatusMapping } from '../models/types';
+import PrimaryButton from './PrimaryButton';
+import SecondaryButton from './SecondaryButton';
+import { PencilIconV2, TrashIconV2 } from './icons';
 
 // Interfaces
 interface AppointmentResponse extends Omit<Appointment, 'dignitary' | 'requester' | 'location' | 'approved_by_user' | 'last_updated_by_user' | 'attachments'> {
@@ -1074,14 +1077,14 @@ export const AdminAppointmentCreateForm: React.FC = () => {
                             }}
                             sx={{ mr: 1 }}
                           >
-                            <EditIcon />
+                            <PencilIconV2 />
                           </IconButton>
                           <IconButton 
                             edge="end" 
                             aria-label="delete"
                             onClick={() => removeDignitaryFromList(index)}
                           >
-                            <DeleteIcon />
+                            <TrashIconV2 />
                           </IconButton>
                         </ListItemSecondaryAction>
                       </ListItem>
@@ -1093,9 +1096,8 @@ export const AdminAppointmentCreateForm: React.FC = () => {
               {/* Button to expand the dignitary form when it's collapsed */}
               {!isDignitaryFormExpanded && (
                 <Grid item xs={12}>
-                  <Button
-                    variant="contained"
-                    color="primary"
+                  <PrimaryButton
+                    size="medium"
                     startIcon={<AddIcon />}
                     onClick={() => {
                       setIsDignitaryFormExpanded(true);
@@ -1128,7 +1130,7 @@ export const AdminAppointmentCreateForm: React.FC = () => {
                     {selectedDignitaries.length < requiredDignitariesCount
                       ? `Add Dignitary ${selectedDignitaries.length + 1} of ${requiredDignitariesCount}`
                       : `All ${requiredDignitariesCount} dignitaries added`}
-                  </Button>
+                  </PrimaryButton>
                 </Grid>
               )}
 
@@ -1616,9 +1618,8 @@ export const AdminAppointmentCreateForm: React.FC = () => {
                       }}
                     >
                       {/* Cancel button */}
-                      <Button
-                        variant="contained"
-                        color="primary"
+                      <SecondaryButton
+                        size="small"
                         startIcon={<CancelIcon />}
                         onClick={() => {
                           if (isEditMode) {
@@ -1631,17 +1632,16 @@ export const AdminAppointmentCreateForm: React.FC = () => {
                         sx={{ width: { xs: '100%', sm: 'auto' } }}
                       >
                         Cancel
-                      </Button>
+                      </SecondaryButton>
                       {/* Save/Add button */}
-                      <Button
-                        variant="contained"
+                      <PrimaryButton
+                        size="small"
                         startIcon={isEditMode ? <SaveIcon /> : <AddIcon />}
-                        color="primary"
                         onClick={addDignitaryToList}
                         sx={{ width: { xs: '100%', sm: 'auto' } }}
                       >
                         {getButtonText()}
-                      </Button>
+                      </PrimaryButton>
                     </Box>
                   </Grid>
                 </>
@@ -1825,7 +1825,7 @@ export const AdminAppointmentCreateForm: React.FC = () => {
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button 
+          <PrimaryButton 
             onClick={() => {
               setShowConfirmation(false);
               navigate('/admin/appointments/review');
@@ -1833,7 +1833,7 @@ export const AdminAppointmentCreateForm: React.FC = () => {
             color="primary"
           >
             Close
-          </Button>
+          </PrimaryButton>
         </DialogActions>
       </Dialog>
     );
@@ -1854,16 +1854,15 @@ export const AdminAppointmentCreateForm: React.FC = () => {
         
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
           {activeStep !== 0 && (
-            <Button 
+            <SecondaryButton 
               onClick={handleBack} 
               sx={{ mr: 1 }}
               disabled={(activeStep === 1 && isDignitaryFormExpanded)}
             >
               Back
-            </Button>
+            </SecondaryButton>
           )}
-          <Button
-            variant="contained"
+          <PrimaryButton
             onClick={handleNext}
             disabled={
               // If the active step is the last step, disable the next button
@@ -1877,7 +1876,7 @@ export const AdminAppointmentCreateForm: React.FC = () => {
             }
           >
             {activeStep === steps.length - 1 ? 'Submit' : 'Next'}
-          </Button>
+          </PrimaryButton>
         </Box>
       </Paper>
 
