@@ -50,6 +50,7 @@ import { RoleMap, AccessLevelMap, EntityTypeMap } from '../models/types';
 import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
 import { PencilIconV2 } from '../components/icons';
+import { createDebugLogger } from '../utils/debugUtils';
 
 interface User {
   id: number;
@@ -164,6 +165,9 @@ const AdminManageUsers: React.FC = () => {
   
   // Get user role from localStorage
   const userRole = localStorage.getItem('role');
+
+  // Create a component-specific logger
+  const logger = createDebugLogger(`AdminManageUsers`);
   
   // Using useEnums hooks for all needed enums
   const { values: userRoles, isLoading: rolesLoading } = useEnums('userRole');
@@ -281,11 +285,11 @@ const AdminManageUsers: React.FC = () => {
     mutationFn: async (variables: { id?: number; data: UserFormData }) => {
       try {
         if (variables.id) {
-          console.log(`Updating user ${variables.id} with data:`, variables.data);
+          logger(`Updating user ${variables.id} with data:`, variables.data);
           const { data } = await api.patch<User>(`/admin/users/update/${variables.id}`, variables.data);
           return data;
         } else {
-          console.log('Creating new user with data:', variables.data);
+          logger('Creating new user with data:', variables.data);
           const { data } = await api.post<User>('/admin/users/new', variables.data);
           return data;
         }
@@ -430,7 +434,7 @@ const AdminManageUsers: React.FC = () => {
 
   const handleOpen = (user?: User) => {
     if (user) {
-      console.log('Editing user:', user);
+      logger('Editing user:', user);
       setFormData({
         email: user.email,
         first_name: user.first_name,
@@ -441,7 +445,7 @@ const AdminManageUsers: React.FC = () => {
       });
       setEditingId(user.id);
     } else {
-      console.log('Adding new user');
+      logger('Adding new user');
       setFormData(initialFormData);
       setEditingId(null);
     }
@@ -450,6 +454,7 @@ const AdminManageUsers: React.FC = () => {
   };
   
   const resetAccessForm = () => {
+    logger('Resetting access form');
     setShowAccessForm(false);
     setAccessFormData({
       ...initialAccessFormData,
@@ -461,6 +466,7 @@ const AdminManageUsers: React.FC = () => {
   
   // Function to determine access level and entity type based on user role
   const determineAccessSettings = (role: string): { access_level: string; entity_type: string } => {
+    logger('Determining access settings for role:', role);
     switch (role) {
       case roleMap['USHER']:
         return {
@@ -469,7 +475,7 @@ const AdminManageUsers: React.FC = () => {
         };
       case roleMap['SECRETARIAT']:
         return {
-          access_level: accessLevelMap['READWRITE'],
+          access_level: accessLevelMap['READ_WRITE'],
           entity_type: entityTypeMap['APPOINTMENT_AND_DIGNITARY']
         };
       default:
@@ -481,6 +487,7 @@ const AdminManageUsers: React.FC = () => {
   };
 
   const handleAccessFormOpen = (accessRecord?: UserAccess) => {
+    logger('Opening access form with access record:', accessRecord);
     if (accessRecord) {
       // Editing existing access
       setAccessFormData({
@@ -497,8 +504,10 @@ const AdminManageUsers: React.FC = () => {
     } else {
       // Creating new access - determine settings based on user role
       const user = users.find(u => u.id === editingId);
+      logger('Setting up new access for user:', user);
       if (user) {
         const { access_level, entity_type } = determineAccessSettings(user.role);
+        logger('Access settings:', { access_level, entity_type });
         setAccessFormData({
           ...initialAccessFormData,
           user_id: editingId || 0,
@@ -571,6 +580,8 @@ const AdminManageUsers: React.FC = () => {
     if (!accessFormData.reason) {
       errors.reason = 'Reason is required';
     }
+
+    logger('accessFormData', accessFormData);
     
     // Check if the current user being edited is an USHER
     const user = users.find(u => u.id === editingId);
