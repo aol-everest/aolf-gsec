@@ -5,7 +5,7 @@ import { validateUrl } from "../utils/urlUtils"
 import EditIcon from "@mui/icons-material/Edit"
 import { Appointment, AppointmentAttachment, AppointmentDignitary } from "../models/types"
 import { useNavigate } from "react-router-dom";
-import { AdminAppointmentsEditRoute } from "../config/routes";
+import { AdminAddNewDignitaryRoute, AdminAppointmentsEditRoute, AdminEditDignitaryRoute } from "../config/routes";
 import { useEffect, useState, useMemo } from "react";
 import AttachmentSection from "./AttachmentSection";
 import { useApi } from "../hooks/useApi";
@@ -104,6 +104,15 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
         logger(`Editing appointment with ID: ${appointmentId}`);
     };
 
+    // New function to handle dignitary editing
+    const handleEditDignitary = (dignitaryId: number) => {
+        // Include the current URL with all query parameters as a redirectTo parameter
+        const currentUrl = window.location.pathname + window.location.search;
+        // Navigate to the Add/Edit dignitary page with the dignitary ID and redirectTo parameter
+        navigate(`${AdminEditDignitaryRoute.path?.replace(':id', dignitaryId.toString())}?redirectTo=${encodeURIComponent(currentUrl)}`);
+        logger(`Editing dignitary with ID: ${dignitaryId}`);
+    };
+
     // Helper function to get dignitaries display information
     const renderDignitariesSection = () => {
         // Check if appointment has appointment_dignitaries array
@@ -127,10 +136,26 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                                     mb: index < appointment.appointment_dignitaries!.length - 1 ? 2 : 0, 
                                     borderRadius: 2, 
                                     border: '1px solid',
-                                    borderColor: 'divider'
+                                    borderColor: 'divider',
+                                    position: 'relative' // Added for absolute positioning of edit button
                                 }} 
                                 key={dig.id}
                             >
+                                {/* Add Edit button for the dignitary */}
+                                <IconButton 
+                                    color="primary"
+                                    onClick={() => handleEditDignitary(dig.id)}
+                                    sx={{ 
+                                        position: 'absolute', 
+                                        top: isMobile ? 10 : 15, 
+                                        right: isMobile ? 10 : 15
+                                    }}
+                                    size="small"
+                                    aria-label="Edit Dignitary"
+                                >
+                                    <EditIcon />
+                                </IconButton>
+
                                 <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600 }}>
                                     {formatHonorificTitle(dig.honorific_title)} {dig.first_name} {dig.last_name}
                                 </Typography>

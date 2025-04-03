@@ -27,17 +27,17 @@ class AccessLevel(str, enum.Enum):
         else:
             raise ValueError(f"Invalid access level: {self}")
     
-    def is_greater_than_or_equal_to(self, other: "AccessLevel"):
+    def is_higher_than_or_equal_to(self, other: "AccessLevel"):
         """
         Check if this access level is greater than or equal to the other
         """
         return self.get_int_value() >= other.get_int_value()
 
-    def get_permitting_access_levels(self):
+    def get_higher_or_equal_access_levels(self):
         """
         Get the access that allow this access level
         """
-        return [access_level for access_level in AccessLevel if access_level.is_greater_than_or_equal_to(self)]
+        return [access_level for access_level in AccessLevel if access_level.is_higher_than_or_equal_to(self)]
 
 
 class EntityType(str, enum.Enum):

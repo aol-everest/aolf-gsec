@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   Typography,
   Container,
@@ -50,25 +50,26 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import Layout from '../components/Layout';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { HomeRoute } from '../config/routes';
 import LocationAutocomplete from '../components/LocationAutocomplete';
 import { getLocalDateString } from '../utils/dateUtils';
 import { useQuery } from '@tanstack/react-query';
+import { createDebugLogger } from '../utils/debugUtils';
 
 interface BusinessCardExtraction {
   honorific_title?: string;
   first_name: string;
   last_name: string;
-  title?: string;
-  company?: string;
+  title_in_organization?: string;
+  organization?: string;
   primary_domain?: string;
   primary_domain_other?: string;
   phone?: string;
   other_phone?: string;
   fax?: string;
   email?: string;
-  website?: string;
+  linked_in_or_website?: string;
   street_address?: string;
   city?: string;
   state?: string;
@@ -78,7 +79,7 @@ interface BusinessCardExtraction {
   gurudev_meeting_date?: string;
   gurudev_meeting_location?: string;
   gurudev_meeting_notes?: string;
-  bio?: string;
+  bio_summary?: string;
   social_media?: Record<string, string>;
   additional_info?: Record<string, string>;
   secretariat_notes?: string;
@@ -106,6 +107,41 @@ interface Country {
   iso2_code: string;
   name: string;
   is_enabled: boolean;
+}
+
+// Add interface for the dignitary data returned from the API
+interface DignitaryData {
+  id: number;
+  honorific_title?: string;
+  first_name: string;
+  last_name: string;
+  title_in_organization?: string;
+  organization?: string;
+  primary_domain?: string;
+  primary_domain_other?: string;
+  phone?: string;
+  email?: string;
+  linked_in_or_website?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  country_code?: string;
+  has_dignitary_met_gurudev?: boolean;
+  gurudev_meeting_date?: string;
+  gurudev_meeting_location?: string;
+  gurudev_meeting_notes?: string;
+  bio_summary?: string;
+  social_media?: Record<string, string> | string;
+  additional_info?: Record<string, string> | string;
+  secretariat_notes?: string;
+}
+
+// Add interface for the API response
+interface DignitaryCreateResponse {
+  id: number;
+  first_name: string;
+  last_name: string;
+  // Add other fields as needed
 }
 
 // Fix the Google Maps script loading hook to check for an existing script and prevent duplicate loading
@@ -167,7 +203,20 @@ const AddNewDignitary: React.FC = () => {
   const theme = useTheme();
   const api = useApi();
   const navigate = useNavigate();
+  const { id } = useParams<{ id?: string }>();
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const redirectTo = queryParams.get('redirectTo');
+  
+  // Create a component-specific logger
+  const logger = useMemo(() => 
+    createDebugLogger(`${id ? 'EditDignitary' : 'AddNewDignitary'}`),
+    [id] // Only recreate if ID changes
+  );
+  
   const [uploading, setUploading] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   
   // Get today's date in YYYY-MM-DD format for default meeting date
   const today = getLocalDateString();
@@ -286,6 +335,115 @@ const AddNewDignitary: React.FC = () => {
       }
     }
   }, [extraction]);
+
+  // Check if we're in edit mode and fetch dignitary data
+  useEffect(() => {
+    let isMounted = true;
+    let fetchInProgress = false;
+    
+    if (id && !fetchInProgress) {
+      const fetchDignitaryData = async () => {
+        if (isMounted) {
+          setIsEditMode(true);
+          setIsLoading(true);
+          fetchInProgress = true;
+        }
+        
+        try {
+          logger(`Fetching data for dignitary with ID ${id}`);
+          const { data } = await api.get<DignitaryData>(`/admin/dignitaries/${id}`);
+          
+          if (isMounted) {
+            // Convert dignitary data to BusinessCardExtraction format
+            const extractionData: BusinessCardExtraction = {
+              honorific_title: data.honorific_title,
+              first_name: data.first_name,
+              last_name: data.last_name,
+              title_in_organization: data.title_in_organization,
+              organization: data.organization,
+              primary_domain: data.primary_domain,
+              primary_domain_other: data.primary_domain_other,
+              phone: data.phone,
+              email: data.email,
+              linked_in_or_website: data.linked_in_or_website,
+              city: data.city,
+              state: data.state,
+              country: data.country,
+              country_code: data.country_code,
+              has_dignitary_met_gurudev: data.has_dignitary_met_gurudev,
+              gurudev_meeting_date: data.gurudev_meeting_date,
+              gurudev_meeting_location: data.gurudev_meeting_location,
+              gurudev_meeting_notes: data.gurudev_meeting_notes,
+              bio_summary: data.bio_summary,
+              secretariat_notes: data.secretariat_notes
+            };
+            
+            setExtraction(extractionData);
+            
+            // Set domain other visibility
+            if (data.primary_domain === 'Other') {
+              setShowDomainOther(true);
+            }
+            
+            // Check and handle social media entries if present
+            if (data.social_media) {
+              try {
+                const socialMediaObj = typeof data.social_media === 'string' ? 
+                  JSON.parse(data.social_media) : data.social_media;
+                
+                const entries = Object.entries(socialMediaObj).map(([key, value]) => ({
+                  key,
+                  value: value as string
+                }));
+                
+                setSocialMediaEntries(entries);
+              } catch (error) {
+                console.error('Error parsing social media data:', error);
+              }
+            }
+            
+            // Check and handle additional info entries if present
+            if (data.additional_info) {
+              try {
+                const additionalInfoObj = typeof data.additional_info === 'string' ? 
+                  JSON.parse(data.additional_info) : data.additional_info;
+                
+                const entries = Object.entries(additionalInfoObj).map(([key, value]) => ({
+                  key,
+                  value: value as string
+                }));
+                
+                setAdditionalInfoEntries(entries);
+              } catch (error) {
+                console.error('Error parsing additional info data:', error);
+              }
+            }
+            
+            logger('Successfully loaded and processed dignitary data');
+          }
+        } catch (error: any) {
+          console.error('Failed to fetch or process dignitary data:', error);
+          if (isMounted) {
+            const errorMessage = error.response?.data?.detail || 
+                               error.message || 
+                               'Failed to load dignitary data';
+            enqueueSnackbar(errorMessage, { variant: 'error' });
+          }
+        } finally {
+          if (isMounted) {
+            setIsLoading(false);
+            fetchInProgress = false;
+          }
+        }
+      };
+      
+      fetchDignitaryData();
+    }
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [id, api, enqueueSnackbar]); // Removed isLoading from dependencies
 
   const handleOpenBusinessCardUploader = () => {
     setShowBusinessCardUploader(true);
@@ -486,8 +644,8 @@ const AddNewDignitary: React.FC = () => {
     // Ensure we're including all meeting-related fields
     const updatedExtraction = {
       ...extraction,
-      social_media: socialMediaDict,
-      additional_info: additionalInfoDict,
+      social_media: socialMediaEntries.length > 0 ? JSON.stringify(socialMediaDict) : undefined,
+      additional_info: additionalInfoEntries.length > 0 ? JSON.stringify(additionalInfoDict) : undefined,
       // Explicitly include these fields to ensure they're not lost
       has_dignitary_met_gurudev: extraction.has_dignitary_met_gurudev,
       gurudev_meeting_date: extraction.gurudev_meeting_date,
@@ -600,36 +758,37 @@ const AddNewDignitary: React.FC = () => {
       setSaveInProgress(true);
       
       // Add better logging before API call
-      console.log('Creating dignitary with data:', {
-        name: `${updatedExtraction.first_name} ${updatedExtraction.last_name}`,
-        has_met_gurudev: updatedExtraction.has_dignitary_met_gurudev,
-        meeting_date: updatedExtraction.gurudev_meeting_date,
-        meeting_location: updatedExtraction.gurudev_meeting_location,
-        meeting_notes: updatedExtraction.gurudev_meeting_notes
-      });
+      console.log('Creating/updating dignitary with data:', JSON.stringify(updatedExtraction));
       
-      // Use the updated extraction for the API call
-      const response = await api.post<DignitaryResponse>('/admin/business-card/create-dignitary', updatedExtraction);
+      let response;
       
-      if (response.data && response.data.id) {
-        setCreatedDignitaryId(response.data.id);
-        const fullName = `${response.data.first_name} ${response.data.last_name}`;
-        setCreatedDignitaryName(fullName);
-        setSuccessMessage(`Dignitary "${fullName}" has been created successfully with ID: ${response.data.id}`);
+      // If in edit mode, update the existing dignitary
+      if (isEditMode && id) {
+        logger(`Updating dignitary with ID ${id}`);
+        response = await api.patch<DignitaryCreateResponse>(`/admin/dignitaries/update/${id}`, updatedExtraction);
+        enqueueSnackbar('Dignitary updated successfully!', { variant: 'success' });
         
-        // Clear the form data but keep success message
-        setExtraction(null);
-        setPreviewUrl(null);
-        setSocialMediaEntries([]);
-        setAdditionalInfoEntries([]);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-        if (cameraInputRef.current) cameraInputRef.current.value = '';
+        // If redirectTo is set, navigate back to that page
+        if (redirectTo) {
+          logger(`Redirecting to ${redirectTo}`);
+          navigate(redirectTo);
+        } else {
+          // Otherwise show success message
+          setSuccessMessage(`Dignitary "${extraction?.first_name} ${extraction?.last_name}" has been updated successfully!`);
+        }
+      } else {
+        // Create new dignitary
+        logger('Creating new dignitary');
+        response = await api.post<DignitaryCreateResponse>('/admin/dignitaries/new', updatedExtraction);
+        
+        // Set success data for new creation
+        setCreatedDignitaryId(response.data.id);
+        setCreatedDignitaryName(`${extraction?.first_name} ${extraction?.last_name}`);
+        setSuccessMessage(`Dignitary "${extraction?.first_name} ${extraction?.last_name}" has been created successfully!`);
       }
-    } catch (error: any) {
-      console.error('Error creating dignitary:', error);
-      // More detailed error message
-      const errorMessage = error.response?.data?.detail || 'Failed to create dignitary';
-      enqueueSnackbar(errorMessage, { variant: 'error' });
+    } catch (error) {
+      console.error('Failed to save dignitary:', error);
+      enqueueSnackbar(isEditMode ? 'Failed to update dignitary' : 'Failed to create dignitary', { variant: 'error' });
     } finally {
       setSaveInProgress(false);
     }
@@ -954,39 +1113,31 @@ const AddNewDignitary: React.FC = () => {
     if (!extraction) return null;
     
     return (
-      <Card variant="outlined">
-        <CardContent>
+      <Box>
+        <Paper elevation={1} sx={{ p: 3, mb: 3 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={6}>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} md={6}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Typography variant="h6" sx={{ mr: 3 }}>
-                        Dignitary Information
-                      </Typography>
-                    </Box>
-                  </Grid>
-                  <Grid item xs={12} md={6} container justifyContent="flex-end">
-                    <FormControlLabel
-                      control={<Switch checked={isDetailedMode} onChange={toggleDetailedMode} />}
-                      label={isDetailedMode ? "Detailed Entry" : "Quick Entry"}
-                    />
-                  </Grid>
-                </Grid>
-              </Grid>
-              <Grid item xs={12} md={6} container justifyContent="flex-end">
-                <Button 
-                  variant="contained" 
-                  color="primary" 
-                  onClick={() => setShowBusinessCardUploader(!showBusinessCardUploader)}
-                  startIcon={<ContactMailIcon />}
-                  endIcon={showBusinessCardUploader ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                >
-                  Autofill with Business Card
-                </Button>
-              </Grid>
-            </Grid>
+            <Typography variant="h5">{isEditMode ? 'Edit Dignitary Details' : 'Add New Dignitary'}</Typography>
+            
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                variant="outlined"
+                startIcon={<RefreshIcon />}
+                onClick={handleResetForm}
+                disabled={isLoading || saveInProgress}
+              >
+                Reset
+              </Button>
+              
+              <Button
+                variant="contained"
+                color="error"
+                startIcon={<CloseIcon />}
+                onClick={handleCancel}
+                disabled={isLoading || saveInProgress}
+              >
+                Cancel
+              </Button>
+            </Box>
           </Box>
           
           {renderBusinessCardUploader()}
@@ -1162,8 +1313,8 @@ const AddNewDignitary: React.FC = () => {
               <TextField
                 fullWidth
                 label="Title / Position"
-                name="title"
-                value={extraction.title || ''}
+                name="title_in_organization"
+                value={extraction.title_in_organization || ''}
                 onChange={handleInputChange}
               />
             </Grid>
@@ -1172,8 +1323,8 @@ const AddNewDignitary: React.FC = () => {
               <TextField
                 fullWidth
                 label="Organization / Company"
-                name="company"
-                value={extraction.company || ''}
+                name="organization"
+                value={extraction.organization || ''}
                 onChange={handleInputChange}
               />
             </Grid>
@@ -1212,9 +1363,9 @@ const AddNewDignitary: React.FC = () => {
               <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
-                  label="Website / LinkedIn"
-                  name="website"
-                  value={extraction.website || ''}
+                  label="LinkedIn / Website"
+                  name="linked_in_or_website"
+                  value={extraction.linked_in_or_website || ''}
                   onChange={handleInputChange}
                 />
               </Grid>
@@ -1322,8 +1473,8 @@ const AddNewDignitary: React.FC = () => {
                 multiline
                 rows={3}
                 label="Bio"
-                name="bio"
-                value={extraction.bio || ''}
+                name="bio_summary"
+                value={extraction.bio_summary || ''}
                 onChange={handleInputChange}
               />
             </Grid>
@@ -1498,22 +1649,30 @@ const AddNewDignitary: React.FC = () => {
                 </Grid>
               </>
             )}
-            
-            {/* Submit Button */}
-            <Grid item xs={12} sx={{ mt: 2, textAlign: 'right' }}>
-              <Button
-                variant="contained"
-                color="primary"
-                startIcon={<SaveIcon />}
-                onClick={handleSaveDignitaryClick}
-                disabled={saveInProgress || !extraction.first_name || !extraction.last_name}
-              >
-                {saveInProgress ? <CircularProgress size={24} /> : 'Create Dignitary'}
-              </Button>
-            </Grid>
           </Grid>
-        </CardContent>
-      </Card>
+          
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+            <Button
+              variant="contained"
+              color="primary"
+              size="large"
+              startIcon={<SaveIcon />}
+              onClick={handleSaveDignitaryClick}
+              disabled={saveInProgress}
+              sx={{ minWidth: 200 }}
+            >
+              {saveInProgress ? (
+                <>
+                  <CircularProgress size={24} color="inherit" sx={{ mr: 1 }} />
+                  {isEditMode ? 'Updating...' : 'Saving...'}
+                </>
+              ) : (
+                isEditMode ? 'Update Dignitary' : 'Save Dignitary'
+              )}
+            </Button>
+          </Box>
+        </Paper>
+      </Box>
     );
   };
 
@@ -1617,20 +1776,38 @@ const AddNewDignitary: React.FC = () => {
   // Add state for form errors
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
+  // Add cancel button handler
+  const handleCancel = () => {
+    if (redirectTo) {
+      logger(`Canceling and redirecting to ${redirectTo}`);
+      navigate(redirectTo);
+    } else {
+      // Go back to previous page or home
+      navigate(-1);
+    }
+  };
+
   return (
     <Layout>
-      <Container maxWidth="lg">
-        <Box>
-          <Typography variant="h4" gutterBottom>
-            Add New Dignitary
-          </Typography>
-          <Typography variant="body1" color="text.secondary" paragraph>
-            Add a new dignitary record by entering information manually or uploading a business card to auto-fill the form.
-          </Typography>
-          
-          {renderSuccessSection()}
-          {!successMessage && renderForm()}
+      <Container>
+        <Box sx={{ display: 'flex', mb: 3, alignItems: 'center' }}>
+          <IconButton onClick={handleCancel} sx={{ mr: 1 }}>
+            <ArrowBackIcon />
+          </IconButton>
+          <Typography variant="h4">{isEditMode ? 'Edit Dignitary Details' : 'Add New Dignitary'}</Typography>
         </Box>
+        
+        {isLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
+            <CircularProgress />
+          </Box>
+        ) : successMessage ? (
+          renderSuccessSection()
+        ) : (
+          renderForm()
+        )}
+        
+        {showBusinessCardUploader && renderBusinessCardUploader()}
       </Container>
     </Layout>
   );

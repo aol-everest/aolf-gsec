@@ -190,7 +190,7 @@ export const AdminDignitariesRoute: RouteConfig = {
 }
 
 export const AdminAddNewDignitaryRoute: RouteConfig = {
-  path: '/admin/add-new-dignitary',
+  path: '/admin/dignitaries/new',
   label: 'Add New Dignitary',
   icon: AddPersonIconV2,
   roles: [ADMIN_ROLE, SECRETARIAT_ROLE],
@@ -213,6 +213,16 @@ export const AdminAppointmentRequestRoute: RouteConfig = {
   roles: [ADMIN_ROLE, SECRETARIAT_ROLE],
   showInSidebar: true,
   component: AdminAppointmentCreate
+}
+
+// Add the new route for editing dignitaries
+export const AdminEditDignitaryRoute: RouteConfig = {
+  path: '/admin/dignitaries/edit/:id',
+  label: 'Edit Dignitary',
+  icon: EditIcon,
+  roles: [ADMIN_ROLE, SECRETARIAT_ROLE],
+  showInSidebar: false,
+  component: AddNewDignitary // Reuse the same component for adding and editing dignitaries
 }
 
 // Usher routes ---------------------------------------------------------------------------------------
@@ -250,6 +260,7 @@ export const adminRoutes: RouteConfig[] = [
   AdminAppointmentReviewWithIdRoute,
   AdminAppointmentsEditRoute,
   AdminAddNewDignitaryRoute,
+  AdminEditDignitaryRoute,
   AdminAppointmentRequestRoute,
   AdminLocationsRoute,
   AdminAppointmentsRoute,
