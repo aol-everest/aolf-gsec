@@ -5,6 +5,7 @@ import {
   Paper, 
   Box, 
   Avatar, 
+  Grid,
   TextField, 
   FormGroup,
   FormControlLabel,
@@ -168,7 +169,7 @@ const Profile: React.FC = () => {
     <Layout>
       <ProfileBackground />
       <Container maxWidth="md">
-        <Box sx={{ mt: -8, position: 'relative', zIndex: 1 }}>
+        <Box sx={{ zIndex: 1 }}>
           <Paper sx={{ p: 4, position: 'relative' }}>
             {/* Logout button in top right corner */}
             <Box sx={{ position: 'absolute', top: 30, right: 30 }}>
@@ -183,21 +184,25 @@ const Profile: React.FC = () => {
 
             {/* User info section */}
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
-              {userData?.picture && (
-                <Avatar
-                  src={userData.picture}
-                  alt={userData.name}
-                  sx={{ width: 130, height: 130, mr: 4, border: '5px solid #fff', boxShadow: '0px 12px 16px -4px rgba(16, 24, 40, 0.08), 0px 4px 6px -2px rgba(16, 24, 40, 0.03)' }}
-                />
-              )}
-              <Box>
-                <Typography variant="h1" gutterBottom>
-                  {(userData?.first_name || 'User Name') + " " + (userData?.last_name || 'User Name')}
-                </Typography>
-                <Typography color="textSecondary">
-                  {userData?.email || 'email@example.com'}
-                </Typography>
-              </Box>
+              <Grid container spacing={3}>
+                <Grid item xs={12} md="auto" sx={{ maxWidth: 160 }}>
+                  {userData?.picture && (
+                    <Avatar
+                      src={userData.picture}
+                      alt={userData.name}
+                      sx={{ width: 130, height: 130, mr: 4, border: '5px solid #fff', boxShadow: '0px 12px 16px -4px rgba(16, 24, 40, 0.08), 0px 4px 6px -2px rgba(16, 24, 40, 0.03)' }}
+                    />
+                  )}
+                </Grid>
+                <Grid item xs={12} md>
+                  <Typography variant="h1" gutterBottom>
+                    {(userData?.first_name || 'User Name') + " " + (userData?.last_name || 'User Name')}
+                  </Typography>
+                  <Typography color="textSecondary" sx={{ textWrap: 'break-word' }}>
+                    {userData?.email || ''}
+                  </Typography>
+                </Grid>
+              </Grid>
             </Box>
 
             {/* Contact Information section */}

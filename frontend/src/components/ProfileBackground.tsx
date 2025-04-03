@@ -45,7 +45,9 @@ const BackgroundContainer = styled(Box)(({ theme }) => ({
   width: '100%',
   height: '180px',
   background: 'linear-gradient(102.78deg, #3D8BE8 -37.89%, #89BEEC 100.28%)',
-  position: 'relative',
+  position: 'absolute',
+  top: '0',
+  left: '0',
   overflow: 'hidden',
 }));
 

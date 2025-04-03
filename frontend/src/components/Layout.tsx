@@ -51,7 +51,7 @@ export default function Layout({ children }: LayoutProps) {
         component="main"
         sx={{
           flexGrow: 1,
-          pt: { xs: 3.5, sm: 5 }, // Apply padding only in desktop mode
+          pt: { xs: 4, sm: 6 }, // Apply padding only in desktop mode
           pl: { xs: 2, sm: 0 }, // Apply padding only in desktop mode
           pr: { xs: 2, sm: 0 }, // Apply padding only in desktop mode
           pb: { xs: 2, sm: 0 }, // Apply padding only in desktop mode
