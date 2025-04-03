@@ -873,54 +873,60 @@ const AdminAppointmentTiles: React.FC = () => {
             mb: 4
           }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h4">All Appointments</Typography>
-              
-              <LocalizationProvider dateAdapter={AdapterDateFns}>
-                <Stack direction="row" spacing={2} alignItems="center">
-                  <DatePicker
-                    label="Start Date"
-                    value={filters.startDate}
-                    onChange={handleStartDateChange}
-                    slotProps={{
-                      textField: {
-                        size: "small",
-                        InputProps: {
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <CalendarTodayIcon fontSize="small" />
-                            </InputAdornment>
-                          )
-                        }
-                      }
-                    }}
-                  />
-                  <DatePicker
-                    label="End Date"
-                    value={filters.endDate}
-                    onChange={handleEndDateChange}
-                    slotProps={{
-                      textField: {
-                        size: "small",
-                        InputProps: {
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <CalendarTodayIcon fontSize="small" />
-                            </InputAdornment>
-                          )
-                        }
-                      }
-                    }}
-                  />
-                  {(filters.startDate || filters.endDate) && (
-                    <SecondaryButton 
-                      size="small" 
-                      onClick={clearDateFilters}
-                    >
-                      Clear Dates
-                    </SecondaryButton>
-                  )}
-                </Stack>
-              </LocalizationProvider>
+              <Grid container spacing={2} alignItems="center">
+                <Grid item xs={12} md={6}>
+                  <Typography variant="h4">All Appointments</Typography>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <LocalizationProvider dateAdapter={AdapterDateFns}>
+                    <Stack direction="row" spacing={2} alignItems="center">
+                      <DatePicker
+                        label="Start Date"
+                        value={filters.startDate}
+                        onChange={handleStartDateChange}
+                        slotProps={{
+                          textField: {
+                            size: "small",
+                            InputProps: {
+                              startAdornment: (
+                                <InputAdornment position="start">
+                                  <CalendarTodayIcon fontSize="small" />
+                                </InputAdornment>
+                              )
+                            }
+                          }
+                        }}
+                      />
+                      <DatePicker
+                        label="End Date"
+                        value={filters.endDate}
+                        onChange={handleEndDateChange}
+                        slotProps={{
+                          textField: {
+                            size: "small",
+                            InputProps: {
+                              startAdornment: (
+                                <InputAdornment position="start">
+                                  <CalendarTodayIcon fontSize="small" />
+                                </InputAdornment>
+                              )
+                            }
+                          }
+                        }}
+                      />
+                      {(filters.startDate || filters.endDate) && (
+                        <SecondaryButton 
+                          size="small" 
+                          onClick={clearDateFilters}
+                        >
+                          Clear Dates
+                        </SecondaryButton>
+                      )}
+                    </Stack>
+                  </LocalizationProvider>
+
+                </Grid>
+              </Grid>
             </Box>
             
             {/* Status Filters as Tabs */}
