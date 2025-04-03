@@ -1937,7 +1937,7 @@ async def get_all_appointments(
 
     # Apply status filter if provided
     if status:
-        query = query.filter(models.Appointment.status == status)
+        query = query.filter(models.Appointment.status.in_(status.split(',')))
     # Apply start and end date filters if provided
     if start_date:
         query = query.filter(or_(models.Appointment.preferred_date >= start_date, models.Appointment.appointment_date >= start_date))

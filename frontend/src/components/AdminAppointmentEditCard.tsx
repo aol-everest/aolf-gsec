@@ -333,9 +333,54 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
   const watchStatus = useWatch({ control, name: 'status' });
   const watchSubStatus = useWatch({ control, name: 'sub_status' });
   const watchAppointmentDate = useWatch({ control, name: 'appointment_date' });
+  const watchAppointmentTime = useWatch({ control, name: 'appointment_time' });
 
   const today = getLocalDateString();
   const now = getLocalTimeString();
+
+  // Add a date/time comparison effect to automatically set status based on selected date and time
+  useEffect(() => {
+    if (!initialSetupComplete) return;
+
+    // Only do this if we have both a date and time selected
+    const appointmentDate = getValues('appointment_date');
+    const appointmentTime = getValues('appointment_time');
+    
+    if (appointmentDate && appointmentTime && statusMap) {
+      // Convert selected date and time to a Date object
+      const selectedDateTime = new Date(`${appointmentDate}T${appointmentTime}`);
+      const currentDateTime = new Date(`${today}T${now}`);
+
+      // Compare with current date/time
+      if (selectedDateTime > currentDateTime) {
+        // Future date: set status to Approved & sub-status to Scheduled
+        if (
+          statusMap['APPROVED'] && 
+          subStatusMap && 
+          subStatusMap['SCHEDULED'] && 
+          statusSubStatusMapping && 
+          statusSubStatusMapping[statusMap['APPROVED']] &&
+          statusSubStatusMapping[statusMap['APPROVED']].valid_sub_statuses.includes(subStatusMap['SCHEDULED'])
+        ) {
+          setValue('status', statusMap['APPROVED']);
+          setValue('sub_status', subStatusMap['SCHEDULED']);
+        }
+      } else {
+        // Past or current date: set status to Completed & sub-status to No Further Action
+        if (
+          statusMap['COMPLETED'] && 
+          subStatusMap && 
+          subStatusMap['NO_FURTHER_ACTION'] && 
+          statusSubStatusMapping && 
+          statusSubStatusMapping[statusMap['COMPLETED']] &&
+          statusSubStatusMapping[statusMap['COMPLETED']].valid_sub_statuses.includes(subStatusMap['NO_FURTHER_ACTION'])
+        ) {
+          setValue('status', statusMap['COMPLETED']);
+          setValue('sub_status', subStatusMap['NO_FURTHER_ACTION']);
+        }
+      }
+    }
+  }, [watchAppointmentDate, watchAppointmentTime, statusMap, subStatusMap, statusSubStatusMapping, setValue, getValues, today, now, initialSetupComplete]);
 
   // Validate form based on status and substatus combinations
   const validateForm = (): ValidationErrors => {

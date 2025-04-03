@@ -38,7 +38,7 @@ const AdminAppointmentSchedule: React.FC = () => {
       try {
         const { data } = await api.get<Appointment[]>('/admin/appointments/all', {
           params: {
-            status: 'APPROVED'
+            status: 'APPROVED,COMPLETED'
           }
         });
         
@@ -70,7 +70,7 @@ const AdminAppointmentSchedule: React.FC = () => {
       const dignitaryCount = appointment.appointment_dignitaries.length;
       
       return (
-        <>
+        <Box sx={{ display: 'flex', flexDirection: 'column', mb: 1 }}>
           <Typography variant="h6" gutterBottom>
             {formatHonorificTitle(primaryDignitary.honorific_title)} {primaryDignitary.first_name} {primaryDignitary.last_name}
             {dignitaryCount > 1 && (
@@ -82,13 +82,13 @@ const AdminAppointmentSchedule: React.FC = () => {
           <Typography color="text.secondary" gutterBottom>
             Title: {primaryDignitary.title_in_organization}, Organization: {primaryDignitary.organization}
           </Typography>
-        </>
+        </Box>
       );
     }
     // No dignitary information available
     else {
       return (
-        <Typography variant="h6" gutterBottom>
+        <Typography variant="body1" color="text.secondary" sx={{ fontStyle: 'italic' }}>
           No dignitary information available
         </Typography>
       );
@@ -138,7 +138,7 @@ const AdminAppointmentSchedule: React.FC = () => {
               </Typography>
             </Paper>
           ) : (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               {appointments.map((appointment: Appointment) => (
                 <React.Fragment key={appointment.id}>
                   <Paper
@@ -162,16 +162,18 @@ const AdminAppointmentSchedule: React.FC = () => {
                         <Typography variant="h5" color="primary" gutterBottom>
                           {formatTime(appointment.appointment_time)}
                         </Typography>
-                        {/* <Chip
-                          label={appointment.status}
-                          sx={getStatusChipSx(appointment.status, theme)}
-                        /> */}
+                        {appointment.status.toLowerCase() === 'completed' && (
+                          <Chip
+                            label={appointment.status}
+                            sx={getStatusChipSx(appointment.status, theme)}
+                          />
+                        )}
                       </Grid>
 
                       {/* Dignitary and Purpose */}
                       <Grid item xs={12} sm={9}>
                         {renderDignitaryInfo(appointment)}
-                        <Box sx={{ mt: 2 }}>
+                        <Box sx={{ mt: 0 }}>
                           <Typography variant="body1">
                             <strong>Purpose:</strong> {appointment.purpose}
                           </Typography>

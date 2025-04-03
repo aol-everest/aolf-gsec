@@ -73,7 +73,7 @@ import { PencilIconV2, TrashIconV2 } from './icons';
 // Interfaces
 interface AppointmentResponse extends Omit<Appointment, 'dignitary' | 'requester' | 'location' | 'approved_by_user' | 'last_updated_by_user' | 'attachments'> {
   // Only include the fields that are returned by the API when creating a new appointment
-  purpose_of_meeting?: string;
+  purpose?: string;
 }
 
 interface Country {
@@ -91,6 +91,7 @@ interface Country {
 // For Step 1
 interface InitialFormData {
   numberOfDignitaries: number;
+  isPlaceholderAppointment?: boolean;
 }
 
 // For Step 2: Dignitary Information
@@ -209,6 +210,9 @@ export const AdminAppointmentCreateForm: React.FC = () => {
   
   // Add ref for AdminAppointmentEditCard
   const appointmentEditCardRef = useRef<AdminAppointmentEditCardRef>(null);
+
+  // Add this line near the top with other state variables
+  const [isPlaceholderMode, setIsPlaceholderMode] = useState(false);
 
   // Fetch status options
   const { data: statusOptions = [] } = useQuery<string[]>({
@@ -848,8 +852,17 @@ export const AdminAppointmentCreateForm: React.FC = () => {
       }
       
       const initialData = initialForm.getValues();
-      setRequiredDignitariesCount(initialData.numberOfDignitaries);
-      setActiveStep(1);
+      
+      // If it's a placeholder appointment, skip to step 3 (appointment details)
+      if (initialData.isPlaceholderAppointment) {
+        setRequiredDignitariesCount(0);
+        setIsPlaceholderMode(true);
+        setActiveStep(2);
+      } else {
+        setRequiredDignitariesCount(initialData.numberOfDignitaries);
+        setIsPlaceholderMode(false);
+        setActiveStep(1);
+      }
     } else if (activeStep === 1) {
       // For step 2, check if we have at least one dignitary
       if (selectedDignitaries.length === 0) {
@@ -913,7 +926,9 @@ export const AdminAppointmentCreateForm: React.FC = () => {
         // Get dignitary IDs from the selected dignitaries
         const dignitary_ids = selectedDignitaries.map(d => d.id);
         
-        if (dignitary_ids.length === 0) {
+        // For placeholder appointments, we don't need dignitaries
+        const isPlaceholder = initialForm.getValues().isPlaceholderAppointment;
+        if (dignitary_ids.length === 0 && !isPlaceholder) {
           enqueueSnackbar('No dignitaries selected for appointment', { variant: 'error' });
           return;
         }
@@ -935,6 +950,7 @@ export const AdminAppointmentCreateForm: React.FC = () => {
           secretariat_notes_to_requester: formData.secretariat_notes_to_requester,
           secretariat_meeting_notes: formData.secretariat_meeting_notes,
           secretariat_follow_up_actions: formData.secretariat_follow_up_actions,
+          is_placeholder: isPlaceholder,
         };
         
         await createAppointmentMutation.mutateAsync(appointmentCreateData);
@@ -945,7 +961,12 @@ export const AdminAppointmentCreateForm: React.FC = () => {
   };
 
   const handleBack = () => {
-    setActiveStep(prev => prev - 1);
+    // If we're in placeholder mode and at step 3, go back to step 1
+    if (isPlaceholderMode && activeStep === 2) {
+      setActiveStep(0);
+    } else {
+      setActiveStep(prev => prev - 1);
+    }
   };
 
   // Get button text based on state
@@ -982,29 +1003,57 @@ export const AdminAppointmentCreateForm: React.FC = () => {
               </Grid>
 
               <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  type="number"
-                  label="Number of Dignitaries"
-                  InputLabelProps={{ shrink: true }}
-                  inputProps={{ min: 1, max: 8 }}
-                  {...initialForm.register('numberOfDignitaries', { 
-                    required: 'Number of dignitaries is required',
-                    min: {
-                      value: 1,
-                      message: 'At least 1 dignitary is required'
-                    },
-                    max: {
-                      value: 8,
-                      message: 'Maximum 8 dignitaries allowed'
-                    },
-                    valueAsNumber: true
-                  })}
-                  error={!!initialForm.formState.errors.numberOfDignitaries}
-                  helperText={initialForm.formState.errors.numberOfDignitaries?.message}
-                  required
-                />
+                <FormControl component="fieldset" sx={{ mb: 2 }}>
+                  <FormLabel component="legend">Appointment Type</FormLabel>
+                  <RadioGroup
+                    row
+                    value={initialForm.watch('isPlaceholderAppointment') ? 'placeholder' : 'regular'}
+                    onChange={(e) => {
+                      const isPlaceholder = e.target.value === 'placeholder';
+                      initialForm.setValue('isPlaceholderAppointment', isPlaceholder);
+                      setIsPlaceholderMode(isPlaceholder);
+                      
+                      // If placeholder is selected, set dignitaries to 0
+                      if (isPlaceholder) {
+                        initialForm.setValue('numberOfDignitaries', 0);
+                      } else if (initialForm.getValues('numberOfDignitaries') === 0) {
+                        // If switching back to regular and dignitaries was 0, set to 1
+                        initialForm.setValue('numberOfDignitaries', 1);
+                      }
+                    }}
+                  >
+                    <FormControlLabel value="regular" control={<Radio />} label="Regular Appointment" />
+                    <FormControlLabel value="placeholder" control={<Radio />} label="Placeholder Appointment" />
+                  </RadioGroup>
+                </FormControl>
               </Grid>
+
+              {!initialForm.watch('isPlaceholderAppointment') && (
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    type="number"
+                    label="Number of Dignitaries"
+                    InputLabelProps={{ shrink: true }}
+                    inputProps={{ min: 1, max: 8 }}
+                    {...initialForm.register('numberOfDignitaries', { 
+                      required: !initialForm.watch('isPlaceholderAppointment') ? 'Number of dignitaries is required' : false,
+                      min: {
+                        value: 1,
+                        message: 'At least 1 dignitary is required'
+                      },
+                      max: {
+                        value: 8,
+                        message: 'Maximum 8 dignitaries allowed'
+                      },
+                      valueAsNumber: true
+                    })}
+                    error={!!initialForm.formState.errors.numberOfDignitaries}
+                    helperText={initialForm.formState.errors.numberOfDignitaries?.message}
+                    required={!initialForm.watch('isPlaceholderAppointment')}
+                  />
+                </Grid>
+              )}
             </Grid>
           </Box>
         );
@@ -1756,18 +1805,26 @@ export const AdminAppointmentCreateForm: React.FC = () => {
             <Typography variant="subtitle1" color="primary" gutterBottom>
               Appointment ID: {submittedAppointment.id}
             </Typography>
+            {isPlaceholderMode && (
+              <Chip 
+                label="Placeholder Appointment" 
+                color="primary" 
+                variant="outlined" 
+                sx={{ mt: 1 }} 
+              />
+            )}
           </Box>
 
-          <Typography variant="h6" gutterBottom>Appointment Summary</Typography>
-          
           <Grid container spacing={2}>
-            <Grid item xs={12}>
-              <Typography variant="body1">
-                <strong>Dignitaries:</strong> {selectedDignitaries.map(d => 
-                  `${formatHonorificTitle(d.honorific_title || '')} ${d.first_name} ${d.last_name}`
-                ).join(', ')}
-              </Typography>
-            </Grid>
+            {!isPlaceholderMode && selectedDignitaries.length > 0 && (
+              <Grid item xs={12}>
+                <Typography variant="body1">
+                  <strong>Dignitaries:</strong> {selectedDignitaries.map(d => 
+                    `${formatHonorificTitle(d.honorific_title || '')} ${d.first_name} ${d.last_name}`
+                  ).join(', ')}
+                </Typography>
+              </Grid>
+            )}
             <Grid item xs={12}>
               <Typography variant="body1">
                 <strong>Status:</strong> {submittedAppointment.status}
@@ -1782,20 +1839,6 @@ export const AdminAppointmentCreateForm: React.FC = () => {
                 </Typography>
               </Grid>
             )}
-            {!submittedAppointment.appointment_date && submittedAppointment.preferred_date && (
-              <Grid item xs={12}>
-                <Typography variant="body1">
-                  <strong>Preferred Date:</strong> {submittedAppointment.preferred_date}
-                </Typography>
-              </Grid>
-            )}
-            {!submittedAppointment.appointment_time && submittedAppointment.preferred_time_of_day && (
-              <Grid item xs={12}>
-                <Typography variant="body1">
-                  <strong>Preferred Time:</strong> {submittedAppointment.preferred_time_of_day}
-                </Typography>
-              </Grid>
-            )}
             {location && (
               <Grid item xs={12}>
                 <Typography variant="body1">
@@ -1805,7 +1848,7 @@ export const AdminAppointmentCreateForm: React.FC = () => {
             )}
             <Grid item xs={12}>
               <Typography variant="body1" sx={{whiteSpace: 'pre-line'}}>
-                <strong>Purpose:</strong> {submittedAppointment.purpose_of_meeting}
+                <strong>Purpose:</strong> {submittedAppointment.purpose}
               </Typography>
             </Grid>
             {submittedAppointment.requester_notes_to_secretariat && (
@@ -1842,11 +1885,17 @@ export const AdminAppointmentCreateForm: React.FC = () => {
   return (
     <Box sx={{ width: '100%' }}>
       <Stepper activeStep={activeStep} sx={{ mb: 4 }} alternativeLabel>
-        {steps.map((label) => (
-          <Step key={label}>
-            <StepLabel>{label}</StepLabel>
-          </Step>
-        ))}
+        {steps.map((label, index) => {
+          // Skip rendering step 2 (dignitaries) if we're in placeholder mode
+          // but keep the correct activeStep number for the logic
+          const isSkipped = isPlaceholderMode && index === 1;
+          
+          return !isSkipped ? (
+            <Step key={label}>
+              <StepLabel>{label}</StepLabel>
+            </Step>
+          ) : null;
+        })}
       </Stepper>
 
       <Paper sx={{ p: 3 }}>

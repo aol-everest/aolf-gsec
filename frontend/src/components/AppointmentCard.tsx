@@ -359,49 +359,57 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
 
                 {/* Point of Contact Information */}
                 <Paper elevation={0} sx={{ p: isMobile ? 2 : 3, mb: 3, borderRadius: 2, bgcolor: 'grey.50', width: '100%', boxSizing: 'border-box' }}>
-                    <Typography variant="h5">
-                        Point of Contact: {appointment.requester?.first_name} {appointment.requester?.last_name}
-                    </Typography>
-                    <Grid container spacing={2}>
-                        <Grid item xs={12} md={6}>
-                            <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
-                                <Box sx={{ mt: 0.5, flexShrink: 0 }}>
-                                    <MailIconV2 />
-                                </Box>
-                                <Typography 
-                                    component="a" 
-                                    href={`mailto:${appointment.requester?.email}`} 
-                                    sx={{ 
-                                        ml: 1, 
-                                        textDecoration: 'none', 
-                                        color: theme.palette.text.primary,
-                                        wordBreak: 'break-word',
-                                        overflowWrap: 'break-word'
-                                    }}
-                                >
-                                    {appointment.requester?.email}
-                                </Typography>
-                            </Box>
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <Box sx={{ flexShrink: 0 }}>
-                                    <PhoneIconV2 />
-                                </Box>
-                                <Typography 
-                                    component="a" 
-                                    href={`tel:${appointment.requester?.phone_number}`} 
-                                    sx={{ 
-                                        ml: 1, 
-                                        textDecoration: 'none', 
-                                        color: theme.palette.text.primary
-                                    }}
-                                >
-                                    {appointment.requester?.phone_number || 'N/A'}
-                                </Typography>
-                            </Box>
-                        </Grid>
-                    </Grid>
+                    {appointment.requester ? (
+                        <>
+                            <Typography variant="h5">
+                                Point of Contact: {appointment.requester?.first_name} {appointment.requester?.last_name}
+                            </Typography>
+                            <Grid container spacing={2}>
+                                <Grid item xs={12} md={6}>
+                                    <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
+                                        <Box sx={{ mt: 0.5, flexShrink: 0 }}>
+                                            <MailIconV2 />
+                                        </Box>
+                                        <Typography 
+                                            component="a" 
+                                            href={`mailto:${appointment.requester?.email}`} 
+                                            sx={{ 
+                                                ml: 1, 
+                                                textDecoration: 'none', 
+                                                color: theme.palette.text.primary,
+                                                wordBreak: 'break-word',
+                                                overflowWrap: 'break-word'
+                                            }}
+                                        >
+                                            {appointment.requester?.email}
+                                        </Typography>
+                                    </Box>
+                                </Grid>
+                                <Grid item xs={12} md={6}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                        <Box sx={{ flexShrink: 0 }}>
+                                            <PhoneIconV2 />
+                                        </Box>
+                                        <Typography 
+                                            component="a" 
+                                            href={`tel:${appointment.requester?.phone_number}`} 
+                                            sx={{ 
+                                                ml: 1, 
+                                                textDecoration: 'none', 
+                                                color: theme.palette.text.primary
+                                            }}
+                                        >
+                                            {appointment.requester?.phone_number || 'N/A'}
+                                        </Typography>
+                                    </Box>
+                                </Grid>
+                            </Grid>
+                        </>
+                    ) : (
+                        <Typography variant="body1" color="text.secondary">
+                            No POC information available
+                        </Typography>
+                    )}
                 </Paper>
 
                 {/* Dignitary Information */}
@@ -414,7 +422,7 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                     <Grid container spacing={2} sx={{ mb: 2 }}>
                         <Grid item xs={12}>
                             <Typography variant="h5" gutterBottom>
-                                {appointment.status.toLowerCase() === 'approved' ? 'Approved Appointment Details' : 'Requested Appointment Details'}
+                                {['approved', 'completed'].includes(appointment.status.toLowerCase()) ? 'Approved Appointment Details' : 'Requested Appointment Details'}
                             </Typography>
                         </Grid>
                     </Grid>
@@ -433,7 +441,7 @@ export const AppointmentCard: React.FC<{ appointment: Appointment, theme: Theme 
                                     wordBreak: 'break-word',
                                     overflowWrap: 'break-word'
                                 }}>
-                                    {appointment.status.toLowerCase() === 'approved' && appointment.appointment_date ? formatDateWithTimezone(appointment.appointment_date, 'UTC', false) + ' ' + (appointment.appointment_time || '') : formatDateWithTimezone(appointment.preferred_date, 'UTC', false) + ' ' + (appointment.preferred_time_of_day || '')}
+                                    {['approved', 'completed'].includes(appointment.status.toLowerCase()) && appointment.appointment_date ? formatDateWithTimezone(appointment.appointment_date, 'UTC', false) + ' ' + (appointment.appointment_time || '') : formatDateWithTimezone(appointment.preferred_date, 'UTC', false) + ' ' + (appointment.preferred_time_of_day || '')}
                                 </Typography>
                             </Box>
                         </Grid>

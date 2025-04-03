@@ -28,13 +28,13 @@ import { formatHonorificTitle } from '../utils/formattingUtils';
 // Define interfaces for the USHER view
 interface DignitaryUsherView {
   honorific_title?: string;
-  first_name: string;
-  last_name: string;
+  first_name?: string;
+  last_name?: string;
 }
 
 interface RequesterUsherView {
-  first_name: string;
-  last_name: string;
+  first_name?: string;
+  last_name?: string;
   phone_number?: string;
 }
 
@@ -49,7 +49,7 @@ interface UsherAppointmentSchedule {
   appointment_time?: string;
   dignitary?: DignitaryUsherView; // Keep for backward compatibility
   appointment_dignitaries?: AppointmentDignitaryUsherView[];
-  requester: RequesterUsherView;
+  requester?: RequesterUsherView;
   location?: {
     name: string;
   };
@@ -189,7 +189,7 @@ const UsherAppointmentSchedule: React.FC = () => {
       return <Typography variant="body1" fontWeight="medium">{`${formatHonorificTitle(appointment.dignitary.honorific_title || '')} ${appointment.dignitary.first_name} ${appointment.dignitary.last_name}`.trim()}</Typography>;
     }
     
-    return <Typography variant="body1">No dignitary information</Typography>;
+    return <Typography variant="body1" color="text.secondary" sx={{ fontStyle: 'italic' }}>No dignitary information</Typography>;
   };
 
   // Get a friendly label for the date
@@ -324,12 +324,20 @@ const UsherAppointmentSchedule: React.FC = () => {
                               <Typography variant="subtitle2" color="text.secondary">
                                 Point of Contact
                               </Typography>
-                              <Typography variant="body1">
-                                {appointment.requester.first_name} {appointment.requester.last_name}
-                              </Typography>
-                              {appointment.requester.phone_number && (
-                                <Typography variant="body2" color="text.secondary">
-                                  {appointment.requester.phone_number}
+                              {appointment.requester ? (
+                                <>
+                                  <Typography variant="body1">
+                                    {appointment.requester?.first_name} {appointment.requester?.last_name}
+                                  </Typography>
+                                  {appointment.requester?.phone_number && (
+                                    <Typography variant="body2" color="text.secondary">
+                                      {appointment.requester.phone_number}
+                                    </Typography>
+                              )}
+                                </>
+                              ) : (
+                                <Typography variant="body1" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                                  No point of contact info
                                 </Typography>
                               )}
                             </Grid>

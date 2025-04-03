@@ -553,9 +553,9 @@ class AppointmentUsherView(BaseModel):
     id: int
     appointment_date: Optional[date] = None
     appointment_time: Optional[str] = None
-    requester: RequesterUsherView
+    requester: Optional[RequesterUsherView] = None
     location: Optional[Location] = None
-    appointment_dignitaries: List[AppointmentDignitaryUsherView]
+    appointment_dignitaries: Optional[List[AppointmentDignitaryUsherView]] = []
 
     class Config:
         orm_mode = True
