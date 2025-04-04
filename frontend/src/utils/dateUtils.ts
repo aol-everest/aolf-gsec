@@ -30,6 +30,12 @@ export const getTimeOptions = (interval = 15): { value: string; label: string }[
 
 export const defaultTimeOptions = getTimeOptions();
 
+// Check if the time is outside normal hours (before 8am or after 10pm)
+export const isTimeOffHours = (timeValue: string): boolean => {
+  const hour = parseInt(timeValue.split(':')[0], 10);
+  return hour < 8 || hour >= 22;
+};
+
 // Helper function to find the time option object from a time string
 export const findTimeOption = (timeString: string | null, timeOptions: { value: string; label: string }[]) => {
   if (!timeString) return null;

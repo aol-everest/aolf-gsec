@@ -66,6 +66,8 @@ import { StatusMap, SubStatusMap, StatusSubStatusMapping } from '../models/types
 import { SecondaryButton } from '../components/SecondaryButton';
 import { PrimaryButton } from '../components/PrimaryButton';
 import WarningButton from '../components/WarningButton';
+import { addMonths, addDays, subDays, format } from 'date-fns';
+import { DateTimeSlotData } from '../models/types';
 
 interface AppointmentFormData {
   appointment_date: string;
@@ -112,6 +114,7 @@ interface BusinessCardExtractionResponse {
   appointment_id: number;
 }
 
+
 // Define validation errors interface
 interface ValidationErrors {
   appointment_date?: string;
@@ -140,6 +143,8 @@ const AdminAppointmentEdit: React.FC = () => {
   const [dignitaryCreated, setDignitaryCreated] = useState(false);
   const [dignitaryCreationError, setDignitaryCreationError] = useState<string | null>(null);
   const [isExtractionDisabled, setIsExtractionDisabled] = useState(false);
+  const [timeSlotData, setTimeSlotData] = useState<DateTimeSlotData[]>([]);
+  const [isLoadingTimeSlots, setIsLoadingTimeSlots] = useState(false);
   const theme = useTheme();
   
   // Get redirect URL from query parameters
@@ -524,6 +529,69 @@ const AdminAppointmentEdit: React.FC = () => {
     setBusinessCardExtraction(null);
   };
 
+  // Fetch time slot data
+  const fetchTimeSlotData = async (locationId: number | null, dateStr?: string) => {
+    try {
+      setIsLoadingTimeSlots(true);
+      
+      // Use the selected date if provided, otherwise use the current date
+      const selectedDate = dateStr || format(new Date(), 'yyyy-MM-dd');
+      
+      // Calculate date range: 1 month before and after the selected date
+      const startDate = format(subDays(new Date(selectedDate), 15), 'yyyy-MM-dd');
+      const endDate = format(addDays(new Date(selectedDate), 45), 'yyyy-MM-dd');
+      
+      // Build query params
+      const params = new URLSearchParams({
+        start_date: startDate,
+        end_date: endDate
+      });
+      
+      // Add location filter if provided
+      if (locationId) {
+        params.append('location_id', locationId.toString());
+      }
+      
+      const { data } = await api.get<DateTimeSlotData[]>(`/appointments/time-slots?${params.toString()}`);
+      setTimeSlotData(data);
+    } catch (error) {
+      console.error('Error fetching time slot data:', error);
+      enqueueSnackbar('Failed to load time slot availability data', { variant: 'error' });
+    } finally {
+      setIsLoadingTimeSlots(false);
+    }
+  };
+
+  // Trigger time slot data fetch when appointment data changes
+  useEffect(() => {
+    if (appointment?.location_id) {
+      fetchTimeSlotData(appointment.location_id, appointment.appointment_date);
+    } else if (appointment) {
+      // If there's no location_id yet, still fetch the data without location filter
+      fetchTimeSlotData(null, appointment.appointment_date);
+    }
+  }, [appointment]);
+  
+  // Watch for location changes to update time slot data
+  const watchLocationId = watch('location_id');
+  useEffect(() => {
+    if (watchLocationId) {
+      fetchTimeSlotData(watchLocationId, getValues('appointment_date'));
+    }
+  }, [watchLocationId]);
+  
+  // Watch for date changes to update time slot data if we're viewing far from the current range
+  const watchAppointmentDate = watch('appointment_date');
+  useEffect(() => {
+    if (watchAppointmentDate) {
+      // Check if the selected date is within the current data range
+      const dateExists = timeSlotData.some(d => d.date === watchAppointmentDate);
+      if (!dateExists) {
+        fetchTimeSlotData(getValues('location_id'), watchAppointmentDate);
+      }
+    }
+  }, [watchAppointmentDate]);
+
   if (isLoading || !appointment) {
     return (
       <Layout>
@@ -608,6 +676,7 @@ const AdminAppointmentEdit: React.FC = () => {
                     dignitaryCreationError={dignitaryCreationError}
                     onDismissExtraction={handleDismissExtraction}
                     uploading={uploading}
+                    timeSlotData={timeSlotData}
                     initialFormValues={appointment ? {
                       appointment_date: appointment.appointment_date || appointment.preferred_date,
                       appointment_time: appointment.appointment_time || appointment.preferred_time_of_day,

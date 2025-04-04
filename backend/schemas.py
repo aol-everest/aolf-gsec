@@ -653,3 +653,8 @@ class CountryResponse(CountryBase):
     class Config:
         orm_mode = True
 
+# New schema for appointment time slot aggregation
+class AppointmentTimeSlotInfo(BaseModel):
+    date: date
+    total_appointments: int
+    time_slots: Dict[str, Dict[str, Any]]  # time -> {'appointment_count': int, 'people_count': int}

@@ -24,11 +24,16 @@ import {
   CardContent,
   Alert,
   Divider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from '@mui/material';
 import { Controller, Control, UseFormGetValues, UseFormSetValue, UseFormWatch, useWatch } from 'react-hook-form';
 import { Location } from '../models/types';
 import { EnumSelect } from './EnumSelect';
-import { getLocalDateString, getLocalTimeString, findTimeOption, parseUTCDate } from '../utils/dateUtils';
+import { getLocalDateString, getLocalTimeString, findTimeOption, parseUTCDate, isTimeOffHours } from '../utils/dateUtils';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
@@ -45,7 +50,7 @@ import SecondaryButton from './SecondaryButton';
 import { PrimaryButton } from './PrimaryButton';
 import { DownloadIconV2, ImageIconV2, PDFIconV2, TextFileIconV2, TrashIconV2, GenericFileIconV2 } from './icons';
 // import { statusSubStatusMapping } from '../constants/appointmentStatuses';
-
+import { DateTimeSlotData } from '../models/types';
 
 interface ValidationErrors {
   appointment_date?: string;
@@ -133,6 +138,7 @@ interface AdminAppointmentEditCardProps {
   initialFormValues?: Record<string, any>;
   onValidationResult?: (errors: ValidationErrors) => void;
   validateOnChange?: boolean;
+  timeSlotData?: DateTimeSlotData[];
 }
 
 // Common file types and their corresponding icons
@@ -319,7 +325,8 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
   onFileSelect,
   initialFormValues,
   onValidationResult,
-  validateOnChange = false
+  validateOnChange = false,
+  timeSlotData = [],
 }, ref) => {
   // File input refs
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -328,6 +335,10 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
   const businessCardCameraInputRef = useRef<HTMLInputElement>(null);
   const [localSelectedFiles, setLocalSelectedFiles] = useState<File[]>([]);
   const [initialSetupComplete, setInitialSetupComplete] = useState(false);
+  
+  // State for off-hours warning dialog
+  const [showOffHoursWarning, setShowOffHoursWarning] = useState<boolean>(false);
+  const [selectedOffHoursTime, setSelectedOffHoursTime] = useState<string | null>(null);
 
   // Manage watch variables internally instead of receiving them as props
   const watchStatus = useWatch({ control, name: 'status' });
@@ -669,17 +680,46 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
         <Controller
           name="appointment_date"
           control={control}
-          render={({ field }) => (
-            <TextField
-              {...field}
-              fullWidth
-              label="Appointment Date"
-              type="date"
-              InputLabelProps={{ shrink: true }}
-              error={!!validationErrors.appointment_date}
-              helperText={validationErrors.appointment_date}
-            />
-          )}
+          render={({ field }) => {
+            // Find the appointment count for the selected date
+            const selectedDateData = timeSlotData.find(d => d.date === field.value);
+            const appointmentCount = selectedDateData?.total_appointments || 0;
+            
+            return (
+              <TextField
+                {...field}
+                fullWidth
+                label="Appointment Date"
+                type="date"
+                InputLabelProps={{ shrink: true }}
+                error={!!validationErrors.appointment_date}
+                helperText={
+                  <>
+                    {validationErrors.appointment_date || ''}
+                    {appointmentCount > 0 && (
+                      <Box component="span" sx={{ 
+                        display: 'inline-flex', 
+                        alignItems: 'center', 
+                        color: 'primary.main',
+                        fontWeight: 'bold'
+                      }}>
+                        <Alert severity="info" sx={{ mt: 0.5, pl: 1.3, pr: 1.3, pb: 0.5, pt: 0.5 }}>
+                            This date has {appointmentCount} {appointmentCount === 1 ? 'appointment' : 'appointments'} scheduled.
+                        </Alert>
+                      </Box>
+                    )}
+                  </>
+                }
+                onChange={(e) => {
+                  field.onChange(e);
+                  // Reset appointment time when date changes to avoid conflicts
+                  if (field.value !== e.target.value) {
+                    setValue('appointment_time', '');
+                  }
+                }}
+              />
+            );
+          }}
         />
       </Grid>
 
@@ -689,35 +729,119 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
           control={control}
           render={({ field }) => {
             const timeOption = findTimeOption(field.value, defaultTimeOptions);
+            const selectedDate = getValues('appointment_date');
+            const selectedDateData = timeSlotData.find(d => d.date === selectedDate);
+            const timeSlots = selectedDateData?.time_slots || {};
+            
             return (
-              <Autocomplete
-                options={defaultTimeOptions}
-                getOptionLabel={(option) => typeof option === 'string' ? option : option.label}
-                isOptionEqualToValue={(option, value) => 
-                  option.value === (typeof value === 'string' ? value : value.value)
-                }
-                value={timeOption}
-                onChange={(_, newValue) => {
-                  field.onChange(newValue ? newValue.value : '');
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Appointment Time"
-                    fullWidth
-                    InputLabelProps={{ shrink: true }}
-                    error={!!validationErrors.appointment_time}
-                    helperText={validationErrors.appointment_time}
-                  />
-                )}
-                renderOption={(props, option) => (
-                  <li {...props}>
-                    {option.label}
-                  </li>
-                )}
-                freeSolo={false}
-                disableClearable={false}
-              />
+              <>
+                <Autocomplete
+                  options={defaultTimeOptions}
+                  getOptionLabel={(option) => typeof option === 'string' ? option : option.label}
+                  isOptionEqualToValue={(option, value) => 
+                    option.value === (typeof value === 'string' ? value : value.value)
+                  }
+                  value={timeOption}
+                  onChange={(_, newValue) => {
+                    if (newValue) {
+                      // Check if selected time is outside normal hours
+                      if (isTimeOffHours(newValue.value)) {
+                        setSelectedOffHoursTime(newValue.value);
+                        setShowOffHoursWarning(true);
+                      } else {
+                        // Normal hours, set directly
+                        field.onChange(newValue.value);
+                      }
+                    } else {
+                      field.onChange('');
+                    }
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Appointment Time"
+                      fullWidth
+                      InputLabelProps={{ shrink: true }}
+                      error={!!validationErrors.appointment_time}
+                      helperText={
+                        <>
+                          {validationErrors.appointment_time || ''}
+                          {field.value && timeSlots[field.value] && timeSlots[field.value].appointment_count > 0 && (
+                            <Alert severity="warning" sx={{ mt: 0.5, pl: 1.3, pr: 1.3, pb: 0.5, pt: 0.5 }}>
+                              This time slot already has {timeSlots[field.value].appointment_count} appointment(s) 
+                              {timeSlots[field.value].people_count > 0 ? (' with ' + timeSlots[field.value].people_count.toString() + (timeSlots[field.value].people_count === 1 ? ' person' : ' people')) : ''} scheduled.
+                            </Alert>
+                          )}
+                        </>
+                      }
+                    />
+                  )}
+                  renderOption={(props, option) => {
+                    // Check if this time slot has appointments
+                    const hasAppointments = timeSlots[option.value]?.appointment_count > 0;
+                    const appointmentCount = timeSlots[option.value]?.appointment_count || 0;
+                    const peopleCount = timeSlots[option.value]?.people_count || 0;
+                    
+                    // Check if time is outside normal hours
+                    const isOutsideNormalHours = isTimeOffHours(option.value);
+                    
+                    return (
+                      <li 
+                        {...props} 
+                        style={{
+                          ...(props.style || {}),
+                          color: isOutsideNormalHours ? '#9e9e9e' : undefined,
+                          fontWeight: hasAppointments ? 'bold' : undefined,
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <span>{option.label}</span>
+                        {hasAppointments && (
+                          <Chip 
+                            size="small" 
+                            color="primary" 
+                            label={`${appointmentCount} ${peopleCount > 0 ? ' (' + peopleCount + ' people)' : ''}`} 
+                            sx={{ ml: 1 }}
+                          />
+                        )}
+                      </li>
+                    );
+                  }}
+                  freeSolo={false}
+                  disableClearable={false}
+                />
+                
+                {/* Off-hours warning dialog */}
+                <Dialog
+                  open={showOffHoursWarning}
+                  onClose={() => setShowOffHoursWarning(false)}
+                >
+                  <DialogTitle>Unusual Time Selected</DialogTitle>
+                  <DialogContent>
+                    <DialogContentText>
+                      You've selected a time outside normal business hours (8am-10pm).
+                      Are you sure you want to schedule an appointment at this time?
+                    </DialogContentText>
+                  </DialogContent>
+                  <DialogActions>
+                    <SecondaryButton onClick={() => setShowOffHoursWarning(false)}>
+                      Cancel
+                    </SecondaryButton>
+                    <PrimaryButton onClick={() => {
+                      // Set the field value after confirmation
+                      if (selectedOffHoursTime) {
+                        const nameField = 'appointment_time';
+                        setValue(nameField, selectedOffHoursTime);
+                      }
+                      setShowOffHoursWarning(false);
+                    }}>
+                      Confirm
+                    </PrimaryButton>
+                  </DialogActions>
+                </Dialog>
+              </>
             );
           }}
         />

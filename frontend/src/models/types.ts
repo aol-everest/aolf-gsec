@@ -136,5 +136,35 @@ interface HonorificTitleMap {
   [key: string]: string;
 }
 
-export type { Location, User, Dignitary, Appointment, AppointmentAttachment, AppointmentDignitary, StatusSubStatusMapping, StatusMap, SubStatusMap, RoleMap, AccessLevelMap, EntityTypeMap, HonorificTitleMap };
+// Time slot data interface
+interface TimeSlotData {
+  appointment_count: number;
+  people_count: number;
+}
+
+interface DateTimeSlotData {
+  date: string;
+  total_appointments: number;
+  time_slots: {
+    [timeSlot: string]: TimeSlotData;
+  };
+}
+
+export type { 
+  Location, 
+  User, 
+  Dignitary, 
+  Appointment, 
+  AppointmentAttachment, 
+  AppointmentDignitary, 
+  StatusSubStatusMapping, 
+  StatusMap, 
+  SubStatusMap, 
+  RoleMap, 
+  AccessLevelMap, 
+  EntityTypeMap, 
+  HonorificTitleMap, 
+  DateTimeSlotData,
+  TimeSlotData
+};
 
