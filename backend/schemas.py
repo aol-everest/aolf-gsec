@@ -654,7 +654,7 @@ class CountryResponse(CountryBase):
         orm_mode = True
 
 # New schema for appointment time slot aggregation
-class AppointmentTimeSlotInfo(BaseModel):
+class AppointmentStatsByDateAndTimeSlot(BaseModel):
     date: date
     total_appointments: int
     time_slots: Dict[str, Dict[str, Any]]  # time -> {'appointment_count': int, 'people_count': int}

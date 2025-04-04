@@ -1923,6 +1923,87 @@ async def update_admin_dignitary(
         raise HTTPException(status_code=500, detail=f"Failed to update dignitary: {str(e)}")
 
 
+@app.get("/admin/appointments/stats", response_model=List[schemas.AppointmentStatsByDateAndTimeSlot])
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def get_appointment_time_slots(
+    start_date: date,
+    end_date: date,
+    location_id: Optional[int] = None,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_read_db)
+):
+    """
+    Get aggregated information about appointment time slots for a date range.
+    Returns the count of appointments per date and per time slot, including
+    the total number of people (dignitaries) for each time slot.
+    """
+    # Calculate date range
+    date_range = end_date - start_date
+    if date_range.days > 90:  # Limit to 90 days to prevent excessive queries
+        raise HTTPException(
+            status_code=400, 
+            detail="Date range cannot exceed 90 days"
+        )
+    
+    # Build query for appointments in the date range
+    query = db.query(models.Appointment).filter(
+        models.Appointment.appointment_date.between(start_date, end_date),
+        or_(
+            and_(
+                models.Appointment.status == models.AppointmentStatus.APPROVED,
+                models.Appointment.sub_status == models.AppointmentSubStatus.SCHEDULED
+            ),
+            models.Appointment.status == models.AppointmentStatus.COMPLETED,
+        ),
+    )
+    
+    # Add location filter if provided
+    if location_id:
+        query = query.filter(models.Appointment.location_id == location_id)
+    
+    # Get all appointments in the date range
+    appointments = query.all()
+    
+    # Group appointments by date
+    date_to_appointments = {}
+    current_date = start_date
+    while current_date <= end_date:
+        date_to_appointments[current_date] = []
+        current_date += timedelta(days=1)
+    
+    for appointment in appointments:
+        if appointment.appointment_date in date_to_appointments:
+            date_to_appointments[appointment.appointment_date].append(appointment)
+    
+    # Build the response
+    result = []
+    for date_obj, appointments_list in date_to_appointments.items():
+        # Group appointments by time slot
+        time_slots = {}
+        for appointment in appointments_list:
+            time_key = appointment.appointment_time
+            if time_key not in time_slots:
+                time_slots[time_key] = {
+                    "appointment_count": 0,
+                    "people_count": 0
+                }
+            
+            time_slots[time_key]["appointment_count"] += 1
+            # Count dignitaries for this appointment
+            dignitary_count = db.query(models.AppointmentDignitary).filter(
+                models.AppointmentDignitary.appointment_id == appointment.id
+            ).count()
+            time_slots[time_key]["people_count"] += dignitary_count
+        
+        result.append({
+            "date": date_obj,
+            "total_appointments": len(appointments_list),
+            "time_slots": time_slots
+        })
+    
+    return result
+
+
 @app.get("/admin/appointments/all", response_model=List[schemas.AdminAppointment])
 @requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
 async def get_all_appointments(
@@ -3373,78 +3454,3 @@ async def get_all_countries(
 #     db.commit()
     
 #     return {"message": f"Updated {updated} countries", "updated_count": updated}
-
-@app.get("/appointments/time-slots", response_model=List[schemas.AppointmentTimeSlotInfo])
-@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
-async def get_appointment_time_slots(
-    start_date: date,
-    end_date: date,
-    location_id: Optional[int] = None,
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_read_db)
-):
-    """
-    Get aggregated information about appointment time slots for a date range.
-    Returns the count of appointments per date and per time slot, including
-    the total number of people (dignitaries) for each time slot.
-    """
-    # Calculate date range
-    date_range = end_date - start_date
-    if date_range.days > 90:  # Limit to 90 days to prevent excessive queries
-        raise HTTPException(
-            status_code=400, 
-            detail="Date range cannot exceed 90 days"
-        )
-    
-    # Build query for appointments in the date range
-    query = db.query(models.Appointment).filter(
-        models.Appointment.appointment_date.between(start_date, end_date),
-        models.Appointment.status == models.AppointmentStatus.APPROVED,
-        models.Appointment.sub_status == models.AppointmentSubStatus.SCHEDULED
-    )
-    
-    # Add location filter if provided
-    if location_id:
-        query = query.filter(models.Appointment.location_id == location_id)
-    
-    # Get all appointments in the date range
-    appointments = query.all()
-    
-    # Group appointments by date
-    date_to_appointments = {}
-    current_date = start_date
-    while current_date <= end_date:
-        date_to_appointments[current_date] = []
-        current_date += timedelta(days=1)
-    
-    for appointment in appointments:
-        if appointment.appointment_date in date_to_appointments:
-            date_to_appointments[appointment.appointment_date].append(appointment)
-    
-    # Build the response
-    result = []
-    for date_obj, appointments_list in date_to_appointments.items():
-        # Group appointments by time slot
-        time_slots = {}
-        for appointment in appointments_list:
-            time_key = appointment.appointment_time
-            if time_key not in time_slots:
-                time_slots[time_key] = {
-                    "appointment_count": 0,
-                    "people_count": 0
-                }
-            
-            time_slots[time_key]["appointment_count"] += 1
-            # Count dignitaries for this appointment
-            dignitary_count = db.query(models.AppointmentDignitary).filter(
-                models.AppointmentDignitary.appointment_id == appointment.id
-            ).count()
-            time_slots[time_key]["people_count"] += dignitary_count
-        
-        result.append({
-            "date": date_obj,
-            "total_appointments": len(appointments_list),
-            "time_slots": time_slots
-        })
-    
-    return result

@@ -530,7 +530,7 @@ const AdminAppointmentEdit: React.FC = () => {
   };
 
   // Fetch time slot data
-  const fetchTimeSlotData = async (locationId: number | null, dateStr?: string) => {
+  const fetchTimeSlotData = async (dateStr?: string, locationId: number | null = null) => {
     try {
       setIsLoadingTimeSlots(true);
       
@@ -552,7 +552,7 @@ const AdminAppointmentEdit: React.FC = () => {
         params.append('location_id', locationId.toString());
       }
       
-      const { data } = await api.get<DateTimeSlotData[]>(`/appointments/time-slots?${params.toString()}`);
+      const { data } = await api.get<DateTimeSlotData[]>(`/admin/appointments/stats?${params.toString()}`);
       setTimeSlotData(data);
     } catch (error) {
       console.error('Error fetching time slot data:', error);
@@ -564,21 +564,10 @@ const AdminAppointmentEdit: React.FC = () => {
 
   // Trigger time slot data fetch when appointment data changes
   useEffect(() => {
-    if (appointment?.location_id) {
-      fetchTimeSlotData(appointment.location_id, appointment.appointment_date);
-    } else if (appointment) {
-      // If there's no location_id yet, still fetch the data without location filter
-      fetchTimeSlotData(null, appointment.appointment_date);
+    if (appointment) {
+      fetchTimeSlotData(appointment.appointment_date);
     }
   }, [appointment]);
-  
-  // Watch for location changes to update time slot data
-  const watchLocationId = watch('location_id');
-  useEffect(() => {
-    if (watchLocationId) {
-      fetchTimeSlotData(watchLocationId, getValues('appointment_date'));
-    }
-  }, [watchLocationId]);
   
   // Watch for date changes to update time slot data if we're viewing far from the current range
   const watchAppointmentDate = watch('appointment_date');
@@ -587,7 +576,7 @@ const AdminAppointmentEdit: React.FC = () => {
       // Check if the selected date is within the current data range
       const dateExists = timeSlotData.some(d => d.date === watchAppointmentDate);
       if (!dateExists) {
-        fetchTimeSlotData(getValues('location_id'), watchAppointmentDate);
+        fetchTimeSlotData(watchAppointmentDate);
       }
     }
   }, [watchAppointmentDate]);

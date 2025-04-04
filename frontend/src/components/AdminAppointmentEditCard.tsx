@@ -704,7 +704,7 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
                         fontWeight: 'bold'
                       }}>
                         <Alert severity="info" sx={{ mt: 0.5, pl: 1.3, pr: 1.3, pb: 0.5, pt: 0.5 }}>
-                            This date has {appointmentCount} {appointmentCount === 1 ? 'appointment' : 'appointments'} scheduled.
+                            {appointmentCount} {appointmentCount === 1 ? 'appointment' : 'appointments'} currently scheduled for this date.
                         </Alert>
                       </Box>
                     )}
@@ -768,8 +768,8 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
                           {validationErrors.appointment_time || ''}
                           {field.value && timeSlots[field.value] && timeSlots[field.value].appointment_count > 0 && (
                             <Alert severity="warning" sx={{ mt: 0.5, pl: 1.3, pr: 1.3, pb: 0.5, pt: 0.5 }}>
-                              This time slot already has {timeSlots[field.value].appointment_count} appointment(s) 
-                              {timeSlots[field.value].people_count > 0 ? (' with ' + timeSlots[field.value].people_count.toString() + (timeSlots[field.value].people_count === 1 ? ' person' : ' people')) : ''} scheduled.
+                              This time slot already has {timeSlots[field.value].appointment_count} {timeSlots[field.value].appointment_count === 1 ? 'appointment' : 'appointments'}
+                              {timeSlots[field.value].people_count > 0 ? (' with ' + timeSlots[field.value].people_count.toString() + (timeSlots[field.value].people_count === 1 ? ' dignitary' : ' dignitaries')) : ''} scheduled.
                             </Alert>
                           )}
                         </>
@@ -802,7 +802,7 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
                           <Chip 
                             size="small" 
                             color="primary" 
-                            label={`${appointmentCount} ${peopleCount > 0 ? ' (' + peopleCount + ' people)' : ''}`} 
+                            label={`${appointmentCount} ${peopleCount > 0 ? ' (Dignitaries: ' + peopleCount + ')' : ''}`} 
                             sx={{ ml: 1 }}
                           />
                         )}
@@ -821,7 +821,7 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
                   <DialogTitle>Unusual Time Selected</DialogTitle>
                   <DialogContent>
                     <DialogContentText>
-                      You've selected a time outside normal business hours (8am-10pm).
+                      You've selected a time outside normal appointment hours (8am-10pm).
                       Are you sure you want to schedule an appointment at this time?
                     </DialogContentText>
                   </DialogContent>
