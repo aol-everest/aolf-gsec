@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
   Typography,
@@ -131,6 +131,7 @@ interface ValidationErrors {
 const AdminAppointmentEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const api = useApi();
   const { enqueueSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
@@ -146,6 +147,14 @@ const AdminAppointmentEdit: React.FC = () => {
   const [timeSlotData, setTimeSlotData] = useState<DateTimeSlotData[]>([]);
   const [isLoadingTimeSlots, setIsLoadingTimeSlots] = useState(false);
   const theme = useTheme();
+  
+  // Extract prefilled values from location state if present
+  const locationState = location.state as { 
+    status?: string, 
+    sub_status?: string,
+    secretariat_meeting_notes?: string,
+    secretariat_follow_up_actions?: string
+  } | null;
   
   // Get redirect URL from query parameters
   const searchParams = new URLSearchParams(window.location.search);
@@ -267,20 +276,22 @@ const AdminAppointmentEdit: React.FC = () => {
   // Add useEffect to reset form when appointment data is available
   useEffect(() => {
     if (appointment) {
+      console.log('appointment', appointment);
+      console.log('locationState', locationState);
       reset({
         appointment_date: appointment.appointment_date || appointment.preferred_date,
         appointment_time: appointment.appointment_time || appointment.preferred_time_of_day,
         location_id: appointment.location_id || null,
-        status: appointment.status || '',
-        sub_status: appointment.sub_status || '',
+        status: locationState?.status || appointment.status || '',
+        sub_status: locationState?.sub_status || appointment.sub_status || '',
         appointment_type: appointment.appointment_type || null,
         requester_notes_to_secretariat: appointment.requester_notes_to_secretariat,
-        secretariat_follow_up_actions: appointment.secretariat_follow_up_actions,
-        secretariat_meeting_notes: appointment.secretariat_meeting_notes,
+        secretariat_follow_up_actions: locationState?.secretariat_follow_up_actions || appointment.secretariat_follow_up_actions,
+        secretariat_meeting_notes: locationState?.secretariat_meeting_notes || appointment.secretariat_meeting_notes,
         secretariat_notes_to_requester: appointment.secretariat_notes_to_requester,
-      });
+      });      
     }
-  }, [appointment, reset]);
+  }, [appointment, reset, locationState]);
 
   // Check if business card extraction is enabled
   useEffect(() => {
@@ -670,12 +681,12 @@ const AdminAppointmentEdit: React.FC = () => {
                       appointment_date: appointment.appointment_date || appointment.preferred_date,
                       appointment_time: appointment.appointment_time || appointment.preferred_time_of_day,
                       location_id: appointment.location_id || null,
-                      status: appointment.status || '',
-                      sub_status: appointment.sub_status || '',
+                      status: locationState?.status || appointment.status || '',
+                      sub_status: locationState?.sub_status || appointment.sub_status || '',
                       appointment_type: appointment.appointment_type || null,
                       requester_notes_to_secretariat: appointment.requester_notes_to_secretariat,
-                      secretariat_follow_up_actions: appointment.secretariat_follow_up_actions,
-                      secretariat_meeting_notes: appointment.secretariat_meeting_notes,
+                      secretariat_follow_up_actions: locationState?.secretariat_follow_up_actions || appointment.secretariat_follow_up_actions,
+                      secretariat_meeting_notes: locationState?.secretariat_meeting_notes || appointment.secretariat_meeting_notes,
                       secretariat_notes_to_requester: appointment.secretariat_notes_to_requester,
                     } : undefined}
                     ref={appointmentEditCardRef}

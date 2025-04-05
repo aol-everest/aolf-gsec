@@ -78,7 +78,6 @@ interface Appointment {
   attachments?: AppointmentAttachment[];
   created_at: string;
   dignitary: Dignitary; // MUST DEPRECATE
-  internal_secretariat_notes: string;
   last_updated_by: number;
   last_updated_by_user: User;
   location: Location;
@@ -95,6 +94,24 @@ interface Appointment {
   status: string;
   sub_status: string;
   updated_at: string;
+}
+
+interface AdminAppointmentUpdate {
+  id?: number;
+  appointment_date?: string;
+  appointment_dignitaries?: AppointmentDignitary[];
+  appointment_time?: string;
+  appointment_type?: string;
+  attachments?: AppointmentAttachment[];
+  location_id?: number;
+  purpose?: string;
+  requester_id?: number;
+  requester_notes_to_secretariat?: string;
+  secretariat_follow_up_actions?: string;
+  secretariat_meeting_notes?: string;
+  secretariat_notes_to_requester?: string;
+  status?: string;
+  sub_status?: string;
 }
 
 interface AppointmentDignitary {
@@ -157,6 +174,7 @@ export type {
   Appointment, 
   AppointmentAttachment, 
   AppointmentDignitary, 
+  AdminAppointmentUpdate,
   StatusSubStatusMapping, 
   StatusMap, 
   SubStatusMap, 

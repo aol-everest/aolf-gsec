@@ -37,16 +37,34 @@ import AppointmentCard from '../components/AppointmentCard';
 import { useNavigate } from 'react-router-dom';
 import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
+import { AdminAppointmentUpdate } from '../models/types';
 
 const AdminAppointmentSchedule: React.FC = () => {
   
+  const [appointmentUpdateData, setAppointmentUpdateData] = useState<AdminAppointmentUpdate>({});
+
+  const { data: statusMap } = useQuery<StatusMap>({
+    queryKey: ['status-map'],
+    queryFn: async () => {
+      const { data } = await api.get<StatusMap>('/appointments/status-options-map');
+      return data;
+    }
+  });
+
+  const { data: subStatusMap } = useQuery<SubStatusMap>({
+    queryKey: ['sub-status-map'],
+    queryFn: async () => {
+      const { data } = await api.get<SubStatusMap>('/appointments/sub-status-options-map');
+      return data;
+    }
+  });
+
+  console.log('subStatusMap', subStatusMap);
+
   const [selectedDate, setSelectedDate] = useState(getLocalDateString(0));
   const [expandedAppointmentId, setExpandedAppointmentId] = useState<number | null>(null);
   const [completionDialogOpen, setCompletionDialogOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
-  const [selectedSubStatus, setSelectedSubStatus] = useState<string>('No further action');
-  const [meetingNotes, setMeetingNotes] = useState<string>('');
-  const [followUpActions, setFollowUpActions] = useState<string>('');
   const theme = useTheme();
   const api = useApi();
   const navigate = useNavigate();
@@ -79,22 +97,6 @@ const AdminAppointmentSchedule: React.FC = () => {
     }
   });
 
-  const { data: statusMap } = useQuery<StatusMap>({
-    queryKey: ['status-map'],
-    queryFn: async () => {
-      const { data } = await api.get<StatusMap>('/appointments/status-options-map');
-      return data;
-    }
-  });
-
-  const { data: subStatusMap } = useQuery<SubStatusMap>({
-    queryKey: ['sub-status-map'],
-    queryFn: async () => {
-      const { data } = await api.get<SubStatusMap>('/appointments/sub-status-options-map');
-      return data;
-    }
-  });
-
   // Fetch status-substatus mapping from the API
   const { data: statusSubStatusMapping } = useQuery<StatusSubStatusMapping>({
     queryKey: ['status-substatus-mapping'],
@@ -115,19 +117,8 @@ const AdminAppointmentSchedule: React.FC = () => {
 
   // Update appointment mutation
   const updateAppointmentMutation = useMutation({
-    mutationFn: async (data: { 
-      id: number, 
-      status: string, 
-      sub_status: string,
-      secretariat_meeting_notes?: string,
-      secretariat_follow_up_actions?: string 
-    }) => {
-      const { data: response } = await api.patch(`/admin/appointments/update/${data.id}`, {
-        status: data.status,
-        sub_status: data.sub_status,
-        secretariat_meeting_notes: data.secretariat_meeting_notes,
-        secretariat_follow_up_actions: data.secretariat_follow_up_actions
-      });
+    mutationFn: async (data: AdminAppointmentUpdate) => {
+      const { data: response } = await api.patch(`/admin/appointments/update/${data.id}`, data);
       return response;
     },
     onSuccess: () => {
@@ -135,8 +126,7 @@ const AdminAppointmentSchedule: React.FC = () => {
       enqueueSnackbar('Appointment marked as completed', { variant: 'success' });
       setCompletionDialogOpen(false);
       setSelectedAppointment(null);
-      setMeetingNotes('');
-      setFollowUpActions('');
+      setAppointmentUpdateData({});
     },
     onError: (error) => {
       console.error('Error updating appointment:', error);
@@ -146,34 +136,30 @@ const AdminAppointmentSchedule: React.FC = () => {
 
   const openCompletionDialog = (appointment: Appointment) => {
     setSelectedAppointment(appointment);
-    setSelectedSubStatus('No further action');
-    setMeetingNotes(appointment.secretariat_meeting_notes || '');
-    setFollowUpActions(appointment.secretariat_follow_up_actions || '');
+    setAppointmentUpdateData({
+      id: appointment.id,
+      status: (statusMap ? statusMap['COMPLETED'] : ''),
+      sub_status: (subStatusMap ? subStatusMap['NO_FURTHER_ACTION'] : (appointment.sub_status || '')),
+      secretariat_meeting_notes: appointment.secretariat_meeting_notes || '',
+      secretariat_follow_up_actions: appointment.secretariat_follow_up_actions || ''
+    });
     setCompletionDialogOpen(true);
   };
 
   const handleMarkAsCompleted = () => {
     if (selectedAppointment && statusMap) {
-      updateAppointmentMutation.mutate({
-        id: selectedAppointment.id,
-        status: statusMap['COMPLETED'],
-        sub_status: selectedSubStatus,
-        secretariat_meeting_notes: meetingNotes,
-        secretariat_follow_up_actions: followUpActions
-      });
+      updateAppointmentMutation.mutate(appointmentUpdateData);
     }
-  };
-
-  const handleSubStatusChange = (event: React.ChangeEvent<HTMLInputElement> | any) => {
-    setSelectedSubStatus(event.target.value as string);
   };
 
   const handleEditAppointment = () => {
     if (selectedAppointment && statusMap) {
       navigate(`/admin/appointments/edit/${selectedAppointment.id}`, {
         state: {
-          prefilledStatus: statusMap['COMPLETED'],
-          prefilledSubStatus: selectedSubStatus
+          status: appointmentUpdateData?.status || '',
+          sub_status: appointmentUpdateData?.sub_status || '',
+          secretariat_meeting_notes: appointmentUpdateData?.secretariat_meeting_notes || '', 
+          secretariat_follow_up_actions: appointmentUpdateData?.secretariat_follow_up_actions || ''
         }
       });
       setCompletionDialogOpen(false);
@@ -241,7 +227,7 @@ const AdminAppointmentSchedule: React.FC = () => {
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
               inputProps={{
-                min: getLocalDateString(-1),
+                min: getLocalDateString(-7),
                 max: getLocalDateString(365),
               }}
               sx={{ width: 200 }}
@@ -348,7 +334,7 @@ const AdminAppointmentSchedule: React.FC = () => {
       <Dialog 
         open={completionDialogOpen} 
         onClose={() => setCompletionDialogOpen(false)}
-        maxWidth="md"
+        maxWidth="sm"
         fullWidth
       >
         <DialogTitle>Mark Appointment as Completed</DialogTitle>
@@ -360,8 +346,11 @@ const AdminAppointmentSchedule: React.FC = () => {
             <FormControl fullWidth sx={{ mt: 2, mb: 3 }}>
               <InputLabel>Sub-Status</InputLabel>
               <Select
-                value={selectedSubStatus}
-                onChange={handleSubStatusChange}
+                value={appointmentUpdateData?.sub_status || (subStatusMap ? subStatusMap['NO_FURTHER_ACTION'] : '')}
+                onChange={(e) => setAppointmentUpdateData({
+                  ...appointmentUpdateData,
+                  sub_status: e.target.value
+                })}
                 label="Sub-Status"
               >
                 {completedSubStatusOptions.map((option: string) => (
@@ -377,20 +366,26 @@ const AdminAppointmentSchedule: React.FC = () => {
               multiline
               rows={3}
               fullWidth
-              value={meetingNotes}
-              onChange={(e) => setMeetingNotes(e.target.value)}
+              value={appointmentUpdateData?.secretariat_meeting_notes || ''}
+              onChange={(e) => setAppointmentUpdateData({
+                ...appointmentUpdateData,
+                secretariat_meeting_notes: e.target.value
+              })}
               placeholder="Enter any notes from the meeting"
               sx={{ mb: 3 }}
             />
             
-            {selectedSubStatus === 'Follow-up required' && (
+            {subStatusMap && appointmentUpdateData?.sub_status === subStatusMap['FOLLOW_UP_REQUIRED'] && (
               <TextField
                 label="Follow-up Actions"
                 multiline
                 rows={3}
                 fullWidth
-                value={followUpActions}
-                onChange={(e) => setFollowUpActions(e.target.value)}
+                value={appointmentUpdateData?.secretariat_follow_up_actions || ''}
+                onChange={(e) => setAppointmentUpdateData({
+                  ...appointmentUpdateData,
+                  secretariat_follow_up_actions: e.target.value
+                })}
                 placeholder="Enter required follow-up actions"
                 required
               />
