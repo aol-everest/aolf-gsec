@@ -45,6 +45,8 @@ const AdminAppointmentSchedule: React.FC = () => {
   const [completionDialogOpen, setCompletionDialogOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [selectedSubStatus, setSelectedSubStatus] = useState<string>('No further action');
+  const [meetingNotes, setMeetingNotes] = useState<string>('');
+  const [followUpActions, setFollowUpActions] = useState<string>('');
   const theme = useTheme();
   const api = useApi();
   const navigate = useNavigate();
@@ -113,10 +115,18 @@ const AdminAppointmentSchedule: React.FC = () => {
 
   // Update appointment mutation
   const updateAppointmentMutation = useMutation({
-    mutationFn: async (data: { id: number, status: string, sub_status: string }) => {
+    mutationFn: async (data: { 
+      id: number, 
+      status: string, 
+      sub_status: string,
+      secretariat_meeting_notes?: string,
+      secretariat_follow_up_actions?: string 
+    }) => {
       const { data: response } = await api.patch(`/admin/appointments/update/${data.id}`, {
         status: data.status,
-        sub_status: data.sub_status
+        sub_status: data.sub_status,
+        secretariat_meeting_notes: data.secretariat_meeting_notes,
+        secretariat_follow_up_actions: data.secretariat_follow_up_actions
       });
       return response;
     },
@@ -125,6 +135,8 @@ const AdminAppointmentSchedule: React.FC = () => {
       enqueueSnackbar('Appointment marked as completed', { variant: 'success' });
       setCompletionDialogOpen(false);
       setSelectedAppointment(null);
+      setMeetingNotes('');
+      setFollowUpActions('');
     },
     onError: (error) => {
       console.error('Error updating appointment:', error);
@@ -135,6 +147,8 @@ const AdminAppointmentSchedule: React.FC = () => {
   const openCompletionDialog = (appointment: Appointment) => {
     setSelectedAppointment(appointment);
     setSelectedSubStatus('No further action');
+    setMeetingNotes(appointment.secretariat_meeting_notes || '');
+    setFollowUpActions(appointment.secretariat_follow_up_actions || '');
     setCompletionDialogOpen(true);
   };
 
@@ -143,7 +157,9 @@ const AdminAppointmentSchedule: React.FC = () => {
       updateAppointmentMutation.mutate({
         id: selectedAppointment.id,
         status: statusMap['COMPLETED'],
-        sub_status: selectedSubStatus
+        sub_status: selectedSubStatus,
+        secretariat_meeting_notes: meetingNotes,
+        secretariat_follow_up_actions: followUpActions
       });
     }
   };
@@ -329,14 +345,19 @@ const AdminAppointmentSchedule: React.FC = () => {
       </Container>
 
       {/* Mark As Completed Dialog */}
-      <Dialog open={completionDialogOpen} onClose={() => setCompletionDialogOpen(false)}>
+      <Dialog 
+        open={completionDialogOpen} 
+        onClose={() => setCompletionDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
         <DialogTitle>Mark Appointment as Completed</DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 1 }}>
             <Typography gutterBottom>
               Please select the appropriate sub-status for this completed appointment:
             </Typography>
-            <FormControl fullWidth sx={{ mt: 2 }}>
+            <FormControl fullWidth sx={{ mt: 2, mb: 3 }}>
               <InputLabel>Sub-Status</InputLabel>
               <Select
                 value={selectedSubStatus}
@@ -350,21 +371,42 @@ const AdminAppointmentSchedule: React.FC = () => {
                 ))}
               </Select>
             </FormControl>
+            
+            <TextField
+              label="Meeting Notes"
+              multiline
+              rows={3}
+              fullWidth
+              value={meetingNotes}
+              onChange={(e) => setMeetingNotes(e.target.value)}
+              placeholder="Enter any notes from the meeting"
+              sx={{ mb: 3 }}
+            />
+            
+            {selectedSubStatus === 'Follow-up required' && (
+              <TextField
+                label="Follow-up Actions"
+                multiline
+                rows={3}
+                fullWidth
+                value={followUpActions}
+                onChange={(e) => setFollowUpActions(e.target.value)}
+                placeholder="Enter required follow-up actions"
+                required
+              />
+            )}
           </Box>
         </DialogContent>
         <DialogActions>
           <SecondaryButton size="small" onClick={() => setCompletionDialogOpen(false)} color="inherit">
             Cancel
           </SecondaryButton>
-          {selectedSubStatus !== 'No further action' ? (
-            <PrimaryButton size="small" onClick={handleEditAppointment} color="primary">
-              Continue to Edit
-            </PrimaryButton>
-          ) : (
-            <PrimaryButton size="small" onClick={handleMarkAsCompleted} color="primary">
-              Update Status
-            </PrimaryButton>
-          )}
+          <SecondaryButton size="small" onClick={handleEditAppointment} color="primary">
+            Edit Details
+          </SecondaryButton>
+          <PrimaryButton size="small" onClick={handleMarkAsCompleted} color="primary">
+            Save
+          </PrimaryButton>
         </DialogActions>
       </Dialog>
     </Layout>
