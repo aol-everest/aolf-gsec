@@ -1073,44 +1073,54 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
             </Alert>
           )}
           
-          <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-            <SecondaryButton
-              size="small"
-              startIcon={<ContactMailIcon />}
-              onClick={handleUploadBusinessCard}
-              disabled={uploading || extractionLoading || !onBusinessCardUpload}
-            >
-              Upload Business Card
-            </SecondaryButton>
-            <SecondaryButton
-              size="small"
-              startIcon={<PhotoCameraIcon />}
-              onClick={handleTakeBusinessCardPhoto}
-              disabled={uploading || extractionLoading || !onBusinessCardUpload}
-            >
-              Take Business Card Photo
-            </SecondaryButton>
-            
-            <input
-              type="file"
-              ref={businessCardInputRef}
-              style={{ display: 'none' }}
-              onChange={handleBusinessCardInputChange}
-              accept="image/*"
-              multiple
-            />
-            <input
-              type="file"
-              ref={businessCardCameraInputRef}
-              style={{ display: 'none' }}
-              onChange={handleBusinessCardCameraInputChange}
-              accept="image/*"
-              capture="environment"
-              multiple
-            />
-            
-            {extractionLoading && <CircularProgress size={24} sx={{ ml: 2 }} />}
-          </Box>
+          <Grid item xs={12}>
+            <Box sx={{ 
+              display: 'flex', 
+              flexWrap: 'wrap', 
+              gap: 2, 
+              justifyContent: {
+                xs: 'center',   // Center on phones
+                sm: 'center',   // Center on small tablets
+                md: 'flex-start' // Left-align on desktop and larger
+              }, 
+              alignItems: 'center' 
+            }}>
+              <SecondaryButton
+                size="small"
+                startIcon={<ContactMailIcon />}
+                onClick={handleUploadBusinessCard}
+                disabled={uploading || extractionLoading || !onBusinessCardUpload}
+              >
+                Upload Business Card
+              </SecondaryButton>
+              <input
+                type="file"
+                ref={businessCardInputRef}
+                style={{ display: 'none' }}
+                onChange={handleBusinessCardInputChange}
+                accept="image/*"
+                multiple
+              />
+              <SecondaryButton
+                size="small"
+                startIcon={<PhotoCameraIcon />}
+                onClick={handleTakeBusinessCardPhoto}
+                disabled={uploading || extractionLoading || !onBusinessCardUpload}
+              >
+                Take Business Card Photo
+              </SecondaryButton>
+              <input
+                type="file"
+                ref={businessCardCameraInputRef}
+                style={{ display: 'none' }}
+                onChange={handleBusinessCardCameraInputChange}
+                accept="image/*"
+                capture="environment"
+                multiple
+              />
+              {extractionLoading && <CircularProgress size={24} sx={{ ml: 2 }} />}
+            </Box>
+          </Grid>
           
           {/* Business Card Extraction Result */}
           {businessCardExtraction && (
@@ -1149,45 +1159,59 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
           </Typography>
           
           {/* File Upload Buttons */}
-          <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-            <SecondaryButton
-              size="small"
-              startIcon={<AttachFileIcon />}
-              onClick={handleChooseFile}
-              disabled={uploading}
-            >
-              Choose Files
-            </SecondaryButton>
-            <SecondaryButton
-              size="small"
-              startIcon={<PhotoCameraIcon />}
-              onClick={handleTakePhoto}
-              disabled={uploading}
-            >
-              Take Photo
-            </SecondaryButton>
-            
-            {/* Hidden file inputs */}
-            <input
-              type="file"
-              ref={fileInputRef}
-              style={{ display: 'none' }}
-              onChange={handleFileInputChange}
-              multiple
-            />
-            <input
-              type="file"
-              ref={cameraInputRef}
-              style={{ display: 'none' }}
-              onChange={handleCameraInputChange}
-              accept="image/*"
-              capture="environment"
-              multiple
-            />
-            
-            {uploading && <CircularProgress size={24} sx={{ ml: 2 }} />}
-          </Box>
-          
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <Box sx={{ 
+                display: 'flex', 
+                flexWrap: 'wrap', 
+                gap: 2, 
+                justifyContent: {
+                  xs: 'center',   // Center on phones
+                  sm: 'center',   // Center on small tablets
+                  md: 'flex-start' // Left-align on desktop and larger
+                }, 
+                alignItems: 'center' 
+              }}>
+                <SecondaryButton
+                  size="small"
+                  startIcon={<AttachFileIcon />}
+                  onClick={handleChooseFile}
+                  disabled={uploading}
+                >
+                  Choose Files
+                </SecondaryButton>
+                {/* Hidden file inputs */}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  style={{ display: 'none' }}
+                  onChange={handleFileInputChange}
+                  multiple
+                />
+                <SecondaryButton
+                  size="small"
+                  startIcon={<PhotoCameraIcon />}
+                  onClick={handleTakePhoto}
+                  disabled={uploading}
+                >
+                  Take Photo
+                </SecondaryButton>
+                <input
+                  type="file"
+                  ref={cameraInputRef}
+                  style={{ display: 'none' }}
+                  onChange={handleCameraInputChange}
+                  accept="image/*"
+                  capture="environment"
+                  multiple
+                />
+              </Box>
+            </Grid>
+            <Grid item xs={12}>
+              {uploading && <CircularProgress size={24} sx={{ ml: 2 }} />}
+            </Grid>
+          </Grid>
+
           {/* Selected Files before upload */}
           {filesToDisplay.length > 0 && handleRemoveFile && (
             <Paper variant="outlined" sx={{ mt: 2, p: 2, mb: 2 }}>

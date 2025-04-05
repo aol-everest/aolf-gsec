@@ -11,26 +11,45 @@ import {
   alpha,
   CircularProgress,
   Collapse,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import format from 'date-fns/format';
 import isToday from 'date-fns/isToday';
 import parseISO from 'date-fns/parseISO';
+import isPast from 'date-fns/isPast';
+import isFuture from 'date-fns/isFuture';
 import Layout from '../components/Layout';
 import { getLocalDateString, formatTime } from '../utils/dateUtils';
 import { formatHonorificTitle, getStatusChipSx } from '../utils/formattingUtils';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
-import { useQuery } from '@tanstack/react-query';
-import { Appointment, AppointmentDignitary } from '../models/types';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Appointment, AppointmentDignitary, StatusMap, SubStatusMap, StatusSubStatusMapping } from '../models/types';
 import AppointmentCard from '../components/AppointmentCard';
+import { useNavigate } from 'react-router-dom';
+import PrimaryButton from '../components/PrimaryButton';
+import SecondaryButton from '../components/SecondaryButton';
 
 const AdminAppointmentSchedule: React.FC = () => {
   
   const [selectedDate, setSelectedDate] = useState(getLocalDateString(0));
   const [expandedAppointmentId, setExpandedAppointmentId] = useState<number | null>(null);
+  const [completionDialogOpen, setCompletionDialogOpen] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [selectedSubStatus, setSelectedSubStatus] = useState<string>('No further action');
   const theme = useTheme();
   const api = useApi();
+  const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
+  const queryClient = useQueryClient();
 
   const { data: appointments = [], isLoading } = useQuery({
     queryKey: ['appointments', selectedDate],
@@ -58,11 +77,104 @@ const AdminAppointmentSchedule: React.FC = () => {
     }
   });
 
+  const { data: statusMap } = useQuery<StatusMap>({
+    queryKey: ['status-map'],
+    queryFn: async () => {
+      const { data } = await api.get<StatusMap>('/appointments/status-options-map');
+      return data;
+    }
+  });
+
+  const { data: subStatusMap } = useQuery<SubStatusMap>({
+    queryKey: ['sub-status-map'],
+    queryFn: async () => {
+      const { data } = await api.get<SubStatusMap>('/appointments/sub-status-options-map');
+      return data;
+    }
+  });
+
+  // Fetch status-substatus mapping from the API
+  const { data: statusSubStatusMapping } = useQuery<StatusSubStatusMapping>({
+    queryKey: ['status-substatus-mapping'],
+    queryFn: async () => {
+      const { data } = await api.get<StatusSubStatusMapping>('/appointments/status-substatus-mapping');
+      return data;
+    }
+  });
+
+  // Get completed substatus options
+  const completedSubStatusOptions = statusSubStatusMapping && 'COMPLETED' in statusSubStatusMapping 
+    ? statusSubStatusMapping['COMPLETED'].valid_sub_statuses 
+    : ['No further action', 'Follow-up required'];
+
   const handleAppointmentClick = (appointmentId: number) => {
     setExpandedAppointmentId(expandedAppointmentId === appointmentId ? null : appointmentId);
   };
 
-  // Helper function to get primary dignitary information for display
+  // Update appointment mutation
+  const updateAppointmentMutation = useMutation({
+    mutationFn: async (data: { id: number, status: string, sub_status: string }) => {
+      const { data: response } = await api.patch(`/admin/appointments/update/${data.id}`, {
+        status: data.status,
+        sub_status: data.sub_status
+      });
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['appointments', selectedDate] });
+      enqueueSnackbar('Appointment marked as completed', { variant: 'success' });
+      setCompletionDialogOpen(false);
+      setSelectedAppointment(null);
+    },
+    onError: (error) => {
+      console.error('Error updating appointment:', error);
+      enqueueSnackbar('Failed to update appointment', { variant: 'error' });
+    },
+  });
+
+  const openCompletionDialog = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setSelectedSubStatus('No further action');
+    setCompletionDialogOpen(true);
+  };
+
+  const handleMarkAsCompleted = () => {
+    if (selectedAppointment && statusMap) {
+      updateAppointmentMutation.mutate({
+        id: selectedAppointment.id,
+        status: statusMap['COMPLETED'],
+        sub_status: selectedSubStatus
+      });
+    }
+  };
+
+  const handleSubStatusChange = (event: React.ChangeEvent<HTMLInputElement> | any) => {
+    setSelectedSubStatus(event.target.value as string);
+  };
+
+  const handleEditAppointment = () => {
+    if (selectedAppointment && statusMap) {
+      navigate(`/admin/appointments/edit/${selectedAppointment.id}`, {
+        state: {
+          prefilledStatus: statusMap['COMPLETED'],
+          prefilledSubStatus: selectedSubStatus
+        }
+      });
+      setCompletionDialogOpen(false);
+    }
+  };
+
+  // Helper function to check if appointment is in the past
+  const isAppointmentInPast = (appointment: Appointment): boolean => {
+    if (!appointment.appointment_date || !appointment.appointment_time) return false;
+    
+    const appointmentDateTime = new Date(
+      `${appointment.appointment_date}T${appointment.appointment_time}`
+    );
+    return isPast(appointmentDateTime);
+  };
+
+  // Helper function to render dignitary info for display
   const renderDignitaryInfo = (appointment: Appointment) => {
     // First check if appointment has appointment_dignitaries
     if (appointment.appointment_dignitaries && appointment.appointment_dignitaries.length > 0) {
@@ -156,22 +268,35 @@ const AdminAppointmentSchedule: React.FC = () => {
                     }}
                     onClick={() => handleAppointmentClick(appointment.id)}
                   >
-                    <Grid container spacing={3}>
+                    <Grid container spacing={1.3}>
                       {/* Time and Status */}
-                      <Grid item xs={12} sm={3}>
-                        <Typography variant="h5" color="primary" gutterBottom>
-                          {formatTime(appointment.appointment_time)}
-                        </Typography>
-                        {appointment.status.toLowerCase() === 'completed' && (
+                      <Grid item xs={5} sm={6} md={6}>
+                        <Chip
+                          label={formatTime(appointment.appointment_time)}
+                          sx={{ fontSize: '1.1rem', fontWeight: 'bold' }}
+                        />
+                      </Grid>
+                      <Grid item xs={7} sm={6} md={6} sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', p: 0 }}>
+                        {statusMap && appointment.status === statusMap['COMPLETED'] ? (
                           <Chip
                             label={appointment.status}
                             sx={getStatusChipSx(appointment.status, theme)}
                           />
+                        ) : statusMap && isAppointmentInPast(appointment) && appointment.status === statusMap['APPROVED'] && (
+                          <PrimaryButton 
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openCompletionDialog(appointment);
+                            }}
+                          >
+                            Mark as Completed
+                          </PrimaryButton>
                         )}
                       </Grid>
 
                       {/* Dignitary and Purpose */}
-                      <Grid item xs={12} sm={9}>
+                      <Grid item xs={12} sm={12}>
                         {renderDignitaryInfo(appointment)}
                         <Box sx={{ mt: 0 }}>
                           <Typography variant="body1">
@@ -202,6 +327,46 @@ const AdminAppointmentSchedule: React.FC = () => {
           )}
         </Box>
       </Container>
+
+      {/* Mark As Completed Dialog */}
+      <Dialog open={completionDialogOpen} onClose={() => setCompletionDialogOpen(false)}>
+        <DialogTitle>Mark Appointment as Completed</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 1 }}>
+            <Typography gutterBottom>
+              Please select the appropriate sub-status for this completed appointment:
+            </Typography>
+            <FormControl fullWidth sx={{ mt: 2 }}>
+              <InputLabel>Sub-Status</InputLabel>
+              <Select
+                value={selectedSubStatus}
+                onChange={handleSubStatusChange}
+                label="Sub-Status"
+              >
+                {completedSubStatusOptions.map((option: string) => (
+                  <MenuItem key={option} value={option}>
+                    {option}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <SecondaryButton size="small" onClick={() => setCompletionDialogOpen(false)} color="inherit">
+            Cancel
+          </SecondaryButton>
+          {selectedSubStatus !== 'No further action' ? (
+            <PrimaryButton size="small" onClick={handleEditAppointment} color="primary">
+              Continue to Edit
+            </PrimaryButton>
+          ) : (
+            <PrimaryButton size="small" onClick={handleMarkAsCompleted} color="primary">
+              Update Status
+            </PrimaryButton>
+          )}
+        </DialogActions>
+      </Dialog>
     </Layout>
   );
 };

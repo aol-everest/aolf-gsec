@@ -628,7 +628,7 @@ const AdminAppointmentEdit: React.FC = () => {
             )}
             
             <form onSubmit={handleSubmit(onSubmit)}>
-              <Grid container spacing={3}>
+              <Grid container spacing={2}>
                 {/* Dignitary Information (Read-only) */}
                 <Grid item xs={12} sx={{ pb: 1 }}>
                   <AppointmentDignitaryDisplay appointment={appointment} />
@@ -684,14 +684,26 @@ const AdminAppointmentEdit: React.FC = () => {
                 </Grid>
 
                 {/* Buttons */}
-                <Grid item xs={12} sx={{ mt: 2 }}>
-                  <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+                <Grid item xs={12}>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    flexWrap: 'wrap', 
+                    gap: 2, 
+                    justifyContent: {
+                      xs: 'center',   // Center on phones
+                      sm: 'center',   // Center on small tablets
+                      md: 'flex-end' // Left-align on desktop and larger
+                    }, 
+                    alignItems: 'center' 
+                  }}>
                     <SecondaryButton
+                      size="medium"
                       onClick={() => handleRedirect(false)}
                     >
                       Cancel
                     </SecondaryButton>
                     <PrimaryButton
+                      size="medium"
                       type="submit"
                     >
                       Save Changes
