@@ -349,9 +349,23 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
   const today = getLocalDateString();
   const now = getLocalTimeString();
 
+  // Handle initial form values if provided by parent
+  useEffect(() => {
+    if (initialFormValues && !initialSetupComplete) {
+      console.log('Setting initialFormValues in AdminAppointmentEditCard:', initialFormValues);
+      Object.entries(initialFormValues).forEach(([field, value]) => {
+        if (value !== undefined && value !== null) {
+          setValue(field, value);
+        }
+      });
+      setInitialSetupComplete(true);
+    }
+  }, [initialFormValues, setValue, initialSetupComplete]);
+
   // Add a date/time comparison effect to automatically set status based on selected date and time
   useEffect(() => {
-    if (!initialSetupComplete) return;
+    // Skip this effect if we have initialFormValues with a specified sub_status
+    if (!initialSetupComplete || (initialFormValues && initialFormValues.sub_status)) return;
 
     // Only do this if we have both a date and time selected
     const appointmentDate = getValues('appointment_date');
@@ -391,7 +405,7 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
         }
       }
     }
-  }, [watchAppointmentDate, watchAppointmentTime, statusMap, subStatusMap, statusSubStatusMapping, setValue, getValues, today, now, initialSetupComplete]);
+  }, [watchAppointmentDate, watchAppointmentTime, statusMap, subStatusMap, statusSubStatusMapping, setValue, getValues, today, now, initialSetupComplete, initialFormValues]);
 
   // Validate form based on status and substatus combinations
   const validateForm = (): ValidationErrors => {
@@ -489,7 +503,8 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
   // Set default values for status and sub-status when defaultAppointmentDetails is true
   // and there are no existing values
   useEffect(() => {
-    if (defaultAppointmentDetails && !initialSetupComplete) {
+    // Skip this effect if we have initialFormValues with a specified sub_status
+    if (defaultAppointmentDetails && !initialSetupComplete && !(initialFormValues && initialFormValues.sub_status)) {
       const existingStatus = getValues('status');
       const existingSubStatus = getValues('sub_status');
       
@@ -520,11 +535,18 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
       
       setInitialSetupComplete(true);
     }
-  }, [defaultAppointmentDetails, statusMap, subStatusMap, statusSubStatusMapping, setValue, getValues, today, now, initialSetupComplete]);
+  }, [defaultAppointmentDetails, statusMap, subStatusMap, statusSubStatusMapping, setValue, getValues, today, now, initialSetupComplete, initialFormValues]);
 
   // Unified status-substatus relationship management
   useEffect(() => {
+    // Skip this effect during initial setup to avoid overriding initialFormValues
     if (!initialSetupComplete) return;
+    
+    // Skip this effect if the initialFormValues.sub_status is set to maintain the passed value
+    if (initialFormValues && initialFormValues.sub_status && Object.keys(initialFormValues).includes('status') && 
+        getValues('status') === initialFormValues.status) {
+      return;
+    }
     
     if (watchStatus && statusSubStatusMapping && statusSubStatusMapping[watchStatus]) {
       const { default_sub_status, valid_sub_statuses } = statusSubStatusMapping[watchStatus];
@@ -537,7 +559,7 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
         setValue('sub_status', default_sub_status);
       }
     }
-  }, [watchStatus, statusSubStatusMapping, getValues, setValue, initialSetupComplete]);
+  }, [watchStatus, statusSubStatusMapping, getValues, setValue, initialSetupComplete, initialFormValues]);
 
   // Separate attachments by type
   const businessCardAttachments = React.useMemo(() => {

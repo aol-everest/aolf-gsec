@@ -154,13 +154,17 @@ const AdminAppointmentSchedule: React.FC = () => {
 
   const handleEditAppointment = () => {
     if (selectedAppointment && statusMap) {
+      const navigationState = {
+        status: appointmentUpdateData?.status || '',
+        sub_status: appointmentUpdateData?.sub_status || '',
+        secretariat_meeting_notes: appointmentUpdateData?.secretariat_meeting_notes || '', 
+        secretariat_follow_up_actions: appointmentUpdateData?.secretariat_follow_up_actions || ''
+      };
+      
+      console.log('Navigating to edit with state:', navigationState);
+      
       navigate(`/admin/appointments/edit/${selectedAppointment.id}`, {
-        state: {
-          status: appointmentUpdateData?.status || '',
-          sub_status: appointmentUpdateData?.sub_status || '',
-          secretariat_meeting_notes: appointmentUpdateData?.secretariat_meeting_notes || '', 
-          secretariat_follow_up_actions: appointmentUpdateData?.secretariat_follow_up_actions || ''
-        }
+        state: navigationState
       });
       setCompletionDialogOpen(false);
     }
