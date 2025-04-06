@@ -784,7 +784,7 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
                         fontWeight: 'bold'
                       }}>
                         <Alert severity="info" sx={{ mt: 0.5, pl: 1.3, pr: 1.3, pb: 0.5, pt: 0.5 }}>
-                            {appointmentCount} {appointmentCount === 1 ? 'appointment' : 'appointments'} currently scheduled for this date.
+                            {appointmentCount} other {appointmentCount === 1 ? 'appointment' : 'appointments'} currently scheduled for this date.
                         </Alert>
                       </Box>
                     )}
@@ -888,7 +888,7 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
                             const occupancyData = getTimeSlotOccupancy(field.value);
                             return occupancyData.appointment_count > 0 ? (
                               <Alert severity="warning" sx={{ mt: 0.5, pl: 1.3, pr: 1.3, pb: 0.5, pt: 0.5 }}>
-                                This time slot already has {occupancyData.appointment_count} {occupancyData.appointment_count === 1 ? 'appointment' : 'appointments'}
+                                This time slot already has {occupancyData.appointment_count} other {occupancyData.people_count === 0 && 'placeholder'} {occupancyData.appointment_count === 1 ? 'appointment' : 'appointments'}
                                 {occupancyData.people_count > 0 ? (' with ' + occupancyData.people_count.toString() + (occupancyData.people_count === 1 ? ' dignitary' : ' dignitaries')) : ''} scheduled.
                               </Alert>
                             ) : null;
