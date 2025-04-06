@@ -279,7 +279,7 @@ const AdminAppointmentEdit: React.FC = () => {
       console.log('locationState', locationState);
       reset({
         appointment_date: appointment.appointment_date || appointment.preferred_date,
-        appointment_time: appointment.appointment_time || appointment.preferred_time_of_day,
+        appointment_time: appointment.appointment_time,
         location_id: appointment.location_id || null,
         status: locationState?.status || appointment.status || '',
         sub_status: locationState?.sub_status || appointment.sub_status || '',
@@ -765,7 +765,7 @@ const AdminAppointmentEdit: React.FC = () => {
                     currentAppointmentId={id ? Number(id) : undefined}
                     initialFormValues={appointment ? {
                       appointment_date: appointment.appointment_date || appointment.preferred_date,
-                      appointment_time: appointment.appointment_time || appointment.preferred_time_of_day,
+                      appointment_time: appointment.appointment_time,
                       location_id: appointment.location_id || null,
                       status: locationState?.status || appointment.status || '',
                       sub_status: locationState?.sub_status || appointment.sub_status || '',
