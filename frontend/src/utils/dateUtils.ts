@@ -16,7 +16,7 @@ export const getLocalTimeString = (formatStr = 'HH:mm'): string => {
 
 export const getTimeOptions = (interval = 15): { value: string; label: string }[] => {
   const options = [];
-  for (let hour = 0; hour < 24; hour++) {
+  for (let hour = 7; hour < 23; hour++) {
     for (let minute = 0; minute < 60; minute += interval) {
       const hourFormatted = hour.toString().padStart(2, '0');
       const minuteFormatted = minute.toString().padStart(2, '0');
