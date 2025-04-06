@@ -43,7 +43,7 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import Layout from '../components/Layout';
 import { formatDate } from '../utils/dateUtils';
 import { getStatusChipSx, getStatusColor } from '../utils/formattingUtils';
-import { EmailIcon, ContactPhoneIcon, EmailIconSmall, ContactPhoneIconSmall, WorkIcon, LocationIconV2 } from '../components/icons';
+import { EmailIcon, ContactPhoneIcon, EmailIconSmall, ContactPhoneIconSmall, WorkIcon, LocationIconV2, LocationThinIconV2, CalendarIconV2 } from '../components/icons';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -820,9 +820,9 @@ const AdminAppointmentTiles: React.FC = () => {
   };
 
   // Get count of appointments for a specific location
-  const getLocationAppointmentCount = (locationId: number) => {
+  const getLocationAppointmentCount = (locationId: number, status: string) => {
     try {
-      return appointments.filter(a => a.location && a.location.id === locationId).length;
+      return appointments.filter(a => a.location && a.location.id === locationId && (a.status === status || status === 'All')).length;
     } catch (error) {
       console.error('Error counting appointments for location:', error);
       return 0;
@@ -831,7 +831,7 @@ const AdminAppointmentTiles: React.FC = () => {
 
   // Get count of appointments for a specific status
   const getStatusAppointmentCount = (status: string) => {
-    return appointments.filter(a => a.status === status).length;
+    return appointments.filter(a => (a.status === status || status === 'All')).length;
   };
 
   // Updated AppointmentTile component to safely handle undefined appointments
@@ -869,15 +869,15 @@ const AdminAppointmentTiles: React.FC = () => {
           <Box sx={{ 
             display: 'flex', 
             flexDirection: 'column',
-            gap: 2,
+            gap: 1,
             mb: 4
           }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Grid container spacing={2} alignItems="center">
-                <Grid item xs={12} md={6}>
+                <Grid item xs={12} md={4}>
                   <Typography variant="h4">All Appointments</Typography>
                 </Grid>
-                <Grid item xs={12} md={6}>
+                <Grid item xs={12} md={8} sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                   <LocalizationProvider dateAdapter={AdapterDateFns}>
                     <Stack direction="row" spacing={2} alignItems="center">
                       <DatePicker
@@ -1016,28 +1016,114 @@ const AdminAppointmentTiles: React.FC = () => {
               )}
             </Box>
 
+            {/* Location Filters */}
+            <Box>
+              <Grid container spacing={2} alignItems="center">
+                <Grid item xs={1} md={0.4} sx={{ display: 'flex', alignItems: 'center' }}>
+                  <LocationThinIconV2 />
+                </Grid>
+                <Grid item xs={11} md={1.6} sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Typography variant="body2" sx={{ m: 0 }}>Filter by Location</Typography>
+                </Grid>
+                <Grid item xs={12} md={10} sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}>
+                  {isLoadingLocations ? (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <CircularProgress size={20} />
+                      <Typography variant="body2">Loading locations...</Typography>
+                    </Box>
+                  ) : locations.length > 0 ? (
+                    <FilterChipGroup
+                      key={`location-filter-group-${filters.status || 'all'}`}
+                      options={locations.filter(loc => getLocationAppointmentCount(loc.id, filters.status || 'All')).map(loc => loc.id)}
+                      selectedValue={filters.locationId}
+                      getLabel={(locationId) => {
+                        const location = locations.find(l => l.id === locationId);
+                        return location ? location.name : `Location ${locationId}`;
+                      }}
+                      getCount={(locationId) => getLocationAppointmentCount(locationId, filters.status || 'All')}
+                      getColor={(_, theme) => theme.palette.primary.dark}
+                      onToggle={handleLocationFilter}
+                      // getIcon={() => <LocationThinIconV2 />}
+                      sx={{
+                        pl: 0.5,
+                        pr: 0.5,
+                        color: '#9598A6',
+                        border: `1px solid rgba(149, 152, 166, 0.2)`,
+                        fontSize: '0.81rem',
+                        fontWeight: '500',
+                        backgroundColor: '#fff',
+                        borderRadius: '13px',
+                        '&:hover': {
+                          color: '#3D8BE8',
+                          border: '1px solid rgba(61, 139, 232, 0.2)',
+                          fontWeight: '500',
+                          backgroundColor: 'rgba(61, 139, 232, 0.1)',
+                        },
+                        '&.MuiChip-filled': {
+                          color: '#3D8BE8',
+                          fontWeight: '600',
+                          // backgroundColor: '#3D8BE8',
+                          // fontWeight: '600',
+                          border: '1px solid rgba(61, 139, 232, 0.2)',
+                          // color: '#fff',
+                        }
+                      }}
+                    />
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      No locations available. Please check with your administrator.
+                    </Typography>
+                  )}
+                </Grid>
+
+                {/* Active Date Filters */}
+                {(filters.startDate || filters.endDate) && (
+                  <>
+                    <Grid item xs={1} md={0.4} sx={{ display: 'flex', alignItems: 'center' }}>
+                      <CalendarIconV2 />
+                    </Grid>
+                    <Grid item xs={11} md={1.6} sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Typography variant="body2" sx={{ m: 0, fontSize: '0.81rem' }}>Active Date Filters</Typography>
+                    </Grid>
+                    <Grid item xs={12} md={10} sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 1 }}>
+                      {filters.startDate && (
+                        <Chip 
+                          label={`From: ${filters.startDate.toLocaleDateString()}`}
+                          size="small" 
+                          onDelete={() => setFilters(prev => ({ ...prev, startDate: null }))}
+                          sx={{ 
+                            color: '#3D8BE8', 
+                            borderRadius: '8px',
+                            pl:0, pt:0,
+                            backgroundColor: '#f9f9f9',
+                            border: '1px solid rgba(61, 139, 232, 0.2)',
+                          }}
+                        />
+                      )}
+                      {filters.endDate && (
+                        <Chip 
+                          label={`To: ${filters.endDate.toLocaleDateString()}`}
+                          size="small" 
+                          onDelete={() => setFilters(prev => ({ ...prev, endDate: null }))}
+                          sx={{ 
+                            color: '#3D8BE8', 
+                            borderRadius: '8px',
+                            pl:0, pt:0,
+                            backgroundColor: '#f9f9f9',
+                            border: '1px solid rgba(61, 139, 232, 0.2)',
+                          }}
+                        />
+                      )}
+                    </Grid>
+                  </>
+                )}
+              </Grid>
+            </Box>
+
             {/* Active Date Filters Summary */}
-            {(filters.startDate || filters.endDate) && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <Typography variant="body2">Date Filters:</Typography>
-                {filters.startDate && (
-                  <Chip 
-                    label={`From: ${filters.startDate.toLocaleDateString()}`}
-                    size="small" 
-                    onDelete={() => setFilters(prev => ({ ...prev, startDate: null }))}
-                    icon={<CalendarTodayIcon fontSize="small" />}
-                    sx={{ color: theme.palette.primary.main }}
-                  />
-                )}
-                {filters.endDate && (
-                  <Chip 
-                    label={`To: ${filters.endDate.toLocaleDateString()}`}
-                    size="small" 
-                    onDelete={() => setFilters(prev => ({ ...prev, endDate: null }))}
-                    icon={<CalendarTodayIcon fontSize="small" />}
-                    sx={{ color: theme.palette.primary.main }}
-                  />
-                )}
+            {/* {(filters.startDate || filters.endDate) && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0 }}>
+                <Typography variant="body2">Active Date Filters:</Typography>
                 <Button 
                   size="small" 
                   onClick={clearDateFilters}
@@ -1045,40 +1131,12 @@ const AdminAppointmentTiles: React.FC = () => {
                   Clear All
                 </Button>
               </Box>
-            )}
+            )} */}
 
-            {/* Location Filters */}
-            <Box>
-              <Typography variant="subtitle1" sx={{ mb: 1 }}>Filter by Location</Typography>
-              {isLoadingLocations ? (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <CircularProgress size={20} />
-                  <Typography variant="body2">Loading locations...</Typography>
-                </Box>
-              ) : locations.length > 0 ? (
-                <FilterChipGroup
-                  options={locations.map(loc => loc.id)}
-                  selectedValue={filters.locationId}
-                  getLabel={(locationId) => {
-                    const location = locations.find(l => l.id === locationId);
-                    return location ? location.name : `Location ${locationId}`;
-                  }}
-                  getCount={(locationId) => getLocationAppointmentCount(locationId)}
-                  getColor={(_, theme) => theme.palette.primary.main}
-                  onToggle={handleLocationFilter}
-                  getIcon={() => <LocationIconV2 />}
-                />
-              ) : (
-                <Typography variant="body2" color="text.secondary">
-                  No locations available. Please check with your administrator.
-                </Typography>
-              )}
-            </Box>
-            
             {/* Active Location Filters Summary - Only shown for location filters */}
-            {filters.locationId && (
+            {/* {filters.locationId && (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="body2">Active Filters:</Typography>
+                <Typography variant="body2">Active Location Filters:</Typography>
                 <Chip 
                   label={locations.find(l => l.id === filters.locationId)?.name || `Location ID: ${filters.locationId}`} 
                   size="small" 
@@ -1097,7 +1155,7 @@ const AdminAppointmentTiles: React.FC = () => {
                   Clear
                 </Button>
               </Box>
-            )}
+            )} */}
           </Box>
 
           <Box sx={{ 
