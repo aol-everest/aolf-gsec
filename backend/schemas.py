@@ -658,3 +658,7 @@ class AppointmentStatsByDateAndTimeSlot(BaseModel):
     date: date
     total_appointments: int
     time_slots: Dict[str, Dict[str, Any]]  # time -> {'appointment_count': int, 'people_count': int}
+
+# Combined schema with both counts and IDs in a single structure
+class AppointmentTimeSlotDetailsMap(BaseModel):
+    dates: Dict[str, Dict[str, Any]]  # date -> { appointment_count, time_slots: { time: { appointment_id: people_count } } }

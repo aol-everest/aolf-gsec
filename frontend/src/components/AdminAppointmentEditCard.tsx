@@ -50,7 +50,7 @@ import SecondaryButton from './SecondaryButton';
 import { PrimaryButton } from './PrimaryButton';
 import { DownloadIconV2, ImageIconV2, PDFIconV2, TextFileIconV2, TrashIconV2, GenericFileIconV2 } from './icons';
 // import { statusSubStatusMapping } from '../constants/appointmentStatuses';
-import { DateTimeSlotData } from '../models/types';
+import { AppointmentTimeSlotDetailsMap } from '../models/types';
 
 interface ValidationErrors {
   appointment_date?: string;
@@ -138,7 +138,9 @@ interface AdminAppointmentEditCardProps {
   initialFormValues?: Record<string, any>;
   onValidationResult?: (errors: ValidationErrors) => void;
   validateOnChange?: boolean;
-  timeSlotData?: DateTimeSlotData[];
+  timeSlotDetailsMap?: AppointmentTimeSlotDetailsMap | null;
+  currentAppointmentId?: number;
+  isLoadingTimeSlots?: boolean;
 }
 
 // Common file types and their corresponding icons
@@ -326,7 +328,9 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
   initialFormValues,
   onValidationResult,
   validateOnChange = false,
-  timeSlotData = [],
+  timeSlotDetailsMap,
+  currentAppointmentId,
+  isLoadingTimeSlots = false,
 }, ref) => {
   // File input refs
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -695,6 +699,35 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
     }
   };
 
+  // Add a helper function to check if a time slot is available using the new combined data structure
+  const checkTimeSlotAvailability = (
+    date: string,
+    time: string,
+    timeSlotDetailsMap: AppointmentTimeSlotDetailsMap | null | undefined,
+    currentAppointmentId?: number
+  ): { isAvailable: boolean; appointments: number } => {
+    if (!timeSlotDetailsMap || !timeSlotDetailsMap.dates || !timeSlotDetailsMap.dates[date]) {
+      // If we don't have data for this date, assume it's available
+      return { isAvailable: true, appointments: 0 };
+    }
+
+    const dateData = timeSlotDetailsMap.dates[date];
+    if (!dateData.time_slots || !dateData.time_slots[time]) {
+      // If we don't have data for this time slot, assume it's available
+      return { isAvailable: true, appointments: 0 };
+    }
+
+    const timeSlotData = dateData.time_slots[time];
+    
+    // Count appointments that are not the current one
+    const appointmentIds = Object.keys(timeSlotData).map(id => parseInt(id, 10));
+    const filteredAppointments = currentAppointmentId 
+      ? appointmentIds.filter(id => id !== currentAppointmentId)
+      : appointmentIds;
+    
+    return { isAvailable: filteredAppointments.length === 0, appointments: filteredAppointments.length };
+  };
+
   return (
     <Grid container spacing={3}>
       {/* Appointment Date and Time */}
@@ -703,9 +736,34 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
           name="appointment_date"
           control={control}
           render={({ field }) => {
-            // Find the appointment count for the selected date
-            const selectedDateData = timeSlotData.find(d => d.date === field.value);
-            const appointmentCount = selectedDateData?.total_appointments || 0;
+            // Calculate appointment count for the selected date using the combined data structure
+            let appointmentCount = 0;
+            
+            if (timeSlotDetailsMap && field.value && timeSlotDetailsMap.dates[field.value]) {
+              // Get the appointment count from the combined data structure
+              appointmentCount = timeSlotDetailsMap.dates[field.value].appointment_count;
+              
+              // If we have the current appointment ID, check if we need to subtract it
+              if (currentAppointmentId) {
+                // Check if current appointment is on this date by looking at all time slots
+                const dateData = timeSlotDetailsMap.dates[field.value];
+                let isCurrentAppointmentOnThisDate = false;
+                
+                // Look through all time slots to see if any of them contain the current appointment
+                Object.values(dateData.time_slots).forEach(timeSlotData => {
+                  // NOTE: We use hasOwnProperty to check if the current appointment ID is in the time slot data
+                  // This is because some appointments might have 0 dignitaries
+                  if (timeSlotData.hasOwnProperty(currentAppointmentId.toString())) {
+                    isCurrentAppointmentOnThisDate = true;
+                  }
+                });
+                
+                // If current appointment is on this date, subtract 1
+                if (isCurrentAppointmentOnThisDate) {
+                  appointmentCount = Math.max(0, appointmentCount - 1);
+                }
+              }
+            }
             
             return (
               <TextField
@@ -752,8 +810,46 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
           render={({ field }) => {
             const timeOption = findTimeOption(field.value, defaultTimeOptions);
             const selectedDate = getValues('appointment_date');
-            const selectedDateData = timeSlotData.find(d => d.date === selectedDate);
-            const timeSlots = selectedDateData?.time_slots || {};
+            
+            // Function to get time slot occupancy data
+            const getTimeSlotOccupancy = (timeSlot: string): { appointment_count: number; people_count: number } => {
+              // Default empty data
+              const defaultData = { appointment_count: 0, people_count: 0 };
+              
+              // If we don't have a date or time slot details, return default data
+              if (!selectedDate || !timeSlotDetailsMap || !timeSlotDetailsMap.dates[selectedDate]) {
+                return defaultData;
+              }
+              
+              const dateData = timeSlotDetailsMap.dates[selectedDate];
+              if (!dateData.time_slots[timeSlot]) {
+                return defaultData;
+              }
+              
+              // Get all appointment IDs for this time slot
+              const timeSlotData = dateData.time_slots[timeSlot];
+              const appointmentIds = Object.keys(timeSlotData).map(id => parseInt(id, 10));
+              
+              // Filter out the current appointment ID
+              const otherAppointmentIds = currentAppointmentId 
+                ? appointmentIds.filter(id => id !== currentAppointmentId)
+                : appointmentIds;
+              
+              // Calculate total people count
+              let peopleCount = 0;
+              Object.entries(timeSlotData).forEach(([appointmentId, count]) => {
+                // Only count people for appointments that aren't the current one
+                if (currentAppointmentId && parseInt(appointmentId, 10) === currentAppointmentId) {
+                  return;
+                }
+                peopleCount += count;
+              });
+              
+              return {
+                appointment_count: otherAppointmentIds.length,
+                people_count: peopleCount
+              };
+            };
             
             return (
               <>
@@ -788,21 +884,25 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
                       helperText={
                         <>
                           {validationErrors.appointment_time || ''}
-                          {field.value && timeSlots[field.value] && timeSlots[field.value].appointment_count > 0 && (
-                            <Alert severity="warning" sx={{ mt: 0.5, pl: 1.3, pr: 1.3, pb: 0.5, pt: 0.5 }}>
-                              This time slot already has {timeSlots[field.value].appointment_count} {timeSlots[field.value].appointment_count === 1 ? 'appointment' : 'appointments'}
-                              {timeSlots[field.value].people_count > 0 ? (' with ' + timeSlots[field.value].people_count.toString() + (timeSlots[field.value].people_count === 1 ? ' dignitary' : ' dignitaries')) : ''} scheduled.
-                            </Alert>
-                          )}
+                          {field.value && (() => {
+                            const occupancyData = getTimeSlotOccupancy(field.value);
+                            return occupancyData.appointment_count > 0 ? (
+                              <Alert severity="warning" sx={{ mt: 0.5, pl: 1.3, pr: 1.3, pb: 0.5, pt: 0.5 }}>
+                                This time slot already has {occupancyData.appointment_count} {occupancyData.appointment_count === 1 ? 'appointment' : 'appointments'}
+                                {occupancyData.people_count > 0 ? (' with ' + occupancyData.people_count.toString() + (occupancyData.people_count === 1 ? ' dignitary' : ' dignitaries')) : ''} scheduled.
+                              </Alert>
+                            ) : null;
+                          })()}
                         </>
                       }
                     />
                   )}
                   renderOption={(props, option) => {
-                    // Check if this time slot has appointments
-                    const hasAppointments = timeSlots[option.value]?.appointment_count > 0;
-                    const appointmentCount = timeSlots[option.value]?.appointment_count || 0;
-                    const peopleCount = timeSlots[option.value]?.people_count || 0;
+                    // Check if this time slot has appointments (excluding current appointment)
+                    const occupancyData = getTimeSlotOccupancy(option.value);
+                    const hasAppointments = occupancyData.appointment_count > 0;
+                    const appointmentCount = occupancyData.appointment_count;
+                    const peopleCount = occupancyData.people_count;
                     
                     // Check if time is outside normal hours
                     const isOutsideNormalHours = isTimeOffHours(option.value);

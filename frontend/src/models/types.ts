@@ -153,17 +153,17 @@ interface HonorificTitleMap {
   [key: string]: string;
 }
 
-// Time slot data interface
-interface TimeSlotData {
-  appointment_count: number;
-  people_count: number;
-}
-
-interface DateTimeSlotData {
-  date: string;
-  total_appointments: number;
-  time_slots: {
-    [timeSlot: string]: TimeSlotData;
+// Combined structure with both counts and IDs in a single map
+interface AppointmentTimeSlotDetailsMap {
+  dates: {
+    [date: string]: {
+      appointment_count: number;
+      time_slots: {
+        [timeSlot: string]: {
+          [appointmentId: string]: number; // appointment ID -> people count
+        };
+      };
+    };
   };
 }
 
@@ -182,7 +182,6 @@ export type {
   AccessLevelMap, 
   EntityTypeMap, 
   HonorificTitleMap, 
-  DateTimeSlotData,
-  TimeSlotData
+  AppointmentTimeSlotDetailsMap
 };
 

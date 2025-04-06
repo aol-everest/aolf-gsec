@@ -62,12 +62,11 @@ import { formatHonorificTitle } from '../utils/formattingUtils';
 import { formatDate, formatDateWithTimezone, parseUTCDate } from '../utils/dateUtils';
 import AdminAppointmentEditCard from '../components/AdminAppointmentEditCard';
 import AppointmentDignitaryDisplay from '../components/AppointmentDignitaryDisplay';
-import { StatusMap, SubStatusMap, StatusSubStatusMapping } from '../models/types';
+import { StatusMap, SubStatusMap, StatusSubStatusMapping, AppointmentTimeSlotDetailsMap } from '../models/types';
 import { SecondaryButton } from '../components/SecondaryButton';
 import { PrimaryButton } from '../components/PrimaryButton';
 import WarningButton from '../components/WarningButton';
 import { addMonths, addDays, subDays, format } from 'date-fns';
-import { DateTimeSlotData } from '../models/types';
 
 interface AppointmentFormData {
   appointment_date: string;
@@ -144,7 +143,7 @@ const AdminAppointmentEdit: React.FC = () => {
   const [dignitaryCreated, setDignitaryCreated] = useState(false);
   const [dignitaryCreationError, setDignitaryCreationError] = useState<string | null>(null);
   const [isExtractionDisabled, setIsExtractionDisabled] = useState(false);
-  const [timeSlotData, setTimeSlotData] = useState<DateTimeSlotData[]>([]);
+  const [timeSlotDetailsMap, setTimeSlotDetailsMap] = useState<AppointmentTimeSlotDetailsMap | null>(null);
   const [isLoadingTimeSlots, setIsLoadingTimeSlots] = useState(false);
   const theme = useTheme();
   
@@ -548,7 +547,7 @@ const AdminAppointmentEdit: React.FC = () => {
       // Use the selected date if provided, otherwise use the current date
       const selectedDate = dateStr || format(new Date(), 'yyyy-MM-dd');
       
-      // Calculate date range: 1 month before and after the selected date
+      // Calculate date range: 15 days before and 45 days after the selected date
       const startDate = format(subDays(new Date(selectedDate), 15), 'yyyy-MM-dd');
       const endDate = format(addDays(new Date(selectedDate), 45), 'yyyy-MM-dd');
       
@@ -558,13 +557,82 @@ const AdminAppointmentEdit: React.FC = () => {
         end_date: endDate
       });
       
+      // NOTE: We are not filtering by location here because we want to show all time slots for the selected date
       // Add location filter if provided
-      if (locationId) {
-        params.append('location_id', locationId.toString());
-      }
+      // if (locationId) {
+      //   params.append('location_id', locationId.toString());
+      // }
       
-      const { data } = await api.get<DateTimeSlotData[]>(`/admin/appointments/stats?${params.toString()}`);
-      setTimeSlotData(data);
+      // Fetch time slot data using the new combined endpoint
+      const { data: combinedData } = await api.get<AppointmentTimeSlotDetailsMap>(
+        `/admin/appointments/stats/detailed?${params.toString()}`
+      );
+
+      // console.log('combinedData 2025-04-03 04:30', combinedData.dates['2025-04-03'].time_slots['04:30']);
+      
+      setTimeSlotDetailsMap(combinedData);
+      
+      // For backward compatibility, also maintain the older data structures
+      // Convert the combined data back to the previous formats
+      
+      // Convert to stats map format
+      const statsAppointments: Record<string, Record<string, { appointment_count: number; people_count: number }>> = {};
+      const totals: Record<string, number> = {};
+      
+      Object.entries(combinedData.dates).forEach(([dateKey, dateData]) => {
+        // Store the total count
+        totals[dateKey] = dateData.appointment_count;
+        statsAppointments[dateKey] = {};
+        
+        // Process each time slot
+        Object.entries(dateData.time_slots).forEach(([timeKey, appointmentsData]) => {
+          // Count appointments and people
+          const appointmentCount = Object.keys(appointmentsData).length;
+          const peopleCount = Object.values(appointmentsData).reduce((sum, count) => sum + count, 0);
+          
+          // Store in statsAppointments
+          statsAppointments[dateKey][timeKey] = {
+            appointment_count: appointmentCount,
+            people_count: peopleCount
+          };
+        });
+      });
+      
+      // Convert to ID map format
+      const idsAppointments: Record<string, Record<string, number[]>> = {};
+      
+      Object.entries(combinedData.dates).forEach(([dateKey, dateData]) => {
+        idsAppointments[dateKey] = {};
+        
+        // Process each time slot
+        Object.entries(dateData.time_slots).forEach(([timeKey, appointmentsData]) => {
+          // Extract appointment IDs as numbers
+          idsAppointments[dateKey][timeKey] = Object.keys(appointmentsData).map(id => parseInt(id, 10));
+        });
+      });
+      
+      Object.entries(combinedData.dates).forEach(([dateKey, dateData]) => {
+        // Convert stats
+        const timeSlotsData: Record<string, { appointment_count: number; people_count: number }> = {};
+        
+        Object.entries(dateData.time_slots).forEach(([timeKey, appointmentsData]) => {
+          const appointmentCount = Object.keys(appointmentsData).length;
+          const peopleCount = Object.values(appointmentsData).reduce((sum, count) => sum + count, 0);
+          
+          timeSlotsData[timeKey] = {
+            appointment_count: appointmentCount,
+            people_count: peopleCount
+          };
+        });
+        
+        // Convert IDs
+        const idTimeSlots: Record<string, number[]> = {};
+        
+        Object.entries(dateData.time_slots).forEach(([timeKey, appointmentsData]) => {
+          idTimeSlots[timeKey] = Object.keys(appointmentsData).map(id => parseInt(id, 10));
+        });
+      });
+      
     } catch (error) {
       console.error('Error fetching time slot data:', error);
       enqueueSnackbar('Failed to load time slot availability data', { variant: 'error' });
@@ -575,22 +643,37 @@ const AdminAppointmentEdit: React.FC = () => {
 
   // Trigger time slot data fetch when appointment data changes
   useEffect(() => {
-    if (appointment) {
+    if (appointment && appointment.appointment_date) {
+      // Check if we already have the data for this date to avoid redundant API calls
+      if (timeSlotDetailsMap && 
+          timeSlotDetailsMap.dates && 
+          timeSlotDetailsMap.dates[appointment.appointment_date]) {
+        // We already have the data for this date
+        return;
+      }
+      
+      // Only fetch if we don't already have the data
       fetchTimeSlotData(appointment.appointment_date);
     }
-  }, [appointment]);
+  }, [appointment, timeSlotDetailsMap]);
   
-  // Watch for date changes to update time slot data if we're viewing far from the current range
-  const watchAppointmentDate = watch('appointment_date');
+  // Update the useEffect that watches for date changes to use the new combined data structure
   useEffect(() => {
+    const watchAppointmentDate = watch('appointment_date');
+    
     if (watchAppointmentDate) {
-      // Check if the selected date is within the current data range
-      const dateExists = timeSlotData.some(d => d.date === watchAppointmentDate);
-      if (!dateExists) {
-        fetchTimeSlotData(watchAppointmentDate);
+      // If we already have the data for this date in the combined map, no need to fetch again
+      if (timeSlotDetailsMap && 
+          timeSlotDetailsMap.dates && 
+          timeSlotDetailsMap.dates[watchAppointmentDate]) {
+        // We already have the data for this date
+        return;
       }
+      
+      // Fetch time slot data for the selected date
+      fetchTimeSlotData(watchAppointmentDate, getValues('location_id'));
     }
-  }, [watchAppointmentDate]);
+  }, [watch, fetchTimeSlotData, getValues, timeSlotDetailsMap]);
 
   if (isLoading || !appointment) {
     return (
@@ -648,6 +731,7 @@ const AdminAppointmentEdit: React.FC = () => {
                 {/* AdminAppointmentEditCard Component */}
                 <Grid item xs={12}>
                   <AdminAppointmentEditCard
+                    ref={appointmentEditCardRef}
                     control={control}
                     validationErrors={validationErrors}
                     locations={locations}
@@ -660,7 +744,7 @@ const AdminAppointmentEdit: React.FC = () => {
                     showNotesFields={true}
                     showBusinessCards={true}
                     showAttachments={true}
-                    appointmentId={Number(id)}
+                    appointmentId={id ? Number(id) : undefined}
                     attachments={attachments}
                     uploadStrategy="immediate"
                     onFileUpload={handleFileUpload}
@@ -676,7 +760,9 @@ const AdminAppointmentEdit: React.FC = () => {
                     dignitaryCreationError={dignitaryCreationError}
                     onDismissExtraction={handleDismissExtraction}
                     uploading={uploading}
-                    timeSlotData={timeSlotData}
+                    timeSlotDetailsMap={timeSlotDetailsMap}
+                    isLoadingTimeSlots={isLoadingTimeSlots}
+                    currentAppointmentId={id ? Number(id) : undefined}
                     initialFormValues={appointment ? {
                       appointment_date: appointment.appointment_date || appointment.preferred_date,
                       appointment_time: appointment.appointment_time || appointment.preferred_time_of_day,
@@ -689,7 +775,6 @@ const AdminAppointmentEdit: React.FC = () => {
                       secretariat_meeting_notes: locationState?.secretariat_meeting_notes || appointment.secretariat_meeting_notes,
                       secretariat_notes_to_requester: appointment.secretariat_notes_to_requester,
                     } : undefined}
-                    ref={appointmentEditCardRef}
                     onValidationResult={handleValidationResult}
                   />
                 </Grid>
