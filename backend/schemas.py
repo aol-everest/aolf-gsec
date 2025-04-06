@@ -7,6 +7,7 @@ from models.dignitaryPointOfContact import RelationshipType
 from models.accessControl import AccessLevel, EntityType
 from enum import Enum
 from models.appointmentAttachment import AttachmentType
+from models.appointmentDignitary import AttendanceStatus
 
 class GoogleToken(BaseModel):
     token: str
@@ -545,6 +546,7 @@ class AppointmentDignitaryUsherView(AppointmentDignitaryBase):
     id: int
     created_at: datetime
     dignitary: DignitaryUsherView
+    attendance_status: Optional[AttendanceStatus] = AttendanceStatus.PENDING
 
     class Config:
         orm_mode = True
@@ -662,3 +664,7 @@ class AppointmentStatsByDateAndTimeSlot(BaseModel):
 # Combined schema with both counts and IDs in a single structure
 class AppointmentTimeSlotDetailsMap(BaseModel):
     dates: Dict[str, Dict[str, Any]]  # date -> { appointment_count, time_slots: { time: { appointment_id: people_count } } }
+
+class AttendanceStatusUpdate(BaseModel):
+    appointment_dignitary_id: int
+    attendance_status: AttendanceStatus

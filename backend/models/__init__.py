@@ -4,7 +4,7 @@ from .dignitaryPointOfContact import DignitaryPointOfContact, RelationshipType
 from .location import Location
 from .appointment import Appointment, AppointmentStatus, AppointmentTimeOfDay, AppointmentSubStatus, AppointmentType, STATUS_SUBSTATUS_MAPPING, VALID_STATUS_OPTIONS, VALID_SUBSTATUS_OPTIONS
 from .appointmentAttachment import AppointmentAttachment, AttachmentType
-from .appointmentDignitary import AppointmentDignitary
+from .appointmentDignitary import AppointmentDignitary, AttendanceStatus
 from .accessControl import UserAccess, AccessLevel, EntityType
 from .auditLog import AuditLog
 from .country import Country
@@ -36,4 +36,5 @@ __all__ = [
     'AccessLevel',
     'EntityType',
     'Country',
+    'AttendanceStatus',
 ] 

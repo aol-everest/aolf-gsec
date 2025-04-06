@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, UTC
 from database import Base
 import os
 
@@ -23,7 +23,12 @@ class AppointmentDignitary(Base):
     appointment_id = Column(Integer, ForeignKey(f"{schema_prefix}appointments.id", ondelete="CASCADE"), nullable=False)
     dignitary_id = Column(Integer, ForeignKey(f"{schema_prefix}dignitaries.id", ondelete="CASCADE"), nullable=False)
     attendance_status = Column(Enum(AttendanceStatus), default=AttendanceStatus.PENDING)
-    created_at = Column(DateTime, default=datetime.utcnow)
+
+    created_at = Column(DateTime, default=datetime.now(UTC))
+    created_by = Column(Integer, ForeignKey(f"{schema_prefix}users.id"))
+
+    updated_at = Column(DateTime, default=datetime.now(UTC), onupdate=datetime.now(UTC))
+    updated_by = Column(Integer, ForeignKey(f"{schema_prefix}users.id"))
 
     # Relationships
     appointment = relationship("Appointment", back_populates="appointment_dignitaries")

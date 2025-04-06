@@ -470,7 +470,7 @@ const AdminManageUsers: React.FC = () => {
     switch (role) {
       case roleMap['USHER']:
         return {
-          access_level: accessLevelMap['READ'],
+          access_level: accessLevelMap['READ_WRITE'],
           entity_type: entityTypeMap['APPOINTMENT']
         };
       case roleMap['SECRETARIAT']:

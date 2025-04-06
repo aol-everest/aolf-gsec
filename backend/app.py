@@ -503,6 +503,7 @@ async def create_appointment(
         db_appointment = models.Appointment(
             requester_id=current_user.id,
             created_by=current_user.id,
+            updated_by=current_user.id,
             status=models.AppointmentStatus.PENDING,
             purpose=appointment.purpose,
             preferred_date=appointment.preferred_date,
@@ -525,7 +526,9 @@ async def create_appointment(
         for dignitary_id in appointment.dignitary_ids:
             appointment_dignitary = models.AppointmentDignitary(
                 appointment_id=db_appointment.id,
-                dignitary_id=dignitary_id
+                dignitary_id=dignitary_id,
+                created_by=current_user.id,
+                updated_by=current_user.id
             )
             db.add(appointment_dignitary)
             dignitary_count += 1
@@ -1248,7 +1251,9 @@ async def add_dignitaries_to_appointment(
         if not existing:
             appointment_dignitary = models.AppointmentDignitary(
                 appointment_id=appointment_id,
-                dignitary_id=dignitary_id
+                dignitary_id=dignitary_id,
+                created_by=current_user.id,
+                updated_by=current_user.id
             )
             db.add(appointment_dignitary)
 
@@ -1569,6 +1574,7 @@ async def create_appointment(
         # Create appointment
         db_appointment = models.Appointment(
             created_by=current_user.id,
+            updated_by=current_user.id,
             status=appointment.status,
             sub_status=appointment.sub_status,
             appointment_type=appointment.appointment_type,
@@ -1595,7 +1601,9 @@ async def create_appointment(
         for dignitary_id in appointment.dignitary_ids:
             appointment_dignitary = models.AppointmentDignitary(
                 appointment_id=db_appointment.id,
-                dignitary_id=dignitary_id
+                dignitary_id=dignitary_id,
+                created_by=current_user.id,
+                updated_by=current_user.id
             )
             db.add(appointment_dignitary)
             dignitary_count += 1
@@ -1673,7 +1681,9 @@ async def update_appointment(
         for dignitary_id in appointment_update.dignitary_ids:
             appointment_dignitary = models.AppointmentDignitary(
                 appointment_id=appointment.id,
-                dignitary_id=dignitary_id
+                dignitary_id=dignitary_id,
+                created_by=current_user.id,
+                updated_by=current_user.id
             )
             db.add(appointment_dignitary)
             
@@ -2900,7 +2910,8 @@ async def get_usher_appointments(
     # Add eager loading and ordering
     query = query.options(
         joinedload(models.Appointment.appointment_dignitaries).joinedload(models.AppointmentDignitary.dignitary),
-        joinedload(models.Appointment.requester)
+        joinedload(models.Appointment.requester),
+        joinedload(models.Appointment.location)
     ).order_by(
         models.Appointment.appointment_date,
         models.Appointment.appointment_time
@@ -3536,3 +3547,47 @@ async def get_all_countries(
 #     db.commit()
     
 #     return {"message": f"Updated {updated} countries", "updated_count": updated}
+
+@app.patch("/usher/dignitaries/checkin", response_model=schemas.AppointmentDignitary)
+@requires_any_role([models.UserRole.USHER, models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def update_dignitary_checkin(
+    data: schemas.AttendanceStatusUpdate,
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
+):
+    """
+    Update the attendance status of a dignitary for an appointment.
+    Only users with appropriate access to the appointment's location can update the status.
+    """
+    if data.attendance_status not in [models.AttendanceStatus.CHECKED_IN, models.AttendanceStatus.PENDING]:
+        logger.error(f"Invalid attendance status: {data.attendance_status}")
+        raise HTTPException(status_code=400, detail="Usher can only check in or mark dignitaries as pending")
+    
+    # Check if the appointment dignitary exists
+    appointment_dignitary = db.query(models.AppointmentDignitary).filter(
+        models.AppointmentDignitary.id == data.appointment_dignitary_id
+    ).first()
+    
+    if not appointment_dignitary:
+        raise HTTPException(status_code=404, detail="Appointment dignitary not found")
+    
+    # Verify user has access to update this appointment's dignitary
+    if current_user.role != models.UserRole.ADMIN:
+        # For non-admin roles, check location-based access
+        appointment = admin_get_appointment(
+            db=db,
+            appointment_id=appointment_dignitary.appointment_id,
+            current_user=current_user,
+            required_access_level=models.AccessLevel.READ_WRITE
+        )
+
+        if not appointment:
+            raise HTTPException(status_code=404, detail="Unauthorized to update this appointment")
+
+    # Update the attendance status
+    appointment_dignitary.attendance_status = data.attendance_status
+    appointment_dignitary.updated_by = current_user.id
+    db.commit()
+    db.refresh(appointment_dignitary)
+    
+    return appointment_dignitary

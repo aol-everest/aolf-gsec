@@ -13,23 +13,31 @@ import {
   Stack,
   Collapse,
   Button,
+  Divider,
 } from '@mui/material';
 import { format, addDays, parseISO, isToday, isTomorrow, isYesterday } from 'date-fns';
 import Layout from '../components/Layout';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { USHER_DISPLAY_DAYS } from '../constants/formConstants';
 import { FilterChip } from '../components/FilterChip';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-import { formatHonorificTitle } from '../utils/formattingUtils';
+import { formatHonorificTitle, getStatusChipSx } from '../utils/formattingUtils';
+import PrimaryButton from '../components/PrimaryButton';
+import SecondaryButton from '../components/SecondaryButton';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import UndoIcon from '@mui/icons-material/Undo';
+import { formatTime } from '../utils/dateUtils';
 
 // Define interfaces for the USHER view
 interface DignitaryUsherView {
   honorific_title?: string;
   first_name?: string;
   last_name?: string;
+  title_in_organization?: string;
+  organization?: string;
 }
 
 interface RequesterUsherView {
@@ -38,9 +46,11 @@ interface RequesterUsherView {
   phone_number?: string;
 }
 
-// Updated interface to support multiple dignitaries
+// Include attendance status in the interface
 interface AppointmentDignitaryUsherView {
+  id: number;
   dignitary: DignitaryUsherView;
+  attendance_status: string;
 }
 
 interface UsherAppointmentSchedule {
@@ -53,6 +63,15 @@ interface UsherAppointmentSchedule {
   location?: {
     name: string;
   };
+  purpose?: string;
+}
+
+// Define attendance status enum for UI display
+enum AttendanceStatus {
+  PENDING = "Pending",
+  CHECKED_IN = "Checked In",
+  CANCELLED = "Cancelled",
+  NO_SHOW = "No Show"
 }
 
 const UsherAppointmentSchedule: React.FC = () => {
@@ -62,6 +81,7 @@ const UsherAppointmentSchedule: React.FC = () => {
   const { enqueueSnackbar } = useSnackbar();
   const today = new Date();
   const [expandedDignitaries, setExpandedDignitaries] = useState<Record<number, boolean>>({});
+  const queryClient = useQueryClient();
 
   // Format dates for display
   const formatDisplayDate = (date: Date) => {
@@ -107,6 +127,25 @@ const UsherAppointmentSchedule: React.FC = () => {
     staleTime: 0,
   });
 
+  // Update attendance status mutation
+  const updateAttendanceStatusMutation = useMutation({
+    mutationFn: async ({ appointmentDignitaryId, status }: { appointmentDignitaryId: number, status: string }) => {
+      const response = await api.patch('/usher/dignitaries/checkin', {
+        appointment_dignitary_id: appointmentDignitaryId,
+        attendance_status: status
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['usher-appointments', selectedDate] });
+      enqueueSnackbar('Attendance status updated successfully', { variant: 'success' });
+    },
+    onError: (error) => {
+      console.error('Error updating attendance status:', error);
+      enqueueSnackbar('Failed to update attendance status', { variant: 'error' });
+    }
+  });
+
   // Group appointments by date
   const groupedAppointments = appointments?.reduce((acc, appointment) => {
     if (!appointment.appointment_date) return acc;
@@ -117,6 +156,18 @@ const UsherAppointmentSchedule: React.FC = () => {
     acc[appointment.appointment_date].push(appointment);
     return acc;
   }, {} as Record<string, UsherAppointmentSchedule[]>) || {};
+
+  // Further group appointments by time
+  const groupAppointmentsByTime = (dayAppointments: UsherAppointmentSchedule[]) => {
+    return dayAppointments.reduce((acc, appointment) => {
+      const time = appointment.appointment_time || 'No time specified';
+      if (!acc[time]) {
+        acc[time] = [];
+      }
+      acc[time].push(appointment);
+      return acc;
+    }, {} as Record<string, UsherAppointmentSchedule[]>);
+  };
 
   // Handle date change
   const handleDateChange = (date: string) => {
@@ -131,65 +182,16 @@ const UsherAppointmentSchedule: React.FC = () => {
     }));
   };
 
-  // Format dignitary name - updated to handle multiple dignitaries with collapsible list
-  const formatDignitaryName = (appointment: UsherAppointmentSchedule): ReactNode => {
-    // First check for appointment_dignitaries
-    if (appointment.appointment_dignitaries && appointment.appointment_dignitaries.length > 0) {
-      const primaryDignitary = appointment.appointment_dignitaries[0].dignitary;
-      const honorific = primaryDignitary.honorific_title || '';
-      const primaryName = `${honorific} ${primaryDignitary.first_name} ${primaryDignitary.last_name}`.trim();
-      
-      // If there are additional dignitaries, show a count with expand/collapse functionality
-      if (appointment.appointment_dignitaries.length > 1) {
-        const isExpanded = !!expandedDignitaries[appointment.id];
-        const additionalCount = appointment.appointment_dignitaries.length - 1;
-        
-        return (
-          <Box>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Typography variant="body1" fontWeight="medium">{primaryName}</Typography>
-              <Button
-                size="small"
-                variant="text"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleExpanded(appointment.id);
-                }}
-                startIcon={isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                sx={{ ml: 1, minWidth: 0, p: 0.5 }}
-              >
-                {isExpanded ? "Less" : `+${additionalCount} more`}
-              </Button>
-            </Box>
-            
-            <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-              <Box sx={{ pl: 2, mt: 1, borderLeft: '2px solid', borderColor: 'divider' }}>
-                {appointment.appointment_dignitaries.slice(1).map((appDignitary, index) => {
-                  const dig = appDignitary.dignitary;
-                  const honorificTitle = dig.honorific_title || '';
-                  const fullName = `${honorificTitle} ${dig.first_name} ${dig.last_name}`.trim();
-                  
-                  return (
-                    <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
-                      {fullName}
-                    </Typography>
-                  );
-                })}
-              </Box>
-            </Collapse>
-          </Box>
-        );
-      }
-      
-      return <Typography variant="body1" fontWeight="medium">{primaryName}</Typography>;
-    }
+  // Handle check-in/undo check-in
+  const handleAttendanceStatusChange = (appointmentDignitaryId: number, currentStatus: string) => {
+    const newStatus = currentStatus === AttendanceStatus.CHECKED_IN 
+      ? AttendanceStatus.PENDING 
+      : AttendanceStatus.CHECKED_IN;
     
-    // Fall back to dignitary field for backward compatibility
-    if (appointment.dignitary) {
-      return <Typography variant="body1" fontWeight="medium">{`${formatHonorificTitle(appointment.dignitary.honorific_title || '')} ${appointment.dignitary.first_name} ${appointment.dignitary.last_name}`.trim()}</Typography>;
-    }
-    
-    return <Typography variant="body1" color="text.secondary" sx={{ fontStyle: 'italic' }}>No dignitary information</Typography>;
+    updateAttendanceStatusMutation.mutate({ 
+      appointmentDignitaryId, 
+      status: newStatus 
+    });
   };
 
   // Get a friendly label for the date
@@ -199,6 +201,37 @@ const UsherAppointmentSchedule: React.FC = () => {
     if (isTomorrow(date)) return 'Tomorrow';
     if (isYesterday(date)) return 'Yesterday';
     return format(date, 'EEE, MMM d');
+  };
+
+  // Render check-in button based on attendance status
+  const renderCheckinButton = (appointmentDignitary: AppointmentDignitaryUsherView) => {
+    const isCheckedIn = appointmentDignitary.attendance_status === AttendanceStatus.CHECKED_IN;
+    
+    return isCheckedIn ? (
+      <SecondaryButton
+        size="small"
+        startIcon={<UndoIcon />}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleAttendanceStatusChange(appointmentDignitary.id, appointmentDignitary.attendance_status);
+        }}
+        sx={{ ml: 1 }}
+      >
+        Undo Check-in
+      </SecondaryButton>
+    ) : (
+      <PrimaryButton
+        size="small"
+        startIcon={<CheckCircleIcon />}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleAttendanceStatusChange(appointmentDignitary.id, appointmentDignitary.attendance_status);
+        }}
+        sx={{ ml: 1 }}
+      >
+        Check in
+      </PrimaryButton>
+    );
   };
 
   if (isLoading) {
@@ -236,7 +269,7 @@ const UsherAppointmentSchedule: React.FC = () => {
             mb: 4
           }}>
             <Typography variant="h4" component="h1">
-              Appointments Schedule
+              Usher Schedule
             </Typography>
           </Box>
 
@@ -280,74 +313,137 @@ const UsherAppointmentSchedule: React.FC = () => {
             </Paper>
           ) : (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {Object.keys(groupedAppointments).sort().map((date) => (
-                <Box key={date} sx={{ mb: 4 }}>
-                  <Typography variant="h5" sx={{ mb: 2 }}>
-                    {formatDisplayDate(parseISO(date))}
-                  </Typography>
-                  
-                  <Grid container spacing={2}>
-                    {groupedAppointments[date].map((appointment) => (
-                      <Grid item xs={12} key={appointment.id}>
-                        <Paper
-                          elevation={2}
-                          sx={{ 
-                            p: 3, 
-                            borderRadius: 2,
-                            transition: 'all 0.2s ease-in-out',
-                            '&:hover': {
-                              boxShadow: 3,
-                              transform: 'translateY(-2px)',
-                            }
-                          }}
-                        >
-                          <Grid container spacing={2}>
-                            <Grid item xs={12} md={4}>
-                              <Typography variant="subtitle1" fontWeight="bold">
-                                {appointment.appointment_time || 'Time not specified'}
-                              </Typography>
-                              <Typography variant="body1">
-                                {appointment.location?.name || 'Location not specified'}
-                              </Typography>
+              {Object.keys(groupedAppointments).sort().map((date) => {
+                const timeGroupedAppointments = groupAppointmentsByTime(groupedAppointments[date]);
+                
+                return (
+                  <Box key={date} sx={{ mb: 4 }}>
+                    <Grid container spacing={2}>
+                      {Object.entries(timeGroupedAppointments)
+                        .sort(([timeA], [timeB]) => timeA.localeCompare(timeB))
+                        .map(([time, timeAppointments]) => (
+                          <>
+                            <Grid item xs={12} sm={12} md={12}>
+                              <Chip
+                                label={formatTime(time)}
+                                sx={{ fontSize: '1.1rem', fontWeight: 'bold' }}
+                              />
                             </Grid>
-                            
-                            <Grid item xs={12} md={4}>
-                              <Typography variant="subtitle2" color="text.secondary">
-                                Dignitary
-                              </Typography>
-                              <Typography variant="body1" fontWeight="medium">
-                                {formatDignitaryName(appointment)}
-                              </Typography>
+    
+                            <Grid item xs={12} key={`${date}-${time}`}>
+                              <Paper
+                                elevation={2}
+                                sx={{ 
+                                  borderRadius: 2,
+                                  overflow: 'hidden',
+                                }}
+                              >
+                                {timeAppointments.map((appointment, index) => (
+                                  <React.Fragment key={appointment.id}>
+                                    {index > 0 && <Divider />}
+                                    <Box sx={{ p: 3 }}>
+                                      <Grid container spacing={2}>
+                                        <Grid item xs={12} md={6}>
+                                          <Typography variant="subtitle1" fontWeight="bold">
+                                            {appointment.location?.name || 'Location not specified'}
+                                          </Typography>
+                                        </Grid>
+                                        
+                                        <Grid item xs={12} md={6}>
+                                          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                            {appointment.requester && (
+                                              <Typography variant="body2" color="text.secondary" align="right">
+                                                <strong>Point of Contact:</strong> {appointment.requester.first_name} {appointment.requester.last_name}
+                                                {appointment.requester.phone_number && (
+                                                  <Typography variant="body2" color="text.secondary">
+                                                    {appointment.requester.phone_number}
+                                                  </Typography>
+                                                )}
+                                              </Typography>
+                                            )}
+                                          </Box>
+                                        </Grid>
+                                      </Grid>
+                                      
+                                      <Box sx={{ mt: 2 }}>
+                                        <Typography variant="subtitle2" color="text.secondary">
+                                          Dignitaries:
+                                        </Typography>
+                                        
+                                        {appointment.appointment_dignitaries && appointment.appointment_dignitaries.length > 0 ? (
+                                          appointment.appointment_dignitaries.map((appointmentDignitary) => {
+                                            const dignitary = appointmentDignitary.dignitary;
+                                            const isCheckedIn = appointmentDignitary.attendance_status === AttendanceStatus.CHECKED_IN;
+                                            
+                                            return (
+                                              <Box 
+                                                key={appointmentDignitary.id} 
+                                                sx={{ 
+                                                  display: 'flex', 
+                                                  justifyContent: 'space-between', 
+                                                  alignItems: 'center',
+                                                  py: 1,
+                                                  borderBottom: '1px solid',
+                                                  borderColor: alpha(theme.palette.divider, 0.5),
+                                                  '&:last-child': {
+                                                    borderBottom: 'none'
+                                                  }
+                                                }}
+                                              >
+                                                <Box>
+                                                  <Typography variant="body1" fontWeight="medium">
+                                                    {formatHonorificTitle(dignitary.honorific_title || '')} {dignitary.first_name} {dignitary.last_name}
+                                                  </Typography>
+                                                  {(dignitary.title_in_organization || dignitary.organization) && (
+                                                    <Typography variant="body2" color="text.secondary">
+                                                      {dignitary.title_in_organization && `${dignitary.title_in_organization}`}
+                                                      {dignitary.organization && dignitary.title_in_organization && ' - '}
+                                                      {dignitary.organization && `${dignitary.organization}`}
+                                                    </Typography>
+                                                  )}
+                                                </Box>
+                                                
+                                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                  {isCheckedIn && (
+                                                    <Chip 
+                                                      label="Checked In" 
+                                                      color="success" 
+                                                      size="small" 
+                                                      sx={{ mr: 1 }}
+                                                    />
+                                                  )}
+                                                  {renderCheckinButton(appointmentDignitary)}
+                                                </Box>
+                                              </Box>
+                                            );
+                                          })
+                                        ) : appointment.dignitary ? (
+                                          // For backward compatibility
+                                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 1 }}>
+                                            <Typography variant="body1" fontWeight="medium">
+                                              {formatHonorificTitle(appointment.dignitary.honorific_title || '')} {appointment.dignitary.first_name} {appointment.dignitary.last_name}
+                                            </Typography>
+                                            <Typography variant="body2" color="text.secondary" fontStyle="italic">
+                                              (Unable to check in - legacy record)
+                                            </Typography>
+                                          </Box>
+                                        ) : (
+                                          <Typography variant="body1" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                                            No dignitary information
+                                          </Typography>
+                                        )}
+                                      </Box>
+                                    </Box>
+                                  </React.Fragment>
+                                ))}
+                              </Paper>
                             </Grid>
-                            
-                            <Grid item xs={12} md={4}>
-                              <Typography variant="subtitle2" color="text.secondary">
-                                Point of Contact
-                              </Typography>
-                              {appointment.requester ? (
-                                <>
-                                  <Typography variant="body1">
-                                    {appointment.requester?.first_name} {appointment.requester?.last_name}
-                                  </Typography>
-                                  {appointment.requester?.phone_number && (
-                                    <Typography variant="body2" color="text.secondary">
-                                      {appointment.requester.phone_number}
-                                    </Typography>
-                              )}
-                                </>
-                              ) : (
-                                <Typography variant="body1" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                                  No point of contact info
-                                </Typography>
-                              )}
-                            </Grid>
-                          </Grid>
-                        </Paper>
-                      </Grid>
-                    ))}
-                  </Grid>
-                </Box>
-              ))}
+                          </>
+                        ))}
+                    </Grid>
+                  </Box>
+                );
+              })}
             </Box>
           )}
         </Box>
