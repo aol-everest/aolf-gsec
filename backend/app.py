@@ -503,7 +503,7 @@ async def create_appointment(
         db_appointment = models.Appointment(
             requester_id=current_user.id,
             created_by=current_user.id,
-            updated_by=current_user.id,
+            last_updated_by=current_user.id,
             status=models.AppointmentStatus.PENDING,
             purpose=appointment.purpose,
             preferred_date=appointment.preferred_date,
@@ -1574,7 +1574,7 @@ async def create_appointment(
         # Create appointment
         db_appointment = models.Appointment(
             created_by=current_user.id,
-            updated_by=current_user.id,
+            last_updated_by=current_user.id,
             status=appointment.status,
             sub_status=appointment.sub_status,
             appointment_type=appointment.appointment_type,

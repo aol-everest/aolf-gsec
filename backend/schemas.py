@@ -527,6 +527,7 @@ class BusinessCardExtractionResponse(BaseModel):
 
 # New schemas for USHER role
 class DignitaryUsherView(BaseModel):
+    id: int
     honorific_title: Optional[HonorificTitle] = None
     first_name: str
     last_name: str

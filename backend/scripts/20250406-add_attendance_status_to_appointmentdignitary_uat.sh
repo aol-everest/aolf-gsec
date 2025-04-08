@@ -13,15 +13,32 @@ DB_NAME="aolf_gsec"
 PGPASSWORD="$MASTER_PASSWORD" psql -h $DB_HOST -U $DB_USER -d $DB_NAME << EOF
 
 -- Create the new enum type
-CREATE TYPE dignitary_attendance_status AS ENUM (
+CREATE TYPE attendance_status AS ENUM (
     'PENDING', 'CHECKED_IN', 'CANCELLED', 'NO_SHOW'
 );
 
 -- Add attendance_status column to appointment_dignitaries
-ALTER TABLE appointment_dignitaries ADD COLUMN IF NOT EXISTS attendance_status dignitary_attendance_status DEFAULT 'PENDING';
+ALTER TABLE appointment_dignitaries ADD COLUMN IF NOT EXISTS attendance_status attendance_status DEFAULT 'PENDING';
 
 -- Update existing records to set the default value
 UPDATE appointment_dignitaries SET attendance_status = 'PENDING';
+
+-- Change the type of attendance_status to the enum type
+-- 1. Drop the default
+ALTER TABLE appointment_dignitaries 
+ALTER COLUMN attendance_status DROP DEFAULT;
+
+-- 2. Change the type using text as an intermediate
+ALTER TABLE appointment_dignitaries 
+ALTER COLUMN attendance_status 
+TYPE attendancestatus 
+USING attendance_status::text::attendancestatus;
+
+-- 3. Re-add the default
+ALTER TABLE appointment_dignitaries 
+ALTER COLUMN attendance_status 
+SET DEFAULT 'PENDING'::attendancestatus;
+
 
 -- Add created_at and updated_at columns to appointment_dignitaries
 ALTER TABLE appointment_dignitaries ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;

@@ -14,12 +14,12 @@ PGPASSWORD="$MASTER_PASSWORD" psql -h $DB_HOST -U $DB_USER -d $DB_NAME << EOF
 SET search_path TO aolf_gsec_app, public;
 
 -- Create the new enum type
-CREATE TYPE dignitary_attendance_status AS ENUM (
+CREATE TYPE attendancestatus AS ENUM (
     'PENDING', 'CHECKED_IN', 'CANCELLED', 'NO_SHOW'
 );
 
 -- Add attendance_status column to appointment_dignitaries
-ALTER TABLE appointment_dignitaries ADD COLUMN IF NOT EXISTS attendance_status dignitary_attendance_status DEFAULT 'PENDING';
+ALTER TABLE appointment_dignitaries ADD COLUMN IF NOT EXISTS attendance_status attendancestatus DEFAULT 'PENDING';
 
 -- Update existing records to set the default value
 UPDATE appointment_dignitaries SET attendance_status = 'PENDING';
