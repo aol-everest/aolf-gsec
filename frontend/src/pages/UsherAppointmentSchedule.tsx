@@ -20,7 +20,7 @@ import Layout from '../components/Layout';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { USHER_DISPLAY_DAYS } from '../constants/formConstants';
+import { USHER_START_DATE_OFFSET, USHER_END_DATE_OFFSET } from '../constants/formConstants';
 import { FilterChip } from '../components/FilterChip';
 import { formatHonorificTitle } from '../utils/formattingUtils';
 import PrimaryButton from '../components/PrimaryButton';
@@ -120,7 +120,7 @@ const UsherAppointmentSchedule: React.FC = () => {
 
   // Generate date options for pills (today and next 2 days)
   const dateOptions = [];
-  for (let i = 0; i < USHER_DISPLAY_DAYS; i++) {
+  for (let i = USHER_START_DATE_OFFSET; i < USHER_END_DATE_OFFSET; i++) {
     const date = addDays(today, i);
     dateOptions.push({
       value: format(date, 'yyyy-MM-dd'),
