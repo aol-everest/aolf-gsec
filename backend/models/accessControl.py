@@ -106,8 +106,8 @@ class UserAccess(Base):
             if not location_id:
                 raise ValueError("Location is required for USHER users")
         
-            if access_level != AccessLevel.READ:
-                raise ValueError("USHER users can only have read access")
+            if access_level.get_int_value() > AccessLevel.READ_WRITE.get_int_value():
+                raise ValueError("USHER users cannot have access level higher than read-write")
 
             if entity_type != EntityType.APPOINTMENT:
                 raise ValueError("USHER users can only have appointment access")

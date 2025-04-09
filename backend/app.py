@@ -2841,7 +2841,8 @@ async def get_usher_appointments(
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
         
-        if target_date < datetime.now().date()-timedelta(days=1) or target_date > datetime.now().date()+timedelta(days=2):
+        # USHER can only view appointments for the previous 3 days and the next 3 days
+        if target_date < datetime.now().date()-timedelta(days=3) or target_date > datetime.now().date()+timedelta(days=3):
             raise HTTPException(status_code=400, detail="Date beyond allowed range")
 
         start_date = target_date
