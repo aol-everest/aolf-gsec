@@ -25,6 +25,12 @@ const colors = {
     dark: '#333',
     contrastText: '#fff',
   },
+  info: {
+    main: '#0288d1',
+    light: 'rgba(2, 136, 209, 0.081)',
+    dark: 'rgba(2, 136, 209, 0.20)',
+  },
+  divider: 'rgba(0, 0, 0, 0.13)',
   background: {
     default: '#FFFAF5',
     paper: '#ffffff',

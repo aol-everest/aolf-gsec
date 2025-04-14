@@ -26,7 +26,7 @@ export const getStatusTheme = (status: string, theme: Theme) => {
   
         'Need More Info': theme.palette.warning,
     };
-    return statusThemes[status];
+    return statusThemes[status] || theme.palette.info;
 };
 
 export const getSubStatusChipSx = (subStatus: string, theme: Theme) => {
