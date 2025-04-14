@@ -308,7 +308,7 @@ resource "aws_elastic_beanstalk_application" "backend_app" {
 
 # Elastic Beanstalk Application Version linking to the S3 package
 resource "aws_elastic_beanstalk_application_version" "app_version" {
-  name             = "v7.31 (increased usher view range and fixed usher access grant bug)"
+  name             = "v7.32 (backend change for UI enhancements)"
   application      = aws_elastic_beanstalk_application.backend_app.name
   description      = "FastAPI Backend"
   bucket           = aws_s3_bucket.app_bucket.id
