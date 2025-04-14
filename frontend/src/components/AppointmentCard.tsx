@@ -47,7 +47,8 @@ export const AppointmentCard: React.FC<{
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [loading, setLoading] = useState(false);
     const [attachments, setAttachments] = useState<AppointmentAttachment[]>(appointment.attachments || []);
-    const [isExpanded, setIsExpanded] = useState(false);
+    const [isSummaryExpanded, setIsSummaryExpanded] = useState(true);
+    const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
     const api = useApi();
     const cardContainerRef = useRef<HTMLDivElement>(null);
     
@@ -458,8 +459,8 @@ export const AppointmentCard: React.FC<{
                 mx: 'auto',
                 width: '100%',
                 // maxWidth: '900px', 
-                border: '1px solid #E9E9E9',
-                boxShadow: '0px 4px 16px -4px rgba(81, 77, 74, 0.08), 0px -1px 6px -2px rgba(81, 77, 74, 0.03)',
+                border: isMobile ? '3px solid #e9e9e9' : '5px solid #E9E9E9',
+                boxShadow: isMobile ? '0px 4px 16px -4px rgba(81, 77, 74, 0.81), 0px -1px 6px -2px rgba(81, 77, 74, 0.81)' : '0px 4px 16px -4px rgba(81, 77, 74, 0.08), 0px -1px 6px -2px rgba(81, 77, 74, 0.03)',
                 borderRadius: '20px',
                 gap: '16px',
                 display: 'flex',
@@ -501,7 +502,7 @@ export const AppointmentCard: React.FC<{
                     pr: isMobile ? 2 : 3,
                     pt: isMobile ? 2 : 3,
                     borderBottom: '1px solid #E9E9E9',
-                    borderRadius: '5px',
+                    borderRadius: '13px',
                 }}>
                     <Box sx={{ 
                         display: 'flex', 
@@ -550,7 +551,26 @@ export const AppointmentCard: React.FC<{
                         displayMode === 'calendar' ? (
                             <>
                                 {/* Appointment Information */}
-                                {renderAppointmentDetailsSection(appointment, displayMode)}
+                                <Box sx={{ 
+                                    display: isSummaryExpanded ? 'none' : 'flex', 
+                                    justifyContent: 'space-between', 
+                                    alignItems: 'center',
+                                    p: 0,
+                                    cursor: 'pointer',
+                                    borderRadius: '8px',
+                                    mb: 1
+                                }} onClick={() => {
+                                    setIsSummaryExpanded(!isSummaryExpanded)
+                                    isMobile && setIsDetailsExpanded(isSummaryExpanded);
+                                }}>
+                                    <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                                        {!isSummaryExpanded ? 'Show Summary' : ''}
+                                    </Typography>
+                                    {!isSummaryExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                                </Box>
+                                <Collapse in={isSummaryExpanded}>
+                                    {renderAppointmentDetailsSection(appointment, displayMode)}
+                                </Collapse>
                                 <Box>
                                     <Box sx={{ 
                                         display: 'flex', 
@@ -560,15 +580,18 @@ export const AppointmentCard: React.FC<{
                                         cursor: 'pointer',
                                         borderRadius: '8px',
                                         mb: 1
-                                    }} onClick={() => setIsExpanded(!isExpanded)}>
+                                    }} onClick={() => {
+                                        setIsDetailsExpanded(!isDetailsExpanded);
+                                        isMobile && setIsSummaryExpanded(isDetailsExpanded);
+                                    }}>
                                         <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-                                            {isExpanded ? 'Hide Details' : 'Show Details'}
+                                            {isDetailsExpanded ? 'Hide Details' : 'Show Details'}
                                         </Typography>
-                                        {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                                        {isDetailsExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                                     </Box>
-                                    <Collapse in={isExpanded}>
+                                    <Collapse in={isDetailsExpanded}>
                                         <Box sx={{
-                                            maxHeight: isMobile ? '150px' : '350px',
+                                            maxHeight: isMobile ? '450px' : '350px',
                                             overflowY: 'auto',
                                             pr: 1, // Add some padding for the scrollbar
                                             mr: -1, // Offset the padding to maintain alignment
