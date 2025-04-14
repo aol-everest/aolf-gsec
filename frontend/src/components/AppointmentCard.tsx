@@ -591,7 +591,7 @@ export const AppointmentCard: React.FC<{
                                     </Box>
                                     <Collapse in={isDetailsExpanded}>
                                         <Box sx={{
-                                            maxHeight: isMobile ? '450px' : '350px',
+                                            maxHeight: isMobile ? '400px' : '350px',
                                             overflowY: 'auto',
                                             pr: 1, // Add some padding for the scrollbar
                                             mr: -1, // Offset the padding to maintain alignment
