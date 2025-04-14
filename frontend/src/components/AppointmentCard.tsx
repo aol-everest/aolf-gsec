@@ -569,7 +569,28 @@ export const AppointmentCard: React.FC<{
                                     {!isSummaryExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                                 </Box>
                                 <Collapse in={isSummaryExpanded}>
-                                    {renderAppointmentDetailsSection(appointment, displayMode)}
+                                    <Box sx={{
+                                        maxHeight: isMobile ? '400px' : '350px',
+                                        overflowY: 'auto',
+                                        pr: 1, // Add some padding for the scrollbar
+                                        mr: -1, // Offset the padding to maintain alignment
+                                        // Custom scrollbar styling
+                                        '&::-webkit-scrollbar': {
+                                            width: '8px',
+                                        },
+                                        '&::-webkit-scrollbar-track': {
+                                            backgroundColor: 'transparent',
+                                        },
+                                        '&::-webkit-scrollbar-thumb': {
+                                            backgroundColor: theme.palette.grey[300],
+                                            borderRadius: '4px',
+                                            '&:hover': {
+                                                backgroundColor: theme.palette.grey[400],
+                                            },
+                                        },
+                                    }}>
+                                        {renderAppointmentDetailsSection(appointment, displayMode)}
+                                    </Box>
                                 </Collapse>
                                 <Box>
                                     <Box sx={{ 
