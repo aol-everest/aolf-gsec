@@ -44,7 +44,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import LocationAutocomplete from './LocationAutocomplete';
 import { useNavigate } from 'react-router-dom';
-import { formatHonorificTitle, getStatusChipSx } from '../utils/formattingUtils';
+import { formatHonorificTitle } from '../utils/formattingUtils';
 import { useTheme } from '@mui/material/styles';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../hooks/useApi';
@@ -68,7 +68,7 @@ import AdminAppointmentEditCard, { AdminAppointmentEditCardRef } from './AdminAp
 import { StatusMap, SubStatusMap, StatusSubStatusMapping } from '../models/types';
 import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
-import { PencilIconV2, TrashIconV2 } from './icons';
+import { PencilIconV2, TrashIconV2 } from './iconsv2';
 
 // Interfaces
 interface AppointmentResponse extends Omit<Appointment, 'dignitary' | 'requester' | 'location' | 'approved_by_user' | 'last_updated_by_user' | 'attachments'> {

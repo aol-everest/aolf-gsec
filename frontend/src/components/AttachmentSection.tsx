@@ -337,7 +337,7 @@ const AttachmentSection: React.FC<AttachmentSectionProps> = ({ attachments }) =>
                   </FileName>
                 </Tooltip>
                 <Typography variant="caption" color="textSecondary">
-                  {new Date(attachment.created_at).toLocaleDateString()}
+                  Uploaded on {new Date(attachment.created_at).toLocaleDateString()}
                 </Typography>
               </AttachmentItem>
             </Grid>

@@ -34,7 +34,7 @@ import CancelIcon from '@mui/icons-material/Close';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import Layout from '../components/Layout';
-import { getStatusChipSx, getSubStatusChipSx, getStatusColor, formatHonorificTitle } from '../utils/formattingUtils';
+import { getSubStatusChipSx, getStatusColor, formatHonorificTitle } from '../utils/formattingUtils';
 import { useTheme } from '@mui/material/styles';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
@@ -43,6 +43,7 @@ import { formatDate } from '../utils/dateUtils';
 import GenericDataGrid from '../components/GenericDataGrid';
 import { Appointment } from '../models/types';
 import { Location } from '../models/types';
+import { AppointmentStatusChip } from '../components/AppointmentStatusChip';
 
 interface StatusEditCellProps extends GridRenderEditCellParams<Appointment> {
   statusOptions: string[];
@@ -376,11 +377,7 @@ const AdminAppointmentList: React.FC = () => {
       type: 'singleSelect',
       valueOptions: statusOptions,
       renderCell: (params: GridRenderCellParams<Appointment>) => (
-        <Chip
-          label={params.value}
-          sx={getStatusChipSx(params.value as string, theme)}
-          size="small"
-        />
+        <AppointmentStatusChip status={params.value as string} size='small' />
       ),
       renderEditCell: (params: GridRenderEditCellParams<Appointment>) => (
         <StatusEditCell
@@ -457,7 +454,7 @@ const AdminAppointmentList: React.FC = () => {
     <Layout>
       <Container maxWidth="xl">
         <Box>
-          <Typography variant="h4" component="h1" gutterBottom>
+          <Typography variant="h1" component="h1" gutterBottom>
             All Appointments
           </Typography>
 

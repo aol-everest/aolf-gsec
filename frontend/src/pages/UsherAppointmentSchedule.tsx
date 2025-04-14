@@ -346,7 +346,7 @@ const UsherAppointmentSchedule: React.FC = () => {
             alignItems: 'center',
             mb: 4
           }}>
-            <Typography variant="h4" component="h1">
+            <Typography variant="h1" component="h1">
               Usher Schedule
             </Typography>
           </Box>

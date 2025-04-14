@@ -99,7 +99,7 @@ const DignitaryList: React.FC = () => {
     <Layout>
       <Container maxWidth="xl">
         <Box>
-          <Typography variant="h4" component="h1" gutterBottom>
+          <Typography variant="h1" component="h1" gutterBottom>
             Dignitaries
           </Typography>
           <Typography variant="h6" component="h2" gutterBottom>

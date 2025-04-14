@@ -42,8 +42,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import Layout from '../components/Layout';
 import { formatDate } from '../utils/dateUtils';
-import { getStatusChipSx, getStatusColor } from '../utils/formattingUtils';
-import { EmailIcon, ContactPhoneIcon, EmailIconSmall, ContactPhoneIconSmall, WorkIcon, LocationIconV2, LocationThinIconV2, CalendarIconV2 } from '../components/icons';
+import { LocationThinIconV2, CalendarIconV2 } from '../components/iconsv2';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -859,7 +858,7 @@ const AdminAppointmentTiles: React.FC = () => {
       );
     }
     
-    return <AppointmentCard appointment={currentData} theme={theme} />;
+    return <AppointmentCard appointment={currentData} displayMode="regular" />;
   };
 
   return (
@@ -875,7 +874,7 @@ const AdminAppointmentTiles: React.FC = () => {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Grid container spacing={2} alignItems="center">
                 <Grid item xs={12} md={4}>
-                  <Typography variant="h4">All Appointments</Typography>
+                  <Typography variant="h1">All Appointments</Typography>
                 </Grid>
                 <Grid item xs={12} md={8} sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                   <LocalizationProvider dateAdapter={AdapterDateFns}>

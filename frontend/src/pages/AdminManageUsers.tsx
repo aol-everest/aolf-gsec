@@ -49,7 +49,7 @@ import { useEnums } from '../hooks/useEnums';
 import { RoleMap, AccessLevelMap, EntityTypeMap } from '../models/types';
 import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
-import { PencilIconV2 } from '../components/icons';
+import { PencilIconV2 } from '../components/iconsv2';
 import { createDebugLogger } from '../utils/debugUtils';
 
 interface User {
@@ -888,7 +888,7 @@ const AdminManageUsers: React.FC = () => {
       <Container maxWidth="xl">
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h4" component="h1" gutterBottom>
+            <Typography variant="h1" component="h1" gutterBottom>
               All Users
             </Typography>
             {!formOpen && (

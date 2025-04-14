@@ -58,7 +58,7 @@ import { useQuery } from '@tanstack/react-query';
 import { createDebugLogger } from '../utils/debugUtils';
 import { HonorificTitleMap } from '../models/types';
 import { useEnums, useEnumsMap } from '../hooks/useEnums';
-import { AddPersonIconV2, DoneIconV2 } from '../components/icons';
+import { AddPersonIconV2, DoneIconV2 } from '../components/iconsv2';
 import { WarningButton } from '../components/WarningButton';
 import { SecondaryButton } from '../components/SecondaryButton';
 import { PrimaryButton } from '../components/PrimaryButton';
@@ -1809,7 +1809,7 @@ const AddNewDignitary: React.FC = () => {
               <ArrowBackIcon />
             </IconButton>
           )}
-          <Typography variant="h4">{isEditMode ? 'Edit Dignitary Details' : 'Add New Dignitary'}</Typography>
+          <Typography variant="h1">{isEditMode ? 'Edit Dignitary Details' : 'Add New Dignitary'}</Typography>
         </Box>
         
         {isLoading ? (

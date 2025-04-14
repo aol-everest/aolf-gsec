@@ -14,7 +14,7 @@ import {
   GridRenderCellParams,
 } from '@mui/x-data-grid';
 import Layout from '../components/Layout';
-import { formatHonorificTitle, getStatusChipSx, getStatusColor } from '../utils/formattingUtils';
+import { formatHonorificTitle, getStatusColor } from '../utils/formattingUtils';
 import { useTheme } from '@mui/material/styles';
 import { useQuery } from '@tanstack/react-query';
 import { useApi } from '../hooks/useApi';
@@ -225,7 +225,7 @@ const AppointmentStatus: React.FC = () => {
     <Layout>
       <Container maxWidth="xl">
         <Box>
-          <Typography variant="h4" component="h1" gutterBottom>
+          <Typography variant="h1" component="h1" gutterBottom>
             Appointment Status
           </Typography>
 

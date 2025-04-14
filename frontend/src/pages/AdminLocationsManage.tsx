@@ -34,7 +34,7 @@ import GenericDataGrid from '../components/GenericDataGrid';
 import { GridColDef, GridActionsCellItem } from '@mui/x-data-grid';
 import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
-import { PencilIconV2, TrashIconV2, DownloadIconV2 } from '../components/icons';
+import { PencilIconV2, TrashIconV2, DownloadIconV2 } from '../components/iconsv2';
 
 // Google Maps types
 interface AddressComponent {
@@ -930,7 +930,7 @@ export default function AdminLocationsManage() {
       <Container maxWidth="xl">
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h4">Manage Locations</Typography>
+            <Typography variant="h1">Manage Locations</Typography>
             {!formOpen && (
               <PrimaryButton
                 size="medium"

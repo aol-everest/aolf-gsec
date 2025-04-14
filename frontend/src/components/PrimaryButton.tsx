@@ -4,11 +4,11 @@ import { Button as MuiButton, ButtonProps as MuiButtonProps, styled } from '@mui
 export interface PrimaryButtonProps extends Omit<MuiButtonProps, 'variant' | 'size'> {
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
-  size?: 'small' | 'medium' | 'large';
+  size?: 'extrasmall' | 'small' | 'medium' | 'large';
 }
 
 interface StyledButtonProps {
-  customSize?: 'small' | 'medium' | 'large';
+  customSize?: 'extrasmall' | 'small' | 'medium' | 'large';
 }
 
 const StyledPrimaryButton = styled(MuiButton, {
@@ -32,6 +32,14 @@ const StyledPrimaryButton = styled(MuiButton, {
     boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.1)',
   },
   
+  ...(customSize === 'extrasmall' && {
+    padding: '3px 3px',
+    height: '30px',
+    fontSize: '10px',
+    lineHeight: '18px',
+    minWidth: '30px',
+  }),
+
   ...(customSize === 'small' && {
     padding: '3px 20px',
     height: '40px',

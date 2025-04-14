@@ -420,15 +420,17 @@ class AdminAppointment(AppointmentBase):
     appointment_date: Optional[date] = None
     appointment_time: Optional[str] = None
     created_at: datetime
+    created_by: Optional[int] = None
+    created_by_user: Optional[User] = None
     updated_at: datetime
+    last_updated_by: Optional[int] = None
+    last_updated_by_user: Optional[User] = None
     secretariat_meeting_notes: Optional[str] = None
     secretariat_follow_up_actions: Optional[str] = None
     secretariat_notes_to_requester: Optional[str] = None
     approved_datetime: Optional[datetime] = None
     approved_by: Optional[int] = None
     approved_by_user: Optional[User] = None
-    last_updated_by: Optional[int] = None
-    last_updated_by_user: Optional[User] = None
 
     class Config:
         orm_mode = True

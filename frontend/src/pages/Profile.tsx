@@ -22,7 +22,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { SecondaryButton } from '../components/SecondaryButton';
 import { PrimaryButton } from '../components/PrimaryButton';
 import WarningButton from '../components/WarningButton';
-import { LogoutIconV2 } from '../components/icons';
+import { LogoutIconV2 } from '../components/iconsv2';
 import ProfileBackground from '../components/ProfileBackground';
 
 interface NotificationPreferences {

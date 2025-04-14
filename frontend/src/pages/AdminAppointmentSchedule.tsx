@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Typography,
@@ -20,15 +20,26 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  ToggleButtonGroup,
+  ToggleButton,
+  IconButton,
+  useMediaQuery,
+  Backdrop,
+  Portal,
 } from '@mui/material';
 import format from 'date-fns/format';
 import isToday from 'date-fns/isToday';
 import parseISO from 'date-fns/parseISO';
 import isPast from 'date-fns/isPast';
 import isFuture from 'date-fns/isFuture';
+import addDays from 'date-fns/addDays';
+import subDays from 'date-fns/subDays';
+import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
+import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
+import SwipeableViews from 'react-swipeable-views';
 import Layout from '../components/Layout';
 import { getLocalDateString, formatTime } from '../utils/dateUtils';
-import { formatHonorificTitle, getStatusChipSx } from '../utils/formattingUtils';
+import { formatHonorificTitle } from '../utils/formattingUtils';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -38,11 +49,29 @@ import { useNavigate } from 'react-router-dom';
 import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
 import { AdminAppointmentUpdate } from '../models/types';
+import { CheckSquareCircleFilledIconV2, CloseIconFilledCircleV2 } from '../components/iconsv2';
+import { debugLog } from '../utils/debugUtils';
+import { AppointmentStatusChip } from '../components/AppointmentStatusChip';
+import { AppointmentTimeChip } from '../components/AppointmentTimeChip';
+
+type AppointmentCardDimensions = {
+  left: number | null;
+  right: number | null;
+  top: number | null;
+  bottom: number | null;
+  width: number | null;
+  height: number | null;
+};
 
 const AdminAppointmentSchedule: React.FC = () => {
   
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [appointmentUpdateData, setAppointmentUpdateData] = useState<AdminAppointmentUpdate>({});
-
+  const [daysToShow, setDaysToShow] = useState<number>(isMobile ? 1 : 3);
+  const [startDate, setStartDate] = useState(getLocalDateString(0));
+  const [datesToShow, setDatesToShow] = useState<string[]>([startDate]);
+  
   const { data: statusMap } = useQuery<StatusMap>({
     queryKey: ['status-map'],
     queryFn: async () => {
@@ -59,20 +88,39 @@ const AdminAppointmentSchedule: React.FC = () => {
     }
   });
 
-  console.log('subStatusMap', subStatusMap);
+  // Update dates to show when start date or days to show changes
+  useEffect(() => {
+    const newDates = [];
+    for (let i = 0; i < daysToShow; i++) {
+      const date = format(addDays(parseISO(startDate), i), 'yyyy-MM-dd');
+      newDates.push(date);
+    }
+    setDatesToShow(newDates);
+  }, [startDate, daysToShow]);
 
-  const [selectedDate, setSelectedDate] = useState(getLocalDateString(0));
-  const [expandedAppointmentId, setExpandedAppointmentId] = useState<number | null>(null);
+  // Update daysToShow when screen size changes
+  useEffect(() => {
+    setDaysToShow(isMobile ? 1 : 3);
+  }, [isMobile]);
+
+  const [expandedAppointment, setExpandedAppointment] = useState<Appointment | null>(null);
   const [completionDialogOpen, setCompletionDialogOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
-  const theme = useTheme();
   const api = useApi();
   const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
+  const [appointmentCardDimensions, setAppointmentCardDimensions] = useState<AppointmentCardDimensions>({
+    left: null,
+    right: null,
+    top: null,
+    bottom: null,
+    width: null,
+    height: null
+  });
 
-  const { data: appointments = [], isLoading } = useQuery({
-    queryKey: ['appointments', selectedDate],
+  const { data: allAppointments = [], isLoading } = useQuery({
+    queryKey: ['appointments', datesToShow.join(',')],
     queryFn: async () => {
       try {
         const { data } = await api.get<Appointment[]>('/admin/appointments/all', {
@@ -81,9 +129,9 @@ const AdminAppointmentSchedule: React.FC = () => {
           }
         });
         
-        // Filter appointments for the selected date and sort by time
+        // Filter appointments for the selected dates
         return data
-          .filter((apt) => apt.appointment_date === selectedDate)
+          .filter((apt) => datesToShow.includes(apt.appointment_date))
           .sort((a, b) => {
             if (!a.appointment_time) return 1;
             if (!b.appointment_time) return -1;
@@ -96,6 +144,12 @@ const AdminAppointmentSchedule: React.FC = () => {
       }
     }
   });
+
+  // Group appointments by date
+  const appointmentsByDate = datesToShow.reduce((acc, date) => {
+    acc[date] = allAppointments.filter(apt => apt.appointment_date === date);
+    return acc;
+  }, {} as Record<string, Appointment[]>);
 
   // Fetch status-substatus mapping from the API
   const { data: statusSubStatusMapping } = useQuery<StatusSubStatusMapping>({
@@ -111,9 +165,78 @@ const AdminAppointmentSchedule: React.FC = () => {
     ? statusSubStatusMapping['COMPLETED'].valid_sub_statuses 
     : ['No further action', 'Follow-up required'];
 
-  const handleAppointmentClick = (appointmentId: number) => {
-    setExpandedAppointmentId(expandedAppointmentId === appointmentId ? null : appointmentId);
+  const handleAppointmentClick = (appointment: Appointment, event: React.MouseEvent) => {
+    const element = event.currentTarget as HTMLElement;
+    const rect = element.getBoundingClientRect();
+    const gapToEdge = 16;
+    const maxCardWidth = 650;
+    const maxCardHeight = 700;
+    const bannerOffset = 56;
+    const filtersOffset = 130;
+    
+    let dimensions: AppointmentCardDimensions = {
+      left: null,
+      right: null,
+      top: null,
+      bottom: null,
+      width: null,
+      height: null
+    };
+
+    if (isMobile) {
+      // Fixed position on mobile
+      dimensions.width = window.innerWidth * 0.99;
+      dimensions.height = (window.innerHeight - bannerOffset) * 0.99;
+      dimensions.left = (window.innerWidth - dimensions.width) / 2;
+      dimensions.top = (((window.innerHeight - bannerOffset) - dimensions.height) / 2) + bannerOffset;
+    } else {
+      let availableWidth = 0;
+      const availableHeight = window.innerHeight - bannerOffset - filtersOffset - (gapToEdge * 2);
+      debugLog('window.innerHeight', window.innerHeight);
+      debugLog('window.innerWidth', window.innerWidth);
+      if (rect.left > window.innerWidth - rect.right) {
+        // Position to the left
+        availableWidth = rect.left - (gapToEdge * 2);
+        debugLog('availableWidth', availableWidth);
+        dimensions.left = null;
+        dimensions.right = window.innerWidth - rect.left + gapToEdge;
+        debugLog('dimensions.left', dimensions.left);
+        debugLog('dimensions.right', dimensions.right);
+      } else {
+        // Position to the right
+        availableWidth = window.innerWidth - rect.right - (gapToEdge * 2);
+        dimensions.left = rect.right + gapToEdge;
+        dimensions.right = null;
+        debugLog('dimensions.left', dimensions.left);
+        debugLog('dimensions.right', dimensions.right);
+      }
+      dimensions.width = availableWidth > maxCardWidth ? maxCardWidth : availableWidth;
+      dimensions.height = availableHeight > maxCardHeight ? maxCardHeight : availableHeight;
+      debugLog('dimensions.width', dimensions.width);
+      debugLog('dimensions.height', dimensions.height);
+      dimensions.top = rect.top + dimensions.height < availableHeight ? rect.top : gapToEdge + bannerOffset + filtersOffset;
+      debugLog('availableHeight', availableHeight);
+      debugLog('dimensions.top', dimensions.top);
+    }
+
+    setAppointmentCardDimensions(dimensions);
+    setExpandedAppointment(expandedAppointment?.id === appointment.id ? null : appointment);
   };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (expandedAppointment) {
+        const target = event.target as HTMLElement;
+        const detailsCard = document.getElementById('appointment-details-card');
+        if (detailsCard && !detailsCard.contains(target) && !target.closest('.appointment-card-trigger')) {
+          setExpandedAppointment(null);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [expandedAppointment]);
 
   // Update appointment mutation
   const updateAppointmentMutation = useMutation({
@@ -122,7 +245,7 @@ const AdminAppointmentSchedule: React.FC = () => {
       return response;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['appointments', selectedDate] });
+      queryClient.invalidateQueries({ queryKey: ['appointments', datesToShow.join(',')] });
       enqueueSnackbar('Appointment marked as completed', { variant: 'success' });
       setCompletionDialogOpen(false);
       setSelectedAppointment(null);
@@ -161,12 +284,28 @@ const AdminAppointmentSchedule: React.FC = () => {
         secretariat_follow_up_actions: appointmentUpdateData?.secretariat_follow_up_actions || ''
       };
       
-      console.log('Navigating to edit with state:', navigationState);
-      
       navigate(`/admin/appointments/edit/${selectedAppointment.id}`, {
         state: navigationState
       });
       setCompletionDialogOpen(false);
+    }
+  };
+
+  // Navigation functions
+  const handlePrevDay = () => {
+    setStartDate(format(addDays(parseISO(startDate), -1), 'yyyy-MM-dd'));
+  };
+
+  const handleNextDay = () => {
+    setStartDate(format(addDays(parseISO(startDate), 1), 'yyyy-MM-dd'));
+  };
+
+  const handleDaySelectionChange = (
+    event: React.MouseEvent<HTMLElement>,
+    newDays: number | null,
+  ) => {
+    if (newDays !== null) {
+      setDaysToShow(newDays);
     }
   };
 
@@ -189,7 +328,10 @@ const AdminAppointmentSchedule: React.FC = () => {
       
       return (
         <Box sx={{ display: 'flex', flexDirection: 'column', mb: 1 }}>
-          <Typography variant="h6" gutterBottom>
+          <Typography variant="h6" gutterBottom sx={{ 
+            fontSize: isMobile ? '0.95rem' : '1.1rem',
+            mb: isMobile ? 0.5 : 1
+          }}>
             {formatHonorificTitle(primaryDignitary.honorific_title)} {primaryDignitary.first_name} {primaryDignitary.last_name}
             {dignitaryCount > 1 && (
               <Typography component="span" color="text.secondary" sx={{ ml: 1, fontSize: '0.8rem' }}>
@@ -197,7 +339,11 @@ const AdminAppointmentSchedule: React.FC = () => {
               </Typography>
             )}
           </Typography>
-          <Typography color="text.secondary" gutterBottom>
+          <Typography color="text.secondary" gutterBottom sx={{ 
+            fontSize: isMobile ? '0.8rem' : '0.875rem',
+            mb: isMobile ? 0.5 : 1,
+            display: daysToShow > 3 ? 'none' : 'block'
+          }}>
             Title: {primaryDignitary.title_in_organization}, Organization: {primaryDignitary.organization}
           </Typography>
         </Box>
@@ -206,11 +352,111 @@ const AdminAppointmentSchedule: React.FC = () => {
     // No dignitary information available
     else {
       return (
-        <Typography variant="body1" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+        <Typography variant="body1" color="text.secondary" sx={{ fontStyle: 'italic', fontSize: isMobile ? '0.85rem' : '0.875rem' }}>
           No dignitary information available
         </Typography>
       );
     }
+  };
+
+  // Render a single day column
+  const renderDayColumn = (date: string) => {
+    const appointments = appointmentsByDate[date] || [];
+    const isCurrentDate = isToday(parseISO(date));
+    
+    return (
+      <Box sx={{ 
+        width: '100%', 
+        height: '100%',
+        display: 'flex', 
+        flexDirection: 'column'
+      }}>
+        <Typography variant="h6" sx={{ 
+          textAlign: 'center', 
+          mb: 2,
+          fontWeight: isCurrentDate ? 'bold' : 'normal',
+          color: isCurrentDate ? 'primary.main' : 'text.primary',
+          fontSize: isMobile ? '1rem' : '1.25rem'
+        }}>
+          {format(parseISO(date), 'EEE, MMM d')}
+        </Typography>
+        
+        {appointments.length === 0 ? (
+          <Paper 
+            sx={{ 
+              p: 2, 
+              textAlign: 'center',
+              bgcolor: alpha(theme.palette.primary.main, 0.03),
+              borderRadius: 2,
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <Typography variant="body2" color="text.secondary">
+              No appointments
+            </Typography>
+          </Paper>
+        ) : (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, height: '100%', overflow: 'auto' }}>
+            {appointments.map((appointment: Appointment) => (
+              <Paper
+                key={appointment.id}
+                className="appointment-card-trigger"
+                elevation={1}
+                sx={{
+                  p: isMobile ? 1.5 : 2,
+                  borderRadius: 2,
+                  position: 'relative',
+                  cursor: 'pointer',
+                  '&:hover': {
+                    boxShadow: 3,
+                    transform: 'translateY(-2px)',
+                    transition: 'all 0.2s ease-in-out',
+                  },
+                }}
+                onClick={(e) => handleAppointmentClick(appointment, e)}
+              >
+                <Grid container spacing={1}>
+                  {/* Time and Status */}
+                  <Grid item xs={12}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <AppointmentTimeChip appointment={appointment} />
+                      {statusMap && appointment.status === statusMap['COMPLETED'] ? (
+                        <AppointmentStatusChip 
+                          size={daysToShow > 3 ? "extrasmall" : "small"}
+                          status={appointment.status} 
+                        />
+                      ) : statusMap && isAppointmentInPast(appointment) && appointment.status === statusMap['APPROVED'] && (
+                        <PrimaryButton 
+                          size={daysToShow > 3 ? "extrasmall" : "small"}
+                          sx={{ ml: 0.5 }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openCompletionDialog(appointment);
+                          }}
+                        >
+                          {daysToShow === 1 ? "Complete Appointment" : (daysToShow === 3 ? "Complete" : <CheckSquareCircleFilledIconV2 sx={{ fontSize: '1.3rem' }} />)}
+                        </PrimaryButton>
+                      )}
+                    </Box>
+                  </Grid>
+
+                  {/* Dignitary and Purpose */}
+                  <Grid item xs={12}>
+                    {renderDignitaryInfo(appointment)}
+                    <Typography variant="body2" noWrap sx={{ fontSize: isMobile ? '0.85rem' : '0.875rem' }}>
+                      <strong>Purpose:</strong> {appointment.purpose}
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </Paper>
+            ))}
+          </Box>
+        )}
+      </Box>
+    );
   };
 
   return (
@@ -221,118 +467,119 @@ const AdminAppointmentSchedule: React.FC = () => {
             display: 'flex', 
             justifyContent: 'space-between', 
             alignItems: 'center',
-            mb: 4
+            mb: 4,
+            flexWrap: 'wrap',
+            gap: 2
           }}>
-            <Typography variant="h4" component="h1">
-              {isToday(parseISO(selectedDate)) ? "Today's Schedule" : format(parseISO(selectedDate), 'MMMM d, yyyy')}
+            <Typography variant="h1" component="h1">
+              Appointment Schedule
             </Typography>
-            <TextField
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              inputProps={{
-                min: getLocalDateString(-7),
-                max: getLocalDateString(365),
-              }}
-              sx={{ width: 200 }}
-            />
+            
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <ToggleButtonGroup
+                value={daysToShow}
+                exclusive
+                onChange={handleDaySelectionChange}
+                aria-label="days to display"
+                size="small"
+              >
+                <ToggleButton value={1} aria-label="1 day">
+                  Day
+                </ToggleButton>
+                {!isMobile && (
+                  <ToggleButton value={3} aria-label="3 days">
+                    3 Days
+                  </ToggleButton>
+                )}
+                {!isMobile && (
+                  <ToggleButton value={7} aria-label="7 days">
+                    Week
+                  </ToggleButton>
+                )}
+              </ToggleButtonGroup>
+              
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <IconButton onClick={handlePrevDay}>
+                  <ArrowBackIosNewIcon fontSize="small" />
+                </IconButton>
+                <TextField
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  inputProps={{
+                    min: getLocalDateString(-30),
+                    max: getLocalDateString(365),
+                  }}
+                  sx={{ width: 150 }}
+                  size="small"
+                />
+                <IconButton onClick={handleNextDay}>
+                  <ArrowForwardIosIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            </Box>
           </Box>
 
           {isLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
               <CircularProgress />
             </Box>
-          ) : appointments.length === 0 ? (
-            <Paper 
-              sx={{ 
-                p: 4, 
-                textAlign: 'center',
-                bgcolor: alpha(theme.palette.primary.main, 0.03),
-                borderRadius: 2
-              }}
-            >
-              <Typography variant="h6" color="text.secondary">
-                No appointments scheduled for this date
-              </Typography>
-            </Paper>
           ) : (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              {appointments.map((appointment: Appointment) => (
-                <React.Fragment key={appointment.id}>
-                  <Paper
-                    elevation={1}
-                    sx={{
-                      p: 3,
-                      borderRadius: 2,
-                      position: 'relative',
-                      cursor: 'pointer',
-                      '&:hover': {
-                        boxShadow: 3,
-                        transform: 'translateY(-2px)',
-                        transition: 'all 0.2s ease-in-out',
-                      },
-                    }}
-                    onClick={() => handleAppointmentClick(appointment.id)}
-                  >
-                    <Grid container spacing={1.3}>
-                      {/* Time and Status */}
-                      <Grid item xs={5} sm={6} md={6}>
-                        <Chip
-                          label={formatTime(appointment.appointment_time)}
-                          sx={{ fontSize: '1.1rem', fontWeight: 'bold' }}
-                        />
-                      </Grid>
-                      <Grid item xs={7} sm={6} md={6} sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', p: 0 }}>
-                        {statusMap && appointment.status === statusMap['COMPLETED'] ? (
-                          <Chip
-                            label={appointment.status}
-                            sx={getStatusChipSx(appointment.status, theme)}
-                          />
-                        ) : statusMap && isAppointmentInPast(appointment) && appointment.status === statusMap['APPROVED'] && (
-                          <PrimaryButton 
-                            size="small"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openCompletionDialog(appointment);
-                            }}
-                          >
-                            Mark as Completed
-                          </PrimaryButton>
-                        )}
-                      </Grid>
-
-                      {/* Dignitary and Purpose */}
-                      <Grid item xs={12} sm={12}>
-                        {renderDignitaryInfo(appointment)}
-                        <Box sx={{ mt: 0 }}>
-                          <Typography variant="body1">
-                            <strong>Purpose:</strong> {appointment.purpose}
-                          </Typography>
-                          {appointment.location && (
-                            <Typography variant="body2" color="text.secondary">
-                              <strong>Location:</strong> {appointment.location.name} - {appointment.location.city}, {appointment.location.state}
-                            </Typography>
-                          )}
-                          {appointment.requester_notes_to_secretariat && (
-                            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                              <strong>Notes from Point of Contact:</strong> {appointment.requester_notes_to_secretariat}
-                            </Typography>
-                          )}
-                        </Box>
-                      </Grid>
-                    </Grid>
-                  </Paper>
-                  <Collapse in={expandedAppointmentId === appointment.id}>
-                    <Box sx={{ mt: -2, mb: 2 }}>
-                      <AppointmentCard appointment={appointment} theme={theme} />
-                    </Box>
-                  </Collapse>
-                </React.Fragment>
-              ))}
-            </Box>
+            <SwipeableViews
+              enableMouseEvents
+              onChangeIndex={(index) => {
+                if (index > 0) {
+                  handleNextDay();
+                } else {
+                  handlePrevDay();
+                }
+              }}
+              index={1}
+              resistance
+            >
+              <div>{/* Previous day placeholder for swipe */}</div>
+              
+              <Grid container spacing={2} sx={{ minHeight: isMobile ? '60vh' : '70vh' }}>
+                {datesToShow.map((date) => (
+                  <Grid item xs={12} md={daysToShow === 1 ? 12 : daysToShow === 3 ? 4 : 12/7} key={date}>
+                    {renderDayColumn(date)}
+                  </Grid>
+                ))}
+              </Grid>
+              
+              <div>{/* Next day placeholder for swipe */}</div>
+            </SwipeableViews>
           )}
         </Box>
       </Container>
+
+      {/* Floating Appointment Card */}
+      <Portal>
+        {expandedAppointment && appointmentCardDimensions && (
+          <Box
+            id="appointment-details-card"
+            sx={{
+              position: 'fixed',
+              left: appointmentCardDimensions.left,
+              right: appointmentCardDimensions.right,
+              top: appointmentCardDimensions.top,
+              bottom: appointmentCardDimensions.bottom,
+              width: appointmentCardDimensions.width,
+              height: appointmentCardDimensions.height,
+              maxHeight: appointmentCardDimensions.height,
+              overflow: 'none',
+              zIndex: theme.zIndex.drawer + 1,
+            }}
+          >
+            <AppointmentCard 
+              appointment={expandedAppointment} 
+              showCloseButton={true}
+              onClose={() => setExpandedAppointment(null)}
+              displayMode="calendar"
+            />
+          </Box>
+        )}
+      </Portal>
 
       {/* Mark As Completed Dialog */}
       <Dialog 

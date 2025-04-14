@@ -24,7 +24,7 @@ const Unauthorized: React.FC = () => {
             textAlign: 'center',
           }}
         >
-          <Typography variant="h4" color="error" gutterBottom>
+          <Typography variant="h1" color="error" gutterBottom>
             Access Denied
           </Typography>
           <Typography variant="body1" paragraph>

@@ -30,7 +30,7 @@ const Home: React.FC = () => {
           }}
         >
           <Paper sx={{ p: 4, mb: 4 }}>
-            <Typography variant="h4" gutterBottom>
+            <Typography variant="h1" gutterBottom>
               Welcome, {userInfo?.first_name}!
             </Typography>
             <Typography variant="body1" color="text.secondary" paragraph>

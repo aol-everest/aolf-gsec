@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, Typography } from '@mui/material';
+import { BadgeCount } from './BadgeCount';
 
 interface ButtonWithBadgeProps {
   label: string;
@@ -47,36 +48,7 @@ const ButtonWithBadge: React.FC<ButtonWithBadgeProps> = ({
       }}
     >
       {label} 
-      <Box sx={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: '24px',
-        height: '24px',
-        backgroundColor: 'white',
-        borderRadius: '50%',
-        border: '1px solid #E9E9E9',
-        marginLeft: '4px',
-        minWidth: '24px',
-        minHeight: '24px',
-      }}> 
-        <Typography sx={{ 
-          width: '15px',
-          height: '18px',
-          fontFamily: 'Work Sans',
-          fontStyle: 'normal',
-          fontWeight: '500',
-          fontSize: '12px',
-          lineHeight: '18px',
-          textAlign: 'center',
-          color: '#9598A6',
-          flex: 'none',
-          order: 0,
-          flexGrow: 0
-        }}>
-          {count}
-        </Typography>
-      </Box>
+        <BadgeCount count={count} />
     </Box>
   );
 };

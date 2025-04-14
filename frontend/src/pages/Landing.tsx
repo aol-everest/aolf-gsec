@@ -56,7 +56,7 @@ const Landing: React.FC = () => {
         />
         
         <Typography 
-          variant="h4" 
+          variant="h1" 
           component="h1"
           sx={{
             fontWeight: 500,

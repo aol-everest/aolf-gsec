@@ -691,7 +691,7 @@ const AdminAppointmentEdit: React.FC = () => {
     <Layout>
       <Container>
         <Box>
-          <Typography variant="h4" gutterBottom>
+          <Typography variant="h1" gutterBottom>
             Edit Appointment
           </Typography>
           <Paper sx={{ p: 4, borderRadius: 2 }}>

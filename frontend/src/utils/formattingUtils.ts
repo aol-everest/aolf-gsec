@@ -1,37 +1,32 @@
-import { alpha, Theme } from '@mui/material/styles';
+import { alpha, Theme, PaletteColor } from '@mui/material/styles';
 
 export const getStatusColor = (status: string, theme: Theme) => {
-    const statusColors: Record<string, string> = {
-      'Pending': theme.palette.warning.main,
+    return getStatusTheme(status, theme).main;
+};
 
-      'Approved': theme.palette.success.main,
-      'Appointment Scheduled': theme.palette.success.main,
-      'Scheduled': theme.palette.success.main,
 
-      'Rejected': theme.palette.error.main,
+export const getStatusTheme = (status: string, theme: Theme) => {
+    const statusThemes: Record<string, PaletteColor> = {
+        'Pending': theme.palette.warning,
 
-      'Follow Up': theme.palette.info.main,
-      'To Be Rescheduled': theme.palette.info.main,
-
-      'Completed': theme.palette.success.main,
-      'Appointment Completed': theme.palette.success.main,
-
-      'Cancelled': theme.palette.error.main,
-      'Appointment Cancelled': theme.palette.error.main,
-
-      'Need More Info': theme.palette.warning.main,
+        'Approved': theme.palette.success,
+        'Appointment Scheduled': theme.palette.success,
+        'Scheduled': theme.palette.success,
+  
+        'Rejected': theme.palette.error,
+  
+        'Follow Up': theme.palette.info,
+        'To Be Rescheduled': theme.palette.info,
+  
+        'Completed': theme.palette.success,
+        'Appointment Completed': theme.palette.success,
+  
+        'Cancelled': theme.palette.error,
+        'Appointment Cancelled': theme.palette.error,
+  
+        'Need More Info': theme.palette.warning,
     };
-    return statusColors[status] || theme.palette.grey[500];
-  };
-
-export const getStatusChipSx = (status: string, theme: Theme) => {
-    return {
-        bgcolor: alpha(getStatusColor(status, theme), 0.081),
-        color: getStatusColor(status, theme),
-        fontWeight: 500,
-        borderRadius: '10px',
-        fontSize: 'inherit',
-    };
+    return statusThemes[status];
 };
 
 export const getSubStatusChipSx = (subStatus: string, theme: Theme) => {

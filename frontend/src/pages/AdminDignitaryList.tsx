@@ -12,7 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import GenericDataGrid from '../components/GenericDataGrid';
 import { formatHonorificTitle } from '../utils/formattingUtils';
-import { PencilIconV2 } from '../components/icons';
+import { PencilIconV2 } from '../components/iconsv2';
 
 interface Dignitary {
   id: number;
@@ -133,7 +133,7 @@ const AdminDignitaryList: React.FC = () => {
     <Layout>
       <Container maxWidth="xl">
         <Box>
-          <Typography variant="h4" component="h1" gutterBottom>
+          <Typography variant="h1" component="h1" gutterBottom>
             All Dignitaries
           </Typography>
           <GenericDataGrid

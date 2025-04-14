@@ -54,7 +54,7 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
                     color: theme.palette.text.secondary
                   }}
                 >
-                  <Icon />
+                  <Icon width="24" height="24" />
                 </ListItemIcon>
                 <ListItemText 
                   sx={{
@@ -91,7 +91,7 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
                 color: location.pathname === path ? theme.palette.primary.main : theme.palette.text.secondary
               }}
             >
-              <Icon />
+              <Icon width="24" height="24" />
             </ListItemIcon>
             <ListItemText 
               primary={text}

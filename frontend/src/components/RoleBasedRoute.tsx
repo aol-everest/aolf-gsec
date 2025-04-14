@@ -30,7 +30,7 @@ export default function RoleBasedRoute({ children, allowedRoles }: RoleBasedRout
               textAlign: 'center',
             }}
           >
-            <Typography variant="h4" color="error" gutterBottom>
+            <Typography variant="h1" color="error" gutterBottom>
               Unauthorized
             </Typography>
             <Typography variant="body1">

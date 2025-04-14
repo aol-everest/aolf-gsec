@@ -8,7 +8,7 @@ const AdminAppointmentCreate: React.FC = () => {
     <Layout>
       <Container maxWidth="md">
         <Box sx={{ my: 4 }}>
-          <Typography variant="h4" component="h1" gutterBottom align="center">
+          <Typography variant="h1" component="h1" gutterBottom align="center">
             Create Appointment
           </Typography>
           <AdminAppointmentCreateForm />

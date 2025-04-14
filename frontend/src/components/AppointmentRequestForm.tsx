@@ -40,7 +40,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import LocationAutocomplete from './LocationAutocomplete';
 import { useNavigate } from 'react-router-dom';
-import { formatHonorificTitle, getStatusChipSx } from '../utils/formattingUtils';
+import { formatHonorificTitle } from '../utils/formattingUtils';
 import { useTheme } from '@mui/material/styles';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../hooks/useApi';
@@ -55,6 +55,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
 import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
+import { AppointmentStatusChip } from './AppointmentStatusChip';
 
 // Remove the hardcoded enum and add a state for time of day options
 // const AppointmentTimeOfDay = {
@@ -1965,11 +1966,7 @@ export const AppointmentRequestForm: React.FC = () => {
                     </Typography>
                   </Grid>
                   <Grid item xs={12} sm={4}>
-                    <Chip 
-                      label={appointment.status}
-                      size="small"
-                      sx={getStatusChipSx(appointment.status, theme)}
-                    />
+                    <AppointmentStatusChip status={appointment.status} size='small' />
                   </Grid>
                 </Grid>
               </Paper>

@@ -14,7 +14,7 @@ const AppointmentRequest: React.FC = () => {
             // py: 4,
           }}
         >
-          <Typography variant="h4" component="h1" gutterBottom>
+          <Typography variant="h1" component="h1" gutterBottom>
             Request an Appointment
           </Typography>
           

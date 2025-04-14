@@ -48,7 +48,7 @@ import { defaultTimeOptions } from '../utils/dateUtils';
 import { formatFileSize } from '../utils/fileUtils';
 import SecondaryButton from './SecondaryButton';
 import { PrimaryButton } from './PrimaryButton';
-import { DownloadIconV2, ImageIconV2, PDFIconV2, TextFileIconV2, TrashIconV2, GenericFileIconV2 } from './icons';
+import { DownloadIconV2, ImageIconV2, PDFIconV2, TextFileIconV2, TrashIconV2, GenericFileIconV2 } from './iconsv2';
 // import { statusSubStatusMapping } from '../constants/appointmentStatuses';
 import { AppointmentTimeSlotDetailsMap } from '../models/types';
 

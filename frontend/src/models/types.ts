@@ -72,14 +72,16 @@ interface Appointment {
   appointment_dignitaries?: AppointmentDignitary[];
   appointment_time: string;
   appointment_type: string;
-  approved_by: number;
-  approved_by_user: User;
-  approved_datetime: string;
+  approved_by?: number;
+  approved_by_user?: User;
+  approved_datetime?: string;
   attachments?: AppointmentAttachment[];
   created_at: string;
+  created_by?: number;
+  created_by_user?: User;
   dignitary: Dignitary; // MUST DEPRECATE
-  last_updated_by: number;
-  last_updated_by_user: User;
+  last_updated_by?: number;
+  last_updated_by_user?: User;
   location: Location;
   location_id: number;
   preferred_date?: string;
