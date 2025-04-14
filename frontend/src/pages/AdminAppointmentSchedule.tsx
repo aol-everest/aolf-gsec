@@ -556,28 +556,39 @@ const AdminAppointmentSchedule: React.FC = () => {
       {/* Floating Appointment Card */}
       <Portal>
         {expandedAppointment && appointmentCardDimensions && (
-          <Box
-            id="appointment-details-card"
-            sx={{
-              position: 'fixed',
-              left: appointmentCardDimensions.left,
-              right: appointmentCardDimensions.right,
-              top: appointmentCardDimensions.top,
-              bottom: appointmentCardDimensions.bottom,
-              width: appointmentCardDimensions.width,
-              height: appointmentCardDimensions.height,
-              maxHeight: appointmentCardDimensions.height,
-              overflow: 'none',
-              zIndex: theme.zIndex.drawer + 1,
-            }}
-          >
-            <AppointmentCard 
-              appointment={expandedAppointment} 
-              showCloseButton={true}
-              onClose={() => setExpandedAppointment(null)}
-              displayMode="calendar"
-            />
-          </Box>
+          <>
+            {isMobile && (
+              <Backdrop
+                open={true}
+                sx={{
+                  zIndex: theme.zIndex.drawer,
+                  backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                }}
+              />
+            )}
+            <Box
+              id="appointment-details-card"
+              sx={{
+                position: 'fixed',
+                left: appointmentCardDimensions.left,
+                right: appointmentCardDimensions.right,
+                top: appointmentCardDimensions.top,
+                bottom: appointmentCardDimensions.bottom,
+                width: appointmentCardDimensions.width,
+                height: appointmentCardDimensions.height,
+                maxHeight: appointmentCardDimensions.height,
+                overflow: 'none',
+                zIndex: theme.zIndex.drawer + 1,
+              }}
+            >
+              <AppointmentCard 
+                appointment={expandedAppointment} 
+                showCloseButton={true}
+                onClose={() => setExpandedAppointment(null)}
+                displayMode="calendar"
+              />
+            </Box>
+          </>
         )}
       </Portal>
 
