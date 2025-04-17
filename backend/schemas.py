@@ -376,6 +376,7 @@ class AdminAppointmentCreate(AppointmentBase):
     purpose: str
     appointment_date: date
     appointment_time: Optional[str] = None
+    duration: Optional[int] = 15  # Duration in minutes
     status: AppointmentStatus
     sub_status: AppointmentSubStatus
     appointment_type: Optional[AppointmentType] = None
@@ -388,6 +389,7 @@ class AdminAppointmentUpdate(AppointmentBase):
     dignitary_ids: Optional[List[int]] = None
     appointment_date: Optional[date] = None
     appointment_time: Optional[str] = None
+    duration: Optional[int] = None  # Duration in minutes
     location: Optional[Location] = None
     status: Optional[AppointmentStatus] = None
     sub_status: Optional[AppointmentSubStatus] = None
@@ -419,6 +421,7 @@ class AdminAppointment(AppointmentBase):
     appointment_type: Optional[AppointmentType] = None
     appointment_date: Optional[date] = None
     appointment_time: Optional[str] = None
+    duration: Optional[int] = 15  # Duration in minutes
     created_at: datetime
     created_by: Optional[int] = None
     created_by_user: Optional[User] = None

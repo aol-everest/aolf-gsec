@@ -356,6 +356,19 @@ export const FileEditIconV2: React.FC<IconProps> = React.memo(({ width = "20", h
 
 export const PlainDocumentIconV2: React.FC<IconProps> = React.memo(({ width = "20", height = "20", ...props }) => (
     <SvgIcon width={width} height={height} xmlns="http://www.w3.org/2000/svg" viewBox={`0 0 ${width} ${height}`} {...props}>
-        <path d="M19,0H5C2.24,0,0,2.24,0,5v14c0,2.76,2.24,5,5,5h14c2.76,0,5-2.24,5-5V5c0-2.76-2.24-5-5-5Zm3,19c0,1.65-1.35,3-3,3H5c-1.65,0-3-1.35-3-3V5c0-1.65,1.35-3,3-3h14c1.65,0,3,1.35,3,3v14ZM5,10c0-.55,.45-1,1-1H15c.55,0,1,.45,1,1s-.45,1-1,1H6c-.55,0-1-.45-1-1Zm0-4c0-.55,.45-1,1-1h6c.55,0,1,.45,1,1s-.45,1-1,1H6c-.55,0-1-.45-1-1Zm14,8c0,.55-.45,1-1,1H6c-.55,0-1-.45-1-1s.45-1,1-1h12c.55,0,1,.45,1,1Zm-9,4c0,.55-.45,1-1,1h-3c-.55,0-1-.45-1-1s.45-1,1-1h3c.55,0,1,.45,1,1Z"/>
+        <path fill="currentColor" d="M19,0H5C2.24,0,0,2.24,0,5v14c0,2.76,2.24,5,5,5h14c2.76,0,5-2.24,5-5V5c0-2.76-2.24-5-5-5Zm3,19c0,1.65-1.35,3-3,3H5c-1.65,0-3-1.35-3-3V5c0-1.65,1.35-3,3-3h14c1.65,0,3,1.35,3,3v14ZM5,10c0-.55,.45-1,1-1H15c.55,0,1,.45,1,1s-.45,1-1,1H6c-.55,0-1-.45-1-1Zm0-4c0-.55,.45-1,1-1h6c.55,0,1,.45,1,1s-.45,1-1,1H6c-.55,0-1-.45-1-1Zm14,8c0,.55-.45,1-1,1H6c-.55,0-1-.45-1-1s.45-1,1-1h12c.55,0,1,.45,1,1Zm-9,4c0,.55-.45,1-1,1h-3c-.55,0-1-.45-1-1s.45-1,1-1h3c.55,0,1,.45,1,1Z"/>
+    </SvgIcon>
+));
+
+export const ClockCircleIconV2: React.FC<IconProps> = React.memo(({ width = "20", height = "20", ...props }) => (
+    <SvgIcon width={width} height={height} xmlns="http://www.w3.org/2000/svg" viewBox={`0 0 ${width} ${height}`} {...props}>
+        <path fill="currentColor" d="M12,24C5.383,24,0,18.617,0,12S5.383,0,12,0s12,5.383,12,12-5.383,12-12,12Zm0-22C6.486,2,2,6.486,2,12s4.486,10,10,10,10-4.486,10-10S17.514,2,12,2Zm5,10c0-.553-.447-1-1-1h-3V6c0-.553-.448-1-1-1s-1,.447-1,1v6c0,.553,.448,1,1,1h4c.553,0,1-.447,1-1Z"/>
+    </SvgIcon>
+));
+
+export const ClockSquareCircleIconV2: React.FC<IconProps> = React.memo(({ width = "20", height = "20", ...props }) => (
+    <SvgIcon width={width} height={height} xmlns="http://www.w3.org/2000/svg" viewBox={`0 0 ${width} ${height}`} {...props}>
+        <path fill="currentColor" d="M16,11h-3V6c0-.552-.448-1-1-1s-1,.448-1,1v6c0,.552,.448,1,1,1h4c.553,0,1-.448,1-1s-.447-1-1-1Z"/>
+        <path fill="currentColor" d="M11.994,1C4.929,1.044,1,5.016,1,11.982s3.932,11.018,11.006,11.018c7.162,0,10.861-3.737,10.994-11.017-.122-7.037-4.026-10.938-11.006-10.983Zm.012,20c-6.026-.035-8.888-2.895-9.006-9,.113-6.019,3.059-8.963,8.994-9,5.873,.038,8.903,3.072,9.006,8.981-.112,6.117-2.974,8.983-8.994,9.019Z"/>
     </SvgIcon>
 ));

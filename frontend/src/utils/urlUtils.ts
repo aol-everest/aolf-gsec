@@ -11,7 +11,7 @@
  */
 export const validateUrl = (url: string | undefined, addHttpIfMissing: boolean = true): { isValid: boolean, url: string } => {
   // Return invalid if URL is undefined, null or empty
-  if (!url) {
+  if (!url || url.trim() === '') {
     return { isValid: false, url: '' };
   }
 

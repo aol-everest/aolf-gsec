@@ -30,6 +30,11 @@ export const getTimeOptions = (interval = 15): { value: string; label: string }[
 
 export const defaultTimeOptions = getTimeOptions();
 
+export const getDurationOptions = () => [15, 30, 45, 60, 90, 120].map(minutes => ({
+  value: minutes,
+  label: `${minutes} minutes`
+}));
+
 // Check if the time is outside normal hours (before 8am or after 10pm)
 export const isTimeOffHours = (timeValue: string): boolean => {
   const hour = parseInt(timeValue.split(':')[0], 10);

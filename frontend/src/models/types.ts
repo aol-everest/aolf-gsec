@@ -71,6 +71,7 @@ interface Appointment {
   appointment_date: string;
   appointment_dignitaries?: AppointmentDignitary[];
   appointment_time: string;
+  duration: number;
   appointment_type: string;
   approved_by?: number;
   approved_by_user?: User;

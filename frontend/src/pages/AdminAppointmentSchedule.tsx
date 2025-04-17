@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Container,
   Typography,
@@ -49,10 +49,11 @@ import { useNavigate } from 'react-router-dom';
 import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
 import { AdminAppointmentUpdate } from '../models/types';
-import { CheckSquareCircleFilledIconV2, CloseIconFilledCircleV2 } from '../components/iconsv2';
+import { CheckSquareCircleFilledIconV2, ClockSquareCircleIconV2, CloseIconFilledCircleV2, ContactCardIconV2, ListIconV2, PeopleMenuIconV2 } from '../components/iconsv2';
 import { debugLog } from '../utils/debugUtils';
 import { AppointmentStatusChip } from '../components/AppointmentStatusChip';
 import { AppointmentTimeChip } from '../components/AppointmentTimeChip';
+import GridItemIconText from '../components/GridItemIconText';
 
 type AppointmentCardDimensions = {
   left: number | null;
@@ -71,6 +72,7 @@ const AdminAppointmentSchedule: React.FC = () => {
   const [daysToShow, setDaysToShow] = useState<number>(isMobile ? 1 : 3);
   const [startDate, setStartDate] = useState(getLocalDateString(0));
   const [datesToShow, setDatesToShow] = useState<string[]>([startDate]);
+  const cardContainerRef = useRef<HTMLDivElement>(null);
   
   const { data: statusMap } = useQuery<StatusMap>({
     queryKey: ['status-map'],
@@ -325,37 +327,33 @@ const AdminAppointmentSchedule: React.FC = () => {
     if (appointment.appointment_dignitaries && appointment.appointment_dignitaries.length > 0) {
       const primaryDignitary = appointment.appointment_dignitaries[0].dignitary;
       const dignitaryCount = appointment.appointment_dignitaries.length;
+      const dignitariesText = formatHonorificTitle(primaryDignitary.honorific_title) + ' ' + primaryDignitary.first_name + ' ' + primaryDignitary.last_name;
+      const titleOrganizationText = [primaryDignitary.title_in_organization, primaryDignitary.organization].filter(Boolean).join(', ');
       
       return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', mb: 1 }}>
-          <Typography variant="h6" gutterBottom sx={{ 
-            fontSize: isMobile ? '0.95rem' : '1.1rem',
-            mb: isMobile ? 0.5 : 1
-          }}>
-            {formatHonorificTitle(primaryDignitary.honorific_title)} {primaryDignitary.first_name} {primaryDignitary.last_name}
-            {dignitaryCount > 1 && (
-              <Typography component="span" color="text.secondary" sx={{ ml: 1, fontSize: '0.8rem' }}>
-                (+{dignitaryCount - 1} more)
-              </Typography>
-            )}
-          </Typography>
-          <Typography color="text.secondary" gutterBottom sx={{ 
-            fontSize: isMobile ? '0.8rem' : '0.875rem',
-            mb: isMobile ? 0.5 : 1,
-            display: daysToShow > 3 ? 'none' : 'block'
-          }}>
-            Title: {primaryDignitary.title_in_organization}, Organization: {primaryDignitary.organization}
-          </Typography>
-        </Box>
+        <>
+          {dignitariesText && (
+            <GridItemIconText 
+              containerRef={cardContainerRef} 
+              icon={<PeopleMenuIconV2 width="20px" height="20px" />} 
+              text={dignitariesText} 
+              theme={theme} 
+            />
+          )}
+          {titleOrganizationText && (
+            <GridItemIconText 
+              containerRef={cardContainerRef} 
+              icon={<ContactCardIconV2 width="20px" height="20px" />} 
+              text={titleOrganizationText} 
+              theme={theme} 
+            />
+          )}
+        </>
       );
     }
     // No dignitary information available
     else {
-      return (
-        <Typography variant="body1" color="text.secondary" sx={{ fontStyle: 'italic', fontSize: isMobile ? '0.85rem' : '0.875rem' }}>
-          No dignitary information available
-        </Typography>
-      );
+      return '';
     }
   };
 
@@ -412,13 +410,18 @@ const AdminAppointmentSchedule: React.FC = () => {
                   cursor: 'pointer',
                   '&:hover': {
                     boxShadow: 3,
-                    transform: 'translateY(-2px)',
+                    transform: 'translateY(-1px)',
                     transition: 'all 0.2s ease-in-out',
                   },
+                  ml: 1,
+                  mr: 1
                 }}
                 onClick={(e) => handleAppointmentClick(appointment, e)}
               >
-                <Grid container spacing={1}>
+                <Grid container 
+                  spacing={1}
+                  ref={cardContainerRef}
+                >
                   {/* Time and Status */}
                   <Grid item xs={12}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -443,13 +446,24 @@ const AdminAppointmentSchedule: React.FC = () => {
                     </Box>
                   </Grid>
 
+                  {appointment.duration && appointment.duration > 15 && (
+                    <GridItemIconText 
+                      containerRef={cardContainerRef} 
+                      icon={<ClockSquareCircleIconV2 width="20px" height="20px" />} 
+                      text={appointment.duration ? appointment.duration.toString() + ' mins' : ''} 
+                      theme={theme} 
+                    />
+                  )}
+
                   {/* Dignitary and Purpose */}
-                  <Grid item xs={12}>
-                    {renderDignitaryInfo(appointment)}
-                    <Typography variant="body2" noWrap sx={{ fontSize: isMobile ? '0.85rem' : '0.875rem' }}>
-                      <strong>Purpose:</strong> {appointment.purpose}
-                    </Typography>
-                  </Grid>
+                  {renderDignitaryInfo(appointment)}
+                  <GridItemIconText 
+                      containerRef={cardContainerRef} 
+                      icon={<ListIconV2 width="20px" height="20px" />} 
+                      text={appointment.purpose || ''} 
+                      theme={theme} 
+                  />
+
                 </Grid>
               </Paper>
             ))}

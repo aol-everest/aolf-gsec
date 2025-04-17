@@ -71,6 +71,7 @@ import { addMonths, addDays, subDays, format } from 'date-fns';
 interface AppointmentFormData {
   appointment_date: string;
   appointment_time: string;
+  duration: number;
   location_id: number | null;
   status: string;
   sub_status: string;
@@ -280,6 +281,7 @@ const AdminAppointmentEdit: React.FC = () => {
       reset({
         appointment_date: appointment.appointment_date || appointment.preferred_date,
         appointment_time: appointment.appointment_time,
+        duration: appointment.duration || 15,
         location_id: appointment.location_id || null,
         status: locationState?.status || appointment.status || '',
         sub_status: locationState?.sub_status || appointment.sub_status || '',
@@ -766,6 +768,7 @@ const AdminAppointmentEdit: React.FC = () => {
                     initialFormValues={appointment ? {
                       appointment_date: appointment.appointment_date || appointment.preferred_date,
                       appointment_time: appointment.appointment_time,
+                      duration: appointment.duration || 15,
                       location_id: appointment.location_id || null,
                       status: locationState?.status || appointment.status || '',
                       sub_status: locationState?.sub_status || appointment.sub_status || '',

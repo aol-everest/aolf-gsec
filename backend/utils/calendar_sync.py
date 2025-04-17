@@ -145,13 +145,13 @@ def _get_calendar_event_id(appointment_id):
     raw = f"appointment-{appointment_id}"
     return hashlib.sha1(raw.encode('utf-8')).hexdigest()
 
-def _get_event_dignitaries_text(appointment_data):
+def _get_event_dignitaries_description(appointment_data):
     """Get formatted text of dignitaries for calendar event."""
     dignitaries_text = ""
+    dignitaries = []
     
     # Check for appointment_dignitaries relationship
     if appointment_data.get('appointment_dignitaries'):
-        dignitaries = []
         for app_dignitary in appointment_data['appointment_dignitaries']:
             dignitary = app_dignitary.get('dignitary', {})
             if dignitary:
@@ -165,7 +165,7 @@ def _get_event_dignitaries_text(appointment_data):
         if dignitaries:
             dignitaries_text = ", ".join(dignitaries)
         
-    return dignitaries_text
+    return dignitaries_text, dignitaries
 
 @lru_cache(maxsize=256)
 def get_country_timezone(db: Session, country_code: str) -> Optional[str]:
@@ -214,6 +214,7 @@ def _format_appointment_for_calendar(appointment_id, appointment_data, db: Sessi
     if not start_time:
         # Default to noon if no specific time
         start_time = "12:00:00"
+    duration = appointment_data.get('duration', DEFAULT_APPOINTMENT_DURATION)
     
     # Get location for timezone information
     location = appointment_data.get('location')
@@ -241,28 +242,48 @@ def _format_appointment_for_calendar(appointment_id, appointment_data, db: Sessi
         location_timezone = start_dt.tzinfo
         timezone_id = str(location_timezone)
         
-        end_dt = start_dt + timedelta(minutes=DEFAULT_APPOINTMENT_DURATION)
+        end_dt = start_dt + timedelta(minutes=duration)
     except ValueError as e:
         logger.error(f"Error parsing appointment date/time for ID {appointment_id}: {str(e)}")
         return None
     
+    # Meeting details
+    description = ""
+    meeting_purpose = appointment_data.get('purpose', 'N/A').strip()
+
     # Get dignitaries text
-    dignitaries_text = _get_event_dignitaries_text(appointment_data)
-    if not dignitaries_text:
-        dignitaries_text = "No dignitary specified"
+    dignitary_short_description, dignitary_list = _get_event_dignitaries_description(appointment_data)
+    if dignitary_short_description:
+        meeting_title = f"Meeting with {dignitary_short_description}"
+        if dignitary_list:
+            dignitaries_description = "\n".join([f"- {d}" for d in dignitary_list])
+            description += f"Dignitaries: \n{dignitaries_description}\n\n"
+    else:
+        title_suffix = ""
+        if meeting_purpose:
+            if len(meeting_purpose) > 50:
+                title_suffix = f": {meeting_purpose[:50]}..."
+            else:
+                title_suffix = f": {meeting_purpose}"
+        meeting_title = f"Meeting block{title_suffix}"
     
     # Get location information
     location_text = ""
     if location:
         location_text = f"{location.get('name', '')}"
+        if location.get('street_address'):
+            location_text += f"\n{location.get('street_address')}"
         if location.get('city'):
             location_text += f", {location.get('city')}"
         if location.get('state'):
             location_text += f", {location.get('state')}"
+        if location.get('zip_code'):
+            location_text += f" {location.get('zip_code')}"
+        if location.get('country'):
+            location_text += f", {location.get('country')}"
     
     # Prepare event description
-    description = f"Meeting with {dignitaries_text}\n\n"
-    description += f"Purpose: {appointment_data.get('purpose', 'N/A')}\n"
+    description += f"Purpose: {meeting_purpose}\n"
     if appointment_data.get('requester_notes_to_secretariat'):
         description += f"Requester Notes: {appointment_data.get('requester_notes_to_secretariat')}\n"
     if appointment_data.get('secretariat_meeting_notes'):
@@ -274,7 +295,7 @@ def _format_appointment_for_calendar(appointment_id, appointment_data, db: Sessi
     # Create the event data
     event = {
         'id': _get_calendar_event_id(appointment_id),
-        'summary': f"Meeting with {dignitaries_text}",
+        'summary': meeting_title,
         'location': location_text,
         'description': description,
         'start': {

@@ -115,6 +115,7 @@ class Appointment(Base):
     preferred_time_of_day = Column(Enum(AppointmentTimeOfDay), nullable=True)
     appointment_date = Column(Date)
     appointment_time = Column(String)
+    duration = Column(Integer, nullable=False, default=15)  # Duration in minutes
     location_id = Column(Integer, ForeignKey(f"{schema_prefix}locations.id"))
     requester_notes_to_secretariat = Column(Text)
     status = Column(Enum(AppointmentStatus), nullable=False, default=AppointmentStatus.PENDING)

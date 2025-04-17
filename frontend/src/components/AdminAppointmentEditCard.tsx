@@ -33,7 +33,7 @@ import {
 import { Controller, Control, UseFormGetValues, UseFormSetValue, UseFormWatch, useWatch } from 'react-hook-form';
 import { Location } from '../models/types';
 import { EnumSelect } from './EnumSelect';
-import { getLocalDateString, getLocalTimeString, findTimeOption, parseUTCDate, isTimeOffHours } from '../utils/dateUtils';
+import { getLocalDateString, getLocalTimeString, findTimeOption, parseUTCDate, isTimeOffHours, getDurationOptions } from '../utils/dateUtils';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
@@ -51,6 +51,7 @@ import { PrimaryButton } from './PrimaryButton';
 import { DownloadIconV2, ImageIconV2, PDFIconV2, TextFileIconV2, TrashIconV2, GenericFileIconV2 } from './iconsv2';
 // import { statusSubStatusMapping } from '../constants/appointmentStatuses';
 import { AppointmentTimeSlotDetailsMap } from '../models/types';
+import { debugLog } from '../utils/debugUtils';
 
 interface ValidationErrors {
   appointment_date?: string;
@@ -349,6 +350,7 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
   const watchSubStatus = useWatch({ control, name: 'sub_status' });
   const watchAppointmentDate = useWatch({ control, name: 'appointment_date' });
   const watchAppointmentTime = useWatch({ control, name: 'appointment_time' });
+  const watchDuration = useWatch({ control, name: 'duration' });
 
   const today = getLocalDateString();
   const now = getLocalTimeString();
@@ -728,6 +730,67 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
     return { isAvailable: filteredAppointments.length === 0, appointments: filteredAppointments.length };
   };
 
+  // Duration options
+  const durationOptions = getDurationOptions();
+
+  // Function to get time slot occupancy data
+  const getTimeSlotOccupancy = (timeSlot: string, duration?: number): { appointment_count: number; people_count: number } => {
+    // Default empty data
+    const defaultData = { appointment_count: 0, people_count: 0 };
+    
+    const selectedDate = getValues('appointment_date');
+    
+    // If we don't have a date or time slot details, return default data
+    if (!selectedDate || !timeSlotDetailsMap || !timeSlotDetailsMap.dates[selectedDate]) {
+      return defaultData;
+    }
+    
+    const dateData = timeSlotDetailsMap.dates[selectedDate];
+    
+    // Calculate overlapping time slots
+    const overlappingSlots = new Set<string>();
+    const [startHour, startMinute] = timeSlot.split(':').map(Number);
+    const startMinutes = startHour * 60 + startMinute;
+    const endMinutes = startMinutes + (duration || getValues('duration') || 15);
+    
+    // Check all 15-minute slots that fall within our duration
+    for (let minute = startMinutes; minute < endMinutes; minute += 15) {
+      const slotHour = Math.floor(minute / 60);
+      const slotMinute = minute % 60;
+      const slot = `${slotHour.toString().padStart(2, '0')}:${slotMinute.toString().padStart(2, '0')}`;
+      if (dateData.time_slots[slot]) {
+        overlappingSlots.add(slot);
+      }
+    }
+    
+    // Count unique appointments and people across all overlapping slots
+    const appointmentIds = new Set<number>();
+    let totalPeopleCount = 0;
+    const seenAppointments = new Set<number>();
+
+    overlappingSlots.forEach(slot => {
+      const timeSlotData = dateData.time_slots[slot];
+      Object.entries(timeSlotData).forEach(([appointmentId, count]) => {
+        const id = parseInt(appointmentId, 10);
+        // Skip current appointment
+        if (currentAppointmentId && id === currentAppointmentId) {
+          return;
+        }
+        appointmentIds.add(id);
+        // Only count people once per appointment
+        if (!seenAppointments.has(id)) {
+          totalPeopleCount += count;
+          seenAppointments.add(id);
+        }
+      });
+    });
+    
+    return {
+      appointment_count: appointmentIds.size,
+      people_count: totalPeopleCount
+    };
+  };
+
   return (
     <Grid container spacing={3}>
       {/* Appointment Date and Time */}
@@ -783,7 +846,7 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
                         color: 'primary.main',
                         fontWeight: 'bold'
                       }}>
-                        <Alert severity="info" sx={{ mt: 0.5, pl: 1.3, pr: 1.3, pb: 0.5, pt: 0.5 }}>
+                        <Alert severity="info" sx={{ mt: 0.5, pl: 1.3, pr: 1.3, pb: 0.5, pt: 0.5, color: 'text.primary', fontWeight: '500', backgroundColor: 'info.light' }}>
                             {appointmentCount} other {appointmentCount === 1 ? 'appointment' : 'appointments'} currently scheduled for this date.
                         </Alert>
                       </Box>
@@ -809,47 +872,6 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
           control={control}
           render={({ field }) => {
             const timeOption = findTimeOption(field.value, defaultTimeOptions);
-            const selectedDate = getValues('appointment_date');
-            
-            // Function to get time slot occupancy data
-            const getTimeSlotOccupancy = (timeSlot: string): { appointment_count: number; people_count: number } => {
-              // Default empty data
-              const defaultData = { appointment_count: 0, people_count: 0 };
-              
-              // If we don't have a date or time slot details, return default data
-              if (!selectedDate || !timeSlotDetailsMap || !timeSlotDetailsMap.dates[selectedDate]) {
-                return defaultData;
-              }
-              
-              const dateData = timeSlotDetailsMap.dates[selectedDate];
-              if (!dateData.time_slots[timeSlot]) {
-                return defaultData;
-              }
-              
-              // Get all appointment IDs for this time slot
-              const timeSlotData = dateData.time_slots[timeSlot];
-              const appointmentIds = Object.keys(timeSlotData).map(id => parseInt(id, 10));
-              
-              // Filter out the current appointment ID
-              const otherAppointmentIds = currentAppointmentId 
-                ? appointmentIds.filter(id => id !== currentAppointmentId)
-                : appointmentIds;
-              
-              // Calculate total people count
-              let peopleCount = 0;
-              Object.entries(timeSlotData).forEach(([appointmentId, count]) => {
-                // Only count people for appointments that aren't the current one
-                if (currentAppointmentId && parseInt(appointmentId, 10) === currentAppointmentId) {
-                  return;
-                }
-                peopleCount += count;
-              });
-              
-              return {
-                appointment_count: otherAppointmentIds.length,
-                people_count: peopleCount
-              };
-            };
             
             return (
               <>
@@ -885,9 +907,10 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
                         <>
                           {validationErrors.appointment_time || ''}
                           {field.value && (() => {
+                            // debugLog('field.value', field.value);
                             const occupancyData = getTimeSlotOccupancy(field.value);
                             return occupancyData.appointment_count > 0 ? (
-                              <Alert severity="warning" sx={{ mt: 0.5, pl: 1.3, pr: 1.3, pb: 0.5, pt: 0.5 }}>
+                              <Alert severity="warning" sx={{ mt: 0.5, pl: 1.3, pr: 1.3, pb: 0.5, pt: 0.5, color: 'text.primary', fontWeight: '500', backgroundColor: 'warning.light' }}>
                                 This time slot already has {occupancyData.appointment_count} other {occupancyData.people_count === 0 && 'placeholder'} {occupancyData.appointment_count === 1 ? 'appointment' : 'appointments'}
                                 {occupancyData.people_count > 0 ? (' with ' + occupancyData.people_count.toString() + (occupancyData.people_count === 1 ? ' dignitary' : ' dignitaries')) : ''} scheduled.
                               </Alert>
@@ -899,7 +922,7 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
                   )}
                   renderOption={(props, option) => {
                     // Check if this time slot has appointments (excluding current appointment)
-                    const occupancyData = getTimeSlotOccupancy(option.value);
+                    const occupancyData = getTimeSlotOccupancy(option.value, 15);
                     const hasAppointments = occupancyData.appointment_count > 0;
                     const appointmentCount = occupancyData.appointment_count;
                     const peopleCount = occupancyData.people_count;
@@ -966,6 +989,32 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
               </>
             );
           }}
+        />
+      </Grid>
+
+
+      <Grid item xs={12} md={6} lg={4}>
+        <Controller
+            name="duration"
+            control={control}
+            defaultValue={15}
+            render={({ field }) => (
+              <FormControl sx={{ minWidth: 120 }}>
+                <InputLabel id="duration-select-label">Duration</InputLabel>
+                <Select
+                  {...field}
+                  labelId="duration-select-label"
+                  label="Duration"
+                  value={field.value || 15}
+                >
+                  {durationOptions.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
         />
       </Grid>
 

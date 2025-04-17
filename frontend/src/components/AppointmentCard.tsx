@@ -292,16 +292,43 @@ export const AppointmentCard: React.FC<{
             <AppointmentCardSection isMobile={isMobile} theme={theme} header={displayMode === 'calendar' ? '' : (['approved', 'completed'].includes(appointment.status.toLowerCase()) ? 'Approved ' : 'Requested ') + 'Appointment Details'}>
                 <Grid container spacing={1}>
 
-                    <GridItemIconText containerRef={cardContainerRef} icon={<CalendarIconV2 />} text={['approved', 'completed'].includes(appointment.status.toLowerCase()) && appointment.appointment_date ? formatDateWithTimezone(appointment.appointment_date, 'UTC', false) + ' ' + (appointment.appointment_time || '') : formatDateWithTimezone(appointment.preferred_date, 'UTC', false) + ' ' + (appointment.preferred_time_of_day || '')} theme={theme} />
+                    <GridItemIconText 
+                        containerRef={cardContainerRef} 
+                        icon={<CalendarIconV2 />} 
+                        text={['approved', 'completed'].includes(appointment.status.toLowerCase()) && appointment.appointment_date ? formatDateWithTimezone(appointment.appointment_date, 'UTC', false) + ' ' + (appointment.appointment_time || '') + ' ' + (appointment.duration ? '(' + appointment.duration + ' mins)' : '') : formatDateWithTimezone(appointment.preferred_date, 'UTC', false) + ' ' + (appointment.preferred_time_of_day || '')} 
+                        theme={theme} 
+                    />
 
-                    <GridItemIconText containerRef={cardContainerRef} icon={<LocationThinIconV2 width="20px" height="20px" />} text={appointment.location ? (appointment.location.name + ' - ' + appointment.location.city + ', ' + appointment.location.state) : 'N/A'} theme={theme} />
+                    <GridItemIconText 
+                        containerRef={cardContainerRef} 
+                        icon={<LocationThinIconV2 width="20px" height="20px" />} 
+                        text={appointment.location ? (appointment.location.name + ' - ' + appointment.location.city + ', ' + appointment.location.state) : 'N/A'} 
+                        theme={theme} 
+                    />
 
-                    <GridItemIconText containerRef={cardContainerRef} icon={<TagsIconV2 width="20px" height="20px" />} text={appointment.appointment_type || 'Not Specified'} theme={theme} />
+                    <GridItemIconText 
+                        containerRef={cardContainerRef} 
+                        icon={<TagsIconV2 width="20px" height="20px" />} 
+                        text={appointment.appointment_type || 'Not Specified'} 
+                        theme={theme} 
+                    />
 
                     {displayMode === 'calendar' && (
                         <>
-                            <GridItemIconText containerRef={cardContainerRef} icon={<PeopleMenuIconV2 width="20px" height="20px" />} text={dignitariesNamesString} theme={theme} />
-                            <GridItemIconText containerRef={cardContainerRef} icon={<ListIconV2 width="20px" height="20px" />} text={appointment.purpose || ''} theme={theme} />
+                            {dignitariesNamesString && (
+                                <GridItemIconText 
+                                    containerRef={cardContainerRef} 
+                                    icon={<PeopleMenuIconV2 width="20px" height="20px" />} 
+                                    text={dignitariesNamesString} 
+                                    theme={theme} 
+                                />
+                            )}
+                            <GridItemIconText 
+                                containerRef={cardContainerRef} 
+                                icon={<ListIconV2 width="20px" height="20px" />} 
+                                text={appointment.purpose || ''} 
+                                theme={theme} 
+                            />
                         </>
                     )}
                 </Grid>
