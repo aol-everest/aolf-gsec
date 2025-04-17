@@ -25,6 +25,47 @@ interface User {
   role: string;
 }
 
+interface BusinessCardExtraction {
+  honorific_title?: string;
+  first_name?: string;
+  last_name?: string;
+  title?: string;
+  company?: string;
+  title_in_organization?: string;
+  organization?: string;
+  primary_domain?: string;
+  primary_domain_other?: string;
+  phone?: string;
+  other_phone?: string;
+  fax?: string;
+  email?: string;
+  website?: string;
+  linked_in_or_website?: string;
+  street_address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  country_code?: string;
+  social_media?: Record<string, string> | Array<string>;
+  bio?: string;
+  bio_summary?: string;
+  additional_info?: Record<string, string>;
+  extra_fields?: Array<{key: string, value: string}>;
+  address?: string;
+  attachment_id?: number;
+  attachment_uuid?: string;
+  file_name?: string;
+  file_path?: string;
+  file_type?: string;
+  is_image?: boolean;
+  thumbnail_path?: string;
+  has_dignitary_met_gurudev?: boolean;
+  gurudev_meeting_date?: string;
+  gurudev_meeting_location?: string;
+  gurudev_meeting_notes?: string;
+  secretariat_notes?: string;
+}
+
 interface Dignitary {
   id: number;
   honorific_title: string;
@@ -174,6 +215,7 @@ export type {
   Location, 
   User, 
   Dignitary, 
+  BusinessCardExtraction,
   Appointment, 
   AppointmentAttachment, 
   AppointmentDignitary, 

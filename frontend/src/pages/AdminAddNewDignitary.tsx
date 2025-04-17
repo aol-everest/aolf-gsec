@@ -56,46 +56,12 @@ import LocationAutocomplete from '../components/LocationAutocomplete';
 import { getLocalDateString } from '../utils/dateUtils';
 import { useQuery } from '@tanstack/react-query';
 import { createDebugLogger } from '../utils/debugUtils';
-import { HonorificTitleMap } from '../models/types';
+import { BusinessCardExtraction, HonorificTitleMap } from '../models/types';
 import { useEnums, useEnumsMap } from '../hooks/useEnums';
 import { AddPersonIconV2, DoneIconV2 } from '../components/iconsv2';
 import { WarningButton } from '../components/WarningButton';
 import { SecondaryButton } from '../components/SecondaryButton';
 import { PrimaryButton } from '../components/PrimaryButton';
-
-interface BusinessCardExtraction {
-  honorific_title?: string;
-  first_name: string;
-  last_name: string;
-  title_in_organization?: string;
-  organization?: string;
-  primary_domain?: string;
-  primary_domain_other?: string;
-  phone?: string;
-  other_phone?: string;
-  fax?: string;
-  email?: string;
-  linked_in_or_website?: string;
-  street_address?: string;
-  city?: string;
-  state?: string;
-  country?: string;
-  country_code?: string;
-  has_dignitary_met_gurudev?: boolean;
-  gurudev_meeting_date?: string;
-  gurudev_meeting_location?: string;
-  gurudev_meeting_notes?: string;
-  bio_summary?: string;
-  social_media?: Record<string, string>;
-  additional_info?: Record<string, string>;
-  secretariat_notes?: string;
-  file_path?: string;
-  file_name?: string;
-  file_type?: string;
-  is_image?: boolean;
-  thumbnail_path?: string;
-  attachment_uuid?: string;
-}
 
 interface BusinessCardExtractionResponse {
   extraction: BusinessCardExtraction;
@@ -567,8 +533,46 @@ const AddNewDignitary: React.FC = () => {
         formData,
         { headers: { 'Content-Type': 'multipart/form-data' } }
       );
+
+      // console.log('business card response', response);
+      console.log('Value from API:', response.data.extraction.has_dignitary_met_gurudev, 'type:', typeof response.data.extraction.has_dignitary_met_gurudev);
       
-      setExtraction(response.data.extraction);
+      // Create a comprehensive mapping between backend and frontend fields
+      const extractionData: BusinessCardExtraction = {
+        ...response.data.extraction,
+        // Ensure meeting info is preserved
+        has_dignitary_met_gurudev: response.data.extraction.has_dignitary_met_gurudev !== null 
+          ? response.data.extraction.has_dignitary_met_gurudev 
+          : extraction?.has_dignitary_met_gurudev,
+        gurudev_meeting_date: response.data.extraction.gurudev_meeting_date !== null 
+          ? response.data.extraction.gurudev_meeting_date 
+          : extraction?.gurudev_meeting_date,
+        gurudev_meeting_location: response.data.extraction.gurudev_meeting_location !== null 
+          ? response.data.extraction.gurudev_meeting_location 
+          : extraction?.gurudev_meeting_location,
+        gurudev_meeting_notes: response.data.extraction.gurudev_meeting_notes !== null 
+          ? response.data.extraction.gurudev_meeting_notes 
+          : extraction?.gurudev_meeting_notes,
+        honorific_title: response.data.extraction.honorific_title || extraction?.honorific_title,
+        
+        // Map fields that might have different names in backend vs frontend
+        organization: response.data.extraction.company || response.data.extraction.organization || extraction?.organization,
+        title_in_organization: response.data.extraction.title || response.data.extraction.title_in_organization || extraction?.title_in_organization,
+        linked_in_or_website: response.data.extraction.website || response.data.extraction.linked_in_or_website || extraction?.linked_in_or_website,
+        
+        // If there's an address field but not street_address, use it
+        street_address: response.data.extraction.street_address || 
+                      (response.data.extraction.address ? String(response.data.extraction.address) : extraction?.street_address),
+        
+        // Fill in bio_summary from bio if needed
+        bio_summary: response.data.extraction.bio_summary || 
+                   response.data.extraction.bio || 
+                   extraction?.bio_summary
+      };
+      
+      console.log('extractionData', extractionData);
+      
+      setExtraction(extractionData);
       setShowBusinessCardUploader(false);
       enqueueSnackbar('Business card information extracted successfully', { variant: 'success' });
     } catch (error) {
@@ -1160,6 +1164,18 @@ const AddNewDignitary: React.FC = () => {
             </Box>
           </Box>
           
+          {!isEditMode && (
+            <Box sx={{ mb: 3 }}>
+              <PrimaryButton
+                startIcon={<ContactMailIcon />}
+                onClick={handleOpenBusinessCardUploader}
+                disabled={uploading}
+              >
+                Upload Business Card
+              </PrimaryButton>
+            </Box>
+          )}
+          
           {renderBusinessCardUploader()}
           
           <Grid container spacing={2}>
@@ -1186,7 +1202,7 @@ const AddNewDignitary: React.FC = () => {
             </Grid>
             
             {/* Show meeting details if has met Gurudev */}
-            {extraction.has_dignitary_met_gurudev && (
+            {!!extraction.has_dignitary_met_gurudev && (
               <>
                 <Grid item xs={12} md={4}>
                   <TextField

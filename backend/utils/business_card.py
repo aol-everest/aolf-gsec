@@ -78,7 +78,7 @@ def extract_business_card_info(image_path: str) -> BusinessCardExtraction:
                     - street_address: Street address
                     - city: City
                     - state: State
-                    - country: Country
+                    - country_code: Country Code (2 letter ISO code in uppercase)
                     - social_media: Dictionary of social media platforms to their handles
                     - bio: Biography of the person
                     - additional_info: Dictionary of any other information on the card
@@ -140,7 +140,7 @@ def extract_business_card_info(image_path: str) -> BusinessCardExtraction:
             street_address=data.get("street_address"),
             city=data.get("city"),
             state=data.get("state"),
-            country=data.get("country"),
+            country_code=data.get("country_code"),
             social_media=data.get("social_media"),
             bio=data.get("bio"),
             additional_info=data.get("additional_info"),

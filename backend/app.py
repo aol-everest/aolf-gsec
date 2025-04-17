@@ -2721,6 +2721,8 @@ async def upload_business_card_admin(
             
             # Clean up the temporary file
             os.unlink(temp_file_path)
+
+            logger.info(f"Extraction result: {extraction_result}")
             
             # Return the extraction result
             return schemas.BusinessCardExtractionResponse(

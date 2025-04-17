@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, validator
 from typing import Optional, Dict, Any, Union, List
 from datetime import datetime, date
 from models.appointment import AppointmentStatus, AppointmentTimeOfDay, AppointmentSubStatus, AppointmentType
@@ -8,6 +8,7 @@ from models.accessControl import AccessLevel, EntityType
 from enum import Enum
 from models.appointmentAttachment import AttachmentType
 from models.appointmentDignitary import AttendanceStatus
+import json
 
 class GoogleToken(BaseModel):
     token: str
@@ -202,6 +203,15 @@ class AdminDignitary(DignitaryBase):
     business_card_is_image: Optional[bool] = None
     business_card_thumbnail_path: Optional[str] = None
     secretariat_notes: Optional[str] = None
+
+    @validator("social_media", "additional_info", pre=True)
+    def parse_json_string(cls, value):
+        if isinstance(value, str):
+            try:
+                return json.loads(value)
+            except Exception:
+                raise ValueError("Invalid JSON string")
+        return value
 
     class Config:
         orm_mode = True
@@ -504,7 +514,7 @@ class BusinessCardExtraction(BaseModel):
     street_address: Optional[str] = None
     city: Optional[str] = None
     state: Optional[str] = None
-    country: Optional[str] = None
+    country_code: Optional[str] = None
     social_media: Optional[Dict[str, str]] = None
     bio: Optional[str] = None
     additional_info: Optional[Dict[str, str]] = None
