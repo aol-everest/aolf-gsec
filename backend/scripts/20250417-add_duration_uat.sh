@@ -21,7 +21,7 @@ UPDATE appointments SET duration = 15;
 -- Change the type of duration to the enum type
 -- 1. Drop the default
 ALTER TABLE appointments 
-ALTER COLUMN duration NOT NULL;
+ALTER COLUMN duration SET NOT NULL;
 
 EOF
 
