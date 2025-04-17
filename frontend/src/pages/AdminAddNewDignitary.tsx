@@ -34,6 +34,7 @@ import {
   Switch,
   Collapse,
   Autocomplete,
+  FormHelperText,
 } from '@mui/material';
 import ContactMailIcon from '@mui/icons-material/ContactMail';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
@@ -540,6 +541,8 @@ const AddNewDignitary: React.FC = () => {
       // Create a comprehensive mapping between backend and frontend fields
       const extractionData: BusinessCardExtraction = {
         ...response.data.extraction,
+        // Always set a default honorific title if missing
+        honorific_title: response.data.extraction.honorific_title || honorificTitleMap["NA"],
         // Ensure meeting info is preserved
         has_dignitary_met_gurudev: response.data.extraction.has_dignitary_met_gurudev !== null 
           ? response.data.extraction.has_dignitary_met_gurudev 
@@ -553,8 +556,6 @@ const AddNewDignitary: React.FC = () => {
         gurudev_meeting_notes: response.data.extraction.gurudev_meeting_notes !== null 
           ? response.data.extraction.gurudev_meeting_notes 
           : extraction?.gurudev_meeting_notes,
-        honorific_title: response.data.extraction.honorific_title || extraction?.honorific_title,
-        
         // Map fields that might have different names in backend vs frontend
         organization: response.data.extraction.company || response.data.extraction.organization || extraction?.organization,
         title_in_organization: response.data.extraction.title || response.data.extraction.title_in_organization || extraction?.title_in_organization,
@@ -1250,13 +1251,14 @@ const AddNewDignitary: React.FC = () => {
             </Grid>
             
             <Grid item xs={12} md={4}>
-              <FormControl fullWidth>
+              <FormControl fullWidth error={!!formErrors.honorific_title}>
                 <InputLabel>Honorific Title</InputLabel>
                 <Select
                   name="honorific_title"
                   value={extraction.honorific_title}
                   label="Honorific Title"
                   onChange={handleSelectChange}
+                  required
                 >
                   {honorificTitleOptions.map((title) => (
                     <MenuItem key={title} value={title}>
@@ -1264,6 +1266,7 @@ const AddNewDignitary: React.FC = () => {
                     </MenuItem>
                   ))}
                 </Select>
+                {formErrors.honorific_title && <FormHelperText>{formErrors.honorific_title}</FormHelperText>}
               </FormControl>
             </Grid>
             
@@ -1780,6 +1783,10 @@ const AddNewDignitary: React.FC = () => {
     const errors: Record<string, string> = {};
     
     // Required fields validation
+    if (!extraction.honorific_title) {
+      errors.honorific_title = 'Honorific title is required';
+    }
+    
     if (!extraction.first_name?.trim()) {
       errors.first_name = 'First name is required';
     }
