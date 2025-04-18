@@ -146,10 +146,10 @@ interface AdminAppointmentEditCardProps {
 
 // Common file types and their corresponding icons
 const fileTypeIcons: Record<string, React.ReactNode> = {
-  'image': <ImageIconV2 />,
-  'application/pdf': <PDFIconV2 />,
-  'text': <TextFileIconV2 />,
-  'default': <GenericFileIconV2 />
+  'image': <ImageIconV2 sx={{ width: 20, height: 20 }} />,
+  'application/pdf': <PDFIconV2 sx={{ width: 20, height: 20 }} />,
+  'text': <TextFileIconV2 sx={{ width: 20, height: 20 }} />,
+  'default': <GenericFileIconV2 sx={{ width: 20, height: 20 }} />
 };
 
 // File type validation
@@ -1402,7 +1402,7 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
                     <ListItemText primary={file.name} secondary={`${formatFileSize(file.size)}`} />
                     <ListItemSecondaryAction>
                       <IconButton edge="end" onClick={() => handleRemoveFile(index)}>
-                        <TrashIconV2 />
+                        <TrashIconV2 sx={{ width: 20, height: 20 }} />
                       </IconButton>
                     </ListItemSecondaryAction>
                   </ListItem>
@@ -1446,7 +1446,7 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
                                   onClick={() => onDownloadAttachment(attachment.id, attachment.file_name)}
                                   sx={{ mr: 1 }}
                                 >
-                                  <DownloadIconV2 />
+                                  <DownloadIconV2 sx={{ width: 20, height: 20 }} />
                                 </IconButton>
                               )}
                               {onDeleteAttachment && (
@@ -1456,7 +1456,7 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
                                   onClick={() => onDeleteAttachment(attachment)}
                                   color="error"
                                 >
-                                  <TrashIconV2 />
+                                  <TrashIconV2 sx={{ width: 20, height: 20 }} />
                                 </IconButton>
                               )}
                             </ListItemSecondaryAction>
@@ -1498,7 +1498,7 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
                                   onClick={() => onDownloadAttachment(attachment.id, attachment.file_name)}
                                   sx={{ mr: 1 }}
                                 >
-                                  <DownloadIconV2 />
+                                  <DownloadIconV2 sx={{ width: 20, height: 20 }} />
                                 </IconButton>
                               )}
                               {onDeleteAttachment && (
@@ -1508,7 +1508,7 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
                                   onClick={() => onDeleteAttachment(attachment)}
                                   color="error"
                                 >
-                                  <TrashIconV2 />
+                                  <TrashIconV2 sx={{ width: 20, height: 20 }} />
                                 </IconButton>
                               )}
                             </ListItemSecondaryAction>

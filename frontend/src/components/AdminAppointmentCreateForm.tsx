@@ -1126,14 +1126,14 @@ export const AdminAppointmentCreateForm: React.FC = () => {
                             }}
                             sx={{ mr: 1 }}
                           >
-                            <PencilIconV2 />
+                            <PencilIconV2 sx={{ width: 20, height: 20 }} />
                           </IconButton>
                           <IconButton 
                             edge="end" 
                             aria-label="delete"
                             onClick={() => removeDignitaryFromList(index)}
                           >
-                            <TrashIconV2 />
+                            <TrashIconV2 sx={{ width: 20, height: 20 }} />
                           </IconButton>
                         </ListItemSecondaryAction>
                       </ListItem>

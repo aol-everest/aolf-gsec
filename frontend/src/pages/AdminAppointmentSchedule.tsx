@@ -335,7 +335,7 @@ const AdminAppointmentSchedule: React.FC = () => {
           {dignitariesText && (
             <GridItemIconText 
               containerRef={cardContainerRef} 
-              icon={<PeopleMenuIconV2 width="20px" height="20px" />} 
+              icon={<PeopleMenuIconV2 sx={{ width: 20, height: 20 }} />} 
               text={dignitariesText} 
               theme={theme} 
             />
@@ -343,7 +343,7 @@ const AdminAppointmentSchedule: React.FC = () => {
           {titleOrganizationText && (
             <GridItemIconText 
               containerRef={cardContainerRef} 
-              icon={<ContactCardIconV2 width="20px" height="20px" />} 
+              icon={<ContactCardIconV2 sx={{ width: 20, height: 20 }} />} 
               text={titleOrganizationText} 
               theme={theme} 
             />
@@ -449,7 +449,7 @@ const AdminAppointmentSchedule: React.FC = () => {
                   {appointment.duration && appointment.duration > 15 && (
                     <GridItemIconText 
                       containerRef={cardContainerRef} 
-                      icon={<ClockSquareCircleIconV2 width="20px" height="20px" />} 
+                      icon={<ClockSquareCircleIconV2 sx={{ width: 20, height: 20 }} />} 
                       text={appointment.duration ? appointment.duration.toString() + ' mins' : ''} 
                       theme={theme} 
                     />
@@ -459,7 +459,7 @@ const AdminAppointmentSchedule: React.FC = () => {
                   {renderDignitaryInfo(appointment)}
                   <GridItemIconText 
                       containerRef={cardContainerRef} 
-                      icon={<ListIconV2 width="20px" height="20px" />} 
+                      icon={<ListIconV2 sx={{ width: 20, height: 20 }} />} 
                       text={appointment.purpose || ''} 
                       theme={theme} 
                   />

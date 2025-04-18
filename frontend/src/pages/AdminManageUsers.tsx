@@ -761,7 +761,7 @@ const AdminManageUsers: React.FC = () => {
       flex: 0.3,
       getActions: (params) => [
         <GridActionsCellItem
-          icon={<PencilIconV2 />}
+          icon={<PencilIconV2 sx={{ width: 20, height: 20 }} />}
           label="Edit"
           onClick={() => handleOpen(params.row)}
         />

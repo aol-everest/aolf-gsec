@@ -197,7 +197,7 @@ const Profile: React.FC = () => {
               <WarningButton 
                 size="small" 
                 onClick={logout}
-                leftIcon={<LogoutIconV2 />}
+                leftIcon={<LogoutIconV2 sx={{ width: 24, height: 24 }} />}
               >
                 Logout
               </WarningButton>

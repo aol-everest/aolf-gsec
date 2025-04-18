@@ -1019,7 +1019,7 @@ const AdminAppointmentTiles: React.FC = () => {
             <Box>
               <Grid container spacing={2} alignItems="center">
                 <Grid item xs={1} md={0.4} sx={{ display: 'flex', alignItems: 'center' }}>
-                  <LocationThinIconV2 />
+                  <LocationThinIconV2 sx={{ width: 22, height: 22 }} />
                 </Grid>
                 <Grid item xs={11} md={1.6} sx={{ display: 'flex', alignItems: 'center' }}>
                   <Typography variant="body2" sx={{ m: 0 }}>Filter by Location</Typography>
@@ -1079,7 +1079,7 @@ const AdminAppointmentTiles: React.FC = () => {
                 {(filters.startDate || filters.endDate) && (
                   <>
                     <Grid item xs={1} md={0.4} sx={{ display: 'flex', alignItems: 'center' }}>
-                      <CalendarIconV2 />
+                      <CalendarIconV2 sx={{ width: 22, height: 22 }} />
                     </Grid>
                     <Grid item xs={11} md={1.6} sx={{ display: 'flex', alignItems: 'center' }}>
                       <Typography variant="body2" sx={{ m: 0, fontSize: '0.81rem' }}>Active Date Filters</Typography>

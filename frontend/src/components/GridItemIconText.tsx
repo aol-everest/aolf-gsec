@@ -41,7 +41,7 @@ const GridItemIconText: React.FC<GridItemIconTextProps> = ({ icon, text, theme, 
     
     return (
         <>
-            <Grid item xs={iconGridWidth} md={iconGridWidth}>
+            <Grid item xs={iconGridWidth} md={iconGridWidth} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {icon}
             </Grid>
             <Grid item xs={maxGridWidth - iconGridWidth} md={maxGridWidth - iconGridWidth}>

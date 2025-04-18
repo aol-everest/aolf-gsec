@@ -900,7 +900,7 @@ export default function AdminLocationsManage() {
       width: 80,
       getActions: (params) => [
         <GridActionsCellItem
-          icon={<PencilIconV2 />}
+          icon={<PencilIconV2 sx={{ width: 20, height: 20 }} />}
           label="Edit"
           onClick={() => handleOpen(params.row)}
         />,
@@ -1183,14 +1183,14 @@ export default function AdminLocationsManage() {
                                     size="small"
                                     sx={{ mr: 1 }}
                                   >
-                                    <DownloadIconV2 />
+                                    <DownloadIconV2 sx={{ width: 20, height: 20 }} />
                                   </IconButton>
                                 )}
                                 <IconButton 
                                   onClick={handleRemoveAttachment} 
                                   size="small"
                                 >
-                                  <TrashIconV2 />
+                                  <TrashIconV2 sx={{ width: 20, height: 20 }} />
                                 </IconButton>
                               </Box>
                             </Paper>

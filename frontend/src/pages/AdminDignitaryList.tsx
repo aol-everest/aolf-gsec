@@ -123,7 +123,7 @@ const AdminDignitaryList: React.FC = () => {
           size="small"
           aria-label="edit"
         >
-          <PencilIconV2 width="20" height="20" sx={{ width: 13, height: 13 }} />
+          <PencilIconV2 sx={{ width: 20, height: 20 }} />
         </IconButton>
       ),
     },

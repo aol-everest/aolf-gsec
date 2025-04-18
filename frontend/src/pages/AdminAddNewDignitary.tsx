@@ -1733,13 +1733,13 @@ const AddNewDignitary: React.FC = () => {
                 mt: 2 
               }}>
               <PrimaryButton
-                leftIcon={<DoneIconV2 />}
+                leftIcon={<DoneIconV2 sx={{ width: 20, height: 20 }} />}
                 onClick={handleDone}
               >
                 Done
               </PrimaryButton>
               <SecondaryButton
-                leftIcon={<AddPersonIconV2 />}
+                leftIcon={<AddPersonIconV2 sx={{ width: 20, height: 20 }} />}
                 onClick={handleResetForm}
               >
                 Add Another Dignitary

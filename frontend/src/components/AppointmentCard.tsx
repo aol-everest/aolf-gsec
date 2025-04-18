@@ -188,7 +188,7 @@ export const AppointmentCard: React.FC<{
                                         size="small"
                                         aria-label="Edit Dignitary"
                                     >
-                                        <EditIconV2 width="16px" height="16px" />
+                                        <EditIconV2 sx={{ width: 20, height: 20 }} />
                                     </IconButton>
                                 </Box>
                                 <Box sx={{ 
@@ -198,11 +198,11 @@ export const AppointmentCard: React.FC<{
                                     pb: 1 
                                 }}>
                                     <Grid container spacing={1}>
-                                        <GridItemIconText containerRef={cardContainerRef} icon={<MailIconV2 />} text={dig.email} theme={theme} maxGridWidth={6} />
-                                        <GridItemIconText containerRef={cardContainerRef} icon={<PhoneIconV2 />} text={dig.phone || 'N/A'} theme={theme} maxGridWidth={6} />
-                                        <GridItemIconText containerRef={cardContainerRef} icon={<ContactCardIconV2 />} text={[dig.title_in_organization, dig.organization].filter(Boolean).join(', ')} theme={theme} maxGridWidth={6} />
-                                        <GridItemIconText containerRef={cardContainerRef} icon={<WebsiteIconV2 width="20px" height="20px" />} text={dig.linked_in_or_website || 'N/A'} theme={theme} maxGridWidth={6} />
-                                        <GridItemIconText containerRef={cardContainerRef} icon={<LocationThinIconV2 width="20px" height="20px" />} text={[dig.country, dig.state, dig.city].filter(Boolean).join(', ')} theme={theme} maxGridWidth={6} />
+                                        <GridItemIconText containerRef={cardContainerRef} icon={<MailIconV2 sx={{ width: 22, height: 22 }} />} text={dig.email} theme={theme} maxGridWidth={6} />
+                                        <GridItemIconText containerRef={cardContainerRef} icon={<PhoneIconV2 sx={{ width: 22, height: 22 }} />} text={dig.phone || 'N/A'} theme={theme} maxGridWidth={6} />
+                                        <GridItemIconText containerRef={cardContainerRef} icon={<ContactCardIconV2 sx={{ width: 22, height: 22 }} />} text={[dig.title_in_organization, dig.organization].filter(Boolean).join(', ')} theme={theme} maxGridWidth={6} />
+                                        <GridItemIconText containerRef={cardContainerRef} icon={<WebsiteIconV2 sx={{ width: 22, height: 22 }} />} text={dig.linked_in_or_website || 'N/A'} theme={theme} maxGridWidth={6} />
+                                        <GridItemIconText containerRef={cardContainerRef} icon={<LocationThinIconV2 sx={{ width: 22, height: 22 }} />} text={[dig.country, dig.state, dig.city].filter(Boolean).join(', ')} theme={theme} maxGridWidth={6} />
                                         <Grid item xs={12} sm={6}>
                                             <Typography sx={{ color: theme.palette.text.primary }}>
                                                 <Typography sx={{ fontWeight: 500, color: theme.palette.secondary.dark, display: 'inline', mr: 1 }}>Domain:</Typography> 
@@ -266,8 +266,8 @@ export const AppointmentCard: React.FC<{
                     {appointment.requester ? (
                         <>
                         <Grid container spacing={1}>
-                        <GridItemIconText containerRef={cardContainerRef} icon={<MailIconV2 />} text={appointment.requester?.email} theme={theme} maxGridWidth={6} />
-                        <GridItemIconText containerRef={cardContainerRef} icon={<PhoneIconV2 />} text={appointment.requester?.phone_number || 'N/A'} theme={theme} maxGridWidth={6} />
+                        <GridItemIconText containerRef={cardContainerRef} icon={<MailIconV2 sx={{ width: 22, height: 22 }} />} text={appointment.requester?.email} theme={theme} maxGridWidth={6} />
+                        <GridItemIconText containerRef={cardContainerRef} icon={<PhoneIconV2 sx={{ width: 22, height: 22 }} />} text={appointment.requester?.phone_number || 'N/A'} theme={theme} maxGridWidth={6} />
                     </Grid>
                     </>
                 ) : (
@@ -306,21 +306,21 @@ export const AppointmentCard: React.FC<{
 
                     <GridItemIconText 
                         containerRef={cardContainerRef} 
-                        icon={<CalendarIconV2 />} 
+                        icon={<CalendarIconV2 sx={{ width: 22, height: 22 }} />} 
                         text={['approved', 'completed'].includes(appointment.status.toLowerCase()) && appointment.appointment_date ? formatDateWithTimezone(appointment.appointment_date, 'UTC', false) + ' ' + (appointment.appointment_time || '') + ' ' + (appointment.duration ? '(' + appointment.duration + ' mins)' : '') : formatDateWithTimezone(appointment.preferred_date, 'UTC', false) + ' ' + (appointment.preferred_time_of_day || '')} 
                         theme={theme} 
                     />
 
                     <GridItemIconText 
                         containerRef={cardContainerRef} 
-                        icon={<LocationThinIconV2 width="20px" height="20px" />} 
+                        icon={<LocationThinIconV2 sx={{ width: 22, height: 22 }} />} 
                         text={appointment.location ? (appointment.location.name + ' - ' + appointment.location.city + ', ' + appointment.location.state) : 'N/A'} 
                         theme={theme} 
                     />
 
                     <GridItemIconText 
                         containerRef={cardContainerRef} 
-                        icon={<TagsIconV2 width="20px" height="20px" />} 
+                        icon={<TagsIconV2 sx={{ width: 22, height: 22 }} />} 
                         text={appointment.appointment_type || 'Not Specified'} 
                         theme={theme} 
                     />
@@ -330,14 +330,14 @@ export const AppointmentCard: React.FC<{
                             {dignitariesNamesString && (
                                 <GridItemIconText 
                                     containerRef={cardContainerRef} 
-                                    icon={<PeopleMenuIconV2 width="20px" height="20px" />} 
+                                    icon={<PeopleMenuIconV2 sx={{ width: 22, height: 22 }} />} 
                                     text={dignitariesNamesString} 
                                     theme={theme} 
                                 />
                             )}
                             <GridItemIconText 
                                 containerRef={cardContainerRef} 
-                                icon={<ListIconV2 width="20px" height="20px" />} 
+                                icon={<ListIconV2 sx={{ width: 22, height: 22 }} />} 
                                 text={appointment.purpose || ''} 
                                 theme={theme} 
                             />
@@ -557,7 +557,7 @@ export const AppointmentCard: React.FC<{
                                 Request #{appointment.id}
                             </Typography>
                         </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
                             <AppointmentStatusChip status={appointment.status} size='small' />
                             <IconButton 
                                 onClick={() => handleEdit(appointment.id)}
@@ -580,7 +580,7 @@ export const AppointmentCard: React.FC<{
                                     flexGrow: 0,
                                 }}
                             >
-                                <EditIconV2 />
+                                <EditIconV2 sx={{ width: 20, height: 20 }} />
                             </IconButton>
                         </Box>          
                     </Box>
