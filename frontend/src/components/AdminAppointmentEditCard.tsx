@@ -31,7 +31,7 @@ import {
   DialogActions,
 } from '@mui/material';
 import { Controller, Control, UseFormGetValues, UseFormSetValue, UseFormWatch, useWatch } from 'react-hook-form';
-import { Location } from '../models/types';
+import { Location, MeetingPlace } from '../models/types';
 import { EnumSelect } from './EnumSelect';
 import { getLocalDateString, getLocalTimeString, findTimeOption, parseUTCDate, isTimeOffHours, getDurationOptions } from '../utils/dateUtils';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
@@ -52,11 +52,14 @@ import { DownloadIconV2, ImageIconV2, PDFIconV2, TextFileIconV2, TrashIconV2, Ge
 // import { statusSubStatusMapping } from '../constants/appointmentStatuses';
 import { AppointmentTimeSlotDetailsMap } from '../models/types';
 import { debugLog } from '../utils/debugUtils';
+import { useApi } from '../hooks/useApi';
+import { useQuery } from '@tanstack/react-query';
 
 interface ValidationErrors {
   appointment_date?: string;
   appointment_time?: string;
   location_id?: string;
+  meeting_place_id?: string;
   status?: string;
   sub_status?: string;
   appointment_type?: string;
@@ -354,6 +357,40 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
 
   const today = getLocalDateString();
   const now = getLocalTimeString();
+
+  const api = useApi();
+  
+  // Watch for location_id changes to fetch meeting places
+  const watchLocationId = useWatch({ control, name: 'location_id' });
+  
+  // Query for fetching meeting places based on selected location
+  const { 
+    data: meetingPlaces = [], 
+    isLoading: isLoadingMeetingPlaces,
+    refetch: refetchMeetingPlaces 
+  } = useQuery({
+    queryKey: ['location', watchLocationId, 'meetingPlaces'],
+    queryFn: async () => {
+      if (!watchLocationId) return [];
+      try {
+        const { data } = await api.get<MeetingPlace[]>(`/locations/${watchLocationId}/meeting_places`);
+        return data;
+      } catch (error) {
+        console.error("Error fetching meeting places:", error);
+        return [];
+      }
+    },
+    enabled: !!watchLocationId, // Only run query when a location is selected
+  });
+
+  // Reset meeting_place_id when location changes
+  useEffect(() => {
+    // Skip during initial setup to avoid overriding initialFormValues
+    if (!initialSetupComplete) return;
+    
+    // Clear meeting place when location changes
+    setValue('meeting_place_id', null);
+  }, [watchLocationId, setValue, initialSetupComplete]);
 
   // Handle initial form values if provided by parent
   useEffect(() => {
@@ -1042,6 +1079,55 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
               </Select>
               {validationErrors.location_id && (
                 <FormHelperText error>{validationErrors.location_id}</FormHelperText>
+              )}
+            </FormControl>
+          )}
+        />
+      </Grid>
+
+      {/* Meeting Place - Show only when a location is selected */}
+      <Grid item xs={12} md={6} lg={4}>
+        <Controller
+          name="meeting_place_id"
+          control={control}
+          defaultValue={null}
+          render={({ field }) => (
+            <FormControl fullWidth error={!!validationErrors.meeting_place_id}>
+              <InputLabel>Meeting Place</InputLabel>
+              <Select
+                {...field}
+                value={field.value || ''}
+                label="Meeting Place"
+                disabled={!watchLocationId || isLoadingMeetingPlaces}
+              >
+                <MenuItem value="">
+                  <em>None</em>
+                </MenuItem>
+                {meetingPlaces.map((meetingPlace) => (
+                  <MenuItem key={meetingPlace.id} value={meetingPlace.id}>
+                    {meetingPlace.name}
+                    {meetingPlace.is_default && (
+                      <Chip
+                        label="Default"
+                        size="small"
+                        color="primary"
+                        sx={{ ml: 1 }}
+                      />
+                    )}
+                  </MenuItem>
+                ))}
+              </Select>
+              {isLoadingMeetingPlaces && watchLocationId && (
+                <FormHelperText>Loading meeting places...</FormHelperText>
+              )}
+              {!isLoadingMeetingPlaces && watchLocationId && meetingPlaces.length === 0 && (
+                <FormHelperText>No meeting places available for this location</FormHelperText>
+              )}
+              {!watchLocationId && (
+                <FormHelperText>Select a location first</FormHelperText>
+              )}
+              {validationErrors.meeting_place_id && (
+                <FormHelperText error>{validationErrors.meeting_place_id}</FormHelperText>
               )}
             </FormControl>
           )}

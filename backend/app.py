@@ -777,6 +777,52 @@ async def get_location_for_user(
         raise HTTPException(status_code=404, detail="Location not found")
     return location
 
+@app.get("/locations/{location_id}/meeting_places", response_model=List[schemas.MeetingPlace])
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def get_meeting_places_for_location(
+    location_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_read_db)
+):
+    """Get all meeting places for a specific location"""
+    # First, check if the user has access to the parent location
+    location = db.query(models.Location).filter(models.Location.id == location_id).first()
+    if not location:
+        raise HTTPException(status_code=404, detail="Location not found")
+
+    admin_check_access_to_location(
+        current_user=current_user,
+        db=db,
+        country_code=location.country_code,
+        location_id=location_id,
+        required_access_level=models.AccessLevel.READ  # Read access is sufficient to view meeting places
+    )
+    
+    # Query meeting places with creator/updater info
+    CreatorUser = aliased(models.User)
+    UpdaterUser = aliased(models.User)
+    
+    results = (
+        db.query(models.MeetingPlace, CreatorUser, UpdaterUser)
+        .filter(models.MeetingPlace.location_id == location_id)
+        .outerjoin(CreatorUser, models.MeetingPlace.created_by == CreatorUser.id)
+        .outerjoin(UpdaterUser, models.MeetingPlace.updated_by == UpdaterUser.id)
+        .order_by(models.MeetingPlace.name)
+        .all()
+    )
+    
+    # Process results to add user info
+    meeting_places = []
+    for mp, creator, updater in results:
+        if creator:
+            setattr(mp, "created_by_user", creator)
+        if updater:
+            setattr(mp, "updated_by_user", updater)
+        meeting_places.append(mp)
+        
+    return meeting_places
+
+
 @app.post("/appointments/{appointment_id}/attachments", response_model=schemas.AppointmentAttachment)
 async def upload_appointment_attachment(
     appointment_id: int,
@@ -2087,7 +2133,7 @@ async def get_appointment_time_slots_combined(
             # Add the appointment ID with its people count
             result[date_str]["time_slots"][time_key][str(appointment.id)] = dignitary_count
     
-    logger.info(f"Result: {result}")
+    # logger.info(f"Result: {result}")
 
     return {
         "dates": result
@@ -2532,6 +2578,52 @@ async def get_location(
     
     return location
 
+@app.get("/admin/locations/{location_id}/meeting_places", response_model=List[schemas.MeetingPlace])
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def get_meeting_places_for_location(
+    location_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_read_db)
+):
+    """Get all meeting places for a specific location"""
+    # First, check if the user has access to the parent location
+    location = db.query(models.Location).filter(models.Location.id == location_id).first()
+    if not location:
+        raise HTTPException(status_code=404, detail="Location not found")
+
+    admin_check_access_to_location(
+        current_user=current_user,
+        db=db,
+        country_code=location.country_code,
+        location_id=location_id,
+        required_access_level=models.AccessLevel.READ  # Read access is sufficient to view meeting places
+    )
+    
+    # Query meeting places with creator/updater info
+    CreatorUser = aliased(models.User)
+    UpdaterUser = aliased(models.User)
+    
+    results = (
+        db.query(models.MeetingPlace, CreatorUser, UpdaterUser)
+        .filter(models.MeetingPlace.location_id == location_id)
+        .outerjoin(CreatorUser, models.MeetingPlace.created_by == CreatorUser.id)
+        .outerjoin(UpdaterUser, models.MeetingPlace.updated_by == UpdaterUser.id)
+        .order_by(models.MeetingPlace.name)
+        .all()
+    )
+    
+    # Process results to add user info
+    meeting_places = []
+    for mp, creator, updater in results:
+        if creator:
+            setattr(mp, "created_by_user", creator)
+        if updater:
+            setattr(mp, "updated_by_user", updater)
+        meeting_places.append(mp)
+        
+    return meeting_places
+
+
 @app.patch("/admin/locations/update/{location_id}", response_model=schemas.LocationAdmin)
 @requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
 async def update_location(
@@ -2722,7 +2814,7 @@ async def upload_business_card_admin(
             # Clean up the temporary file
             os.unlink(temp_file_path)
 
-            logger.info(f"Extraction result: {extraction_result}")
+            # logger.info(f"Extraction result: {extraction_result}")
             
             # Return the extraction result
             return schemas.BusinessCardExtractionResponse(
@@ -3686,47 +3778,3 @@ async def update_meeting_place(
     
     return meeting_place
 
-@app.get("/admin/locations/{location_id}/meeting_places", response_model=List[schemas.MeetingPlace])
-@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
-async def get_meeting_places_for_location(
-    location_id: int,
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_read_db)
-):
-    """Get all meeting places for a specific location"""
-    # First, check if the user has access to the parent location
-    location = db.query(models.Location).filter(models.Location.id == location_id).first()
-    if not location:
-        raise HTTPException(status_code=404, detail="Location not found")
-
-    admin_check_access_to_location(
-        current_user=current_user,
-        db=db,
-        country_code=location.country_code,
-        location_id=location_id,
-        required_access_level=models.AccessLevel.READ  # Read access is sufficient to view meeting places
-    )
-    
-    # Query meeting places with creator/updater info
-    CreatorUser = aliased(models.User)
-    UpdaterUser = aliased(models.User)
-    
-    results = (
-        db.query(models.MeetingPlace, CreatorUser, UpdaterUser)
-        .filter(models.MeetingPlace.location_id == location_id)
-        .outerjoin(CreatorUser, models.MeetingPlace.created_by == CreatorUser.id)
-        .outerjoin(UpdaterUser, models.MeetingPlace.updated_by == UpdaterUser.id)
-        .order_by(models.MeetingPlace.name)
-        .all()
-    )
-    
-    # Process results to add user info
-    meeting_places = []
-    for mp, creator, updater in results:
-        if creator:
-            setattr(mp, "created_by_user", creator)
-        if updater:
-            setattr(mp, "updated_by_user", updater)
-        meeting_places.append(mp)
-        
-    return meeting_places

@@ -133,6 +133,9 @@ class Appointment(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    # Foreign key for meeting place (sub-location)
+    meeting_place_id = Column(Integer, ForeignKey(f"{schema_prefix}meeting_places.id"), nullable=True)
+    
     # Relationships
     requester = relationship(
         "User",
@@ -142,6 +145,7 @@ class Appointment(Base):
     dignitary = relationship("Dignitary", back_populates="appointments", foreign_keys=[dignitary_id])
     appointment_dignitaries = relationship("AppointmentDignitary", back_populates="appointment", cascade="all, delete-orphan")
     location = relationship("Location", back_populates="appointments")
+    meeting_place = relationship("MeetingPlace", back_populates="appointments")
     approved_by_user = relationship(
         "User",
         back_populates="approved_appointments",

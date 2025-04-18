@@ -73,6 +73,7 @@ interface AppointmentFormData {
   appointment_time: string;
   duration: number;
   location_id: number | null;
+  meeting_place_id: number | null;
   status: string;
   sub_status: string;
   appointment_type: string | null;
@@ -277,12 +278,14 @@ const AdminAppointmentEdit: React.FC = () => {
   useEffect(() => {
     if (appointment) {
       console.log('appointment', appointment);
-      console.log('locationState', locationState);
+      // console.log('locationState', locationState);
+      // console.log('meeting_place_id', appointment.meeting_place_id);
       reset({
         appointment_date: appointment.appointment_date || appointment.preferred_date,
         appointment_time: appointment.appointment_time,
         duration: appointment.duration || 15,
         location_id: appointment.location_id || null,
+        meeting_place_id: appointment.meeting_place_id || null,
         status: locationState?.status || appointment.status || '',
         sub_status: locationState?.sub_status || appointment.sub_status || '',
         appointment_type: appointment.appointment_type || null,
@@ -770,6 +773,7 @@ const AdminAppointmentEdit: React.FC = () => {
                       appointment_time: appointment.appointment_time,
                       duration: appointment.duration || 15,
                       location_id: appointment.location_id || null,
+                      meeting_place_id: appointment.meeting_place_id || null,
                       status: locationState?.status || appointment.status || '',
                       sub_status: locationState?.sub_status || appointment.sub_status || '',
                       appointment_type: appointment.appointment_type || null,

@@ -202,7 +202,13 @@ export const AppointmentCard: React.FC<{
                                         <GridItemIconText containerRef={cardContainerRef} icon={<PhoneIconV2 sx={{ width: 22, height: 22 }} />} text={dig.phone || 'N/A'} theme={theme} maxGridWidth={6} />
                                         <GridItemIconText containerRef={cardContainerRef} icon={<ContactCardIconV2 sx={{ width: 22, height: 22 }} />} text={[dig.title_in_organization, dig.organization].filter(Boolean).join(', ')} theme={theme} maxGridWidth={6} />
                                         <GridItemIconText containerRef={cardContainerRef} icon={<WebsiteIconV2 sx={{ width: 22, height: 22 }} />} text={dig.linked_in_or_website || 'N/A'} theme={theme} maxGridWidth={6} />
-                                        <GridItemIconText containerRef={cardContainerRef} icon={<LocationThinIconV2 sx={{ width: 22, height: 22 }} />} text={[dig.country, dig.state, dig.city].filter(Boolean).join(', ')} theme={theme} maxGridWidth={6} />
+                                        <GridItemIconText 
+                                            containerRef={cardContainerRef} 
+                                            icon={<LocationThinIconV2 sx={{ width: 22, height: 22 }} />} 
+                                            text={[dig.country, dig.state, dig.city].filter(Boolean).join(', ')} 
+                                            theme={theme} 
+                                            maxGridWidth={6} 
+                                        />
                                         <Grid item xs={12} sm={6}>
                                             <Typography sx={{ color: theme.palette.text.primary }}>
                                                 <Typography sx={{ fontWeight: 500, color: theme.palette.secondary.dark, display: 'inline', mr: 1 }}>Domain:</Typography> 
@@ -300,6 +306,10 @@ export const AppointmentCard: React.FC<{
             });
         }
         const dignitariesNamesString = dignitariesNames.join(', ');
+        let locationName = appointment.location ? (appointment.location.name + ' (' + appointment.location.city + ', ' + appointment.location.state + ')') : 'N/A';
+        if (appointment.meeting_place) {
+            locationName = appointment.meeting_place.name + ' @ ' + locationName;
+        }
         return (
             <AppointmentCardSection isMobile={isMobile} theme={theme} header={displayMode === 'calendar' ? '' : (['approved', 'completed'].includes(appointment.status.toLowerCase()) ? 'Approved ' : 'Requested ') + 'Appointment Details'}>
                 <Grid container spacing={1}>
@@ -314,7 +324,7 @@ export const AppointmentCard: React.FC<{
                     <GridItemIconText 
                         containerRef={cardContainerRef} 
                         icon={<LocationThinIconV2 sx={{ width: 22, height: 22 }} />} 
-                        text={appointment.location ? (appointment.location.name + ' - ' + appointment.location.city + ', ' + appointment.location.state) : 'N/A'} 
+                        text={locationName} 
                         theme={theme} 
                     />
 

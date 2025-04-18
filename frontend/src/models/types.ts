@@ -126,6 +126,8 @@ interface Appointment {
   last_updated_by_user?: User;
   location: Location;
   location_id: number;
+  meeting_place: MeetingPlace;
+  meeting_place_id: number;
   preferred_date?: string;
   preferred_time_of_day?: string;
   purpose?: string;
@@ -208,6 +210,35 @@ interface AppointmentTimeSlotDetailsMap {
         };
       };
     };
+  };
+}
+
+export interface MeetingPlace {
+  id: number;
+  location_id: number;
+  name: string;
+  description?: string;
+  floor?: string;
+  room_number?: string;
+  building?: string;
+  additional_directions?: string;
+  is_default: boolean;
+  is_active: boolean;
+  lat?: number;
+  lng?: number;
+  created_at: string;
+  updated_at?: string;
+  created_by: number;
+  updated_by?: number;
+  created_by_user?: {
+    id: number;
+    first_name: string;
+    last_name: string;
+  };
+  updated_by_user?: {
+    id: number;
+    first_name: string;
+    last_name: string;
   };
 }
 

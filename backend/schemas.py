@@ -333,6 +333,49 @@ class LocationAdmin(LocationBase):
     attachment_thumbnail_path: Optional[str] = None
 
 
+# Meeting Place Schemas
+class MeetingPlaceBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+    floor: Optional[str] = None
+    room_number: Optional[str] = None
+    building: Optional[str] = None
+    additional_directions: Optional[str] = None
+    is_default: bool = False
+    is_active: bool = True
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+
+class MeetingPlace(MeetingPlaceBase):
+    id: int
+    location_id: int
+    created_by: int
+    created_at: datetime
+    updated_by: Optional[int] = None
+    updated_at: Optional[datetime] = None
+    created_by_user: Optional[User] = None
+    updated_by_user: Optional[User] = None
+    
+    class Config:
+        orm_mode = True
+
+class MeetingPlaceCreate(MeetingPlaceBase):
+    pass  # Inherits all fields from MeetingPlaceBase
+
+class MeetingPlaceUpdate(MeetingPlaceBase):
+    name: Optional[str] = None
+    is_default: Optional[bool] = None
+    is_active: Optional[bool] = None
+    # Make all fields optional for update
+    description: Optional[str] = None
+    floor: Optional[str] = None
+    room_number: Optional[str] = None
+    building: Optional[str] = None
+    additional_directions: Optional[str] = None
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+
+
 class AppointmentDignitaryWithDignitary(AppointmentDignitaryBase):
     id: int
     created_at: datetime
@@ -344,6 +387,8 @@ class AppointmentDignitaryWithDignitary(AppointmentDignitaryBase):
 class AppointmentBase(BaseModel):
     location_id: Optional[int] = None
     location: Optional[Location] = None
+    meeting_place_id: Optional[int] = None
+    meeting_place: Optional[MeetingPlace] = None
     status: Optional[AppointmentStatus] = None
 
 class AppointmentCreate(AppointmentBase):
@@ -393,6 +438,7 @@ class AdminAppointmentCreate(AppointmentBase):
     secretariat_meeting_notes: Optional[str] = None
     secretariat_follow_up_actions: Optional[str] = None
     secretariat_notes_to_requester: Optional[str] = None
+    meeting_place_id: Optional[int] = None
 
 
 class AdminAppointmentUpdate(AppointmentBase):
@@ -407,6 +453,7 @@ class AdminAppointmentUpdate(AppointmentBase):
     secretariat_meeting_notes: Optional[str] = None
     secretariat_follow_up_actions: Optional[str] = None
     secretariat_notes_to_requester: Optional[str] = None
+    meeting_place_id: Optional[int] = None
 
 
 class AdminAppointmentDignitaryWithDignitary(AppointmentDignitaryBase):
@@ -684,46 +731,3 @@ class AppointmentTimeSlotDetailsMap(BaseModel):
 class AttendanceStatusUpdate(BaseModel):
     appointment_dignitary_id: int
     attendance_status: AttendanceStatus
-
-# Meeting Place Schemas
-class MeetingPlaceBase(BaseModel):
-    name: str
-    description: Optional[str] = None
-    floor: Optional[str] = None
-    room_number: Optional[str] = None
-    building: Optional[str] = None
-    additional_directions: Optional[str] = None
-    is_default: bool = False
-    is_active: bool = True
-    lat: Optional[float] = None
-    lng: Optional[float] = None
-
-class MeetingPlace(MeetingPlaceBase):
-    id: int
-    location_id: int
-    created_by: int
-    created_at: datetime
-    updated_by: Optional[int] = None
-    updated_at: Optional[datetime] = None
-    created_by_user: Optional[User] = None
-    updated_by_user: Optional[User] = None
-    
-    class Config:
-        orm_mode = True
-
-class MeetingPlaceCreate(MeetingPlaceBase):
-    pass  # Inherits all fields from MeetingPlaceBase
-
-class MeetingPlaceUpdate(MeetingPlaceBase):
-    name: Optional[str] = None
-    is_default: Optional[bool] = None
-    is_active: Optional[bool] = None
-    # Make all fields optional for update
-    description: Optional[str] = None
-    floor: Optional[str] = None
-    room_number: Optional[str] = None
-    building: Optional[str] = None
-    additional_directions: Optional[str] = None
-    lat: Optional[float] = None
-    lng: Optional[float] = None
-
