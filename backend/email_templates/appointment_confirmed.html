@@ -16,7 +16,16 @@
             {% if appointment.appointment_dignitaries|length > 1 %}Group of {{ appointment.appointment_dignitaries|length }}{% endif %}
         </li>
         <li><strong>Date & Time:</strong> {% if appointment.appointment_date %}{{ appointment.appointment_date }} {% if appointment.appointment_time %}{{ appointment.appointment_time }}{% endif %}{% else %}To be determined{% endif %}</li>
-        <li><strong>Location:</strong> {% if appointment.location %}{{ appointment.location.name }} - {{ appointment.location.city }}, {{ appointment.location.state }}{% else %}To be determined{% endif %}</li>
+        <li><strong>Location:</strong> 
+            {% if appointment.meeting_place %}
+              {{ appointment.meeting_place.name }},
+            {% endif %}
+            {% if appointment.location %}
+              {{ appointment.location.name }} - {{ appointment.location.city }}, {{ appointment.location.state }}
+            {% else %}
+              To be determined
+            {% endif %}
+        </li>
     </ul>
 
     <p>
@@ -45,4 +54,4 @@
     <p>Warm regards,</p>
     <p>Office of Gurudev Sri Sri Ravi Shankar, USA</p>
 </div>
-{% endblock %} 
+{% endblock %}
