@@ -391,6 +391,21 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
     // Clear meeting place when location changes
     setValue('meeting_place_id', null);
   }, [watchLocationId, setValue, initialSetupComplete]);
+  
+  // Effect to handle meeting place selection after meeting places have loaded
+  useEffect(() => {
+    // Only run this effect if we have loaded meeting places and we're in edit mode
+    if (!isLoadingMeetingPlaces && meetingPlaces.length > 0 && initialFormValues && initialFormValues.meeting_place_id) {
+      // Check if the initial meeting_place_id is available in the loaded meeting places
+      const initialMeetingPlaceId = initialFormValues.meeting_place_id;
+      const meetingPlaceExists = meetingPlaces.some(mp => mp.id === initialMeetingPlaceId);
+      
+      if (meetingPlaceExists) {
+        // Re-set the value to ensure it's properly selected in the dropdown
+        setValue('meeting_place_id', initialMeetingPlaceId);
+      }
+    }
+  }, [meetingPlaces, isLoadingMeetingPlaces, initialFormValues, setValue]);
 
   // Handle initial form values if provided by parent
   useEffect(() => {
