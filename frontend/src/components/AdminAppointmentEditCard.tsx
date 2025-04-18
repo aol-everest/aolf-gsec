@@ -1112,6 +1112,11 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
               <Select
                 {...field}
                 value={field.value || ''}
+                onChange={(e) => {
+                  // Convert empty string to null
+                  const value = e.target.value === '' ? null : e.target.value;
+                  field.onChange(value);
+                }}
                 label="Meeting Place"
                 disabled={!watchLocationId || isLoadingMeetingPlaces}
               >
