@@ -1,7 +1,7 @@
 from .user import User, UserRole
 from .dignitary import Dignitary, HonorificTitle, PrimaryDomain, DignitarySource
 from .dignitaryPointOfContact import DignitaryPointOfContact, RelationshipType
-from .location import Location
+from .location import Location, MeetingPlace
 from .appointment import Appointment, AppointmentStatus, AppointmentTimeOfDay, AppointmentSubStatus, AppointmentType, STATUS_SUBSTATUS_MAPPING, VALID_STATUS_OPTIONS, VALID_SUBSTATUS_OPTIONS
 from .appointmentAttachment import AppointmentAttachment, AttachmentType
 from .appointmentDignitary import AppointmentDignitary, AttendanceStatus
@@ -20,6 +20,7 @@ __all__ = [
     'DignitaryPointOfContact',
     'RelationshipType',
     'Location',
+    'MeetingPlace',
     'Appointment',
     'AppointmentStatus',
     'AppointmentTimeOfDay',

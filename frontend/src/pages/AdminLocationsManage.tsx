@@ -20,12 +20,25 @@ import {
   InputLabel,
   FormHelperText,
   SelectChangeEvent,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Switch,
+  FormControlLabel,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemSecondaryAction,
+  Divider,
+  Tooltip
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
+import EditIcon from '@mui/icons-material/Edit';
 import { useSnackbar } from 'notistack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../hooks/useApi';
@@ -158,6 +171,62 @@ const initialFormData: LocationFormData = {
   attachment_thumbnail_path: '',
 };
 
+// Meeting Place Interface
+interface MeetingPlace {
+  id: number;
+  location_id: number;
+  name: string;
+  description?: string;
+  floor?: string;
+  room_number?: string;
+  building?: string;
+  additional_directions?: string;
+  is_default: boolean;
+  is_active: boolean;
+  lat?: number;
+  lng?: number;
+  created_at: string;
+  updated_at?: string;
+  created_by: number;
+  updated_by?: number;
+  created_by_user?: {
+    id: number;
+    first_name: string;
+    last_name: string;
+  };
+  updated_by_user?: {
+    id: number;
+    first_name: string;
+    last_name: string;
+  };
+}
+
+interface MeetingPlaceFormData {
+  name: string;
+  description?: string;
+  floor?: string;
+  room_number?: string;
+  building?: string;
+  additional_directions?: string;
+  is_default: boolean;
+  is_active: boolean;
+  lat?: number;
+  lng?: number;
+}
+
+const initialMeetingPlaceFormData: MeetingPlaceFormData = {
+  name: '',
+  description: '',
+  floor: '',
+  room_number: '',
+  building: '',
+  additional_directions: '',
+  is_default: false,
+  is_active: true,
+  lat: undefined,
+  lng: undefined,
+};
+
 // Move Google Maps script loading to a custom hook
 const useGoogleMapsScript = () => {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -216,6 +285,9 @@ export default function AdminLocationsManage() {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const { isLoaded: mapsLoaded, error: mapsError } = useGoogleMapsScript();
+  const [meetingPlaceFormOpen, setMeetingPlaceFormOpen] = useState(false);
+  const [meetingPlaceFormData, setMeetingPlaceFormData] = useState<MeetingPlaceFormData>(initialMeetingPlaceFormData);
+  const [editingMeetingPlaceId, setEditingMeetingPlaceId] = useState<number | null>(null);
 
   // Query for fetching countries
   const { data: countries = [], isLoading: isLoadingCountries } = useQuery({
@@ -229,6 +301,38 @@ export default function AdminLocationsManage() {
         throw error;
       }
     }
+  });
+
+  // Query for fetching locations
+  const { data: locations = [], isLoading } = useQuery({
+    queryKey: ['locations'],
+    queryFn: async () => {
+      try {
+        const { data } = await api.get<Location[]>('/admin/locations/all');
+        // console.log("locations", data);
+        return data;
+      } catch (error) {
+        enqueueSnackbar('Failed to fetch locations', { variant: 'error' });
+        throw error;
+      }
+    }
+  });
+
+  // Query for fetching meeting places for the current location
+  const { data: meetingPlaces = [], isLoading: isLoadingMeetingPlaces } = useQuery({
+    queryKey: ['locations', editingId, 'meetingPlaces'],
+    queryFn: async () => {
+      if (!editingId) return []; // Don't fetch if not editing a specific location
+      try {
+        const { data } = await api.get<MeetingPlace[]>(`/admin/locations/${editingId}/meeting_places`);
+        return data;
+      } catch (error) {
+        enqueueSnackbar('Failed to fetch meeting places', { variant: 'error' });
+        console.error("Error fetching meeting places:", error);
+        return [];
+      }
+    },
+    enabled: !!editingId, // Only run the query if editingId is set
   });
 
   // Helper function to geocode a location and return coordinates
@@ -406,21 +510,6 @@ export default function AdminLocationsManage() {
     setAttachmentMarkedForDeletion(false);
   };
 
-  // Query for fetching locations
-  const { data: locations = [], isLoading } = useQuery({
-    queryKey: ['locations'],
-    queryFn: async () => {
-      try {
-        const { data } = await api.get<Location[]>('/admin/locations/all');
-        // console.log("locations", data);
-        return data;
-      } catch (error) {
-        enqueueSnackbar('Failed to fetch locations', { variant: 'error' });
-        throw error;
-      }
-    }
-  });
-
   // Mutation for creating/updating locations
   const locationMutation = useMutation({
     mutationFn: async (variables: { id?: number; data: LocationFormData }) => {
@@ -511,6 +600,51 @@ export default function AdminLocationsManage() {
     },
     onError: () => {
       enqueueSnackbar('Failed to save location', { variant: 'error' });
+    }
+  });
+
+  // Mutation for creating meeting places
+  const meetingPlaceMutation = useMutation({
+    mutationFn: async (variables: { locationId: number; data: MeetingPlaceFormData }) => {
+      const { data } = await api.post<MeetingPlace>(
+        `/admin/locations/${variables.locationId}/meeting_places/new`,
+        variables.data
+      );
+      return data;
+    },
+    onSuccess: (data) => {
+      // Invalidate the meeting places query for the current location
+      queryClient.invalidateQueries({ queryKey: ['locations', editingId, 'meetingPlaces'] });
+      enqueueSnackbar(`Meeting Place '${data.name}' created successfully`, { variant: 'success' });
+      setMeetingPlaceFormOpen(false);
+      setMeetingPlaceFormData(initialMeetingPlaceFormData);
+    },
+    onError: (error) => {
+      console.error("Error creating meeting place:", error);
+      enqueueSnackbar('Failed to create meeting place', { variant: 'error' });
+    }
+  });
+
+  // Mutation for updating meeting places
+  const updateMeetingPlaceMutation = useMutation({
+    mutationFn: async (variables: { meetingPlaceId: number; data: MeetingPlaceFormData }) => {
+      const { data } = await api.patch<MeetingPlace>(
+        `/admin/meeting_places/update/${variables.meetingPlaceId}`,
+        variables.data
+      );
+      return data;
+    },
+    onSuccess: (data) => {
+      // Invalidate the meeting places query for the current location
+      queryClient.invalidateQueries({ queryKey: ['locations', editingId, 'meetingPlaces'] });
+      enqueueSnackbar(`Meeting Place '${data.name}' updated successfully`, { variant: 'success' });
+      setMeetingPlaceFormOpen(false);
+      setMeetingPlaceFormData(initialMeetingPlaceFormData);
+      setEditingMeetingPlaceId(null);
+    },
+    onError: (error) => {
+      console.error("Error updating meeting place:", error);
+      enqueueSnackbar('Failed to update meeting place', { variant: 'error' });
     }
   });
 
@@ -796,6 +930,75 @@ export default function AdminLocationsManage() {
   const triggerFileInput = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
+    }
+  };
+
+  // Open Meeting Place Form for creation
+  const handleOpenMeetingPlaceForm = () => {
+    // Pre-fill coords from parent location if available
+    setMeetingPlaceFormData({
+      ...initialMeetingPlaceFormData,
+      lat: formData.lat || undefined,
+      lng: formData.lng || undefined,
+    });
+    setEditingMeetingPlaceId(null); // Ensure we're in create mode
+    setMeetingPlaceFormOpen(true);
+  };
+
+  // Open Meeting Place Form for editing
+  const handleEditMeetingPlace = (meetingPlace: MeetingPlace) => {
+    setMeetingPlaceFormData({
+      name: meetingPlace.name,
+      description: meetingPlace.description || '',
+      floor: meetingPlace.floor || '',
+      room_number: meetingPlace.room_number || '',
+      building: meetingPlace.building || '',
+      additional_directions: meetingPlace.additional_directions || '',
+      is_default: meetingPlace.is_default,
+      is_active: meetingPlace.is_active,
+      lat: meetingPlace.lat,
+      lng: meetingPlace.lng,
+    });
+    setEditingMeetingPlaceId(meetingPlace.id);
+    setMeetingPlaceFormOpen(true);
+  };
+
+  // Close Meeting Place Form
+  const handleCloseMeetingPlaceForm = () => {
+    setMeetingPlaceFormOpen(false);
+    setMeetingPlaceFormData(initialMeetingPlaceFormData);
+    setEditingMeetingPlaceId(null);
+  };
+
+  // Handle Meeting Place Form Input Changes
+  const handleMeetingPlaceChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value, type } = e.target;
+    
+    if (type === 'checkbox' && e.target instanceof HTMLInputElement) {
+        // Cast to HTMLInputElement to access the checked property
+        setMeetingPlaceFormData(prev => ({ ...prev, [name]: (e.target as HTMLInputElement).checked }));
+    } else if (type === 'number' && e.target instanceof HTMLInputElement) {
+        setMeetingPlaceFormData(prev => ({ ...prev, [name]: value === '' ? undefined : parseFloat(value) }));
+    } else {
+        setMeetingPlaceFormData(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  // Submit Meeting Place Form
+  const handleSubmitMeetingPlace = () => {
+    if (editingMeetingPlaceId) {
+      // Update existing meeting place
+      updateMeetingPlaceMutation.mutate({ 
+        meetingPlaceId: editingMeetingPlaceId, 
+        data: meetingPlaceFormData 
+      });
+    } else {
+      // Create new meeting place
+      if (!editingId) {
+        enqueueSnackbar('Cannot add meeting place without a saved location.', { variant: 'error' });
+        return;
+      }
+      meetingPlaceMutation.mutate({ locationId: editingId, data: meetingPlaceFormData });
     }
   };
 
@@ -1247,6 +1450,65 @@ export default function AdminLocationsManage() {
                       })()}
                     </Box>
                   </Grid>
+                  {/* Meeting Places Section (only visible when editing) */}
+                  {editingId && (
+                    <Grid item xs={12}>
+                      <Box sx={{ mt: 3, borderTop: '1px solid', borderColor: 'divider', pt: 2 }}>
+                        <Typography variant="h6" gutterBottom>
+                          Meeting Places
+                        </Typography>
+                        {/* TODO: Add list/grid of existing meeting places here */}
+                        {isLoadingMeetingPlaces ? (
+                          <CircularProgress size={24} />
+                        ) : meetingPlaces.length > 0 ? (
+                          <List dense sx={{ mb: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+                            {meetingPlaces.map((mp, index) => (
+                              <React.Fragment key={mp.id}>
+                                <ListItem>
+                                  <ListItemText
+                                    primary={mp.name}
+                                    secondary={`Building: ${mp.building || 'N/A'}, Floor: ${mp.floor || 'N/A'}, Room: ${mp.room_number || 'N/A'}`}
+                                  />
+                                  <ListItemSecondaryAction>
+                                    {/* Enable Edit button */}
+                                    <Tooltip title="Edit Meeting Place">
+                                      <IconButton 
+                                        edge="end" 
+                                        aria-label="edit" 
+                                        onClick={() => handleEditMeetingPlace(mp)}
+                                      >
+                                        <EditIcon fontSize="small"/>
+                                      </IconButton>
+                                    </Tooltip>
+                                    <Tooltip title="Delete Meeting Place (Coming Soon)">
+                                      <span>
+                                        <IconButton edge="end" aria-label="delete" disabled>
+                                          <DeleteIcon fontSize="small"/>
+                                        </IconButton>
+                                      </span>
+                                    </Tooltip>
+                                  </ListItemSecondaryAction>
+                                </ListItem>
+                                {index < meetingPlaces.length - 1 && <Divider component="li" />}
+                              </React.Fragment>
+                            ))}
+                          </List>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                            No meeting places added yet.
+                          </Typography>
+                        )}
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<AddIcon />}
+                          onClick={handleOpenMeetingPlaceForm}
+                        >
+                          Add Meeting Place
+                        </Button>
+                      </Box>
+                    </Grid>
+                  )}
                 </Grid>
               </CardContent>
               <CardActions sx={{ justifyContent: 'flex-end', p: 2 }}>
@@ -1284,6 +1546,126 @@ export default function AdminLocationsManage() {
           )}
         </Box>
       </Container>
+
+      {/* Meeting Place Dialog - Update title and button text based on mode */}
+      <Dialog 
+        open={meetingPlaceFormOpen} 
+        onClose={handleCloseMeetingPlaceForm} 
+        maxWidth="sm" 
+        fullWidth
+      >
+        <DialogTitle>{editingMeetingPlaceId ? 'Edit Meeting Place' : 'Add New Meeting Place'}</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ pt: 1 }}>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Meeting Place Name"
+                name="name"
+                value={meetingPlaceFormData.name}
+                onChange={handleMeetingPlaceChange}
+                required
+                autoFocus
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Building"
+                name="building"
+                value={meetingPlaceFormData.building || ''}
+                onChange={handleMeetingPlaceChange}
+              />
+            </Grid>
+            <Grid item xs={12} sm={3}>
+              <TextField
+                fullWidth
+                label="Floor"
+                name="floor"
+                value={meetingPlaceFormData.floor || ''}
+                onChange={handleMeetingPlaceChange}
+              />
+            </Grid>
+            <Grid item xs={12} sm={3}>
+              <TextField
+                fullWidth
+                label="Room Number"
+                name="room_number"
+                value={meetingPlaceFormData.room_number || ''}
+                onChange={handleMeetingPlaceChange}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Description"
+                name="description"
+                value={meetingPlaceFormData.description || ''}
+                onChange={handleMeetingPlaceChange}
+                multiline
+                rows={2}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Additional Directions"
+                name="additional_directions"
+                value={meetingPlaceFormData.additional_directions || ''}
+                onChange={handleMeetingPlaceChange}
+                multiline
+                rows={2}
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                label="Latitude (Optional)"
+                name="lat"
+                type="number"
+                value={meetingPlaceFormData.lat ?? ''} // Use ?? to show empty string for undefined
+                onChange={handleMeetingPlaceChange}
+                inputProps={{ step: "any" }}
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                label="Longitude (Optional)"
+                name="lng"
+                type="number"
+                value={meetingPlaceFormData.lng ?? ''} // Use ?? to show empty string for undefined
+                onChange={handleMeetingPlaceChange}
+                inputProps={{ step: "any" }}
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <FormControlLabel
+                control={<Switch checked={meetingPlaceFormData.is_default} onChange={handleMeetingPlaceChange} name="is_default" />}
+                label="Default Meeting Place"
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <FormControlLabel
+                control={<Switch checked={meetingPlaceFormData.is_active} onChange={handleMeetingPlaceChange} name="is_active" />}
+                label="Active"
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <SecondaryButton onClick={handleCloseMeetingPlaceForm}>Cancel</SecondaryButton>
+          <PrimaryButton 
+            onClick={handleSubmitMeetingPlace} 
+            disabled={(meetingPlaceMutation.isPending || updateMeetingPlaceMutation.isPending) || !meetingPlaceFormData.name}
+          >
+            {(meetingPlaceMutation.isPending || updateMeetingPlaceMutation.isPending) ? 
+              <CircularProgress size={24} /> : 
+              editingMeetingPlaceId ? 'Update Meeting Place' : 'Add Meeting Place'
+            }
+          </PrimaryButton>
+        </DialogActions>
+      </Dialog>
     </Layout>
   );
 } 

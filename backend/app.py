@@ -3594,3 +3594,139 @@ async def update_dignitary_checkin(
     db.refresh(appointment_dignitary)
     
     return appointment_dignitary
+
+# Meeting Place Endpoints
+@app.post("/admin/locations/{location_id}/meeting_places/new", response_model=schemas.MeetingPlace)
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def create_meeting_place(
+    location_id: int,
+    meeting_place: schemas.MeetingPlaceCreate,
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
+):
+    """Create a new meeting place within a location"""
+    # Check if location exists
+    location = db.query(models.Location).filter(models.Location.id == location_id).first()
+    if not location:
+        raise HTTPException(status_code=404, detail="Location not found")
+
+    # Check if the user has access to the location (needs ADMIN level to create sub-locations)
+    admin_check_access_to_location(
+        current_user=current_user,
+        db=db,
+        country_code=location.country_code,
+        location_id=location_id,
+        required_access_level=models.AccessLevel.ADMIN  # Creating sub-locations requires ADMIN access
+    )
+
+    new_meeting_place = models.MeetingPlace(
+        **meeting_place.dict(),
+        location_id=location_id,
+        created_by=current_user.id
+    )
+    db.add(new_meeting_place)
+    db.commit()
+    db.refresh(new_meeting_place)
+    
+    # Set creator user reference (it's the current user for a new record)
+    setattr(new_meeting_place, "created_by_user", current_user)
+    
+    return new_meeting_place
+
+@app.patch("/admin/meeting_places/update/{meeting_place_id}", response_model=schemas.MeetingPlace)
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def update_meeting_place(
+    meeting_place_id: int,
+    meeting_place_update: schemas.MeetingPlaceUpdate,
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
+):
+    """Update a meeting place"""
+    # Query the MeetingPlace and join Location to get country_code
+    meeting_place = (
+        db.query(models.MeetingPlace)
+        .options(joinedload(models.MeetingPlace.location))
+        .filter(models.MeetingPlace.id == meeting_place_id)
+        .first()
+    )
+    
+    if not meeting_place:
+        raise HTTPException(status_code=404, detail="Meeting place not found")
+    
+    if not meeting_place.location:
+        # This should ideally not happen due to FK constraint, but good to check
+        raise HTTPException(status_code=500, detail="Meeting place is not linked to a valid location")
+
+    # Check if the user has access to the parent location (needs ADMIN level to update sub-locations)
+    admin_check_access_to_location(
+        current_user=current_user,
+        db=db,
+        country_code=meeting_place.location.country_code,
+        location_id=meeting_place.location_id,
+        required_access_level=models.AccessLevel.ADMIN  # Updating sub-locations requires ADMIN access
+    )
+
+    update_data = meeting_place_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(meeting_place, key, value)
+    meeting_place.updated_by = current_user.id
+    meeting_place.updated_at = datetime.utcnow()
+    
+    db.commit()
+    db.refresh(meeting_place)
+    
+    # Fetch creator information if it exists
+    if meeting_place.created_by:
+        creator = db.query(models.User).filter(models.User.id == meeting_place.created_by).first()
+        if creator:
+            setattr(meeting_place, "created_by_user", creator)
+    
+    # Set the updater user (it's the current user)
+    setattr(meeting_place, "updated_by_user", current_user)
+    
+    return meeting_place
+
+@app.get("/admin/locations/{location_id}/meeting_places", response_model=List[schemas.MeetingPlace])
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def get_meeting_places_for_location(
+    location_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_read_db)
+):
+    """Get all meeting places for a specific location"""
+    # First, check if the user has access to the parent location
+    location = db.query(models.Location).filter(models.Location.id == location_id).first()
+    if not location:
+        raise HTTPException(status_code=404, detail="Location not found")
+
+    admin_check_access_to_location(
+        current_user=current_user,
+        db=db,
+        country_code=location.country_code,
+        location_id=location_id,
+        required_access_level=models.AccessLevel.READ  # Read access is sufficient to view meeting places
+    )
+    
+    # Query meeting places with creator/updater info
+    CreatorUser = aliased(models.User)
+    UpdaterUser = aliased(models.User)
+    
+    results = (
+        db.query(models.MeetingPlace, CreatorUser, UpdaterUser)
+        .filter(models.MeetingPlace.location_id == location_id)
+        .outerjoin(CreatorUser, models.MeetingPlace.created_by == CreatorUser.id)
+        .outerjoin(UpdaterUser, models.MeetingPlace.updated_by == UpdaterUser.id)
+        .order_by(models.MeetingPlace.name)
+        .all()
+    )
+    
+    # Process results to add user info
+    meeting_places = []
+    for mp, creator, updater in results:
+        if creator:
+            setattr(mp, "created_by_user", creator)
+        if updater:
+            setattr(mp, "updated_by_user", updater)
+        meeting_places.append(mp)
+        
+    return meeting_places

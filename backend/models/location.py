@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -40,3 +40,34 @@ class Location(Base):
     created_by_user = relationship("User", foreign_keys=[created_by])
     updated_by_user = relationship("User", foreign_keys=[updated_by])
     appointments = relationship("Appointment", back_populates="location")
+    meeting_places = relationship("MeetingPlace", back_populates="location")
+
+
+class MeetingPlace(Base):
+    __tablename__ = "meeting_places"
+
+    id = Column(Integer, primary_key=True, index=True)
+    location_id = Column(Integer, ForeignKey(f"{schema_prefix}locations.id"), nullable=False)
+    name = Column(String, nullable=False)
+    description = Column(Text)
+    floor = Column(String)
+    room_number = Column(String)
+    building = Column(String)
+    additional_directions = Column(Text)
+    is_default = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True)
+    
+    # Coordinates within the location (optional)
+    lat = Column(Float, nullable=True)
+    lng = Column(Float, nullable=True)
+    
+    # Timestamps and audit fields
+    created_at = Column(DateTime, default=datetime.utcnow)
+    created_by = Column(Integer, ForeignKey(f"{schema_prefix}users.id"), nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_by = Column(Integer, ForeignKey(f"{schema_prefix}users.id"))
+    
+    # Relationships
+    location = relationship("Location", back_populates="meeting_places")
+    created_by_user = relationship("User", foreign_keys=[created_by])
+    updated_by_user = relationship("User", foreign_keys=[updated_by])
