@@ -211,7 +211,13 @@ export const AppointmentCard: React.FC<{
                                         </Grid>
                                         <Grid item xs={12}>
                                             <Typography sx={{ fontWeight: 500, mr: 1, display: 'inline' }}>Bio:</Typography>
-                                            <Typography sx={{ color: theme.palette.text.primary, display: 'inline', whiteSpace: 'pre-line' as const }}>{dig.bio_summary}</Typography>
+                                            <Typography sx={{ 
+                                                color: theme.palette.text.primary, 
+                                                display: 'inline', 
+                                                whiteSpace: 'pre-line' as const,
+                                                wordBreak: 'break-word',
+                                                overflowWrap: 'break-word'
+                                            }}>{dig.bio_summary}</Typography>
                                         </Grid>
                                         <Grid item xs={12} sm={12} md={12}>
                                             <Typography sx={{ fontWeight: 500, mr: 1, display: 'inline' }}>Has Met Gurudev?</Typography>
@@ -228,7 +234,13 @@ export const AppointmentCard: React.FC<{
                                         {dig.has_dignitary_met_gurudev && (
                                             <Grid item xs={12}>
                                                 <Typography sx={{ fontWeight: 500, mr: 1, display: 'inline' }}>Gurudev Meeting Notes:</Typography>
-                                                <Typography sx={{ color: theme.palette.text.primary, display: 'inline', whiteSpace: 'pre-line' as const }}>{dig.gurudev_meeting_notes || 'N/A'}</Typography>
+                                                <Typography sx={{ 
+                                                    color: theme.palette.text.primary, 
+                                                    display: 'inline', 
+                                                    whiteSpace: 'pre-line' as const,
+                                                    wordBreak: 'break-word',
+                                                    overflowWrap: 'break-word'
+                                                }}>{dig.gurudev_meeting_notes || 'N/A'}</Typography>
                                             </Grid>
                                         )}
                                     </Grid>
