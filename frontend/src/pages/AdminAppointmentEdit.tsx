@@ -570,7 +570,7 @@ const AdminAppointmentEdit: React.FC = () => {
       
       // Fetch time slot data using the new combined endpoint
       const { data: combinedData } = await api.get<AppointmentTimeSlotDetailsMap>(
-        `/admin/appointments/stats/detailed?${params.toString()}`
+        `/admin/stats/appointments/detailed?${params.toString()}`
       );
 
       // console.log('combinedData 2025-04-03 04:30', combinedData.dates['2025-04-03'].time_slots['04:30']);
