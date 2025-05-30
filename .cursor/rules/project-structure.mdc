@@ -1,0 +1,83 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Project Structure Guide
+
+This document outlines the structure of the AOLF GSEC project, which follows a modern full-stack architecture with separate frontend and backend services.
+
+## Root Directory Structure
+
+- `frontend/` - React/TypeScript frontend application
+- `backend/` - Python/Flask backend API
+- `terraform/` - Infrastructure as Code for production environment
+- `terraform_uat/` - Infrastructure as Code for UAT environment
+- `deployment/` - Deployment-related scripts and configurations
+- `.elasticbeanstalk/` - AWS Elastic Beanstalk configurations
+- `.cursor/` - Cursor IDE specific configurations and rules
+
+## Frontend Structure (`frontend/`)
+
+The frontend is a React/TypeScript application with the following key directories:
+
+- `src/` - Main source code directory
+- `public/` - Static assets and public files
+- `build/` - Production build output
+- `.github/` - GitHub Actions workflows
+- Configuration files:
+  - `package.json` - Node.js dependencies and scripts
+  - `tsconfig.json` - TypeScript configuration
+  - `deploy-frontend-*.sh` - Deployment scripts for different environments
+
+## Backend Structure (`backend/`)
+
+The backend is a Python/Flask application with the following key directories:
+
+- `models/` - Database models and ORM definitions
+- `routers/` - API route handlers
+- `dependencies/` - Shared dependencies and utilities
+- `middleware/` - Request/response middleware
+- `static_data/` - Static data files
+- `utils/` - Utility functions
+- `config/` - Configuration files
+- `alembic/` - Database migration files
+- `email_templates/` - Email template files
+- `scripts/` - Utility scripts
+- `logs/` - Application logs
+
+Key files:
+- `app.py` - Main application entry point
+- `database.py` - Database connection and operations
+- `schemas.py` - API request/response schemas
+- `requirements.txt` - Python dependencies
+- `alembic.ini` - Database migration configuration
+
+## Infrastructure and Deployment
+
+The project uses Terraform for deployment and infrastructure management:
+
+- `terraform/` - Production environment infrastructure
+- `terraform_uat/` - UAT environment infrastructure
+
+## Deployment
+
+Deployment-related files and scripts:
+
+- `deployment/` - Deployment configurations and scripts
+- `.elasticbeanstalk/` - AWS Elastic Beanstalk configurations
+- `deploy-*.sh` - Various deployment scripts for different services
+
+## Other files
+
+- commands.sh - Stores key shell commands such as deployment, etc as a quick reference
+- commands.sql - Stores SQL commands as a reference
+
+
+## Development Guidelines
+
+1. Frontend development should be done in the `frontend/` directory
+2. Backend development should be done in the `backend/` directory
+3. Infrastructure changes should be made in the appropriate `terraform/` directory
+4. All deployment scripts should be tested in UAT before production
+5. Follow the respective README files in each directory for specific setup instructions
