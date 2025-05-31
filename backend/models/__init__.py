@@ -5,7 +5,7 @@ from .location import Location, MeetingPlace
 from .appointment import Appointment, AppointmentStatus, AppointmentTimeOfDay, AppointmentSubStatus, AppointmentType, RequestType, STATUS_SUBSTATUS_MAPPING, VALID_STATUS_OPTIONS, VALID_SUBSTATUS_OPTIONS
 from .appointmentAttachment import AppointmentAttachment, AttachmentType
 from .appointmentDignitary import AppointmentDignitary, AttendanceStatus
-from .appointmentUser import AppointmentUser, RequesterRelationshipType
+from .appointmentUser import AppointmentUser, PersonRelationshipType
 from .accessControl import UserAccess, AccessLevel, EntityType
 from .auditLog import AuditLog
 from .country import Country
@@ -45,5 +45,5 @@ __all__ = [
     'EventType',
     'EventStatus',
     'AppointmentUser',
-    'RequesterRelationshipType',
-] 
+    'PersonRelationshipType',
+]
