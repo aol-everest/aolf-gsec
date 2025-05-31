@@ -184,43 +184,7 @@ class AppointmentResponse(BaseModel):
     updated_at: datetime
 ```
 
-### Phase 3: Darshan-Specific APIs
-
-Create new router: `backend/routers/user/darshan.py`
-
-```python
-# Public Darshan APIs
-POST   /darshan/register                       # Register for darshan
-GET    /darshan/available-slots                # Get available darshan events
-GET    /darshan/my-registrations               # User's darshan registrations
-PUT    /darshan/registrations/{id}            # Update registration
-DELETE /darshan/registrations/{id}            # Cancel registration
-
-# Schema for darshan registration
-class DarshanRegistration(BaseModel):
-    calendar_event_id: int  # Pre-created darshan slot
-    purpose: Optional[str] = "Seeking blessings"
-    attendees: List[DarshanAttendee]
-    
-class DarshanAttendee(BaseModel):
-    name: str
-    email: Optional[str]
-    phone: Optional[str]
-    relationship: Optional[RelationshipType]
-    special_requirements: Optional[str]
-
-class DarshanSlot(BaseModel):
-    calendar_event_id: int
-    date: date
-    time: str
-    location: LocationBasicInfo
-    max_capacity: int
-    current_capacity: int
-    available_capacity: int
-    instructions: Optional[str]
-```
-
-### Phase 4: Usher/Check-in Updates
+### Phase 3: Usher/Check-in Updates
 
 Enhanced usher functionality for darshan:
 
@@ -249,64 +213,6 @@ class AppointmentUsherView(BaseModel):
     
     total_expected: int
     total_checked_in: int
-```
-
-## Implementation Flow Examples
-
-### Example 1: Creating a Darshan Event (Admin)
-```json
-POST /admin/calendar-events
-{
-  "event_type": "DARSHAN",
-  "title": "Morning Darshan - Bengaluru",
-  "start_datetime": "2025-01-15T09:00:00",
-  "duration": 120,
-  "location_id": 1,
-  "max_capacity": 100,
-  "is_open_for_booking": true,
-  "instructions": "Please arrive 15 minutes early. Maintain silence in the hall.",
-  "status": "CONFIRMED"
-}
-```
-
-### Example 2: User Registering for Darshan
-```json
-POST /darshan/register
-{
-  "calendar_event_id": 123,
-  "purpose": "Seeking blessings for family",
-  "attendees": [
-    {
-      "name": "John Doe",
-      "email": "john@example.com",
-      "phone": "+1234567890"
-    },
-    {
-      "name": "Jane Doe",
-      "relationship": "SPOUSE"
-    },
-    {
-      "name": "Jim Doe",
-      "relationship": "CHILD",
-      "special_requirements": "Wheelchair access needed"
-    }
-  ]
-}
-```
-
-### Example 3: Creating Dignitary Appointment (Backward Compatible)
-```json
-POST /admin/appointments
-{
-  "purpose": "Meeting with Minister of Culture",
-  "request_type": "dignitary",
-  "appointment_date": "2025-01-20",
-  "appointment_time": "14:00",
-  "location_id": 1,
-  "dignitary_ids": [45, 46],
-  "status": "PENDING"
-}
-// This automatically creates a CalendarEvent in the background
 ```
 
 ## Data Migration Strategy
