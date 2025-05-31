@@ -1,3 +1,15 @@
+Can you come up with a plan to add this functionality. Here are the high level things I am thinking:
+Backend: @backend 
+1. Database level changes (new table, etc)
+2. APIs to support creating, updating (user and admin)
+@frontend 
+3. Adding / updating pages to submit a request in the @frontend 
+4. Adding / updating pages to review/approve requests. And for approved requests assigning them to darshan slot.
+5. Interface to manage darshan slots.
+
+Can you come up with a plan?
+
+
 Build a portal to people to request for appointments with Gurudev Sri Sri Ravi Shankar. 
 
 The portal will have 4 pages
