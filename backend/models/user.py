@@ -112,3 +112,35 @@ class User(Base):
         back_populates="updated_by_user",
         foreign_keys="[Location.updated_by]"
     )
+    
+    # New relationships for calendar management
+    created_calendar_events = relationship(
+        "CalendarEvent",
+        back_populates="created_by_user",
+        foreign_keys="[CalendarEvent.created_by]"
+    )
+    updated_calendar_events = relationship(
+        "CalendarEvent",
+        back_populates="updated_by_user",
+        foreign_keys="[CalendarEvent.updated_by]"
+    )
+    appointment_participations = relationship(
+        "AppointmentUser",
+        back_populates="user",
+        foreign_keys="[AppointmentUser.user_id]"
+    )
+    checked_in_appointments = relationship(
+        "AppointmentUser",
+        back_populates="checked_in_by_user",
+        foreign_keys="[AppointmentUser.checked_in_by]"
+    )
+    created_appointment_users = relationship(
+        "AppointmentUser",
+        back_populates="created_by_user",
+        foreign_keys="[AppointmentUser.created_by]"
+    )
+    updated_appointment_users = relationship(
+        "AppointmentUser",
+        back_populates="updated_by_user",
+        foreign_keys="[AppointmentUser.updated_by]"
+    )

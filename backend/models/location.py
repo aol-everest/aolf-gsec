@@ -41,6 +41,7 @@ class Location(Base):
     updated_by_user = relationship("User", foreign_keys=[updated_by])
     appointments = relationship("Appointment", back_populates="location")
     meeting_places = relationship("MeetingPlace", back_populates="location")
+    calendar_events = relationship("CalendarEvent", back_populates="location")
 
 
 class MeetingPlace(Base):
@@ -72,3 +73,4 @@ class MeetingPlace(Base):
     created_by_user = relationship("User", foreign_keys=[created_by])
     updated_by_user = relationship("User", foreign_keys=[updated_by])
     appointments = relationship("Appointment", back_populates="meeting_place")
+    calendar_events = relationship("CalendarEvent", back_populates="meeting_place")

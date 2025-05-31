@@ -104,6 +104,16 @@ class AppointmentTimeOfDay(str, enum.Enum):
     def __str__(self):
         return self.value
 
+class RequestType(str, enum.Enum):
+    """Request type enum for different appointment categories"""
+    DIGNITARY = "dignitary"
+    DARSHAN = "darshan"
+    VOLUNTEER = "volunteer"
+    OTHER = "other"
+
+    def __str__(self):
+        return self.value
+
 class Appointment(Base):
     __tablename__ = "appointments"
 
@@ -136,6 +146,13 @@ class Appointment(Base):
     # Foreign key for meeting place (sub-location)
     meeting_place_id = Column(Integer, ForeignKey(f"{schema_prefix}meeting_places.id"), nullable=True)
     
+    # New columns for calendar management evolution
+    calendar_event_id = Column(Integer, ForeignKey(f"{schema_prefix}calendar_events.id"), nullable=True, index=True)
+    request_type = Column(Enum(RequestType), default=RequestType.DIGNITARY, index=True)
+    
+    # For darshan appointments
+    number_of_attendees = Column(Integer, default=1)
+    
     # Relationships
     requester = relationship(
         "User",
@@ -161,3 +178,7 @@ class Appointment(Base):
         back_populates="created_appointments",
         foreign_keys=[created_by]
     )
+    
+    # New relationships for calendar management
+    calendar_event = relationship("CalendarEvent", back_populates="appointments")
+    appointment_users = relationship("AppointmentUser", back_populates="appointment", cascade="all, delete-orphan")
