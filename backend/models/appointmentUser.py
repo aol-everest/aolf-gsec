@@ -10,7 +10,7 @@ schema_prefix = f"{schema}." if schema != 'public' else ''
 
 from .appointmentDignitary import AttendanceStatus
 
-class RelationshipType(str, enum.Enum):
+class PersonRelationshipType(str, enum.Enum):
     SPOUSE = "Spouse"
     CHILD = "Child"
     PARENT = "Parent"
@@ -32,7 +32,7 @@ class AppointmentUser(Base):
     attendee_name = Column(String(255), nullable=False)
     attendee_email = Column(String(255), nullable=True)
     attendee_phone = Column(String(50), nullable=True)
-    relationship_to_requester = Column(Enum(RelationshipType), nullable=True)
+    relationship_to_requester = Column(Enum(PersonRelationshipType), nullable=True)
     
     # Check-in status
     attendance_status = Column(Enum(AttendanceStatus), default=AttendanceStatus.PENDING, index=True)
