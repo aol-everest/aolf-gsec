@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Bool
 from sqlalchemy.orm import relationship
 from datetime import datetime, UTC
 from database import Base
-from .enums import AttendanceStatus, PersonRelationshipType
+from .enums import AttendanceStatus, PersonRelationshipType, RoleInTeamProject
 import os
 
 schema = os.getenv('POSTGRES_SCHEMA', 'public')
@@ -16,11 +16,13 @@ class AppointmentUser(Base):
     user_id = Column(Integer, ForeignKey(f"{schema_prefix}users.id", ondelete="CASCADE"), nullable=False, index=True)
     
     # Attendee information (for cases where user might bring guests)
-    attendee_first_name = Column(String(255), nullable=False)
-    attendee_last_name = Column(String(255), nullable=False)
-    attendee_email = Column(String(255), nullable=True)
-    attendee_phone = Column(String(50), nullable=True)
+    first_name = Column(String(255), nullable=False)
+    last_name = Column(String(255), nullable=False)
+    email = Column(String(255), nullable=True)
+    phone = Column(String(50), nullable=True)
     relationship_to_requester = Column(Enum(PersonRelationshipType), nullable=True)
+    role_in_team_project = Column(Enum(RoleInTeamProject), nullable=True)
+    role_in_team_project_other = Column(String(255), nullable=True)
     
     # Check-in status
     attendance_status = Column(Enum(AttendanceStatus), default=AttendanceStatus.PENDING, index=True)

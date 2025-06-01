@@ -116,6 +116,17 @@ class RequestType(str, enum.Enum):
         return self.value
 
 
+class RoleInTeamProject(str, enum.Enum):
+    """Role in project team enum for different appointment categories"""
+    LEAD_MEMBER = "Lead Member"
+    CORE_TEAM_MEMBER = "Core Team Member"
+    OCCASIONAL_CONTRIBUTOR = "Occasional Contributor"
+    OTHER = "Other"
+
+    def __str__(self):
+        return self.value
+
+
 class AttendanceStatus(enum.Enum):
     """Attendance status for appointments"""
     PENDING = "Pending"
