@@ -9,6 +9,7 @@ from enum import Enum
 from models.appointmentAttachment import AttachmentType
 from models.appointmentDignitary import AttendanceStatus
 import json
+from models.calendarEvent import EventType, EventStatus
 
 class GoogleToken(BaseModel):
     token: str
@@ -731,3 +732,137 @@ class AppointmentTimeSlotDetailsMap(BaseModel):
 class AttendanceStatusUpdate(BaseModel):
     appointment_dignitary_id: int
     attendance_status: AttendanceStatus
+
+# Calendar Event Schemas
+class CalendarEventBasicInfo(BaseModel):
+    """Minimal calendar event info for embedding in other responses"""
+    id: int
+    event_type: EventType
+    title: str
+    start_datetime: datetime
+    start_date: date
+    start_time: str
+    duration: int
+    location_id: Optional[int] = None
+    meeting_place_id: Optional[int] = None
+    max_capacity: int
+    status: EventStatus
+    
+    class Config:
+        orm_mode = True
+
+class CalendarEventCreate(BaseModel):
+    """Schema for creating a new calendar event"""
+    event_type: EventType
+    title: str
+    description: Optional[str] = None
+    start_datetime: datetime
+    duration: int  # minutes
+    location_id: Optional[int] = None
+    meeting_place_id: Optional[int] = None
+    max_capacity: int = 1  # 1 for dignitary, 50-100+ for darshan
+    is_open_for_booking: bool = True
+    instructions: Optional[str] = None  # Special instructions for darshan
+    status: EventStatus = EventStatus.DRAFT
+    
+    @validator('max_capacity')
+    def validate_capacity(cls, v, values):
+        if 'event_type' in values:
+            if values['event_type'] == EventType.DARSHAN and v < 1:
+                raise ValueError("Darshan events must have capacity of at least 1")
+            elif values['event_type'] == EventType.DIGNITARY_APPOINTMENT and v != 1:
+                raise ValueError("Dignitary appointments must have capacity of exactly 1")
+        return v
+
+class CalendarEventUpdate(BaseModel):
+    """Schema for updating an existing calendar event"""
+    event_type: Optional[EventType] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
+    start_datetime: Optional[datetime] = None
+    duration: Optional[int] = None
+    location_id: Optional[int] = None
+    meeting_place_id: Optional[int] = None
+    max_capacity: Optional[int] = None
+    is_open_for_booking: Optional[bool] = None
+    instructions: Optional[str] = None
+    status: Optional[EventStatus] = None
+
+class CalendarEventResponse(CalendarEventCreate):
+    """Full calendar event response with all details"""
+    id: int
+    start_date: date
+    start_time: str
+    current_capacity: int  # Calculated field
+    available_capacity: int  # max_capacity - current_capacity
+    linked_appointments_count: int
+    external_calendar_id: Optional[str] = None
+    external_calendar_link: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    created_by: Optional[int] = None
+    updated_by: Optional[int] = None
+    created_by_user: Optional[User] = None
+    updated_by_user: Optional[User] = None
+    location: Optional[Location] = None
+    meeting_place: Optional[MeetingPlace] = None
+    
+    class Config:
+        orm_mode = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat(),
+            date: lambda v: v.strftime("%Y-%m-%d")
+        }
+
+class CalendarEventAvailability(BaseModel):
+    """Response for checking event availability"""
+    event_id: int
+    max_capacity: int
+    current_capacity: int
+    available_capacity: int
+    is_available: bool
+    message: Optional[str] = None
+
+class CalendarEventBatchCreate(BaseModel):
+    """Schema for creating multiple calendar events (e.g., recurring darshan)"""
+    event_type: EventType
+    title_template: str  # Can include {date} placeholder
+    description: Optional[str] = None
+    start_dates: List[date]  # List of dates to create events
+    start_time: str  # HH:MM format
+    duration: int  # minutes
+    location_id: Optional[int] = None
+    meeting_place_id: Optional[int] = None
+    max_capacity: int = 1
+    is_open_for_booking: bool = True
+    instructions: Optional[str] = None
+    status: EventStatus = EventStatus.DRAFT
+    
+    @validator('start_dates')
+    def validate_dates(cls, v):
+        if not v:
+            raise ValueError("At least one date must be provided")
+        if len(v) > 365:
+            raise ValueError("Cannot create more than 365 events at once")
+        return v
+
+class CalendarEventBatchUpdate(BaseModel):
+    """Schema for updating multiple calendar events"""
+    event_ids: List[int]
+    update_data: CalendarEventUpdate
+    
+    @validator('event_ids')
+    def validate_event_ids(cls, v):
+        if not v:
+            raise ValueError("At least one event ID must be provided")
+        if len(v) > 100:
+            raise ValueError("Cannot update more than 100 events at once")
+        return v
+
+class CalendarEventBatchResponse(BaseModel):
+    """Response for batch operations"""
+    total_requested: int
+    successful: int
+    failed: int
+    events: List[CalendarEventResponse]
+    errors: Optional[List[Dict[str, Any]]] = None

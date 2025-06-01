@@ -47,3 +47,10 @@ Lets do below:
 (3) When a user logs in, lets create a user in @user.py if it does not exist. If exists we might need to pull their ID to the front end? We would also need to verify the Google login on the backend by hitting the Google APIs?
 (4) Update the backend to manage some kind of authentication for the front end app to call the APIs. I am assuming JWT using the Google token.
 (5) Update the models to ensure all attributes in @frontend code is also present in backend for dignitary
+
+
+
+
+
+For every change being made, share the all details in bulleted form before you make the change. Get confirmation from me that they look good, and only then make the changes.
+
