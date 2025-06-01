@@ -1,15 +1,24 @@
 from pydantic import BaseModel, EmailStr, validator
 from typing import Optional, Dict, Any, Union, List
 from datetime import datetime, date
-from models.appointment import AppointmentStatus, AppointmentTimeOfDay, AppointmentSubStatus, AppointmentType
-from models.dignitary import HonorificTitle, PrimaryDomain, DignitarySource
-from models.dignitaryPointOfContact import RelationshipType
-from models.accessControl import AccessLevel, EntityType
+from models.enums import (
+    AppointmentStatus, 
+    AppointmentTimeOfDay, 
+    AppointmentSubStatus, 
+    AppointmentType,
+    HonorificTitle, 
+    PrimaryDomain, 
+    DignitarySource,
+    RelationshipType,
+    AccessLevel, 
+    EntityType,
+    AttachmentType,
+    AttendanceStatus,
+    EventType, 
+    EventStatus
+)
 from enum import Enum
-from models.appointmentAttachment import AttachmentType
-from models.appointmentDignitary import AttendanceStatus
 import json
-from models.calendarEvent import EventType, EventStatus
 
 class GoogleToken(BaseModel):
     token: str

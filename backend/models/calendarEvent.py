@@ -2,35 +2,11 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Bool
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
-import enum
+from .enums import EventType, EventStatus
 import os
 
 schema = os.getenv('POSTGRES_SCHEMA', 'public')
 schema_prefix = f"{schema}." if schema != 'public' else ''
-
-class EventType(str, enum.Enum):
-    """Calendar event type enum"""
-    DIGNITARY_APPOINTMENT = "Dignitary Appointment"
-    DARSHAN = "Darshan"
-    TEACHER_MEETING = "Teacher Meeting"
-    VOLUNTEER_MEETING = "Volunteer Meeting"
-    PRIVATE_EVENT = "Private Event"
-    PLACEHOLDER = "Placeholder"
-    TRAVEL = "Travel"
-    OTHER = "Other"
-
-    def __str__(self):
-        return self.value
-
-class EventStatus(str, enum.Enum):
-    """Calendar event status enum"""
-    DRAFT = "Draft"
-    CONFIRMED = "Confirmed"
-    CANCELLED = "Cancelled"
-    COMPLETED = "Completed"
-
-    def __str__(self):
-        return self.value
 
 class CalendarEvent(Base):
     __tablename__ = "calendar_events"

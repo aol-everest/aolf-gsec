@@ -3,51 +3,11 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
 import enum
+from .enums import UserRole
 import os
 
 schema = os.getenv('POSTGRES_SCHEMA', 'public')
 schema_prefix = f"{schema}." if schema != 'public' else ''
-
-class UserRole(str, enum.Enum):
-    """User role enum with proper case values"""
-    SECRETARIAT = "SECRETARIAT"
-    GENERAL = "GENERAL"
-    USHER = "USHER"
-    ADMIN = "ADMIN"
-
-    def __str__(self):
-        return self.value
-    
-    def is_admin_role_type(self):
-        return (self == UserRole.ADMIN or self == UserRole.SECRETARIAT)
-    
-    def is_general_role_type(self):
-        return self == UserRole.GENERAL
-
-    def get_int_value(self):
-        if self == UserRole.GENERAL:
-            return 1
-        elif self == UserRole.USHER:
-            return 2
-        elif self == UserRole.SECRETARIAT:
-            return 3
-        elif self == UserRole.ADMIN:
-            return 4
-        else:
-            raise ValueError(f"Invalid user role: {self}")
-    
-    def is_greater_than_or_equal_to(self, other: "UserRole"):
-        """
-        Check if this user role is greater than or equal to the other
-        """
-        return self.get_int_value() >= other.get_int_value()
-
-    def is_less_than(self, other: "UserRole"):
-        """
-        Check if this user role is less than the other
-        """
-        return self.get_int_value() < other.get_int_value()
-
 
 # Define default notification preferences
 DEFAULT_EMAIL_NOTIFICATION_PREFERENCES = {

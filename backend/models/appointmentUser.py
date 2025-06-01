@@ -2,24 +2,11 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Bool
 from sqlalchemy.orm import relationship
 from datetime import datetime, UTC
 from database import Base
+from .enums import AttendanceStatus, PersonRelationshipType
 import os
-import enum
 
 schema = os.getenv('POSTGRES_SCHEMA', 'public')
 schema_prefix = f"{schema}." if schema != 'public' else ''
-
-from .appointmentDignitary import AttendanceStatus
-
-class PersonRelationshipType(str, enum.Enum):
-    SPOUSE = "Spouse"
-    CHILD = "Child"
-    PARENT = "Parent"
-    RELATIVE = "Relative"
-    FRIEND = "Friend"
-    OTHER = "Other"
-
-    def __str__(self):
-        return self.value
 
 class AppointmentUser(Base):
     __tablename__ = "appointment_users"
@@ -29,7 +16,8 @@ class AppointmentUser(Base):
     user_id = Column(Integer, ForeignKey(f"{schema_prefix}users.id", ondelete="CASCADE"), nullable=False, index=True)
     
     # Attendee information (for cases where user might bring guests)
-    attendee_name = Column(String(255), nullable=False)
+    attendee_first_name = Column(String(255), nullable=False)
+    attendee_last_name = Column(String(255), nullable=False)
     attendee_email = Column(String(255), nullable=True)
     attendee_phone = Column(String(50), nullable=True)
     relationship_to_requester = Column(Enum(PersonRelationshipType), nullable=True)

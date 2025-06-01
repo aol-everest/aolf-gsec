@@ -5,114 +5,20 @@ from database import Base
 from sqlalchemy import Enum
 import enum
 from .location import Location
+from .enums import (
+    AppointmentStatus, 
+    AppointmentSubStatus, 
+    AppointmentType, 
+    AppointmentTimeOfDay, 
+    RequestType,
+    STATUS_SUBSTATUS_MAPPING,
+    VALID_STATUS_OPTIONS,
+    VALID_SUBSTATUS_OPTIONS
+)
 import os
 
 schema = os.getenv('POSTGRES_SCHEMA', 'public')
 schema_prefix = f"{schema}." if schema != 'public' else ''
-
-class AppointmentStatus(str, enum.Enum):
-    """Appointment status enum with proper case values"""
-    PENDING = "Pending"
-    NEED_MORE_INFO = "Need More Info"
-    APPROVED = "Approved"
-    REJECTED = "Rejected"
-    COMPLETED = "Completed"
-    FOLLOW_UP = "To Be Rescheduled"
-    CANCELLED = "Cancelled"
-
-    def __str__(self):
-        return self.value
-
-class AppointmentSubStatus(str, enum.Enum):
-    """Appointment sub-status enum with proper case values"""
-    CANCELLED = "Cancelled"
-    FOLLOW_UP_REQUIRED = "Follow-up required"
-    LOW_PRIORITY = "Low priority"
-    MET_GURUDEV = "Met Gurudev already"
-    NEED_MORE_INFO = "Need more info"
-    NEED_RESCHEDULE = "Need to reschedule"
-    NO_FURTHER_ACTION = "No further action"
-    NOT_REVIEWED = "Not yet reviewed"
-    SHORTLISTED = "Shortlisted"
-    UNDER_CONSIDERATION = "Under consideration (screened)"
-    UNSCHEDULED = "To be scheduled (reviewed)"
-    SCHEDULED = "Scheduled"
-
-    def __str__(self):
-        return self.value
-
-# Define mapping between status and valid sub-statuses
-STATUS_SUBSTATUS_MAPPING = {
-    AppointmentStatus.PENDING.value: {
-        "default_sub_status": AppointmentSubStatus.NOT_REVIEWED.value,
-        "valid_sub_statuses": [
-            AppointmentSubStatus.NOT_REVIEWED.value,
-            AppointmentSubStatus.UNDER_CONSIDERATION.value,
-            AppointmentSubStatus.SHORTLISTED.value,
-            AppointmentSubStatus.NEED_MORE_INFO.value
-        ]
-    },
-    AppointmentStatus.APPROVED.value: {
-        "default_sub_status": AppointmentSubStatus.SCHEDULED.value,
-        "valid_sub_statuses": [
-            AppointmentSubStatus.SCHEDULED.value,
-            AppointmentSubStatus.UNSCHEDULED.value,
-            AppointmentSubStatus.NEED_RESCHEDULE.value
-        ]
-    },
-    AppointmentStatus.REJECTED.value: {
-        "default_sub_status": AppointmentSubStatus.LOW_PRIORITY.value,
-        "valid_sub_statuses": [
-            AppointmentSubStatus.LOW_PRIORITY.value,
-            AppointmentSubStatus.MET_GURUDEV.value
-        ]
-    },
-    AppointmentStatus.COMPLETED.value: {
-        "default_sub_status": AppointmentSubStatus.NO_FURTHER_ACTION.value,
-        "valid_sub_statuses": [
-            AppointmentSubStatus.NO_FURTHER_ACTION.value,
-            AppointmentSubStatus.FOLLOW_UP_REQUIRED.value,
-        ]
-    },
-    AppointmentStatus.CANCELLED.value: {
-        "default_sub_status": AppointmentSubStatus.CANCELLED.value,
-        "valid_sub_statuses": [
-            AppointmentSubStatus.CANCELLED.value,
-        ]
-    }
-}
-
-VALID_STATUS_OPTIONS = [status for status in STATUS_SUBSTATUS_MAPPING.keys()]
-VALID_SUBSTATUS_OPTIONS = [substatus for status in STATUS_SUBSTATUS_MAPPING.values() for substatus in status["valid_sub_statuses"]]
-
-class AppointmentType(str, enum.Enum):
-    """Appointment type enum with proper case values"""
-    EXCLUSIVE_APPOINTMENT = "Exclusive appointment"
-    SHARED_APPOINTMENT = "Shared appointment"
-    DARSHAN_LINE = "Darshan line"
-    PRIVATE_EVENT = "Private event"
-
-    def __str__(self):
-        return self.value
-
-class AppointmentTimeOfDay(str, enum.Enum):
-    """Appointment time enum with proper case values"""
-    MORNING = "Morning"
-    AFTERNOON = "Afternoon"
-    EVENING = "Evening"
-
-    def __str__(self):
-        return self.value
-
-class RequestType(str, enum.Enum):
-    """Request type enum for different appointment categories"""
-    DIGNITARY = "dignitary"
-    DARSHAN = "darshan"
-    VOLUNTEER = "volunteer"
-    OTHER = "other"
-
-    def __str__(self):
-        return self.value
 
 class Appointment(Base):
     __tablename__ = "appointments"
