@@ -12,10 +12,12 @@ import atexit
 from datetime import datetime, timedelta
 from pathlib import Path
 import asyncio
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from models.appointment import Appointment, AppointmentStatus, AppointmentSubStatus
+from models.calendarEvent import CalendarEvent, EventStatus
 from models.dignitary import Dignitary, HonorificTitle
 from models.country import Country
+import models
 from utils.utils import str_to_bool, convert_to_datetime_with_tz
 from zoneinfo import ZoneInfo
 from functools import lru_cache
@@ -102,6 +104,7 @@ def calendar_worker():
             db = None
             try:
                 # Import here to avoid circular imports
+                from dependencies.database import get_db
                 from database import SessionLocal
                 db = SessionLocal()
                 
@@ -110,9 +113,8 @@ def calendar_worker():
                 appointment_id = task_data.get('appointment_id')
                 
                 if task_type == 'create_or_update':
-                    appointment_data = task_data.get('appointment_data')
-                    if appointment_id and appointment_data:
-                        _sync_appointment_to_calendar(appointment_id, appointment_data, db)
+                    if appointment_id:
+                        _sync_appointment_with_calendar_event_to_google(appointment_id, db)
                     else:
                         logger.error(f"Invalid calendar task data: {task_data}")
                 elif task_type == 'delete':
@@ -192,72 +194,88 @@ def get_country_timezone(db: Session, country_code: str) -> Optional[str]:
     
     return None
 
-def _format_appointment_for_calendar(appointment_id, appointment_data, db: Session = None):
-    """Format appointment data for Google Calendar event."""
-    # Extract appointment details
+def _format_calendar_event_for_google(appointment_id: int, appointment_data: dict, calendar_event_data: dict, db: Session = None):
+    """Format appointment + calendar event data for Google Calendar event."""
+    
+    # Check appointment status - only sync approved and scheduled appointments
     status = appointment_data.get('status')
     sub_status = appointment_data.get('sub_status')
     
-    # Only sync approved and scheduled appointments
     if status != AppointmentStatus.APPROVED or sub_status != AppointmentSubStatus.SCHEDULED:
         logger.info(f"Appointment {appointment_id} is not approved/scheduled, not syncing to calendar")
         return None
     
-    # Check for required appointment date
-    appointment_date = appointment_data.get('appointment_date')
-    if not appointment_date:
-        logger.warning(f"Appointment {appointment_id} has no date, cannot sync to calendar")
+    # Get calendar event details (these are now the authoritative source for date/time/location)
+    start_datetime = calendar_event_data.get('start_datetime')
+    if not start_datetime:
+        logger.warning(f"Calendar event for appointment {appointment_id} has no start_datetime")
         return None
     
-    # Format appointment date and time
-    start_time = appointment_data.get('appointment_time')
-    if not start_time:
-        # Default to noon if no specific time
-        start_time = "12:00:00"
-    duration = appointment_data.get('duration', DEFAULT_APPOINTMENT_DURATION)
+    duration = calendar_event_data.get('duration', DEFAULT_APPOINTMENT_DURATION)
     
-    # Get location for timezone information
-    location = appointment_data.get('location')
-    location_timezone = None
+    # Handle datetime conversion - preserve timezone-aware datetime from CalendarEvent
+    if isinstance(start_datetime, str):
+        start_dt = datetime.fromisoformat(start_datetime.replace('Z', '+00:00'))
+    else:
+        start_dt = start_datetime
+    
+    end_dt = start_dt + timedelta(minutes=duration)
+    
+    # Get location information from calendar event for additional timezone verification
+    location = calendar_event_data.get('location')
     timezone_id = "America/New_York"  # Default fallback
     
-    # Parse date and time strings to datetime with timezone
+    # Sophisticated timezone handling - preserve original logic
     try:
-        # Priority 1: Get location.timezone if available
-        if location and location.get('timezone'):
-            timezone_id = location.get('timezone')
-            logger.debug(f"Using location timezone '{timezone_id}' for appointment {appointment_id}")
+        # If start_dt is already timezone-aware (from CalendarEvent), use its timezone
+        if start_dt.tzinfo is not None:
+            timezone_id = str(start_dt.tzinfo)
+            logger.debug(f"Using timezone from CalendarEvent start_datetime: '{timezone_id}' for appointment {appointment_id}")
+        else:
+            # If somehow the CalendarEvent datetime is naive, apply timezone conversion
+            logger.warning(f"CalendarEvent start_datetime is naive for appointment {appointment_id}, applying timezone conversion")
+            
+            # Priority 1: Get location.timezone if available
+            if location and location.get('timezone'):
+                timezone_id = location.get('timezone')
+                logger.debug(f"Using location timezone '{timezone_id}' for appointment {appointment_id}")
+            
+            # Priority 2: Get country default timezone if available
+            elif location and db:
+                country_code = location.get('country_code')
+                if country_code:
+                    default_timezone = get_country_timezone(db, country_code)
+                    if default_timezone:
+                        timezone_id = default_timezone
+                        logger.debug(f"Using country default timezone '{timezone_id}' for appointment {appointment_id}")
+            
+            # Apply timezone to naive datetime
+            from zoneinfo import ZoneInfo
+            start_dt = start_dt.replace(tzinfo=ZoneInfo(timezone_id))
+            end_dt = end_dt.replace(tzinfo=ZoneInfo(timezone_id))
+            logger.info(f"Applied timezone '{timezone_id}' to naive CalendarEvent datetime for appointment {appointment_id}")
         
-        # Priority 2: Get country default timezone if available
-        elif location and db:
-            country_code = location.get('country_code')
-            if country_code:
-                default_timezone = get_country_timezone(db, country_code)
-                if default_timezone:
-                    timezone_id = default_timezone
-                    logger.debug(f"Using country default timezone '{timezone_id}' for appointment {appointment_id}")
-        
-        # Convert to timezone-aware datetime
-        start_dt = convert_to_datetime_with_tz(appointment_date, start_time, location, timezone_id)
-        location_timezone = start_dt.tzinfo
-        timezone_id = str(location_timezone)
-        
-        end_dt = start_dt + timedelta(minutes=duration)
-    except ValueError as e:
-        logger.error(f"Error parsing appointment date/time for ID {appointment_id}: {str(e)}")
-        return None
+    except Exception as e:
+        logger.error(f"Error handling timezone for appointment {appointment_id}: {str(e)}")
+        # Continue with default timezone as fallback
+        if start_dt.tzinfo is None:
+            from zoneinfo import ZoneInfo
+            start_dt = start_dt.replace(tzinfo=ZoneInfo("America/New_York"))
+            end_dt = end_dt.replace(tzinfo=ZoneInfo("America/New_York"))
+            timezone_id = "America/New_York"
     
-    # Meeting details
-    description = ""
+    # Get appointment details for description
     meeting_purpose = appointment_data.get('purpose', 'N/A').strip()
-
-    # Get dignitaries text
+    
+    # Get dignitaries text from appointment
     dignitary_short_description, dignitary_list = _get_event_dignitaries_description(appointment_data)
     if dignitary_short_description:
         meeting_title = f"Meeting with {dignitary_short_description}"
         if dignitary_list:
             dignitaries_description = "\n".join([f"- {d}" for d in dignitary_list])
-            description += f"Dignitaries: \n{dignitaries_description}\n\n"
+            description = f"Dignitaries: \n{dignitaries_description}\n\n"
+        else:
+            description = ""
     else:
         title_suffix = ""
         if meeting_purpose:
@@ -266,8 +284,9 @@ def _format_appointment_for_calendar(appointment_id, appointment_data, db: Sessi
             else:
                 title_suffix = f": {meeting_purpose}"
         meeting_title = f"Meeting block{title_suffix}"
+        description = ""
     
-    # Get location information
+    # Get location text
     location_text = ""
     if location:
         location_text = f"{location.get('name', '')}"
@@ -289,10 +308,14 @@ def _format_appointment_for_calendar(appointment_id, appointment_data, db: Sessi
     if appointment_data.get('secretariat_meeting_notes'):
         description += f"Meeting Notes: {appointment_data.get('secretariat_meeting_notes')}\n"
     
+    # Add calendar event details
+    if calendar_event_data.get('instructions'):
+        description += f"Instructions: {calendar_event_data.get('instructions')}\n"
+    
     # Add link to appointment in the app
     description += f"\nView in app: {APP_BASE_URL}/admin/appointments/review/{appointment_id}"
     
-    # Create the event data
+    # Create the event data with proper timezone information
     event = {
         'id': _get_calendar_event_id(appointment_id),
         'summary': meeting_title,
@@ -300,25 +323,28 @@ def _format_appointment_for_calendar(appointment_id, appointment_data, db: Sessi
         'description': description,
         'start': {
             'dateTime': start_dt.isoformat(),
-            'timeZone': timezone_id,
+            'timeZone': str(start_dt.tzinfo) if start_dt.tzinfo else timezone_id,
         },
         'end': {
             'dateTime': end_dt.isoformat(),
-            'timeZone': timezone_id,
+            'timeZone': str(end_dt.tzinfo) if end_dt.tzinfo else timezone_id,
         },
         # Add metadata to track this event
         'extendedProperties': {
             'private': {
                 'appointmentId': str(appointment_id),
+                'calendarEventId': str(calendar_event_data.get('id')),
                 'syncSource': 'meetgurudev-app'
             }
         }
     }
     
+    logger.debug(f"Created Google Calendar event for appointment {appointment_id} with timezone {timezone_id}")
+    
     return event
 
-def _sync_appointment_to_calendar(appointment_id, appointment_data, db: Session = None):
-    """Sync an appointment to Google Calendar (create or update)."""
+def _sync_appointment_with_calendar_event_to_google(appointment_id: int, db: Session):
+    """Sync an appointment with its linked calendar event to Google Calendar."""
     if not ENABLE_CALENDAR_SYNC:
         logger.info(f"Calendar sync is disabled. Appointment {appointment_id} not synced.")
         return
@@ -328,15 +354,38 @@ def _sync_appointment_to_calendar(appointment_id, appointment_data, db: Session 
         logger.error(f"Could not get Google Calendar service, appointment {appointment_id} not synced")
         return
     
-    # Format appointment data for calendar
-    event = _format_appointment_for_calendar(appointment_id, appointment_data, db)
-    if not event:
-        # Not a syncable appointment or missing required data
-        return
-    
-    event_id = _get_calendar_event_id(appointment_id)
-    
     try:
+        # Query appointment with joined calendar event
+        appointment = db.query(Appointment).options(
+            joinedload(Appointment.calendar_event).joinedload(CalendarEvent.location),
+            joinedload(Appointment.appointment_dignitaries).joinedload(models.AppointmentDignitary.dignitary),
+            joinedload(Appointment.location)
+        ).filter(Appointment.id == appointment_id).first()
+        
+        if not appointment:
+            logger.warning(f"Appointment {appointment_id} not found")
+            return
+        
+        if not appointment.calendar_event_id:
+            logger.info(f"Appointment {appointment_id} has no linked calendar event, skipping sync")
+            return
+        
+        if not appointment.calendar_event:
+            logger.warning(f"Appointment {appointment_id} calendar_event_id={appointment.calendar_event_id} but calendar event not found")
+            return
+        
+        # Convert to dictionaries for formatting
+        appointment_data = appointment_to_dict(appointment)
+        calendar_event_data = calendar_event_to_dict(appointment.calendar_event, db)
+        
+        # Format for Google Calendar
+        event = _format_calendar_event_for_google(appointment_id, appointment_data, calendar_event_data, db)
+        if not event:
+            # Not a syncable appointment or missing required data
+            return
+        
+        event_id = _get_calendar_event_id(appointment_id)
+        
         # Try to get existing event
         existing_event = None
         try:
@@ -355,16 +404,17 @@ def _sync_appointment_to_calendar(appointment_id, appointment_data, db: Session 
                 eventId=event_id,
                 body=event
             ).execute()
-            logger.info(f"Updated calendar event for appointment {appointment_id}")
+            logger.info(f"Updated Google Calendar event for appointment {appointment_id}")
         else:
             # Create new event
             created_event = service.events().insert(
                 calendarId=CALENDAR_ID,
                 body=event
             ).execute()
-            logger.info(f"Created calendar event for appointment {appointment_id}")
+            logger.info(f"Created Google Calendar event for appointment {appointment_id}")
+            
     except Exception as e:
-        logger.error(f"Error syncing appointment {appointment_id} to calendar: {str(e)}")
+        logger.error(f"Error syncing appointment {appointment_id} to Google Calendar: {str(e)}")
 
 def _delete_appointment_from_calendar(appointment_id):
     """Delete an appointment from Google Calendar."""
@@ -388,7 +438,7 @@ def _delete_appointment_from_calendar(appointment_id):
             ).execute()
         except HttpError as e:
             if e.resp.status == 404:  # Not found, nothing to delete
-                logger.info(f"No calendar event found for appointment {appointment_id}")
+                logger.info(f"No Google Calendar event found for appointment {appointment_id}")
                 return
             else:
                 raise
@@ -398,12 +448,12 @@ def _delete_appointment_from_calendar(appointment_id):
             calendarId=CALENDAR_ID,
             eventId=event_id
         ).execute()
-        logger.info(f"Deleted calendar event for appointment {appointment_id}")
+        logger.info(f"Deleted Google Calendar event for appointment {appointment_id}")
     except Exception as e:
-        logger.error(f"Error deleting appointment {appointment_id} from calendar: {str(e)}")
+        logger.error(f"Error deleting appointment {appointment_id} from Google Calendar: {str(e)}")
 
-def queue_appointment_sync(appointment_id, appointment_data):
-    """Queue an appointment to be synced to Google Calendar."""
+def queue_appointment_sync(appointment_id: int):
+    """Queue an appointment to be synced to Google Calendar using its linked calendar event."""
     # Ensure the calendar worker is running
     if not calendar_worker_running:
         start_calendar_worker()
@@ -411,12 +461,11 @@ def queue_appointment_sync(appointment_id, appointment_data):
     # Add the task to the queue
     calendar_queue.put({
         'type': 'create_or_update',
-        'appointment_id': appointment_id,
-        'appointment_data': appointment_data
+        'appointment_id': appointment_id
     })
     logger.info(f"Appointment {appointment_id} queued for calendar sync")
 
-def queue_appointment_delete(appointment_id):
+def queue_appointment_delete(appointment_id: int):
     """Queue an appointment to be deleted from Google Calendar."""
     # Ensure the calendar worker is running
     if not calendar_worker_running:
@@ -429,7 +478,7 @@ def queue_appointment_delete(appointment_id):
     })
     logger.info(f"Appointment {appointment_id} queued for deletion from calendar")
 
-def appointment_to_calendar_dict(appointment):
+def appointment_to_dict(appointment):
     """Convert an Appointment model to a dictionary suitable for calendar sync."""
     if not appointment:
         return None
@@ -439,26 +488,10 @@ def appointment_to_calendar_dict(appointment):
         'id': appointment.id,
         'status': appointment.status,
         'sub_status': appointment.sub_status,
-        'appointment_date': appointment.appointment_date.isoformat() if hasattr(appointment.appointment_date, 'isoformat') else appointment.appointment_date,
-        'appointment_time': appointment.appointment_time.isoformat() if hasattr(appointment.appointment_time, 'isoformat') else appointment.appointment_time,
         'purpose': appointment.purpose,
         'requester_notes_to_secretariat': appointment.requester_notes_to_secretariat,
         'secretariat_meeting_notes': appointment.secretariat_meeting_notes,
     }
-    
-    # Add location if available
-    if appointment.location:
-        data['location'] = {
-            'id': appointment.location.id,
-            'name': appointment.location.name,
-            'city': appointment.location.city,
-            'state': appointment.location.state,
-            'state_code': appointment.location.state_code if hasattr(appointment.location, 'state_code') else None,
-            'country_code': appointment.location.country_code if hasattr(appointment.location, 'country_code') else None,
-            'timezone': appointment.location.timezone if hasattr(appointment.location, 'timezone') else None,
-            'lat': appointment.location.lat if hasattr(appointment.location, 'lat') else None,
-            'lng': appointment.location.lng if hasattr(appointment.location, 'lng') else None,
-        }
     
     # Add dignitaries if available
     if hasattr(appointment, 'appointment_dignitaries') and appointment.appointment_dignitaries:
@@ -474,31 +507,53 @@ def appointment_to_calendar_dict(appointment):
             }
             data['appointment_dignitaries'].append(dignitary_data)
     
-    # Add legacy dignitary if available (fallback)
-    elif hasattr(appointment, 'dignitary') and appointment.dignitary:
-        data['dignitary'] = {
-            'id': appointment.dignitary.id,
-            'first_name': appointment.dignitary.first_name,
-            'last_name': appointment.dignitary.last_name,
-            'honorific_title': appointment.dignitary.honorific_title,
+    return data
+
+def calendar_event_to_dict(calendar_event, db: Session = None):
+    """Convert a CalendarEvent model to a dictionary suitable for calendar sync."""
+    if not calendar_event:
+        return None
+    
+    data = {
+        'id': calendar_event.id,
+        'start_datetime': calendar_event.start_datetime,
+        'start_date': calendar_event.start_date,
+        'start_time': calendar_event.start_time,
+        'duration': calendar_event.duration,
+        'instructions': calendar_event.instructions,
+    }
+    
+    # Add location if available and loaded
+    if calendar_event.location:
+        data['location'] = {
+            'id': calendar_event.location.id,
+            'name': calendar_event.location.name,
+            'city': calendar_event.location.city,
+            'state': calendar_event.location.state,
+            'street_address': getattr(calendar_event.location, 'street_address', None),
+            'zip_code': getattr(calendar_event.location, 'zip_code', None),
+            'country': getattr(calendar_event.location, 'country', None),
+            'country_code': getattr(calendar_event.location, 'country_code', None),
+            'timezone': getattr(calendar_event.location, 'timezone', None),
         }
     
     return data
 
 async def sync_appointment(appointment):
-    """Sync a single appointment to Google Calendar (async wrapper)."""
-    appointment_data = appointment_to_calendar_dict(appointment)
-    if appointment_data:
-        logger.info(f"Syncing appointment {appointment.id} to calendar")
-        queue_appointment_sync(appointment.id, appointment_data)
+    """Sync a single appointment to Google Calendar using its linked calendar event (async wrapper)."""
+    if appointment and appointment.calendar_event_id:
+        logger.info(f"Syncing appointment {appointment.id} with calendar event {appointment.calendar_event_id} to Google Calendar")
+        queue_appointment_sync(appointment.id)
+    else:
+        logger.info(f"Appointment {appointment.id if appointment else 'None'} has no linked calendar event, skipping sync")
 
 async def delete_appointment(appointment_id):
     """Delete an appointment from Google Calendar (async wrapper)."""
-    logger.info(f"Deleting appointment {appointment_id} from calendar")
+    logger.info(f"Deleting appointment {appointment_id} from Google Calendar")
     queue_appointment_delete(appointment_id)
 
 def sync_all_appointments(db: Session):
-    """Sync all approved and scheduled appointments to Google Calendar.
+    """Sync all approved and scheduled appointments with linked calendar events to Google Calendar.
     
     This function is designed to be run as a cron job to ensure all
     appointments are properly synced to the calendar.
@@ -512,20 +567,25 @@ def sync_all_appointments(db: Session):
         logger.error("Could not get Google Calendar service for bulk sync")
         return
     
-    # Get all approved and scheduled appointments
-    appointments = db.query(Appointment).filter(
+    # Get all approved and scheduled appointments with linked calendar events
+    appointments = db.query(Appointment).options(
+        joinedload(Appointment.calendar_event).joinedload(CalendarEvent.location),
+        joinedload(Appointment.appointment_dignitaries).joinedload(models.AppointmentDignitary.dignitary),
+        joinedload(Appointment.location)
+    ).filter(
         Appointment.status == AppointmentStatus.APPROVED,
         Appointment.sub_status == AppointmentSubStatus.SCHEDULED,
-        Appointment.appointment_date.isnot(None)
+        Appointment.calendar_event_id.isnot(None)
     ).all()
     
-    logger.info(f"Found {len(appointments)} approved and scheduled appointments for bulk sync")
+    logger.info(f"Found {len(appointments)} approved and scheduled appointments with calendar events for bulk sync")
     
     for appointment in appointments:
-        appointment_data = appointment_to_calendar_dict(appointment)
-        if appointment_data:
+        if appointment.calendar_event:
             # Process directly instead of queueing to avoid overwhelming the queue
-            _sync_appointment_to_calendar(appointment.id, appointment_data, db)
+            _sync_appointment_with_calendar_event_to_google(appointment.id, db)
+        else:
+            logger.warning(f"Appointment {appointment.id} has calendar_event_id but no calendar_event loaded")
     
     logger.info(f"Bulk calendar sync completed")
 
@@ -548,9 +608,9 @@ def test_calendar_connection():
         return False, f"Google Calendar API connection failed: {error_message}" 
 
 async def check_and_sync_appointment(appointment, db: Session = None):
-    """Conditionally sync an appointment to Google Calendar based on its status.
+    """Conditionally sync an appointment to Google Calendar based on its status and calendar event.
     
-    Only sync if appointment is Approved and Scheduled, and update status to Completed after sync.
+    Only sync if appointment is Approved and Scheduled, has a linked calendar event, and update status to Completed after sync.
     If appointment doesn't meet criteria but was previously synced, delete it from calendar.
     
     Args:
@@ -576,7 +636,7 @@ async def check_and_sync_appointment(appointment, db: Session = None):
         )
         and
         (
-            appointment.appointment_date is not None
+            appointment.calendar_event_id is not None
         )
     )
     
@@ -589,7 +649,7 @@ async def check_and_sync_appointment(appointment, db: Session = None):
             await delete_appointment(appointment.id)
             logger.info(
                 f"Appointment {appointment.id} no longer meets sync criteria "
-                f"(status={appointment.status}, sub_status={appointment.sub_status}). "
+                f"(status={appointment.status}, sub_status={appointment.sub_status}, calendar_event_id={appointment.calendar_event_id}). "
                 f"Removed from calendar."
             )
         except Exception as e:
@@ -607,18 +667,18 @@ async def check_and_sync_updated_appointment(appointment, old_data: Dict[str, An
     # Check if status or sub_status has changed
     status_changed = old_data.get('status') != new_data.get('status')
     sub_status_changed = old_data.get('sub_status') != new_data.get('sub_status')
-    appointment_date_changed = old_data.get('appointment_date') != new_data.get('appointment_date')
-    appointment_time_changed = old_data.get('appointment_time') != new_data.get('appointment_time')
-    location_changed = old_data.get('location_id') != new_data.get('location_id')
-    dignitaries_changed = old_data.get('appointment_dignitaries') != new_data.get('appointment_dignitaries')
+    calendar_event_changed = old_data.get('calendar_event_id') != new_data.get('calendar_event_id')
+    
+    # Also check if calendar event fields changed (we'd need to detect this via calendar event updates)
     purpose_changed = old_data.get('purpose', '') != new_data.get('purpose', '')
     requester_notes_to_secretariat_changed = old_data.get('requester_notes_to_secretariat', '') != new_data.get('requester_notes_to_secretariat', '')
     secretariat_meeting_notes_changed = old_data.get('secretariat_meeting_notes', '') != new_data.get('secretariat_meeting_notes', '')
 
-    if status_changed or sub_status_changed or appointment_date_changed or appointment_time_changed or location_changed or dignitaries_changed or purpose_changed or requester_notes_to_secretariat_changed or secretariat_meeting_notes_changed:
+    if status_changed or sub_status_changed or calendar_event_changed or purpose_changed or requester_notes_to_secretariat_changed or secretariat_meeting_notes_changed:
         # Get old status values
         old_status = old_data.get('status')
         old_sub_status = old_data.get('sub_status')
+        old_calendar_event_id = old_data.get('calendar_event_id')
         
         # Check if appointment previously met criteria for calendar sync
         was_syncable = (
@@ -630,7 +690,7 @@ async def check_and_sync_updated_appointment(appointment, old_data: Dict[str, An
             (
                 old_status == AppointmentStatus.COMPLETED
             )
-        )
+        ) and old_calendar_event_id is not None
         
         # Check if appointment currently meets criteria for calendar sync
         is_syncable = (
@@ -642,11 +702,7 @@ async def check_and_sync_updated_appointment(appointment, old_data: Dict[str, An
             (
                 appointment.status == AppointmentStatus.COMPLETED
             )
-            and
-            (
-                appointment.appointment_date is not None
-            )
-        )
+        ) and appointment.calendar_event_id is not None
         
         if was_syncable and not is_syncable:
             # Appointment no longer meets criteria, remove from calendar

@@ -10,6 +10,7 @@ import schemas
 from dependencies.database import get_db, get_read_db
 from dependencies.auth import get_current_user_for_write, get_current_user, requires_any_role
 from models.calendarEvent import EventType, EventStatus
+from utils.utils import convert_to_datetime_with_tz
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,37 @@ def format_time_from_datetime(dt: datetime) -> str:
     """Format datetime to HH:MM string"""
     return dt.strftime("%H:%M")
 
+def combine_date_and_time(start_date: date, start_time: str) -> datetime:
+    """Combine date and time string into naive datetime"""
+    try:
+        # Parse time string
+        time_parts = start_time.split(':')
+        hour = int(time_parts[0])
+        minute = int(time_parts[1]) if len(time_parts) > 1 else 0
+        
+        # Combine into naive datetime
+        return datetime.combine(start_date, time(hour, minute))
+    except (ValueError, IndexError) as e:
+        raise ValueError(f"Invalid time format '{start_time}'. Expected HH:MM format.") from e
+
+def create_timezone_aware_datetime_for_event(start_date: date, start_time: str, location_id: int, db: Session) -> datetime:
+    """Create timezone-aware datetime for CalendarEvent from date and time strings"""
+    
+    # First create naive datetime
+    naive_datetime = combine_date_and_time(start_date, start_time)
+    
+    # Get location information for timezone determination
+    location = None
+    if location_id:
+        location = db.query(models.Location).filter(models.Location.id == location_id).first()
+    
+    # Convert to the format expected by convert_to_datetime_with_tz
+    date_str = start_date.isoformat()
+    time_str = f"{start_time}:00" if len(start_time.split(':')) == 2 else start_time
+    
+    # Use the sophisticated timezone conversion logic
+    return convert_to_datetime_with_tz(date_str, time_str, location)
+
 @router.post("/", response_model=schemas.CalendarEventResponse)
 @requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
 async def create_calendar_event(
@@ -42,14 +74,22 @@ async def create_calendar_event(
     """Create a new calendar event"""
     logger.info(f"Creating calendar event: {event.title} by user {current_user.email}")
     
+    # Create timezone-aware datetime from separate date and time fields
+    timezone_aware_datetime = create_timezone_aware_datetime_for_event(
+        event.start_date, 
+        event.start_time, 
+        event.location_id, 
+        db
+    )
+    
     # Create the event
     db_event = models.CalendarEvent(
         event_type=event.event_type,
         title=event.title,
         description=event.description,
-        start_datetime=event.start_datetime,
-        start_date=event.start_datetime.date(),
-        start_time=format_time_from_datetime(event.start_datetime),
+        start_datetime=timezone_aware_datetime,     # Timezone-aware calculated datetime
+        start_date=event.start_date,                # Original user input date
+        start_time=event.start_time,                # Original user input time
         duration=event.duration,
         location_id=event.location_id,
         meeting_place_id=event.meeting_place_id,
@@ -190,10 +230,16 @@ async def update_calendar_event(
     for field, value in update_data.items():
         setattr(event, field, value)
     
-    # Update derived fields if start_datetime changed
-    if 'start_datetime' in update_data:
-        event.start_date = event.start_datetime.date()
-        event.start_time = format_time_from_datetime(event.start_datetime)
+    # Handle date/time updates - calculate new timezone-aware start_datetime if needed
+    if 'start_date' in update_data and 'start_time' in update_data:
+        # Create new timezone-aware datetime from updated date/time
+        timezone_aware_datetime = create_timezone_aware_datetime_for_event(
+            update_data['start_date'], 
+            update_data['start_time'], 
+            event.location_id, 
+            db
+        )
+        event.start_datetime = timezone_aware_datetime
     
     event.updated_by = current_user.id
     event.updated_at = datetime.utcnow()
@@ -313,10 +359,12 @@ async def create_calendar_events_batch(
     
     for event_date in batch_data.start_dates:
         try:
-            # Combine date and time
-            start_datetime = datetime.combine(
-                event_date,
-                datetime.strptime(batch_data.start_time, "%H:%M").time()
+            # Create timezone-aware datetime from date and time
+            timezone_aware_datetime = create_timezone_aware_datetime_for_event(
+                event_date, 
+                batch_data.start_time, 
+                batch_data.location_id, 
+                db
             )
             
             # Format title with date if template includes {date}
@@ -326,9 +374,9 @@ async def create_calendar_events_batch(
                 event_type=batch_data.event_type,
                 title=title,
                 description=batch_data.description,
-                start_datetime=start_datetime,
-                start_date=event_date,
-                start_time=batch_data.start_time,
+                start_datetime=timezone_aware_datetime,     # Timezone-aware calculated datetime
+                start_date=event_date,                      # Original user input date
+                start_time=batch_data.start_time,           # Original user input time string
                 duration=batch_data.duration,
                 location_id=batch_data.location_id,
                 meeting_place_id=batch_data.meeting_place_id,
@@ -397,14 +445,20 @@ async def update_calendar_events_batch(
     
     for event in events:
         try:
-            # Update fields
+            # Update fields (excluding special date/time handling)
             for field, value in update_data.items():
                 setattr(event, field, value)
             
-            # Update derived fields if start_datetime changed
-            if 'start_datetime' in update_data:
-                event.start_date = event.start_datetime.date()
-                event.start_time = format_time_from_datetime(event.start_datetime)
+            # Handle date/time updates - calculate new timezone-aware start_datetime if needed
+            if 'start_date' in update_data and 'start_time' in update_data:
+                # Create new timezone-aware datetime from updated date/time
+                timezone_aware_datetime = create_timezone_aware_datetime_for_event(
+                    update_data['start_date'], 
+                    update_data['start_time'], 
+                    event.location_id, 
+                    db
+                )
+                event.start_datetime = timezone_aware_datetime
             
             event.updated_by = current_user.id
             event.updated_at = datetime.utcnow()

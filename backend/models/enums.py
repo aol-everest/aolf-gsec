@@ -324,6 +324,16 @@ class EventStatus(str, enum.Enum):
         return self.value
 
 
+class CalendarCreationContext(str, enum.Enum):
+    """Calendar event creation context enum"""
+    ADMIN = "admin"
+    APPOINTMENT = "appointment"
+    CALENDAR_IMPORT = "calendar_import"
+
+    def __str__(self):
+        return self.value
+
+
 # ============================================================================
 # ATTACHMENT-RELATED ENUMS
 # ============================================================================
@@ -336,6 +346,18 @@ class AttachmentType(str, enum.Enum):
     def __str__(self):
         return self.value
 
+
+# ============================================================================
+# MAPPING DATA
+# ============================================================================
+
+# Event type to request type mapping for calendar event creation
+EVENT_TYPE_TO_REQUEST_TYPE_MAPPING = {
+    RequestType.DIGNITARY: EventType.DIGNITARY_APPOINTMENT,
+    RequestType.DARSHAN: EventType.DARSHAN,
+    RequestType.PROJECT_TEAM_MEETING: EventType.VOLUNTEER_MEETING,
+    RequestType.OTHER: EventType.OTHER
+}
 
 # ============================================================================
 # STATUS MAPPING AND VALIDATION DATA

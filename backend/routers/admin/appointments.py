@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import or_, and_, false
-from datetime import datetime, date, timedelta
+from sqlalchemy import or_, and_, false, func
+from datetime import datetime, date, timedelta, time
 from typing import Optional, List
 import logging
 
@@ -12,95 +12,262 @@ from dependencies.auth import get_current_user_for_write, get_current_user, requ
 from dependencies.access_control import admin_get_appointment
 from utils.email_notifications import notify_appointment_creation, notify_appointment_update
 from utils.calendar_sync import check_and_sync_appointment, check_and_sync_updated_appointment
+from utils.utils import convert_to_datetime_with_tz
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-@router.post("/new", response_model=schemas.AdminAppointment)
+def create_timezone_aware_datetime(appointment_date: date, appointment_time: str, location_id: int, db: Session) -> datetime:
+    """Create timezone-aware datetime for CalendarEvent using sophisticated timezone logic"""
+    
+    # Get location information for timezone determination
+    location = None
+    if location_id:
+        location = db.query(models.Location).filter(models.Location.id == location_id).first()
+    
+    # Convert date to string format expected by convert_to_datetime_with_tz
+    date_str = appointment_date.isoformat()
+    
+    # Use the sophisticated timezone conversion logic
+    return convert_to_datetime_with_tz(date_str, appointment_time, location)
+
+def create_calendar_event_for_admin_appointment(
+    appointment_data: schemas.AppointmentCreateEnhanced,
+    appointment_date: date,
+    appointment_time: str,
+    duration: int,
+    location_id: int,
+    meeting_place_id: Optional[int],
+    max_capacity: Optional[int],
+    is_open_for_booking: Optional[bool],
+    current_user: models.User,
+    db: Session
+) -> models.CalendarEvent:
+    """Create a calendar event for an admin appointment with timezone-aware datetime"""
+    
+    # Use mapping from enums instead of inline mapping
+    from models.enums import EVENT_TYPE_TO_REQUEST_TYPE_MAPPING
+    event_type = EVENT_TYPE_TO_REQUEST_TYPE_MAPPING.get(
+        appointment_data.request_type, 
+        models.EventType.OTHER
+    )
+    
+    # Create timezone-aware datetime using sophisticated timezone logic
+    start_datetime = create_timezone_aware_datetime(appointment_date, appointment_time, location_id, db)
+    
+    # Create the calendar event
+    db_event = models.CalendarEvent(
+        event_type=event_type,
+        title=f"{event_type.value} - {appointment_data.purpose[:50]}",
+        description=appointment_data.purpose,
+        start_datetime=start_datetime,  # Timezone-aware calculated datetime
+        start_date=appointment_date,    # Original user input date
+        start_time=appointment_time,    # Original user input time string
+        duration=duration,
+        location_id=location_id,
+        meeting_place_id=meeting_place_id,
+        max_capacity=max_capacity,
+        is_open_for_booking=is_open_for_booking if is_open_for_booking is not None else True,
+        status=models.EventStatus.CONFIRMED,  # Admin appointments are confirmed immediately
+        creation_context=models.CalendarCreationContext.APPOINTMENT,
+        creation_context_id=str(current_user.id),
+        created_by=current_user.id,
+        updated_by=current_user.id
+    )
+    
+    db.add(db_event)
+    db.flush()  # Get the ID without committing
+    return db_event
+
+@router.post("/new", response_model=schemas.AdminAppointmentResponseEnhanced)
 async def create_appointment(
-    appointment: schemas.AdminAppointmentCreate,
+    appointment: schemas.AppointmentCreateEnhanced,
     current_user: models.User = Depends(get_current_user_for_write),
     db: Session = Depends(get_db)
 ):
+    """Create a new appointment (unified admin endpoint supporting both legacy and enhanced requests)"""
     start_time = datetime.utcnow()
-    logger.info(f"Creating new appointment for user {current_user.email} (ID: {current_user.id})")
+    logger.info(f"Admin creating new {appointment.request_type.value} appointment for user {current_user.email} (ID: {current_user.id})")
     logger.debug(f"Appointment data: {appointment.dict()}")
     
     try:
-        # Log timing for database operations
-        db_start_time = datetime.utcnow()
+        # Handle calendar event creation scenarios
+        calendar_event = None
+        
+        if appointment.calendar_event_id:
+            # Scenario 1: Link to existing calendar event
+            calendar_event = db.query(models.CalendarEvent).filter(
+                models.CalendarEvent.id == appointment.calendar_event_id
+            ).first()
+            if not calendar_event:
+                raise HTTPException(status_code=404, detail="Calendar event not found")
+            
+            # Check availability
+            current_capacity = db.query(func.sum(models.Appointment.number_of_attendees)).filter(
+                models.Appointment.calendar_event_id == appointment.calendar_event_id,
+                models.Appointment.status.notin_([
+                    models.AppointmentStatus.CANCELLED,
+                    models.AppointmentStatus.REJECTED
+                ])
+            ).scalar() or 0
+            
+            required_capacity = 0
+            if appointment.dignitary_ids:
+                required_capacity += len(appointment.dignitary_ids)
+            if appointment.user_ids:
+                required_capacity += len(appointment.user_ids)
+            if required_capacity == 0:
+                required_capacity = 1  # Default to 1 if nothing specified
+            if current_capacity + required_capacity > calendar_event.max_capacity:
+                raise HTTPException(status_code=400, detail="Calendar event is at full capacity")
+                
+        elif appointment.appointment_date and appointment.appointment_time:
+            # Scenario 2: Admin specifying exact appointment details - create calendar event immediately
+            calendar_event = create_calendar_event_for_admin_appointment(
+                appointment, 
+                appointment.appointment_date,
+                appointment.appointment_time,
+                appointment.duration,
+                appointment.location_id,
+                appointment.meeting_place_id,
+                appointment.max_capacity,
+                appointment.is_open_for_booking,
+                current_user, 
+                db
+            )
+        # Scenario 3: User preferred date - no calendar event creation (will be created on approval)
+        # calendar_event remains None
+        
+        # Calculate number of attendees based on what's provided
+        number_of_attendees = 0
+        if appointment.dignitary_ids:
+            number_of_attendees += len(appointment.dignitary_ids)
+        if appointment.user_ids:
+            number_of_attendees += len(appointment.user_ids)
+        if number_of_attendees == 0:
+            number_of_attendees = 1  # Default to 1 if nothing specified
         
         # Create appointment
         db_appointment = models.Appointment(
             created_by=current_user.id,
             last_updated_by=current_user.id,
-            status=appointment.status,
-            sub_status=appointment.sub_status,
-            appointment_type=appointment.appointment_type,
+            status=models.AppointmentStatus.PENDING,
             purpose=appointment.purpose,
-            appointment_date=appointment.appointment_date,
-            appointment_time=appointment.appointment_time,
-            location_id=appointment.location_id,
-            secretariat_meeting_notes=appointment.secretariat_meeting_notes,
-            secretariat_follow_up_actions=appointment.secretariat_follow_up_actions,
-            secretariat_notes_to_requester=appointment.secretariat_notes_to_requester,
+            preferred_date=appointment.preferred_date,
+            preferred_time_of_day=appointment.preferred_time_of_day,
+            requester_notes_to_secretariat=appointment.requester_notes_to_secretariat,
+            location_id=appointment.location_id or (calendar_event.location_id if calendar_event else None),
+            calendar_event_id=calendar_event.id if calendar_event else None,
+            request_type=appointment.request_type,
+            number_of_attendees=number_of_attendees
         )
         db.add(db_appointment)
+        db.flush()
+        
+        # Handle dignitary appointments if dignitary_ids are provided
+        if appointment.dignitary_ids:
+            for dignitary_id in appointment.dignitary_ids:
+                appointment_dignitary = models.AppointmentDignitary(
+                    appointment_id=db_appointment.id,
+                    dignitary_id=dignitary_id,
+                    created_by=current_user.id,
+                    updated_by=current_user.id
+                )
+                db.add(appointment_dignitary)
+        
+        # Handle user attendees if user_ids are provided
+        if appointment.user_ids:
+            for user_data in appointment.user_ids:
+                appointment_user = models.AppointmentUser(
+                    appointment_id=db_appointment.id,
+                    user_id=current_user.id,  # Admin creating on behalf
+                    first_name=user_data.first_name,
+                    last_name=user_data.last_name,
+                    email=user_data.email,
+                    phone=user_data.phone,
+                    relationship_to_requester=user_data.relationship_to_requester,
+                    comments=user_data.comments,
+                    created_by=current_user.id,
+                    updated_by=current_user.id
+                )
+                db.add(appointment_user)
+        
         db.commit()
         db.refresh(db_appointment)
         
-        # Calculate DB operation time
-        db_time = (datetime.utcnow() - db_start_time).total_seconds() * 1000
-        logger.debug(f"Database operation for creating appointment took {db_time:.2f}ms")
-
-        # Associate dignitaries with the appointment
-        dignitary_start_time = datetime.utcnow()
-        dignitary_count = 0
-        
-        for dignitary_id in appointment.dignitary_ids:
-            appointment_dignitary = models.AppointmentDignitary(
-                appointment_id=db_appointment.id,
-                dignitary_id=dignitary_id,
-                created_by=current_user.id,
-                updated_by=current_user.id
-            )
-            db.add(appointment_dignitary)
-            dignitary_count += 1
-            
-        db.commit()
-        
-        # Calculate dignitary association time
-        dignitary_time = (datetime.utcnow() - dignitary_start_time).total_seconds() * 1000
-        logger.debug(f"Associated {dignitary_count} dignitaries with appointment in {dignitary_time:.2f}ms")
-
         # Send email notifications
-        notification_start_time = datetime.utcnow()
         try:
             notify_appointment_creation(db, db_appointment)
-            notification_time = (datetime.utcnow() - notification_start_time).total_seconds() * 1000
-            logger.debug(f"Email notifications sent in {notification_time:.2f}ms")
         except Exception as e:
             logger.error(f"Error sending email notifications: {str(e)}", exc_info=True)
 
         # Sync appointment to Google Calendar if it meets criteria
         try:
             await check_and_sync_appointment(db_appointment, db)
-            logger.debug(f"Admin appointment conditionally processed for Google Calendar sync")
         except Exception as e:
-            logger.error(f"Error processing admin appointment for Google Calendar sync: {str(e)}", exc_info=True)
+            logger.error(f"Error processing appointment for Google Calendar sync: {str(e)}", exc_info=True)
 
         # Calculate total operation time
         total_time = (datetime.utcnow() - start_time).total_seconds() * 1000
-        logger.info(f"Appointment created successfully (ID: {db_appointment.id}) in {total_time:.2f}ms")
+        logger.info(f"Admin appointment created successfully (ID: {db_appointment.id}) in {total_time:.2f}ms")
         
-        return db_appointment
+        # Prepare enhanced admin response
+        return prepare_enhanced_admin_appointment_response(db_appointment, db)
+        
     except Exception as e:
-        logger.error(f"Error creating appointment: {str(e)}", exc_info=True)
-        # Log the full exception traceback in debug mode
-        logger.debug(f"Exception details:", exc_info=True)
+        logger.error(f"Error creating admin appointment: {str(e)}", exc_info=True)
         raise
 
+def prepare_enhanced_admin_appointment_response(appointment: models.Appointment, db: Session) -> schemas.AdminAppointmentResponseEnhanced:
+    """Prepare enhanced admin appointment response with all related data"""
+    
+    # Load related data
+    appointment = db.query(models.Appointment).options(
+        joinedload(models.Appointment.requester),
+        joinedload(models.Appointment.calendar_event),
+        joinedload(models.Appointment.location),
+        joinedload(models.Appointment.meeting_place),
+        joinedload(models.Appointment.created_by_user),
+        joinedload(models.Appointment.last_updated_by_user),
+        joinedload(models.Appointment.approved_by_user),
+        joinedload(models.Appointment.appointment_dignitaries).joinedload(
+            models.AppointmentDignitary.dignitary
+        ),
+        joinedload(models.Appointment.appointment_users)
+    ).filter(models.Appointment.id == appointment.id).first()
+    
+    # Prepare calendar event basic info
+    calendar_event_info = None
+    if appointment.calendar_event:
+        calendar_event_info = schemas.CalendarEventBasicInfo(
+            **appointment.calendar_event.__dict__
+        )
+    
+    # Prepare appointment users
+    appointment_users = []
+    if appointment.appointment_users:
+        for au in appointment.appointment_users:
+            appointment_users.append(schemas.AppointmentUserInfo(**au.__dict__))
+    
+    # Prepare appointment dignitaries
+    appointment_dignitaries = []
+    if appointment.appointment_dignitaries:
+        for ad in appointment.appointment_dignitaries:
+            appointment_dignitaries.append(schemas.AppointmentDignitaryWithDignitary(**ad.__dict__))
+    
+    # Prepare response
+    response_data = {
+        **appointment.__dict__,
+        'calendar_event': calendar_event_info,
+        'appointment_users': appointment_users if appointment_users else None,
+        'appointment_dignitaries': appointment_dignitaries if appointment_dignitaries else None,
+        # Legacy compatibility
+        'appointment_date': appointment.calendar_event.start_date if appointment.calendar_event else appointment.preferred_date,
+        'appointment_time': appointment.calendar_event.start_time if appointment.calendar_event else None,
+    }
+    
+    return schemas.AdminAppointmentResponseEnhanced(**response_data)
 
 @router.patch("/update/{appointment_id}", response_model=schemas.AdminAppointment)
 @requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
@@ -134,6 +301,23 @@ async def update_appointment(
         setattr(appointment, key, value)
     appointment.last_updated_by = current_user.id
     
+    # Handle calendar event updates - always call if calendar event exists
+    calendar_event_updated = False
+    if appointment.calendar_event_id:
+        calendar_event = db.query(models.CalendarEvent).filter(
+            models.CalendarEvent.id == appointment.calendar_event_id
+        ).first()
+        if calendar_event:
+            update_calendar_event_for_appointment(appointment, calendar_event, current_user, db)
+            calendar_event_updated = True
+    elif (appointment.status == models.AppointmentStatus.APPROVED and 
+          appointment.sub_status == models.AppointmentSubStatus.SCHEDULED):
+        # Create calendar event for newly approved+scheduled appointments without existing calendar events
+        calendar_event = create_calendar_event_for_approved_appointment(appointment, current_user, db)
+        if calendar_event:
+            calendar_event_updated = True
+            logger.info(f"Created calendar event {calendar_event.id} for approved appointment {appointment.id}")
+    
     db.commit()
     db.refresh(appointment)
 
@@ -152,6 +336,8 @@ async def update_appointment(
     # Send email notifications about the update
     try:
         notify_appointment_update(db, appointment, old_data, update_data)
+        if calendar_event_updated:
+            logger.info(f"Calendar event operations completed for appointment {appointment.id}")
     except Exception as e:
         logger.error(f"Error sending email notifications: {str(e)}")
     
@@ -334,4 +520,141 @@ async def get_appointment(
         appointment_id=appointment_id,
         required_access_level=models.AccessLevel.READ
     )
-    return appointment 
+    return appointment
+
+def create_calendar_event_for_approved_appointment(
+    appointment: models.Appointment,
+    current_user: models.User,
+    db: Session
+) -> Optional[models.CalendarEvent]:
+    """Create a calendar event when an appointment is approved and scheduled"""
+    
+    # Only create if we have the necessary information
+    if not appointment.appointment_date or not appointment.appointment_time:
+        logger.warning(f"Cannot create calendar event for appointment {appointment.id}: missing date/time")
+        return None
+    
+    # Use mapping from enums
+    from models.enums import EVENT_TYPE_TO_REQUEST_TYPE_MAPPING
+    event_type = EVENT_TYPE_TO_REQUEST_TYPE_MAPPING.get(
+        appointment.request_type, 
+        models.EventType.OTHER
+    )
+    
+    # Create timezone-aware datetime using sophisticated timezone logic
+    start_datetime = create_timezone_aware_datetime(appointment.appointment_date, appointment.appointment_time, appointment.location_id, db)
+    
+    # Create the calendar event
+    db_event = models.CalendarEvent(
+        event_type=event_type,
+        title=f"{event_type.value} - {appointment.purpose[:50]}",
+        description=appointment.purpose,
+        start_datetime=start_datetime,        # Timezone-aware calculated datetime
+        start_date=appointment.appointment_date,    # Original appointment date
+        start_time=appointment.appointment_time,    # Original appointment time string
+        duration=appointment.duration,
+        location_id=appointment.location_id,
+        meeting_place_id=appointment.meeting_place_id,
+        max_capacity=None,  # Don't auto-set capacity
+        is_open_for_booking=True,  # Default to open
+        status=models.EventStatus.CONFIRMED,
+        creation_context=models.CalendarCreationContext.APPOINTMENT,
+        creation_context_id=str(appointment.id),
+        created_by=current_user.id,
+        updated_by=current_user.id
+    )
+    
+    db.add(db_event)
+    db.flush()  # Get the ID without committing
+    
+    # Link the appointment to the calendar event
+    appointment.calendar_event_id = db_event.id
+    
+    return db_event
+
+def update_calendar_event_for_appointment(
+    appointment: models.Appointment,
+    calendar_event: models.CalendarEvent,
+    current_user: models.User,
+    db: Session
+) -> None:
+    """Update calendar event to match appointment state - respects creation context"""
+    
+    updated_fields = []
+    
+    # Only update status and core fields for appointment-created events
+    if calendar_event.creation_context == models.CalendarCreationContext.APPOINTMENT:
+        # Determine appropriate calendar event status based on appointment state
+        if appointment.status == models.AppointmentStatus.APPROVED and appointment.sub_status == models.AppointmentSubStatus.SCHEDULED:
+            target_status = models.EventStatus.CONFIRMED
+        elif appointment.status == models.AppointmentStatus.CANCELLED:
+            target_status = models.EventStatus.CANCELLED
+        elif appointment.status == models.AppointmentStatus.REJECTED:
+            target_status = models.EventStatus.CANCELLED
+        elif appointment.status == models.AppointmentStatus.COMPLETED:
+            target_status = models.EventStatus.COMPLETED
+        else:
+            # For pending, need more info, need reschedule, etc.
+            target_status = models.EventStatus.DRAFT
+        
+        # Update status if different
+        if calendar_event.status != target_status:
+            calendar_event.status = target_status
+            updated_fields.append(f'status -> {target_status.value}')
+        
+        # Only update other fields if appointment is approved+scheduled
+        if appointment.status == models.AppointmentStatus.APPROVED and appointment.sub_status == models.AppointmentSubStatus.SCHEDULED:
+            # Update date/time fields if they exist and are different
+            if appointment.appointment_date and appointment.appointment_time:
+                # Create timezone-aware datetime using sophisticated timezone logic
+                new_start_datetime = create_timezone_aware_datetime(appointment.appointment_date, appointment.appointment_time, appointment.location_id, db)
+                
+                # Update only if values are different - preserve original user input for start_date and start_time
+                if calendar_event.start_datetime != new_start_datetime:
+                    calendar_event.start_datetime = new_start_datetime
+                    updated_fields.append('start_datetime')
+                    
+                if calendar_event.start_date != appointment.appointment_date:
+                    calendar_event.start_date = appointment.appointment_date  # Original user input
+                    updated_fields.append('start_date')
+                    
+                if calendar_event.start_time != appointment.appointment_time:
+                    calendar_event.start_time = appointment.appointment_time  # Original user input
+                    updated_fields.append('start_time')
+            
+            # Update duration if different
+            if appointment.duration and calendar_event.duration != appointment.duration:
+                calendar_event.duration = appointment.duration
+                updated_fields.append('duration')
+                
+            # Update location if different
+            if appointment.location_id and calendar_event.location_id != appointment.location_id:
+                calendar_event.location_id = appointment.location_id
+                updated_fields.append('location_id')
+                
+            # Update meeting place if different
+            if appointment.meeting_place_id and calendar_event.meeting_place_id != appointment.meeting_place_id:
+                calendar_event.meeting_place_id = appointment.meeting_place_id
+                updated_fields.append('meeting_place_id')
+    else:
+        # For admin-created or imported events, don't update status or core fields
+        logger.debug(f"Skipping status/core field updates for {calendar_event.creation_context.value}-created calendar event {calendar_event.id}")
+    
+    # Always check and update description and title if purpose changed (for all creation contexts)
+    new_description = appointment.purpose
+    new_title = f"{calendar_event.event_type.value} - {appointment.purpose[:50]}"
+    
+    if calendar_event.description != new_description:
+        calendar_event.description = new_description
+        updated_fields.append('description')
+        
+    if calendar_event.title != new_title:
+        calendar_event.title = new_title
+        updated_fields.append('title')
+    
+    # Only update metadata if there were actual changes
+    if updated_fields:
+        calendar_event.updated_by = current_user.id
+        logger.info(f"Updated calendar event {calendar_event.id} fields: {', '.join(updated_fields)} for appointment {appointment.id}")
+    else:
+        logger.debug(f"No calendar event updates needed for appointment {appointment.id}") 
