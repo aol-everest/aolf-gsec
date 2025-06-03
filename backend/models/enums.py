@@ -108,7 +108,7 @@ class AppointmentTimeOfDay(str, enum.Enum):
 class RequestType(str, enum.Enum):
     """Request type enum for different appointment categories"""
     DIGNITARY = "Dignitary"
-    DARSHAN = "Darshan"
+    DARSHAN = "Personal"
     PROJECT_TEAM_MEETING = "Project / Team Meeting"
     OTHER = "Other"
 

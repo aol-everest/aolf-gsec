@@ -616,6 +616,18 @@ class RequesterUsherView(BaseModel):
     class Config:
         orm_mode = True
 
+class AppointmentUserUsherView(BaseModel):
+    """Usher view of appointment users (darshan attendees)"""
+    id: int
+    first_name: str
+    last_name: str
+    attendance_status: AttendanceStatus
+    checked_in_at: Optional[datetime] = None
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
+
 class AppointmentDignitaryUsherView(AppointmentDignitaryBase):
     id: int
     created_at: datetime
@@ -632,6 +644,7 @@ class AppointmentUsherView(BaseModel):
     requester: Optional[RequesterUsherView] = None
     location: Optional[Location] = None
     appointment_dignitaries: Optional[List[AppointmentDignitaryUsherView]] = []
+    appointment_users: Optional[List[AppointmentUserUsherView]] = []  # NEW
 
     class Config:
         orm_mode = True
@@ -639,6 +652,12 @@ class AppointmentUsherView(BaseModel):
             datetime: lambda v: v.isoformat(),
             date: lambda v: v.strftime("%Y-%m-%d")
         }
+
+class BulkCheckinResponse(BaseModel):
+    """Response for bulk check-in operations"""
+    total_checked_in: int
+    already_checked_in: int
+    failed: int = 0
 
 class AppointmentDignitary(AppointmentDignitaryBase):
     id: int

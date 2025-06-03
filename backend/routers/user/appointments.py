@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
-from typing import List
+from typing import List, Optional
 from datetime import datetime, time
 import logging
 import os
@@ -169,12 +169,19 @@ def prepare_enhanced_appointment_response(appointment: models.Appointment, db: S
 @router.get("/appointments/my", response_model=List[schemas.AppointmentResponseEnhanced])
 async def get_my_appointments(
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_read_db)
+    db: Session = Depends(get_read_db),
+    request_type: Optional[str] = None
 ):
-    """Get all appointments requested by the current user (enhanced version)"""
-    appointments = db.query(models.Appointment).filter(
+    """Get all appointments requested by the current user (enhanced version) with optional request type filter"""
+    query = db.query(models.Appointment).filter(
         models.Appointment.requester_id == current_user.id
-    ).options(
+    )
+    
+    # Apply request type filter if provided
+    if request_type:
+        query = query.filter(models.Appointment.request_type.in_(request_type.split(',')))
+    
+    appointments = query.options(
         joinedload(models.Appointment.requester),
         joinedload(models.Appointment.calendar_event),
         joinedload(models.Appointment.location),

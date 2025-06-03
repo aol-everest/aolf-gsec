@@ -358,14 +358,20 @@ async def get_all_appointments(
     current_user: models.User = Depends(get_current_user),
     status: Optional[str] = None,
     start_date: Optional[date] = None,
-    end_date: Optional[date] = None
+    end_date: Optional[date] = None,
+    request_type: Optional[str] = None
 ):
-    """Get all appointments with optional status filter, restricted by user's access permissions"""
+    """Get all appointments with optional status, date range, and request type filters, restricted by user's access permissions"""
     query = db.query(models.Appointment).order_by(models.Appointment.id.asc())
 
     # Apply status filter if provided
     if status:
         query = query.filter(models.Appointment.status.in_(status.split(',')))
+    
+    # Apply request type filter if provided
+    if request_type:
+        query = query.filter(models.Appointment.request_type.in_(request_type.split(',')))
+    
     # Apply start and end date filters if provided
     if start_date:
         query = query.filter(or_(models.Appointment.preferred_date >= start_date, models.Appointment.appointment_date >= start_date))
@@ -428,9 +434,10 @@ async def get_all_appointments(
 async def get_upcoming_appointments(
     db: Session = Depends(get_read_db),
     current_user: models.User = Depends(get_current_user),
-    status: Optional[str] = None
+    status: Optional[str] = None,
+    request_type: Optional[str] = None
 ):
-    """Get all upcoming appointments (future appointment_date, not NULL) with access control restrictions"""
+    """Get all upcoming appointments (future appointment_date, not NULL) with access control restrictions and optional filters"""
     # Start with the filter for upcoming appointments
     upcoming_filter = and_(
         or_(
@@ -450,6 +457,10 @@ async def get_upcoming_appointments(
     # Apply status filter if provided
     if status:
         query = query.filter(models.Appointment.status == status)
+    
+    # Apply request type filter if provided
+    if request_type:
+        query = query.filter(models.Appointment.request_type.in_(request_type.split(',')))
 
     # ADMIN role has full access to all appointments
     if current_user.role != models.UserRole.ADMIN:
