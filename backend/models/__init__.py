@@ -22,6 +22,7 @@ from .enums import (
     AppointmentType,
     AppointmentTimeOfDay,
     RequestType,
+    RoleInTeamProject,
     AttendanceStatus,
     
     # Dignitary-related enums
@@ -40,6 +41,7 @@ from .enums import (
     # Calendar-related enums
     EventType,
     EventStatus,
+    CalendarCreationContext,
     
     # Attachment-related enums
     AttachmentType,
@@ -61,6 +63,7 @@ __all__ = [
     'DignitarySource',
     'DignitaryPointOfContact',
     'RelationshipType',
+    'PersonRelationshipType',
     'Location',
     'MeetingPlace',
     'Appointment',
@@ -69,6 +72,7 @@ __all__ = [
     'AppointmentSubStatus',
     'AppointmentType',
     'RequestType',
+    'RoleInTeamProject',
     'AppointmentAttachment',
     'AttachmentType',
     'AppointmentDignitary',
@@ -84,6 +88,6 @@ __all__ = [
     'CalendarEvent',
     'EventType',
     'EventStatus',
+    'CalendarCreationContext',
     'AppointmentUser',
-    'PersonRelationshipType',
 ]
