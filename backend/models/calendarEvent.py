@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Bool
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
-from .enums import EventType, EventStatus
+from .enums import EventType, EventStatus, CalendarCreationContext
 import os
 
 schema = os.getenv('POSTGRES_SCHEMA', 'public')
@@ -36,6 +36,10 @@ class CalendarEvent(Base):
     # Event status
     status = Column(Enum(EventStatus), default=EventStatus.DRAFT, index=True)
     
+    # Creation context tracking
+    creation_context = Column(Enum(CalendarCreationContext), nullable=True)
+    creation_context_id = Column(String(255), nullable=True)  # Can store appointment_id, user_id, etc.
+    
     # Calendar sync
     external_calendar_id = Column(String(255), nullable=True)  # Google Calendar ID
     external_calendar_link = Column(Text, nullable=True)
@@ -65,4 +69,5 @@ class CalendarEvent(Base):
     __table_args__ = (
         Index('idx_calendar_events_datetime_type', 'start_datetime', 'event_type'),
         Index('idx_calendar_events_status_booking', 'status', 'is_open_for_booking'),
+        Index('idx_calendar_events_creation_context', 'creation_context', 'creation_context_id'),
     )

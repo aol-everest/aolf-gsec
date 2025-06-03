@@ -15,7 +15,8 @@ from models.enums import (
     AttachmentType,
     AttendanceStatus,
     EventType, 
-    EventStatus
+    EventStatus,
+    CalendarCreationContext
 )
 from enum import Enum
 import json
@@ -948,6 +949,7 @@ class CalendarEventResponse(CalendarEventCreate):
     """Full calendar event response with all details"""
     id: int
     start_datetime: datetime  # Calculated timezone-aware datetime (included in response)
+    # start_date and start_time are inherited from CalendarEventCreate (user input)
     current_capacity: int  # Calculated field
     available_capacity: int  # max_capacity - current_capacity
     linked_appointments_count: int
@@ -961,6 +963,8 @@ class CalendarEventResponse(CalendarEventCreate):
     updated_by_user: Optional[User] = None
     location: Optional[Location] = None
     meeting_place: Optional[MeetingPlace] = None
+    creation_context: Optional[CalendarCreationContext] = None
+    creation_context_id: Optional[str] = None  # String to match model
     
     class Config:
         orm_mode = True

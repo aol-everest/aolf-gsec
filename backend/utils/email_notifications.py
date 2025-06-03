@@ -452,6 +452,14 @@ def get_appointment_summary(appointment: Appointment) -> str:
     else:
         dignitaries_info = "No dignitaries assigned"
     
+    # Get appointment date/time from calendar event only
+    appointment_date = 'Not scheduled'
+    appointment_time = 'Not specified'
+    
+    if hasattr(appointment, 'calendar_event') and appointment.calendar_event:
+        appointment_date = appointment.calendar_event.start_date or 'Not scheduled'
+        appointment_time = appointment.calendar_event.start_time or 'Not specified'
+    
     return f"""
         <h3>Appointment Request Summary</h3>
         <p><strong>Request ID:</strong> {appointment.id}</p>
@@ -459,6 +467,8 @@ def get_appointment_summary(appointment: Appointment) -> str:
         <p><strong>Purpose:</strong> {appointment.purpose}</p>
         <p><strong>Preferred Date:</strong> {appointment.preferred_date}</p>
         <p><strong>Preferred Time:</strong> {appointment.preferred_time_of_day or 'Not specified'}</p>
+        <p><strong>Appointment Date:</strong> {appointment_date}</p>
+        <p><strong>Appointment Time:</strong> {appointment_time}</p>
         <p><strong>Location:</strong> {appointment.location.name + ' - ' + appointment.location.city + ', ' + appointment.location.state if appointment.location else 'Not specified'}</p>
         <p><strong>Status:</strong> {appointment.status}</p>
         <p><strong>Requester Notes:</strong> {appointment.requester_notes_to_secretariat}</p>
@@ -504,7 +514,7 @@ def get_appointment_changes_summary(old_data: Dict[str, Any], new_data: Dict[str
                     changes.append(f"<p><strong>{display_name}:</strong> Changed</p>")
             continue
             
-        # Regular field comparison for non-dignitary fields
+        # Regular field comparison for other fields
         if old_value != new_value and new_value is not None:
             changes.append(f"<p><strong>{display_name}:</strong> Changed from '{old_value or 'Not set'}' to '{new_value}'</p>")
 
@@ -577,17 +587,30 @@ def notify_appointment_update(db: Session, appointment: Appointment, old_data: D
             })
         new_data['dignitaries'] = dignitaries_data
     
-    # Check if appointment date, time, or location has changed (rescheduling case)
+    # Get current appointment date/time from calendar event only
+    current_appointment_date = None
+    current_appointment_time = None
+    
+    if hasattr(appointment, 'calendar_event') and appointment.calendar_event:
+        current_appointment_date = appointment.calendar_event.start_date
+        current_appointment_time = appointment.calendar_event.start_time
+    
+    # Update new_data with current calendar event values for change detection
+    new_data['appointment_date'] = current_appointment_date
+    new_data['appointment_time'] = current_appointment_time
+    
+    # Check if appointment date, time has changed (rescheduling case)
+    date_time_changed = (
+        old_data.get('appointment_date') != new_data.get('appointment_date') or 
+        old_data.get('appointment_time') != new_data.get('appointment_time')
+    )
+    
     is_rescheduled = (
-        (
-            old_data.get('appointment_date') != new_data.get('appointment_date') or 
-            old_data.get('appointment_time') != new_data.get('appointment_time')
-        )
-        and (
+        date_time_changed and (
             # Ensure the appointment is approved and scheduled before sending a rescheduled notification
             appointment.status == AppointmentStatus.APPROVED and 
             appointment.sub_status == AppointmentSubStatus.SCHEDULED and
-            appointment.appointment_date is not None and
+            current_appointment_date is not None and
             # Ensure the appointment was previously approved and scheduled before sending a rescheduled notification
             old_data.get("status") == AppointmentStatus.APPROVED and
             old_data.get("sub_status") == AppointmentSubStatus.SCHEDULED
@@ -610,7 +633,7 @@ def notify_appointment_update(db: Session, appointment: Appointment, old_data: D
                 old_data.get('sub_status') == AppointmentSubStatus.NEED_MORE_INFO
             )
             or (
-                old_data.get('secretariat_notes_to_requester').strip() != appointment.secretariat_notes_to_requester.strip()
+                old_data.get('secretariat_notes_to_requester', '').strip() != appointment.secretariat_notes_to_requester.strip()
             )
         )
     )
@@ -628,10 +651,10 @@ def notify_appointment_update(db: Session, appointment: Appointment, old_data: D
     is_confirmed = (
         appointment.status == AppointmentStatus.APPROVED and
         appointment.sub_status == AppointmentSubStatus.SCHEDULED and
-        appointment.appointment_date is not None and
+        current_appointment_date is not None and
         # Ensure the appointment was previously not approved and scheduled before sending a confirmed notification
-        old_data.get('status') != AppointmentStatus.APPROVED and
-        old_data.get('sub_status') != AppointmentSubStatus.SCHEDULED
+        not (old_data.get('status') == AppointmentStatus.APPROVED and
+             old_data.get('sub_status') == AppointmentSubStatus.SCHEDULED)
     )
     
     # Check if this is a "Rejected" case with "Low priority" substatus
@@ -639,8 +662,8 @@ def notify_appointment_update(db: Session, appointment: Appointment, old_data: D
         appointment.status == AppointmentStatus.REJECTED and
         appointment.sub_status == AppointmentSubStatus.LOW_PRIORITY and
         # Ensure the appointment was previously not rejected and low priority before sending a rejected low priority notification
-        old_data.get('status') != AppointmentStatus.REJECTED and
-        old_data.get('sub_status') != AppointmentSubStatus.LOW_PRIORITY
+        not (old_data.get('status') == AppointmentStatus.REJECTED and
+             old_data.get('sub_status') == AppointmentSubStatus.LOW_PRIORITY)
     )
     
     # Check if this is a "Rejected" case with "Met Gurudev already" substatus
@@ -648,8 +671,8 @@ def notify_appointment_update(db: Session, appointment: Appointment, old_data: D
         appointment.status == AppointmentStatus.REJECTED and
         appointment.sub_status == AppointmentSubStatus.MET_GURUDEV and
         # Ensure the appointment was previously not rejected and met Gurudev already before sending a rejected met Gurudev already notification
-        old_data.get('status') != AppointmentStatus.REJECTED and
-        old_data.get('sub_status') != AppointmentSubStatus.MET_GURUDEV
+        not (old_data.get('status') == AppointmentStatus.REJECTED and
+             old_data.get('sub_status') == AppointmentSubStatus.MET_GURUDEV)
     )
     
     # Notify the requester
@@ -716,20 +739,6 @@ def notify_appointment_update(db: Session, appointment: Appointment, old_data: D
                 context=context,
                 appointment_id=appointment.id
             )
-        # elif status_changed:
-        #     # Add change data to context
-        #     context.update({
-        #         'old_data': old_data,
-        #         'new_data': new_data
-        #     })
-            
-        #     send_notification_email(
-        #         db=db,
-        #         trigger_type=EmailTrigger.APPOINTMENT_STATUS_CHANGED,
-        #         recipient=requester,
-        #         context=context,
-        #         appointment_id=appointment.id
-        #     )
         else:
             logger.info(f"Skipped sending email for appointment update (ID: {appointment.id})")
 
