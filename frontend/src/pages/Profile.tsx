@@ -31,7 +31,7 @@ import { PrimaryButton } from '../components/PrimaryButton';
 import WarningButton from '../components/WarningButton';
 import { LogoutIconV2 } from '../components/iconsv2';
 import ProfileBackground from '../components/ProfileBackground';
-import { StateAutocomplete } from '../components/LocationAutocomplete';
+import { StateDropdown } from '../components/LocationAutocomplete';
 
 interface NotificationPreferences {
   appointment_created: boolean;
@@ -362,7 +362,7 @@ const Profile: React.FC = () => {
                   </TextField>
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <StateAutocomplete
+                  <StateDropdown
                     label="State/Province"
                     value={stateProvince}
                     onChange={setStateProvince}

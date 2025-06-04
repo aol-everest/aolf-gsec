@@ -1,5 +1,5 @@
 import React from 'react';
-import { Autocomplete, TextField, CircularProgress } from '@mui/material';
+import { Autocomplete, TextField, CircularProgress, MenuItem } from '@mui/material';
 import { useEffect, useState, useCallback } from 'react';
 
 // Add proper type declarations for Google Maps
@@ -757,5 +757,284 @@ export const StateAutocomplete: React.FC<StateAutocompleteProps> = ({
         </li>
       )}
     />
+  );
+};
+
+// New StateDropdown component for better country-based state selection
+interface StateDropdownProps {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  onStateCodeChange?: (stateCode: string) => void;
+  error?: boolean;
+  helperText?: string;
+  countryCode?: string; // ISO2 code to restrict search to specific country
+  disabled?: boolean;
+}
+
+interface StateOption {
+  name: string;
+  code: string;
+  country: string;
+}
+
+export const StateDropdown: React.FC<StateDropdownProps> = ({
+  label,
+  value = '',
+  onChange,
+  onStateCodeChange,
+  error,
+  helperText,
+  countryCode,
+  disabled = false,
+}) => {
+  const [states, setStates] = useState<StateOption[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [useGoogleMaps, setUseGoogleMaps] = useState(true);
+
+  // Fetch states for the given country using Google Maps Geocoding API
+  const fetchStatesForCountry = async (country: string) => {
+    if (!country || !GOOGLE_MAPS_API_KEY) {
+      setStates([]);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Use Google Maps Geocoding API to get country details and then search for states
+      const geocodingUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(country)}&result_type=country&key=${GOOGLE_MAPS_API_KEY}`;
+      
+      const response = await fetch(geocodingUrl);
+      const data = await response.json();
+
+      if (data.status === 'OK' && data.results.length > 0) {
+        const countryResult = data.results[0];
+        const bounds = countryResult.geometry.bounds;
+        
+        // Now search for administrative_area_level_1 (states/provinces) within this country
+        const statesUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=administrative_area_level_1&bounds=${bounds.southwest.lat},${bounds.southwest.lng}|${bounds.northeast.lat},${bounds.northeast.lng}&components=country:${country}&key=${GOOGLE_MAPS_API_KEY}`;
+        
+        const statesResponse = await fetch(statesUrl);
+        const statesData = await statesResponse.json();
+
+        if (statesData.status === 'OK') {
+          const stateOptions: StateOption[] = [];
+          const seenStates = new Set<string>();
+
+          // Process the results to extract unique states
+          statesData.results.forEach((result: any) => {
+            const addressComponents = result.address_components || [];
+            for (const component of addressComponents) {
+              if (component.types.includes('administrative_area_level_1')) {
+                const stateName = component.long_name;
+                const stateCode = component.short_name;
+                
+                if (!seenStates.has(stateCode)) {
+                  seenStates.add(stateCode);
+                  stateOptions.push({
+                    name: stateName,
+                    code: stateCode,
+                    country: country,
+                  });
+                }
+                break;
+              }
+            }
+          });
+
+          // Sort alphabetically by name
+          stateOptions.sort((a, b) => a.name.localeCompare(b.name));
+          setStates(stateOptions);
+        } else {
+          console.warn('No states found for country:', country);
+          setStates([]);
+        }
+      } else {
+        console.warn('Country not found:', country);
+        setStates([]);
+      }
+    } catch (error) {
+      console.error('Error fetching states for country:', country, error);
+      setUseGoogleMaps(false);
+      setStates([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Alternative method using a comprehensive list if Google Maps fails
+  const getStatesFromStaticData = (country: string): StateOption[] => {
+    const stateData: Record<string, StateOption[]> = {
+      'US': [
+        { name: 'Alabama', code: 'AL', country: 'US' },
+        { name: 'Alaska', code: 'AK', country: 'US' },
+        { name: 'Arizona', code: 'AZ', country: 'US' },
+        { name: 'Arkansas', code: 'AR', country: 'US' },
+        { name: 'California', code: 'CA', country: 'US' },
+        { name: 'Colorado', code: 'CO', country: 'US' },
+        { name: 'Connecticut', code: 'CT', country: 'US' },
+        { name: 'Delaware', code: 'DE', country: 'US' },
+        { name: 'Florida', code: 'FL', country: 'US' },
+        { name: 'Georgia', code: 'GA', country: 'US' },
+        { name: 'Hawaii', code: 'HI', country: 'US' },
+        { name: 'Idaho', code: 'ID', country: 'US' },
+        { name: 'Illinois', code: 'IL', country: 'US' },
+        { name: 'Indiana', code: 'IN', country: 'US' },
+        { name: 'Iowa', code: 'IA', country: 'US' },
+        { name: 'Kansas', code: 'KS', country: 'US' },
+        { name: 'Kentucky', code: 'KY', country: 'US' },
+        { name: 'Louisiana', code: 'LA', country: 'US' },
+        { name: 'Maine', code: 'ME', country: 'US' },
+        { name: 'Maryland', code: 'MD', country: 'US' },
+        { name: 'Massachusetts', code: 'MA', country: 'US' },
+        { name: 'Michigan', code: 'MI', country: 'US' },
+        { name: 'Minnesota', code: 'MN', country: 'US' },
+        { name: 'Mississippi', code: 'MS', country: 'US' },
+        { name: 'Missouri', code: 'MO', country: 'US' },
+        { name: 'Montana', code: 'MT', country: 'US' },
+        { name: 'Nebraska', code: 'NE', country: 'US' },
+        { name: 'Nevada', code: 'NV', country: 'US' },
+        { name: 'New Hampshire', code: 'NH', country: 'US' },
+        { name: 'New Jersey', code: 'NJ', country: 'US' },
+        { name: 'New Mexico', code: 'NM', country: 'US' },
+        { name: 'New York', code: 'NY', country: 'US' },
+        { name: 'North Carolina', code: 'NC', country: 'US' },
+        { name: 'North Dakota', code: 'ND', country: 'US' },
+        { name: 'Ohio', code: 'OH', country: 'US' },
+        { name: 'Oklahoma', code: 'OK', country: 'US' },
+        { name: 'Oregon', code: 'OR', country: 'US' },
+        { name: 'Pennsylvania', code: 'PA', country: 'US' },
+        { name: 'Rhode Island', code: 'RI', country: 'US' },
+        { name: 'South Carolina', code: 'SC', country: 'US' },
+        { name: 'South Dakota', code: 'SD', country: 'US' },
+        { name: 'Tennessee', code: 'TN', country: 'US' },
+        { name: 'Texas', code: 'TX', country: 'US' },
+        { name: 'Utah', code: 'UT', country: 'US' },
+        { name: 'Vermont', code: 'VT', country: 'US' },
+        { name: 'Virginia', code: 'VA', country: 'US' },
+        { name: 'Washington', code: 'WA', country: 'US' },
+        { name: 'West Virginia', code: 'WV', country: 'US' },
+        { name: 'Wisconsin', code: 'WI', country: 'US' },
+        { name: 'Wyoming', code: 'WY', country: 'US' },
+      ],
+      'IN': [
+        { name: 'Andhra Pradesh', code: 'AP', country: 'IN' },
+        { name: 'Arunachal Pradesh', code: 'AR', country: 'IN' },
+        { name: 'Assam', code: 'AS', country: 'IN' },
+        { name: 'Bihar', code: 'BR', country: 'IN' },
+        { name: 'Chhattisgarh', code: 'CG', country: 'IN' },
+        { name: 'Goa', code: 'GA', country: 'IN' },
+        { name: 'Gujarat', code: 'GJ', country: 'IN' },
+        { name: 'Haryana', code: 'HR', country: 'IN' },
+        { name: 'Himachal Pradesh', code: 'HP', country: 'IN' },
+        { name: 'Jharkhand', code: 'JH', country: 'IN' },
+        { name: 'Karnataka', code: 'KA', country: 'IN' },
+        { name: 'Kerala', code: 'KL', country: 'IN' },
+        { name: 'Madhya Pradesh', code: 'MP', country: 'IN' },
+        { name: 'Maharashtra', code: 'MH', country: 'IN' },
+        { name: 'Manipur', code: 'MN', country: 'IN' },
+        { name: 'Meghalaya', code: 'ML', country: 'IN' },
+        { name: 'Mizoram', code: 'MZ', country: 'IN' },
+        { name: 'Nagaland', code: 'NL', country: 'IN' },
+        { name: 'Odisha', code: 'OR', country: 'IN' },
+        { name: 'Punjab', code: 'PB', country: 'IN' },
+        { name: 'Rajasthan', code: 'RJ', country: 'IN' },
+        { name: 'Sikkim', code: 'SK', country: 'IN' },
+        { name: 'Tamil Nadu', code: 'TN', country: 'IN' },
+        { name: 'Telangana', code: 'TS', country: 'IN' },
+        { name: 'Tripura', code: 'TR', country: 'IN' },
+        { name: 'Uttar Pradesh', code: 'UP', country: 'IN' },
+        { name: 'Uttarakhand', code: 'UK', country: 'IN' },
+        { name: 'West Bengal', code: 'WB', country: 'IN' },
+        // Union Territories
+        { name: 'Andaman and Nicobar Islands', code: 'AN', country: 'IN' },
+        { name: 'Chandigarh', code: 'CH', country: 'IN' },
+        { name: 'Dadra and Nagar Haveli and Daman and Diu', code: 'DH', country: 'IN' },
+        { name: 'Delhi', code: 'DL', country: 'IN' },
+        { name: 'Jammu and Kashmir', code: 'JK', country: 'IN' },
+        { name: 'Ladakh', code: 'LA', country: 'IN' },
+        { name: 'Lakshadweep', code: 'LD', country: 'IN' },
+        { name: 'Puducherry', code: 'PY', country: 'IN' },
+      ],
+      'CA': [
+        { name: 'Alberta', code: 'AB', country: 'CA' },
+        { name: 'British Columbia', code: 'BC', country: 'CA' },
+        { name: 'Manitoba', code: 'MB', country: 'CA' },
+        { name: 'New Brunswick', code: 'NB', country: 'CA' },
+        { name: 'Newfoundland and Labrador', code: 'NL', country: 'CA' },
+        { name: 'Northwest Territories', code: 'NT', country: 'CA' },
+        { name: 'Nova Scotia', code: 'NS', country: 'CA' },
+        { name: 'Nunavut', code: 'NU', country: 'CA' },
+        { name: 'Ontario', code: 'ON', country: 'CA' },
+        { name: 'Prince Edward Island', code: 'PE', country: 'CA' },
+        { name: 'Quebec', code: 'QC', country: 'CA' },
+        { name: 'Saskatchewan', code: 'SK', country: 'CA' },
+        { name: 'Yukon', code: 'YT', country: 'CA' },
+      ],
+    };
+
+    return stateData[country] || [];
+  };
+
+  // Fetch states when country changes
+  useEffect(() => {
+    if (countryCode && useGoogleMaps) {
+      fetchStatesForCountry(countryCode);
+    } else if (countryCode && !useGoogleMaps) {
+      // Fallback to static data
+      setStates(getStatesFromStaticData(countryCode));
+    } else {
+      setStates([]);
+    }
+  }, [countryCode, useGoogleMaps]);
+
+  // Handle state selection
+  const handleStateChange = (event: React.ChangeEvent<{ value: unknown }>) => {
+    const selectedStateName = event.target.value as string;
+    const selectedState = states.find(state => state.name === selectedStateName);
+    
+    onChange(selectedStateName);
+    
+    if (selectedState && onStateCodeChange) {
+      onStateCodeChange(selectedState.code);
+    }
+  };
+
+  if (!countryCode) {
+    return (
+      <TextField
+        select
+        fullWidth
+        label={label}
+        value=""
+        disabled={true}
+        helperText="Please select a country first"
+        error={error}
+      >
+        <MenuItem value="">Select a country first</MenuItem>
+      </TextField>
+    );
+  }
+
+  return (
+    <TextField
+      select
+      fullWidth
+      label={label}
+      value={value}
+      onChange={handleStateChange}
+      disabled={disabled || loading}
+      error={error}
+      helperText={loading ? "Loading states..." : helperText}
+    >
+      {states.length === 0 && !loading && (
+        <MenuItem value="">No states available</MenuItem>
+      )}
+      {states.map((state) => (
+        <MenuItem key={state.code} value={state.name}>
+          {state.name}
+        </MenuItem>
+      ))}
+    </TextField>
   );
 }; 
