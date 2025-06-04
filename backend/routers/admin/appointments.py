@@ -234,7 +234,7 @@ def prepare_enhanced_admin_appointment_response(appointment: models.Appointment,
         joinedload(models.Appointment.appointment_dignitaries).joinedload(
             models.AppointmentDignitary.dignitary
         ),
-        joinedload(models.Appointment.appointment_users)
+        joinedload(models.Appointment.appointment_users).joinedload(models.AppointmentUser.user)
     ).filter(models.Appointment.id == appointment.id).first()
     
     # Prepare calendar event basic info
@@ -422,7 +422,8 @@ async def get_all_appointments(
     # Add options to eagerly load appointment_dignitaries and their associated dignitaries
     query = query.options(
         joinedload(models.Appointment.appointment_dignitaries).joinedload(models.AppointmentDignitary.dignitary),
-        joinedload(models.Appointment.requester)
+        joinedload(models.Appointment.requester),
+        joinedload(models.Appointment.appointment_users).joinedload(models.AppointmentUser.user)
     )
 
     appointments = query.all()
@@ -509,7 +510,8 @@ async def get_upcoming_appointments(
     # Add options to eagerly load appointment_dignitaries and their associated dignitaries
     query = query.options(
         joinedload(models.Appointment.appointment_dignitaries).joinedload(models.AppointmentDignitary.dignitary),
-        joinedload(models.Appointment.requester)
+        joinedload(models.Appointment.requester),
+        joinedload(models.Appointment.appointment_users).joinedload(models.AppointmentUser.user)
     )
     
     appointments = query.all()

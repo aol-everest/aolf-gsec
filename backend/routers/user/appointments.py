@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.post("/appointments/new", response_model=schemas.AppointmentResponseEnhanced)
+@router.post("/appointments/new", response_model=schemas.Appointment)
 async def create_appointment(
     appointment: schemas.AppointmentCreateEnhanced,
     current_user: models.User = Depends(get_current_user_for_write),
@@ -112,67 +112,29 @@ async def create_appointment(
         total_time = (datetime.utcnow() - start_time).total_seconds() * 1000
         logger.info(f"Appointment created successfully (ID: {db_appointment.id}) in {total_time:.2f}ms")
         
-        # Prepare enhanced response
-        return prepare_enhanced_appointment_response(db_appointment, db)
+        # Return the created appointment with relationships loaded
+        db_appointment = db.query(models.Appointment).options(
+            joinedload(models.Appointment.appointment_dignitaries).joinedload(models.AppointmentDignitary.dignitary),
+            joinedload(models.Appointment.requester),
+            joinedload(models.Appointment.calendar_event),
+            joinedload(models.Appointment.location),
+            joinedload(models.Appointment.meeting_place),
+            joinedload(models.Appointment.appointment_users)
+        ).filter(models.Appointment.id == db_appointment.id).first()
+        
+        return db_appointment
         
     except Exception as e:
         logger.error(f"Error creating appointment: {str(e)}", exc_info=True)
         raise
 
-def prepare_enhanced_appointment_response(appointment: models.Appointment, db: Session) -> schemas.AppointmentResponseEnhanced:
-    """Prepare enhanced appointment response with all related data"""
-    
-    # Load related data
-    appointment = db.query(models.Appointment).options(
-        joinedload(models.Appointment.requester),
-        joinedload(models.Appointment.calendar_event),
-        joinedload(models.Appointment.location),
-        joinedload(models.Appointment.meeting_place),
-        joinedload(models.Appointment.appointment_dignitaries).joinedload(
-            models.AppointmentDignitary.dignitary
-        ),
-        joinedload(models.Appointment.appointment_users)
-    ).filter(models.Appointment.id == appointment.id).first()
-    
-    # Prepare calendar event basic info
-    calendar_event_info = None
-    if appointment.calendar_event:
-        calendar_event_info = schemas.CalendarEventBasicInfo(
-            **appointment.calendar_event.__dict__
-        )
-    
-    # Prepare appointment users
-    appointment_users = []
-    if appointment.appointment_users:
-        for au in appointment.appointment_users:
-            appointment_users.append(schemas.AppointmentUserInfo(**au.__dict__))
-    
-    # Prepare appointment dignitaries
-    appointment_dignitaries = []
-    if appointment.appointment_dignitaries:
-        for ad in appointment.appointment_dignitaries:
-            appointment_dignitaries.append(schemas.AppointmentDignitaryWithDignitary(**ad.__dict__))
-    
-    # Prepare response
-    response_data = {
-        **appointment.__dict__,
-        'calendar_event': calendar_event_info,
-        'appointment_users': appointment_users if appointment_users else None,
-        'appointment_dignitaries': appointment_dignitaries if appointment_dignitaries else None,
-        # Legacy compatibility
-        'appointment_date': appointment.calendar_event.start_date if appointment.calendar_event else appointment.preferred_date,
-        'appointment_time': appointment.calendar_event.start_time if appointment.calendar_event else None,
-    }
-    
-    return schemas.AppointmentResponseEnhanced(**response_data)
-
-@router.get("/appointments/my", response_model=List[schemas.AppointmentResponseEnhanced])
+@router.get("/appointments/my", response_model=List[schemas.Appointment])
 async def get_my_appointments(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_read_db),
     request_type: Optional[str] = None
 ):
-    """Get all appointments requested by the current user (enhanced version) with optional request type filter"""
+    """Get all appointments requested by the current user with optional request type filter"""
     query = db.query(models.Appointment).filter(
         models.Appointment.requester_id == current_user.id
     )
@@ -181,23 +143,19 @@ async def get_my_appointments(
     if request_type:
         query = query.filter(models.Appointment.request_type.in_(request_type.split(',')))
     
-    appointments = query.options(
+    # Add options to eagerly load appointment_dignitaries and their associated dignitaries
+    query = query.options(
+        joinedload(models.Appointment.appointment_dignitaries).joinedload(models.AppointmentDignitary.dignitary),
         joinedload(models.Appointment.requester),
         joinedload(models.Appointment.calendar_event),
         joinedload(models.Appointment.location),
         joinedload(models.Appointment.meeting_place),
-        joinedload(models.Appointment.appointment_dignitaries).joinedload(
-            models.AppointmentDignitary.dignitary
-        ),
         joinedload(models.Appointment.appointment_users)
-    ).order_by(models.Appointment.id.desc()).all()
+    ).order_by(models.Appointment.id.desc())
 
-    # Prepare enhanced responses
-    enhanced_appointments = []
-    for appointment in appointments:
-        enhanced_appointments.append(prepare_enhanced_appointment_response(appointment, db))
-    
-    return enhanced_appointments
+    appointments = query.all()
+    logger.debug(f"Appointments: {appointments}")
+    return appointments
 
 @router.get("/appointments/my/{dignitary_id}", response_model=List[schemas.Appointment])
 async def get_my_appointments_for_dignitary(

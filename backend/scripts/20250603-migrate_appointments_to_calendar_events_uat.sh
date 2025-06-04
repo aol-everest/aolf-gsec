@@ -27,7 +27,7 @@ PGPASSWORD="$MASTER_PASSWORD" psql -h $DB_HOST -U $DB_USER -d $DB_NAME << 'EOF'
 
 -- Migration: Update request_type and create CalendarEvent records for existing appointments
 -- Date: 2025-06-03
--- Environment: DEV
+-- Environment: UAT
 
 -- Step 1: Update existing appointments without request_type to DIGNITARY
 \echo 'Step 1: Updating appointments without request_type to DIGNITARY...'
@@ -216,5 +216,5 @@ WHERE creation_context = 'APPOINTMENT';
 
 EOF
 
-echo "Migration completed for DEV environment!"
+echo "Migration completed for UAT environment!"
 echo "Check the output above for migration summary and any errors." 

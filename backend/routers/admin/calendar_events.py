@@ -339,7 +339,8 @@ async def get_event_appointments(
         ),
         joinedload(models.Appointment.requester),
         joinedload(models.Appointment.location),
-        joinedload(models.Appointment.meeting_place)
+        joinedload(models.Appointment.meeting_place),
+        joinedload(models.Appointment.appointment_users).joinedload(models.AppointmentUser.user)
     ).all()
     
     return appointments

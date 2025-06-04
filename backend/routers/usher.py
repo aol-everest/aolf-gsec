@@ -107,7 +107,7 @@ async def get_usher_appointments(
     # Add eager loading and ordering
     query = query.options(
         joinedload(models.Appointment.appointment_dignitaries).joinedload(models.AppointmentDignitary.dignitary),
-        joinedload(models.Appointment.appointment_users),
+        joinedload(models.Appointment.appointment_users).joinedload(models.AppointmentUser.user),
         joinedload(models.Appointment.calendar_event),
         joinedload(models.Appointment.requester),
         joinedload(models.Appointment.location)

@@ -16,7 +16,9 @@ from models.enums import (
     AttendanceStatus,
     EventType, 
     EventStatus,
-    CalendarCreationContext
+    CalendarCreationContext,
+    RequestType,
+    PersonRelationshipType,
 )
 from enum import Enum
 import json
@@ -410,6 +412,34 @@ class AppointmentCreate(AppointmentBase):
     requester_notes_to_secretariat: Optional[str] = None
 
 
+# Calendar Event Schemas
+class CalendarEventBasicInfo(BaseModel):
+    """Minimal calendar event info for embedding in other responses"""
+    id: int
+    start_datetime: datetime
+    start_date: date
+    start_time: str
+    duration: int
+    location_id: Optional[int] = None
+    meeting_place_id: Optional[int] = None
+    
+    class Config:
+        orm_mode = True
+
+
+class AppointmentUserInfo(BaseModel):
+    """Schema for appointment user info in responses"""
+    id: int
+    first_name: str
+    last_name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    relationship_to_requester: Optional[PersonRelationshipType] = None
+    created_at: datetime
+    
+    class Config:
+        orm_mode = True
+
 
 class Appointment(AppointmentBase):
     id: int
@@ -428,6 +458,15 @@ class Appointment(AppointmentBase):
     appointment_time: Optional[str] = None
     secretariat_notes_to_requester: Optional[str] = None
     approved_datetime: Optional[datetime] = None
+    
+    # New fields for enhanced functionality
+    request_type: Optional[RequestType] = RequestType.DIGNITARY
+    calendar_event_id: Optional[int] = None
+    number_of_attendees: Optional[int] = 1
+    
+    # New relationships
+    calendar_event: Optional[CalendarEventBasicInfo] = None
+    appointment_users: Optional[List[AppointmentUserInfo]] = None
 
     class Config:
         orm_mode = True
@@ -762,24 +801,6 @@ class AttendanceStatusUpdate(BaseModel):
     appointment_dignitary_id: int
     attendance_status: AttendanceStatus
 
-# Calendar Event Schemas
-class CalendarEventBasicInfo(BaseModel):
-    """Minimal calendar event info for embedding in other responses"""
-    id: int
-    event_type: EventType
-    title: str
-    start_datetime: datetime
-    start_date: date
-    start_time: str
-    duration: int
-    location_id: Optional[int] = None
-    meeting_place_id: Optional[int] = None
-    max_capacity: int
-    status: EventStatus
-    
-    class Config:
-        orm_mode = True
-
 # Appointment User Schemas (for darshan attendees)
 from models.appointmentUser import PersonRelationshipType
 
@@ -791,22 +812,6 @@ class AppointmentUserCreate(BaseModel):
     phone: Optional[str] = None
     relationship_to_requester: Optional[PersonRelationshipType] = None
     comments: Optional[str] = None  # Special requirements
-
-class AppointmentUserInfo(BaseModel):
-    """Schema for appointment user info in responses"""
-    id: int
-    first_name: str
-    last_name: str
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    relationship_to_requester: Optional[PersonRelationshipType] = None
-    attendance_status: AttendanceStatus
-    checked_in_at: Optional[datetime] = None
-    comments: Optional[str] = None
-    created_at: datetime
-    
-    class Config:
-        orm_mode = True
 
 # Enhanced Appointment Creation Schema
 from models.appointment import RequestType
