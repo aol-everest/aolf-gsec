@@ -47,6 +47,42 @@ class UserRole(str, enum.Enum):
         return self.get_int_value() < other.get_int_value()
 
 
+class AOLTeacherStatus(str, enum.Enum):
+    """Art of Living teacher status enum"""
+    NOT_TEACHER = "Not a Teacher"
+    PART_TIME = "Part-time Teacher"
+    FULL_TIME = "Full-time Teacher"
+
+    def __str__(self):
+        return self.value
+
+
+class AOLProgramType(str, enum.Enum):
+    """Art of Living program types enum"""
+    HP = "HP"
+    SILENCE_PROGRAM = "Silence Program"
+    OTHER_GRADUATE_PROGRAMS = "Other Graduate Programs - DSN / VTP / TTP / Sanyam"
+    SAHAJ = "Sahaj"
+    AE_YES = "AE/YES!"
+    SSY = "SSY"
+
+    def __str__(self):
+        return self.value
+
+
+class AOLAffiliation(str, enum.Enum):
+    """Art of Living affiliations enum"""
+    ASHRAMITE = "Ashramite"
+    ASHRAM_SEVAK_SHORT_TERM = "Ashram Sevak (Short-term)"
+    SWAMIJI_BRAHMACHARI = "Swamiji / Brahmachari"
+    ASHRAM_HOD = "Ashram HOD"
+    TRUSTEE = "Trustee"
+    STATE_APEX_STC = "State Apex / STC"
+
+    def __str__(self):
+        return self.value
+
+
 # ============================================================================
 # APPOINTMENT-RELATED ENUMS
 # ============================================================================

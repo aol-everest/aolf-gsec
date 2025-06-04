@@ -16,6 +16,23 @@ interface UserInfo {
     new_appointment_request: boolean;
     bcc_on_all_emails: boolean;
   };
+  
+  // Professional Information (consistent with dignitary model)
+  title_in_organization?: string;
+  organization?: string;
+  
+  // Enhanced Location Information
+  state_province?: string;
+  state_province_code?: string;
+  city?: string;
+  
+  // Art of Living Teacher Information
+  teacher_status?: string;
+  teacher_code?: string;
+  programs_taught?: string[];
+  
+  // Art of Living Roles/Affiliations
+  aol_affiliations?: string[];
 }
 
 interface AuthContextType {

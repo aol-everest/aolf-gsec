@@ -198,6 +198,36 @@ async def get_user_role_map(
     """Get a dictionary mapping of user role enum names to their display values"""
     return {role.name: role.value for role in models.UserRole if role.is_less_than(current_user.role) or current_user.role == models.UserRole.ADMIN}
 
+@router.get("/users/aol-teacher-status-options", response_model=List[str])
+async def get_aol_teacher_status_options():
+    """Get all possible AOL teacher status options"""
+    return [status.value for status in models.AOLTeacherStatus]
+
+@router.get("/users/aol-teacher-status-options-map")
+async def get_aol_teacher_status_map():
+    """Get a dictionary mapping of AOL teacher status enum names to their display values"""
+    return {status.name: status.value for status in models.AOLTeacherStatus}
+
+@router.get("/users/aol-program-type-options", response_model=List[str])
+async def get_aol_program_type_options():
+    """Get all possible AOL program type options"""
+    return [program.value for program in models.AOLProgramType]
+
+@router.get("/users/aol-program-type-options-map")
+async def get_aol_program_type_map():
+    """Get a dictionary mapping of AOL program type enum names to their display values"""
+    return {program.name: program.value for program in models.AOLProgramType}
+
+@router.get("/users/aol-affiliation-options", response_model=List[str])
+async def get_aol_affiliation_options():
+    """Get all possible AOL affiliation options"""
+    return [affiliation.value for affiliation in models.AOLAffiliation]
+
+@router.get("/users/aol-affiliation-options-map")
+async def get_aol_affiliation_map():
+    """Get a dictionary mapping of AOL affiliation enum names to their display values"""
+    return {affiliation.name: affiliation.value for affiliation in models.AOLAffiliation}
+
 @router.get("/admin/access-level-options", response_model=List[str])
 async def get_access_levels():
     """Get all possible access level options"""

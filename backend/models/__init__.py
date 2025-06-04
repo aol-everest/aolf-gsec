@@ -15,6 +15,9 @@ from .calendarEvent import CalendarEvent
 from .enums import (
     # User-related enums
     UserRole,
+    AOLTeacherStatus,
+    AOLProgramType,
+    AOLAffiliation,
     
     # Appointment-related enums
     AppointmentStatus,
@@ -90,4 +93,7 @@ __all__ = [
     'EventStatus',
     'CalendarCreationContext',
     'AppointmentUser',
+    'AOLTeacherStatus',
+    'AOLProgramType',
+    'AOLAffiliation',
 ]

@@ -19,6 +19,9 @@ from models.enums import (
     CalendarCreationContext,
     RequestType,
     PersonRelationshipType,
+    AOLTeacherStatus,
+    AOLProgramType,
+    AOLAffiliation,
 )
 from enum import Enum
 import json
@@ -43,6 +46,23 @@ class User(UserBase):
     role: str
     last_login_at: Optional[datetime] = None
     country_code: Optional[str] = None
+    
+    # Professional Information (consistent with dignitary model)
+    title_in_organization: Optional[str] = None
+    organization: Optional[str] = None
+    
+    # Enhanced Location Information
+    state_province: Optional[str] = None
+    state_province_code: Optional[str] = None
+    city: Optional[str] = None
+    
+    # Art of Living Teacher Information
+    teacher_status: Optional[str] = None
+    teacher_code: Optional[str] = None
+    programs_taught: Optional[List[str]] = None
+    
+    # Art of Living Roles/Affiliations
+    aol_affiliations: Optional[List[str]] = None
 
     class Config:
         orm_mode = True
@@ -52,6 +72,23 @@ class UserUpdate(BaseModel):
     picture: Optional[str] = None
     email_notification_preferences: Optional[Dict[str, bool]] = None
     country_code: Optional[str] = None
+    
+    # Professional Information (consistent with dignitary model)
+    title_in_organization: Optional[str] = None
+    organization: Optional[str] = None
+    
+    # Enhanced Location Information
+    state_province: Optional[str] = None
+    state_province_code: Optional[str] = None
+    city: Optional[str] = None
+    
+    # Art of Living Teacher Information
+    teacher_status: Optional[str] = None
+    teacher_code: Optional[str] = None
+    programs_taught: Optional[List[str]] = None
+    
+    # Art of Living Roles/Affiliations
+    aol_affiliations: Optional[List[str]] = None
     
     class Config:
         orm_mode = True
@@ -68,12 +105,46 @@ class UserAdminView(UserBase):
     role: str
     country_code: Optional[str] = None
     
+    # Professional Information (consistent with dignitary model)
+    title_in_organization: Optional[str] = None
+    organization: Optional[str] = None
+    
+    # Enhanced Location Information
+    state_province: Optional[str] = None
+    state_province_code: Optional[str] = None
+    city: Optional[str] = None
+    
+    # Art of Living Teacher Information
+    teacher_status: Optional[str] = None
+    teacher_code: Optional[str] = None
+    programs_taught: Optional[List[str]] = None
+    
+    # Art of Living Roles/Affiliations
+    aol_affiliations: Optional[List[str]] = None
+    
     class Config:
         orm_mode = True
 
 class UserAdminUpdate(BaseModel):
     role: Optional[str] = None
     country_code: Optional[str] = None
+    
+    # Professional Information (consistent with dignitary model)
+    title_in_organization: Optional[str] = None
+    organization: Optional[str] = None
+    
+    # Enhanced Location Information
+    state_province: Optional[str] = None
+    state_province_code: Optional[str] = None
+    city: Optional[str] = None
+    
+    # Art of Living Teacher Information
+    teacher_status: Optional[str] = None
+    teacher_code: Optional[str] = None
+    programs_taught: Optional[List[str]] = None
+    
+    # Art of Living Roles/Affiliations
+    aol_affiliations: Optional[List[str]] = None
     
     class Config:
         orm_mode = True

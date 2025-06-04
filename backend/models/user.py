@@ -3,7 +3,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
 import enum
-from .enums import UserRole
+from .enums import UserRole, AOLTeacherStatus
 import os
 
 schema = os.getenv('POSTGRES_SCHEMA', 'public')
@@ -30,6 +30,24 @@ class User(Base):
     country_code = Column(String, nullable=True)
     role = Column(Enum(UserRole), nullable=False, default=UserRole.GENERAL)
     email_notification_preferences = Column(JSON, nullable=False, default=lambda: DEFAULT_EMAIL_NOTIFICATION_PREFERENCES)
+    
+    # Professional Information (consistent with dignitary model)
+    title_in_organization = Column(String, nullable=True)  # Professional title/designation
+    organization = Column(String, nullable=True)  # Company or organization name
+    
+    # Enhanced Location Information
+    state_province = Column(String, nullable=True)  # State or province name
+    state_province_code = Column(String, nullable=True)  # State or province code
+    city = Column(String, nullable=True)  # City
+    
+    # Art of Living Teacher Information
+    teacher_status = Column(Enum(AOLTeacherStatus), nullable=False, default=AOLTeacherStatus.NOT_TEACHER)
+    teacher_code = Column(String, nullable=True)  # Teacher identification code
+    programs_taught = Column(JSON, nullable=True)  # Array of programs: values from AOLProgramType enum
+    
+    # Art of Living Roles/Affiliations
+    aol_affiliations = Column(JSON, nullable=True)  # Array of roles: values from AOLAffiliation enum
+    
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_login_at = Column(DateTime)

@@ -446,4 +446,316 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   );
 };
 
-export default LocationAutocomplete; 
+export default LocationAutocomplete;
+
+// New StateAutocomplete component for state selection
+interface StateAutocompleteProps {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  onStateCodeChange?: (stateCode: string) => void;
+  error?: boolean;
+  helperText?: string;
+  countryCode?: string; // ISO2 code to restrict search to specific country
+  disabled?: boolean;
+}
+
+interface StatePlace {
+  description: string;
+  place_id: string;
+  state_name: string;
+  state_code: string;
+}
+
+export const StateAutocomplete: React.FC<StateAutocompleteProps> = ({
+  label,
+  value = '',
+  onChange,
+  onStateCodeChange,
+  error,
+  helperText,
+  countryCode,
+  disabled = false,
+}) => {
+  const [inputValue, setInputValue] = useState<string>(value || '');
+  const [options, setOptions] = useState<StatePlace[]>([]);
+  const [autocompleteService, setAutocompleteService] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [useGoogleMaps, setUseGoogleMaps] = useState(true);
+  const [scriptError, setScriptError] = useState<string | null>(null);
+  const [placesService, setPlacesService] = useState<google.maps.places.PlacesService | null>(null);
+
+  useEffect(() => {
+    setInputValue(value || '');
+  }, [value]);
+
+  const initializeAutocompleteService = useCallback(() => {
+    if (!window.google?.maps?.places) {
+      console.error(`[${label}] Google Maps Places API not available`);
+      setUseGoogleMaps(false);
+      return;
+    }
+
+    try {
+      const service = new window.google.maps.places.AutocompleteService();
+      setAutocompleteService(service);
+      
+      // Also initialize places service for getting details
+      const dummyElement = document.createElement('div');
+      const placesService = new window.google.maps.places.PlacesService(dummyElement);
+      setPlacesService(placesService);
+    } catch (error) {
+      console.error(`[${label}] Error initializing AutocompleteService:`, error);
+      setUseGoogleMaps(false);
+    }
+  }, [label]);
+
+  useEffect(() => {
+    if (!GOOGLE_MAPS_API_KEY) {
+      console.error(`[${label}] No API key provided`);
+      setUseGoogleMaps(false);
+      return;
+    }
+
+    const setupService = () => {
+      window.googleMapsInitialized = true;
+      initializeAutocompleteService();
+    };
+
+    // Check if Google Maps is already fully loaded
+    if (window.google?.maps?.places) {
+      setupService();
+      return;
+    }
+
+    // If the script exists but hasn't loaded yet
+    const existingScript = document.querySelector('script[src*="maps.googleapis.com/maps/api/js"]');
+    if (existingScript) {
+      const loadHandler = () => {
+        setupService();
+        existingScript.removeEventListener('load', loadHandler);
+      };
+      existingScript.addEventListener('load', loadHandler);
+      return;
+    }
+
+    // Load the Google Maps script
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
+    script.async = true;
+    script.defer = true;
+
+    const loadHandler = () => {
+      setupService();
+      script.removeEventListener('load', loadHandler);
+    };
+
+    const errorHandler = (error: any) => {
+      console.error(`[${label}] Failed to load Google Maps script:`, error);
+      setScriptError('Failed to load Google Maps script');
+      setUseGoogleMaps(false);
+      script.removeEventListener('error', errorHandler);
+    };
+
+    script.addEventListener('load', loadHandler);
+    script.addEventListener('error', errorHandler);
+    document.head.appendChild(script);
+
+    return () => {
+      script.removeEventListener('load', loadHandler);
+      script.removeEventListener('error', errorHandler);
+    };
+  }, [label, initializeAutocompleteService]);
+
+  const getPlaceDetails = async (placeId: string): Promise<StatePlace | null> => {
+    if (!placesService || !useGoogleMaps) {
+      return null;
+    }
+
+    return new Promise((resolve) => {
+      placesService.getDetails(
+        { placeId },
+        (
+          result: google.maps.places.PlaceResult | null,
+          status: google.maps.places.PlacesServiceStatus
+        ) => {
+          if (status === google.maps.places.PlacesServiceStatus.OK && result) {
+            // Extract state name and code from address components
+            const addressComponents = result.address_components || [];
+            let stateName = '';
+            let stateCode = '';
+
+            for (const component of addressComponents) {
+              if (component.types.includes('administrative_area_level_1')) {
+                stateName = component.long_name;
+                stateCode = component.short_name;
+                break;
+              }
+            }
+
+            if (stateName && stateCode) {
+              resolve({
+                description: stateName,
+                place_id: placeId,
+                state_name: stateName,
+                state_code: stateCode,
+              });
+            } else {
+              resolve(null);
+            }
+          } else {
+            resolve(null);
+          }
+        }
+      );
+    });
+  };
+
+  const fetchStatePredictions = async (input: string) => {
+    if (!input || !autocompleteService || !useGoogleMaps) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const componentRestrictions = countryCode ? { country: countryCode } : undefined;
+      
+      const request = {
+        input,
+        types: ['(regions)'], // This targets administrative areas including states
+        componentRestrictions,
+      };
+
+      const response = await autocompleteService.getPlacePredictions(request);
+      const predictions = response.predictions || [];
+
+      // Filter to only include state-level administrative areas
+      const statePredictions = predictions.filter((prediction: any) =>
+        prediction.types.includes('administrative_area_level_1')
+      );
+
+      // Convert to our StatePlace format
+      const stateOptions: StatePlace[] = statePredictions.map((prediction: any) => ({
+        description: prediction.description,
+        place_id: prediction.place_id,
+        state_name: prediction.structured_formatting?.main_text || prediction.description,
+        state_code: '', // Will be filled when selected
+      }));
+
+      setOptions(stateOptions);
+    } catch (error) {
+      console.error(`[${label}] Error fetching state predictions:`, error);
+      setUseGoogleMaps(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (inputValue && useGoogleMaps) {
+        fetchStatePredictions(inputValue);
+      } else {
+        setOptions([]);
+      }
+    }, 300); // Debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [inputValue, useGoogleMaps, countryCode, label]);
+
+  const handleOptionSelect = async (
+    event: React.SyntheticEvent,
+    option: StatePlace | null
+  ) => {
+    if (!option) {
+      return;
+    }
+
+    // Set the display value immediately
+    onChange(option.state_name);
+    setInputValue(option.state_name);
+
+    // Get detailed place information to extract the state code
+    try {
+      const placeDetails = await getPlaceDetails(option.place_id);
+      if (placeDetails && onStateCodeChange) {
+        onStateCodeChange(placeDetails.state_code);
+      }
+    } catch (error) {
+      console.error(`[${label}] Error getting place details:`, error);
+    }
+  };
+
+  const handleInputChange = (event: React.SyntheticEvent, newInputValue: string) => {
+    setInputValue(newInputValue);
+    if (!newInputValue) {
+      onChange('');
+      if (onStateCodeChange) {
+        onStateCodeChange('');
+      }
+    }
+  };
+
+  if (!useGoogleMaps) {
+    // Fallback to simple text input if Google Maps is not available
+    return (
+      <TextField
+        label={label}
+        value={inputValue}
+        onChange={(e) => {
+          setInputValue(e.target.value);
+          onChange(e.target.value);
+        }}
+        error={error}
+        helperText={scriptError || helperText || 'Google Maps not available - using text input'}
+        fullWidth
+        disabled={disabled}
+      />
+    );
+  }
+
+  // Find the current option based on inputValue
+  const currentOption = options.find(option => option.state_name === inputValue) || null;
+
+  return (
+    <Autocomplete
+      options={options}
+      getOptionLabel={(option) => option.state_name}
+      isOptionEqualToValue={(option, value) => option.place_id === value.place_id}
+      value={currentOption}
+      onChange={handleOptionSelect}
+      onInputChange={handleInputChange}
+      loading={loading}
+      disabled={disabled}
+      renderInput={(params) => (
+        <TextField
+          {...params}
+          label={label}
+          error={error}
+          helperText={helperText}
+          InputProps={{
+            ...params.InputProps,
+            endAdornment: (
+              <>
+                {loading ? <CircularProgress color="inherit" size={20} /> : null}
+                {params.InputProps.endAdornment}
+              </>
+            ),
+          }}
+        />
+      )}
+      renderOption={(props, option) => (
+        <li {...props} key={option.place_id}>
+          <div>
+            <div style={{ fontWeight: 'bold' }}>
+              {option.state_name}
+            </div>
+            <div style={{ fontSize: '0.875rem', color: 'text.secondary' }}>
+              {option.description}
+            </div>
+          </div>
+        </li>
+      )}
+    />
+  );
+}; 
