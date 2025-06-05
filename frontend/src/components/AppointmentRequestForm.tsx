@@ -2662,8 +2662,6 @@ export const AppointmentRequestForm: React.FC = () => {
           <PrimaryButton
             onClick={() => handleNext(false)}
             disabled={
-              // If the active step is the last step, disable the next button
-              activeStep === getDynamicSteps(selectedRequestTypeConfig).length - 1 || 
               // At step 2, if any form is expanded, disable the next button
               (activeStep === 1 && (isDignitaryFormExpanded || isContactFormExpanded)) || 
               // At step 2, if no attendees are selected (dignitary or contacts), disable the next button
