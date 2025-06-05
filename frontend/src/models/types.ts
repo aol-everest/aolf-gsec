@@ -242,6 +242,29 @@ export interface MeetingPlace {
   };
 }
 
+export interface RequestTypeConfig {
+  request_type: string;
+  display_name: string;
+  description: string;
+  attendee_type: string;
+  max_attendees: number;
+  attendee_label_singular: string;
+  attendee_label_plural: string;
+  step_2_title: string;
+  step_2_description: string;
+}
+
+export interface PersonalAttendee {
+  first_name: string;
+  last_name: string;
+  email?: string;
+  phone?: string;
+  relationship_to_requester?: string;
+  role_in_team_project?: string;
+  role_in_team_project_other?: string;
+  comments?: string;
+}
+
 export type { 
   Location, 
   User, 

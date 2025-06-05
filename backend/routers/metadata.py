@@ -91,4 +91,30 @@ async def get_all_subdivisions(
 ):
     """Get all subdivisions (including disabled) for admin purposes"""
     subdivisions = db.query(models.GeoSubdivision).order_by(models.GeoSubdivision.country_code, models.GeoSubdivision.name).all()
-    return subdivisions 
+    return subdivisions
+
+
+# Request Type Configuration endpoints  
+@router.get("/request-types/configurations", response_model=List[schemas.RequestTypeConfigResponse])
+async def get_request_type_configurations(
+    current_user: models.User = Depends(get_current_user)
+):
+    """Get request type configurations for UI display"""
+    from models.enums import REQUEST_TYPE_CONFIGS
+    
+    # Convert configurations to response format
+    configurations = []
+    for config in REQUEST_TYPE_CONFIGS.values():
+        configurations.append(schemas.RequestTypeConfigResponse(
+            request_type=config.request_type,
+            display_name=config.display_name,
+            description=config.description,
+            attendee_type=config.attendee_type.value,
+            max_attendees=config.max_attendees,
+            attendee_label_singular=config.attendee_label_singular,
+            attendee_label_plural=config.attendee_label_plural,
+            step_2_title=config.step_2_title,
+            step_2_description=config.step_2_description
+        ))
+    
+    return configurations 

@@ -1159,3 +1159,23 @@ class CalendarEventBatchResponse(BaseModel):
     failed: int
     events: List[CalendarEventResponse]
     errors: Optional[List[Dict[str, Any]]] = None
+
+
+# ============================================================================
+# REQUEST TYPE CONFIGURATION SCHEMAS
+# ============================================================================
+
+class RequestTypeConfigResponse(BaseModel):
+    """Response schema for request type configurations"""
+    request_type: RequestType
+    display_name: str
+    description: str
+    attendee_type: str  # AttendeeType enum as string
+    max_attendees: int
+    attendee_label_singular: str
+    attendee_label_plural: str
+    step_2_title: str
+    step_2_description: str
+
+    class Config:
+        orm_mode = True

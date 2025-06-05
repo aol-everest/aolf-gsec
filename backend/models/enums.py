@@ -152,6 +152,86 @@ class RequestType(str, enum.Enum):
         return self.value
 
 
+class AttendeeType(str, enum.Enum):
+    """Type of attendee form to display"""
+    DIGNITARY = "dignitary"
+    PERSONAL = "personal"
+    TEAM = "team"
+    GENERAL = "general"
+
+    def __str__(self):
+        return self.value
+
+
+# ============================================================================
+# REQUEST TYPE CONFIGURATION
+# ============================================================================
+
+from dataclasses import dataclass
+from typing import Dict, List
+
+@dataclass
+class RequestTypeConfig:
+    """Configuration for request types including UI display elements"""
+    request_type: RequestType
+    display_name: str
+    description: str
+    attendee_type: AttendeeType
+    max_attendees: int
+    attendee_label_singular: str  # e.g., "Dignitary", "Person", "Team Member"
+    attendee_label_plural: str    # e.g., "Dignitaries", "People", "Team Members"
+    step_2_title: str            # e.g., "Dignitary Information", "Personal Attendees"
+    step_2_description: str      # Description shown on step 2
+
+# Request type configurations - centralized configuration for UI behavior
+REQUEST_TYPE_CONFIGS: Dict[RequestType, RequestTypeConfig] = {
+    RequestType.DIGNITARY: RequestTypeConfig(
+        request_type=RequestType.DIGNITARY,
+        display_name="Dignitary Meeting",
+        description="Schedule a meeting with dignitaries, government officials, or other VIPs",
+        attendee_type=AttendeeType.DIGNITARY,
+        max_attendees=8,
+        attendee_label_singular="Dignitary",
+        attendee_label_plural="Dignitaries",
+        step_2_title="Dignitary Information",
+        step_2_description="Add one or more dignitaries to this appointment request."
+    ),
+    RequestType.DARSHAN: RequestTypeConfig(
+        request_type=RequestType.DARSHAN,
+        display_name="Personal Meeting",
+        description="Request a personal meeting or darshan with Gurudev for yourself and family/friends",
+        attendee_type=AttendeeType.PERSONAL,
+        max_attendees=10,
+        attendee_label_singular="Person",
+        attendee_label_plural="People",
+        step_2_title="Personal Attendees",
+        step_2_description="Add yourself and any family members or friends who will attend."
+    ),
+    RequestType.PROJECT_TEAM_MEETING: RequestTypeConfig(
+        request_type=RequestType.PROJECT_TEAM_MEETING,
+        display_name="Project/Team Meeting",
+        description="Schedule a meeting for your project team or working group with Gurudev",
+        attendee_type=AttendeeType.TEAM,
+        max_attendees=15,
+        attendee_label_singular="Team Member",
+        attendee_label_plural="Team Members",
+        step_2_title="Team Members",
+        step_2_description="Add the team members who will participate in this meeting."
+    ),
+    RequestType.OTHER: RequestTypeConfig(
+        request_type=RequestType.OTHER,
+        display_name="Other Meeting",
+        description="For any other type of meeting that doesn't fit the above categories",
+        attendee_type=AttendeeType.GENERAL,
+        max_attendees=12,
+        attendee_label_singular="Attendee",
+        attendee_label_plural="Attendees",
+        step_2_title="Attendees",
+        step_2_description="Add the people who will attend this meeting."
+    )
+}
+
+
 class RoleInTeamProject(str, enum.Enum):
     """Role in project team enum for different appointment categories"""
     LEAD_MEMBER = "Lead Member"
