@@ -69,6 +69,7 @@ from routers.user import dignitaries as user_dignitaries
 from routers.user import profile as user_profile
 from routers.user import locations as user_locations
 from routers.user import attachments as user_attachments
+from routers.user import contacts as user_contacts
 from routers import auth, usher, enums, metadata
 
 
@@ -184,6 +185,7 @@ app.include_router(user_dignitaries.router, tags=["user"])
 app.include_router(user_profile.router, tags=["user"])
 app.include_router(user_locations.router, tags=["user"])
 app.include_router(user_attachments.router, tags=["user"])
+app.include_router(user_contacts.router, tags=["user"])
 app.include_router(auth.router, tags=["auth"])
 app.include_router(usher.router, prefix="/usher", tags=["usher"])
 app.include_router(enums.router, tags=["enums"])

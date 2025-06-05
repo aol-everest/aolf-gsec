@@ -14,13 +14,9 @@ class AppointmentUser(Base):
     id = Column(Integer, primary_key=True, index=True)
     appointment_id = Column(Integer, ForeignKey(f"{schema_prefix}appointments.id", ondelete="CASCADE"), nullable=False, index=True)
     user_id = Column(Integer, ForeignKey(f"{schema_prefix}users.id", ondelete="CASCADE"), nullable=False, index=True)
+    contact_id = Column(Integer, ForeignKey(f"{schema_prefix}user_contacts.id", ondelete="CASCADE"), nullable=False, index=True)
     
-    # Attendee information (for cases where user might bring guests)
-    first_name = Column(String(255), nullable=False)
-    last_name = Column(String(255), nullable=False)
-    email = Column(String(255), nullable=True)
-    phone = Column(String(50), nullable=True)
-    relationship_to_requester = Column(Enum(PersonRelationshipType), nullable=True)
+    # Role and relationship context for this specific appointment
     role_in_team_project = Column(Enum(RoleInTeamProject), nullable=True)
     role_in_team_project_other = Column(String(255), nullable=True)
     
@@ -29,7 +25,7 @@ class AppointmentUser(Base):
     checked_in_at = Column(DateTime, nullable=True)
     checked_in_by = Column(Integer, ForeignKey(f"{schema_prefix}users.id"), nullable=True)
     
-    # Special requirements
+    # Appointment-specific notes and requirements
     comments = Column(Text, nullable=True)
     
     # Audit fields
@@ -44,6 +40,11 @@ class AppointmentUser(Base):
         "User",
         back_populates="appointment_participations",
         foreign_keys=[user_id]
+    )
+    contact = relationship(
+        "UserContact",
+        back_populates="appointment_users",
+        foreign_keys=[contact_id]
     )
     checked_in_by_user = relationship(
         "User",
@@ -63,8 +64,9 @@ class AppointmentUser(Base):
 
     # Constraints and indexes for better performance
     __table_args__ = (
-        UniqueConstraint('appointment_id', 'user_id', name='unique_appointment_user'),
+        UniqueConstraint('appointment_id', 'contact_id', name='unique_appointment_contact'),
         Index('idx_appointment_users_appointment_id', 'appointment_id'),
         Index('idx_appointment_users_user_id', 'user_id'),
+        Index('idx_appointment_users_contact_id', 'contact_id'),
         Index('idx_appointment_users_attendance_status', 'attendance_status'),
     ) 

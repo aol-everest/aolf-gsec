@@ -1179,3 +1179,91 @@ class RequestTypeConfigResponse(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+# ============================================================================
+# USER CONTACT SCHEMAS
+# ============================================================================
+
+class UserContactBase(BaseModel):
+    """Base schema for user contacts"""
+    first_name: str
+    last_name: str
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    relationship_to_owner: Optional[PersonRelationshipType] = None
+    notes: Optional[str] = None
+
+class UserContactCreate(UserContactBase):
+    """Schema for creating a new user contact"""
+    contact_user_id: Optional[int] = None  # Link to existing user if applicable
+    
+    @validator('first_name', 'last_name')
+    def validate_names(cls, v):
+        if not v or not v.strip():
+            raise ValueError("First name and last name are required")
+        return v.strip()
+    
+    @validator('email')
+    def validate_email_format(cls, v):
+        if v and not v.strip():
+            return None  # Convert empty string to None
+        return v
+
+class UserContactUpdate(BaseModel):
+    """Schema for updating an existing user contact"""
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    relationship_to_owner: Optional[PersonRelationshipType] = None
+    notes: Optional[str] = None
+    contact_user_id: Optional[int] = None
+    
+    @validator('first_name', 'last_name')
+    def validate_names(cls, v):
+        if v is not None and (not v or not v.strip()):
+            raise ValueError("Names cannot be empty")
+        return v.strip() if v else v
+    
+    @validator('email')
+    def validate_email_format(cls, v):
+        if v is not None and not v.strip():
+            return None  # Convert empty string to None
+        return v
+
+class UserContactResponse(UserContactBase):
+    """Schema for user contact responses"""
+    id: int
+    owner_user_id: int
+    contact_user_id: Optional[int] = None
+    appointment_usage_count: int
+    last_used_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+    
+    # Nested contact user info if linked
+    contact_user: Optional[User] = None
+
+    class Config:
+        orm_mode = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat(),
+            date: lambda v: v.strftime("%Y-%m-%d")
+        }
+
+class UserContactListResponse(BaseModel):
+    """Schema for paginated contact list responses"""
+    contacts: List[UserContactResponse]
+    total: int
+    page: int
+    per_page: int
+    total_pages: int
+    has_next: bool
+    has_prev: bool
+
+class UserContactSearchResponse(BaseModel):
+    """Schema for contact search responses"""
+    contacts: List[UserContactResponse]
+    total_results: int
+    search_query: str

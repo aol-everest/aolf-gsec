@@ -1,6 +1,6 @@
-from .user import User
-from .dignitary import Dignitary
-from .dignitaryPointOfContact import DignitaryPointOfContact
+from .user import User, UserRole
+from .dignitary import Dignitary, HonorificTitle, PrimaryDomain, DignitarySource
+from .dignitaryPointOfContact import DignitaryPointOfContact, RelationshipType
 from .location import Location, MeetingPlace
 from .appointment import Appointment
 from .appointmentAttachment import AppointmentAttachment
@@ -11,6 +11,8 @@ from .auditLog import AuditLog
 from .geoCountry import GeoCountry
 from .geoSubdivision import GeoSubdivision
 from .calendarEvent import CalendarEvent
+from .userContact import UserContact
+from database import Base
 
 # Import all enums from the shared enums file
 from .enums import (
@@ -56,8 +58,6 @@ from .enums import (
     VALID_SUBSTATUS_OPTIONS,
 )
 
-from database import Base
-
 __all__ = [
     'User',
     'UserRole',
@@ -94,8 +94,12 @@ __all__ = [
     'EventStatus',
     'CalendarCreationContext',
     'AppointmentUser',
+    'UserContact',
     'AOLTeacherStatus',
     'AOLProgramType',
     'AOLAffiliation',
     'GeoSubdivision',
+    'RoleInTeamProject',
+    'PersonRelationshipType',
+    'CalendarCreationContext',
 ]

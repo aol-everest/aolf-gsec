@@ -122,3 +122,26 @@ class User(Base):
         back_populates="updated_by_user",
         foreign_keys="[AppointmentUser.updated_by]"
     )
+    
+    # User contacts relationships
+    owned_contacts = relationship(
+        "UserContact",
+        back_populates="owner_user",
+        foreign_keys="[UserContact.owner_user_id]",
+        cascade="all, delete-orphan"
+    )
+    contact_references = relationship(
+        "UserContact",
+        back_populates="contact_user",
+        foreign_keys="[UserContact.contact_user_id]"
+    )
+    created_user_contacts = relationship(
+        "UserContact",
+        back_populates="created_by_user",
+        foreign_keys="[UserContact.created_by]"
+    )
+    updated_user_contacts = relationship(
+        "UserContact",
+        back_populates="updated_by_user",
+        foreign_keys="[UserContact.updated_by]"
+    )
