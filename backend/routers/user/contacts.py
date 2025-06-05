@@ -168,15 +168,15 @@ async def list_contacts(
         
         logger.info(f"Retrieved {len(contacts)} contacts (total: {total}) for user {current_user.id}")
         
-        return schemas.UserContactListResponse(
-            contacts=contacts,
-            total=total,
-            page=page,
-            per_page=per_page,
-            total_pages=total_pages,
-            has_next=has_next,
-            has_prev=has_prev
-        )
+        return {
+            "contacts": contacts,
+            "total": total,
+            "page": page,
+            "per_page": per_page,
+            "total_pages": total_pages,
+            "has_next": has_next,
+            "has_prev": has_prev
+        }
         
     except HTTPException:
         raise
@@ -358,11 +358,11 @@ async def search_contacts(
         
         logger.info(f"Found {len(contacts)} contacts matching search query")
         
-        return schemas.UserContactSearchResponse(
-            contacts=contacts,
-            total_results=len(contacts),
-            search_query=q
-        )
+        return {
+            "contacts": contacts,
+            "total_results": len(contacts),
+            "search_query": q
+        }
         
     except Exception as e:
         logger.error(f"Error searching contacts: {str(e)}", exc_info=True)

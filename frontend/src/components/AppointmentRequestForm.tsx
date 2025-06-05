@@ -260,7 +260,7 @@ export const AppointmentRequestForm: React.FC = () => {
     queryKey: ['user-contacts'],
     queryFn: async () => {
       const { data } = await api.get<UserContactListResponse>('/contacts/', {
-        params: { per_page: 100, sort_by: 'usage' }
+        params: { page: 1, per_page: 100, sort_by: 'usage' }
       });
       return data.contacts;
     },
@@ -360,6 +360,16 @@ export const AppointmentRequestForm: React.FC = () => {
       setUserContacts(fetchedUserContacts);
     }
   }, [fetchedUserContacts]);
+
+  // Update contact form mode based on available contacts
+  useEffect(() => {
+    if (isContactFormExpanded) {
+      const availableContacts = userContacts.filter(c => !selectedUserContacts.some(sc => sc.id === c.id));
+      if (availableContacts.length === 0 && contactFormMode === 'select') {
+        setContactFormMode('create');
+      }
+    }
+  }, [isContactFormExpanded, userContacts, selectedUserContacts, contactFormMode]);
 
   // Function to populate dignitary form fields
   const populateDignitaryForm = (dignitary: Dignitary) => {
@@ -2007,7 +2017,9 @@ export const AppointmentRequestForm: React.FC = () => {
                         startIcon={<AddIcon />}
                         onClick={() => {
                           setIsContactFormExpanded(true);
-                          setContactFormMode('select');
+                          // Set mode based on available contacts
+                          const availableContacts = userContacts.filter(c => !selectedUserContacts.some(sc => sc.id === c.id));
+                          setContactFormMode(availableContacts.length > 0 ? 'select' : 'create');
                         }}
                         sx={{ mt: 2 }}
                         disabled={selectedUserContacts.length >= requiredDignitariesCount}
