@@ -43,8 +43,8 @@ async def create_appointment(
         number_of_attendees = 0
         if appointment.dignitary_ids:
             number_of_attendees += len(appointment.dignitary_ids)
-        if appointment.user_ids:
-            number_of_attendees += len(appointment.user_ids)
+        if appointment.contact_ids:
+            number_of_attendees += len(appointment.contact_ids)
         if number_of_attendees == 0:
             number_of_attendees = 1  # Default to 1 if nothing specified
         
@@ -76,22 +76,34 @@ async def create_appointment(
                 )
                 db.add(appointment_dignitary)
         
-        # Handle user attendees if user_ids are provided
-        if appointment.user_ids:
-            for user_data in appointment.user_ids:
-                appointment_user = models.AppointmentUser(
+        # Handle contact attendees if contact_ids are provided
+        if appointment.contact_ids:
+            for contact_id in appointment.contact_ids:
+                # Verify the contact exists and belongs to the current user
+                contact = db.query(models.UserContact).filter(
+                    models.UserContact.id == contact_id,
+                    models.UserContact.owner_user_id == current_user.id
+                ).first()
+                
+                if not contact:
+                    raise HTTPException(
+                        status_code=404, 
+                        detail=f"Contact with ID {contact_id} not found or not owned by current user"
+                    )
+                
+                # Update contact usage statistics
+                contact.appointment_usage_count += 1
+                contact.last_used_at = datetime.utcnow()
+                contact.updated_by = current_user.id
+                
+                # Create AppointmentContact link
+                appointment_contact = models.AppointmentContact(
                     appointment_id=db_appointment.id,
-                    user_id=current_user.id,
-                    first_name=user_data.first_name,
-                    last_name=user_data.last_name,
-                    email=user_data.email,
-                    phone=user_data.phone,
-                    relationship_to_requester=user_data.relationship_to_requester,
-                    comments=user_data.comments,
+                    contact_id=contact_id,
                     created_by=current_user.id,
                     updated_by=current_user.id
                 )
-                db.add(appointment_user)
+                db.add(appointment_contact)
         
         db.commit()
         db.refresh(db_appointment)
@@ -119,7 +131,7 @@ async def create_appointment(
             joinedload(models.Appointment.calendar_event),
             joinedload(models.Appointment.location),
             joinedload(models.Appointment.meeting_place),
-            joinedload(models.Appointment.appointment_users)
+            joinedload(models.Appointment.appointment_contacts)
         ).filter(models.Appointment.id == db_appointment.id).first()
         
         return db_appointment
@@ -150,7 +162,7 @@ async def get_my_appointments(
         joinedload(models.Appointment.calendar_event),
         joinedload(models.Appointment.location),
         joinedload(models.Appointment.meeting_place),
-        joinedload(models.Appointment.appointment_users)
+        joinedload(models.Appointment.appointment_contacts)
     ).order_by(models.Appointment.id.desc())
 
     appointments = query.all()

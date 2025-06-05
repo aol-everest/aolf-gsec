@@ -107,7 +107,7 @@ async def get_usher_appointments(
     # Add eager loading and ordering
     query = query.options(
         joinedload(models.Appointment.appointment_dignitaries).joinedload(models.AppointmentDignitary.dignitary),
-        joinedload(models.Appointment.appointment_users).joinedload(models.AppointmentUser.user),
+        joinedload(models.Appointment.appointment_contacts).joinedload(models.AppointmentContact.contact),
         joinedload(models.Appointment.calendar_event),
         joinedload(models.Appointment.requester),
         joinedload(models.Appointment.location)
@@ -131,6 +131,20 @@ async def get_usher_appointments(
         appointment_time = appointment.calendar_event.start_time
         location = appointment.calendar_event.location or appointment.location  # Calendar event location takes precedence
         
+        # Convert appointment_contacts to proper usher view format
+        appointment_users_usher = []
+        if appointment.appointment_contacts:
+            for ac in appointment.appointment_contacts:
+                # Merge AppointmentContact and UserContact data for usher view (limited fields only)
+                user_usher_data = {
+                    'id': ac.id,
+                    'created_at': ac.created_at,
+                    'attendance_status': ac.attendance_status,
+                    'checked_in_at': ac.checked_in_at,
+                    **{k: v for k, v in ac.contact.__dict__.items() if k in ['first_name', 'last_name']}  # Ushers only get names
+                }
+                appointment_users_usher.append(schemas.AppointmentUserUsherView(**user_usher_data))
+
         # Create usher view with calendar event data
         usher_appointment = schemas.AppointmentUsherView(
             id=appointment.id,
@@ -139,7 +153,7 @@ async def get_usher_appointments(
             requester=appointment.requester,
             location=location,
             appointment_dignitaries=appointment.appointment_dignitaries,
-            appointment_users=appointment.appointment_users
+            appointment_users=appointment_users_usher
         )
         usher_appointments.append(usher_appointment)
     
@@ -192,10 +206,10 @@ async def update_dignitary_checkin(
     
     return appointment_dignitary
 
-@router.patch("/appointment-users/{appointment_user_id}/check-in", response_model=schemas.AppointmentUserInfo)
+@router.patch("/appointment-contacts/{appointment_contact_id}/check-in", response_model=schemas.AppointmentUserUsherView)
 @requires_any_role([models.UserRole.USHER, models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
-async def check_in_appointment_user(
-    appointment_user_id: int,
+async def check_in_appointment_contact(
+    appointment_contact_id: int,
     current_user: models.User = Depends(get_current_user_for_write),
     db: Session = Depends(get_db)
 ):
@@ -203,13 +217,13 @@ async def check_in_appointment_user(
     Check in an individual darshan attendee.
     Only users with appropriate access to the appointment's location can check in users.
     """
-    # Check if the appointment user exists
-    appointment_user = db.query(models.AppointmentUser).filter(
-        models.AppointmentUser.id == appointment_user_id
+    # Check if the appointment contact exists
+    appointment_contact = db.query(models.AppointmentContact).filter(
+        models.AppointmentContact.id == appointment_contact_id
     ).first()
     
-    if not appointment_user:
-        raise HTTPException(status_code=404, detail="Appointment user not found")
+    if not appointment_contact:
+        raise HTTPException(status_code=404, detail="Appointment contact not found")
     
     # Import access control function
     from dependencies.access_control import admin_get_appointment
@@ -219,7 +233,7 @@ async def check_in_appointment_user(
         # For non-admin roles, check location-based access
         appointment = admin_get_appointment(
             db=db,
-            appointment_id=appointment_user.appointment_id,
+            appointment_id=appointment_contact.appointment_id,
             current_user=current_user,
             required_access_level=models.AccessLevel.READ_WRITE
         )
@@ -228,13 +242,21 @@ async def check_in_appointment_user(
             raise HTTPException(status_code=404, detail="Unauthorized to update this appointment")
 
     # Update the attendance status
-    appointment_user.attendance_status = models.AttendanceStatus.CHECKED_IN
-    appointment_user.checked_in_at = datetime.utcnow()
-    appointment_user.updated_by = current_user.id
+    appointment_contact.attendance_status = models.AttendanceStatus.CHECKED_IN
+    appointment_contact.checked_in_at = datetime.utcnow()
+    appointment_contact.updated_by = current_user.id
     db.commit()
-    db.refresh(appointment_user)
+    db.refresh(appointment_contact)
     
-    return appointment_user
+    # Return contact data in AppointmentUserUsherView format (limited data for ushers)
+    contact_data = {
+        'id': appointment_contact.id,
+        'created_at': appointment_contact.created_at,
+        'attendance_status': appointment_contact.attendance_status,
+        'checked_in_at': appointment_contact.checked_in_at,
+        **{k: v for k, v in appointment_contact.contact.__dict__.items() if k in ['first_name', 'last_name']}  # Ushers only get names
+    }
+    return schemas.AppointmentUserUsherView(**contact_data)
 
 @router.post("/appointments/{appointment_id}/check-in-all", response_model=schemas.BulkCheckinResponse)
 @requires_any_role([models.UserRole.USHER, models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
@@ -276,18 +298,18 @@ async def check_in_all_attendees(
             dignitary.updated_by = current_user.id
             total_checked_in += 1
     
-    # Check in all users
-    users = db.query(models.AppointmentUser).filter(
-        models.AppointmentUser.appointment_id == appointment_id
+    # Check in all contacts
+    contacts = db.query(models.AppointmentContact).filter(
+        models.AppointmentContact.appointment_id == appointment_id
     ).all()
     
-    for user in users:
-        if user.attendance_status == models.AttendanceStatus.CHECKED_IN:
+    for contact in contacts:
+        if contact.attendance_status == models.AttendanceStatus.CHECKED_IN:
             already_checked_in += 1
         else:
-            user.attendance_status = models.AttendanceStatus.CHECKED_IN
-            user.checked_in_at = datetime.utcnow()
-            user.updated_by = current_user.id
+            contact.attendance_status = models.AttendanceStatus.CHECKED_IN
+            contact.checked_in_at = datetime.utcnow()
+            contact.updated_by = current_user.id
             total_checked_in += 1
     
     db.commit()
@@ -297,15 +319,15 @@ async def check_in_all_attendees(
         already_checked_in=already_checked_in
     )
 
-@router.post("/appointments/{appointment_id}/check-in-all-users", response_model=schemas.BulkCheckinResponse)
+@router.post("/appointments/{appointment_id}/check-in-all-contacts", response_model=schemas.BulkCheckinResponse)
 @requires_any_role([models.UserRole.USHER, models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
-async def check_in_all_users(
+async def check_in_all_contacts(
     appointment_id: int,
     current_user: models.User = Depends(get_current_user_for_write),
     db: Session = Depends(get_db)
 ):
     """
-    Check in all darshan attendees (users) for an appointment.
+    Check in all darshan attendees (contacts) for an appointment.
     """
     # Import access control function
     from dependencies.access_control import admin_get_appointment
@@ -324,18 +346,18 @@ async def check_in_all_users(
     total_checked_in = 0
     already_checked_in = 0
     
-    # Check in all users
-    users = db.query(models.AppointmentUser).filter(
-        models.AppointmentUser.appointment_id == appointment_id
+    # Check in all contacts
+    contacts = db.query(models.AppointmentContact).filter(
+        models.AppointmentContact.appointment_id == appointment_id
     ).all()
     
-    for user in users:
-        if user.attendance_status == models.AttendanceStatus.CHECKED_IN:
+    for contact in contacts:
+        if contact.attendance_status == models.AttendanceStatus.CHECKED_IN:
             already_checked_in += 1
         else:
-            user.attendance_status = models.AttendanceStatus.CHECKED_IN
-            user.checked_in_at = datetime.utcnow()
-            user.updated_by = current_user.id
+            contact.attendance_status = models.AttendanceStatus.CHECKED_IN
+            contact.checked_in_at = datetime.utcnow()
+            contact.updated_by = current_user.id
             total_checked_in += 1
     
     db.commit()

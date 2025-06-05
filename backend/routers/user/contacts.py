@@ -302,14 +302,14 @@ async def delete_contact(
             raise HTTPException(status_code=404, detail="Contact not found")
         
         # Check if contact is being used in any appointments
-        appointment_users_count = db.query(models.AppointmentUser).filter(
-            models.AppointmentUser.contact_id == contact_id
+        appointment_contacts_count = db.query(models.AppointmentContact).filter(
+            models.AppointmentContact.contact_id == contact_id
         ).count()
         
-        if appointment_users_count > 0:
+        if appointment_contacts_count > 0:
             raise HTTPException(
                 status_code=409, 
-                detail=f"Cannot delete contact. It is being used in {appointment_users_count} appointment(s). Please remove it from appointments first."
+                detail=f"Cannot delete contact. It is being used in {appointment_contacts_count} appointment(s). Please remove it from appointments first."
             )
         
         # Delete the contact

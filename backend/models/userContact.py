@@ -56,8 +56,8 @@ class UserContact(Base):
         back_populates="updated_user_contacts",
         foreign_keys=[updated_by]
     )
-    appointment_users = relationship(
-        "AppointmentUser",
+    appointment_contacts = relationship(
+        "AppointmentContact",
         back_populates="contact",
         cascade="all, delete-orphan"
     )

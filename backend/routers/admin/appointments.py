@@ -115,8 +115,8 @@ async def create_appointment(
             required_capacity = 0
             if appointment.dignitary_ids:
                 required_capacity += len(appointment.dignitary_ids)
-            if appointment.user_ids:
-                required_capacity += len(appointment.user_ids)
+            if appointment.contact_ids:
+                required_capacity += len(appointment.contact_ids)
             if required_capacity == 0:
                 required_capacity = 1  # Default to 1 if nothing specified
             if current_capacity + required_capacity > calendar_event.max_capacity:
@@ -143,8 +143,8 @@ async def create_appointment(
         number_of_attendees = 0
         if appointment.dignitary_ids:
             number_of_attendees += len(appointment.dignitary_ids)
-        if appointment.user_ids:
-            number_of_attendees += len(appointment.user_ids)
+        if appointment.contact_ids:
+            number_of_attendees += len(appointment.contact_ids)
         if number_of_attendees == 0:
             number_of_attendees = 1  # Default to 1 if nothing specified
         
@@ -176,22 +176,33 @@ async def create_appointment(
                 )
                 db.add(appointment_dignitary)
         
-        # Handle user attendees if user_ids are provided
-        if appointment.user_ids:
-            for user_data in appointment.user_ids:
-                appointment_user = models.AppointmentUser(
+        # Handle contact attendees if contact_ids are provided
+        if appointment.contact_ids:
+            for contact_id in appointment.contact_ids:
+                # Verify the contact exists and get the owner
+                contact = db.query(models.UserContact).filter(
+                    models.UserContact.id == contact_id
+                ).first()
+                
+                if not contact:
+                    raise HTTPException(
+                        status_code=404, 
+                        detail=f"Contact with ID {contact_id} not found"
+                    )
+                
+                # Update contact usage statistics
+                contact.appointment_usage_count += 1
+                contact.last_used_at = datetime.utcnow()
+                contact.updated_by = current_user.id
+                
+                # Create AppointmentContact link
+                appointment_contact = models.AppointmentContact(
                     appointment_id=db_appointment.id,
-                    user_id=current_user.id,  # Admin creating on behalf
-                    first_name=user_data.first_name,
-                    last_name=user_data.last_name,
-                    email=user_data.email,
-                    phone=user_data.phone,
-                    relationship_to_requester=user_data.relationship_to_requester,
-                    comments=user_data.comments,
+                    contact_id=contact_id,
                     created_by=current_user.id,
                     updated_by=current_user.id
                 )
-                db.add(appointment_user)
+                db.add(appointment_contact)
         
         db.commit()
         db.refresh(db_appointment)
@@ -234,7 +245,7 @@ def prepare_enhanced_admin_appointment_response(appointment: models.Appointment,
         joinedload(models.Appointment.appointment_dignitaries).joinedload(
             models.AppointmentDignitary.dignitary
         ),
-        joinedload(models.Appointment.appointment_users).joinedload(models.AppointmentUser.user)
+        joinedload(models.Appointment.appointment_contacts).joinedload(models.AppointmentContact.contact)
     ).filter(models.Appointment.id == appointment.id).first()
     
     # Prepare calendar event basic info
@@ -246,9 +257,17 @@ def prepare_enhanced_admin_appointment_response(appointment: models.Appointment,
     
     # Prepare appointment users
     appointment_users = []
-    if appointment.appointment_users:
-        for au in appointment.appointment_users:
-            appointment_users.append(schemas.AppointmentUserInfo(**au.__dict__))
+    if appointment.appointment_contacts:
+        for ac in appointment.appointment_contacts:
+            # Create AppointmentUserInfo from contact data - admin gets full access
+            contact_data = {
+                'id': ac.id,
+                'created_at': ac.created_at,
+                **{k: v for k, v in ac.contact.__dict__.items() 
+                   if not k.startswith('_') and k not in ['relationship_to_owner']},  # Exclude SQLAlchemy internals and mapped field
+                'relationship_to_requester': ac.contact.relationship_to_owner  # Field name mapping
+            }
+            appointment_users.append(schemas.AppointmentUserInfo(**contact_data))
     
     # Prepare appointment dignitaries
     appointment_dignitaries = []
@@ -423,7 +442,7 @@ async def get_all_appointments(
     query = query.options(
         joinedload(models.Appointment.appointment_dignitaries).joinedload(models.AppointmentDignitary.dignitary),
         joinedload(models.Appointment.requester),
-        joinedload(models.Appointment.appointment_users).joinedload(models.AppointmentUser.user)
+        joinedload(models.Appointment.appointment_contacts).joinedload(models.AppointmentContact.contact)
     )
 
     appointments = query.all()
@@ -511,7 +530,7 @@ async def get_upcoming_appointments(
     query = query.options(
         joinedload(models.Appointment.appointment_dignitaries).joinedload(models.AppointmentDignitary.dignitary),
         joinedload(models.Appointment.requester),
-        joinedload(models.Appointment.appointment_users).joinedload(models.AppointmentUser.user)
+        joinedload(models.Appointment.appointment_contacts).joinedload(models.AppointmentContact.contact)
     )
     
     appointments = query.all()

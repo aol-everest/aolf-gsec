@@ -904,7 +904,7 @@ class AttendanceStatusUpdate(BaseModel):
     attendance_status: AttendanceStatus
 
 # Appointment User Schemas (for darshan attendees)
-from models.appointmentUser import PersonRelationshipType
+from models.appointmentContact import PersonRelationshipType
 
 class AppointmentUserCreate(BaseModel):
     """Schema for creating appointment users (darshan attendees)"""
@@ -944,13 +944,13 @@ class AppointmentCreateEnhanced(BaseModel):
     # For dignitary appointments - if present, create AppointmentDignitary records
     dignitary_ids: Optional[List[int]] = None  # All dignitaries for this appointment
     
-    # For user attendees - if present, create AppointmentUser records  
-    user_ids: Optional[List[AppointmentUserCreate]] = None
+    # For contact attendees - if present, create AppointmentContact records  
+    contact_ids: Optional[List[int]] = None
     
-    @validator('user_ids')
-    def validate_user_ids_not_empty(cls, v):
+    @validator('contact_ids')
+    def validate_contact_ids_not_empty(cls, v):
         if v is not None and len(v) == 0:
-            raise ValueError("If user_ids is provided, it must contain at least one user")
+            raise ValueError("If contact_ids is provided, it must contain at least one contact")
         return v
     
     @validator('dignitary_ids')

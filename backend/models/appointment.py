@@ -101,4 +101,4 @@ class Appointment(Base):
     
     # New relationships for calendar management
     calendar_event = relationship("CalendarEvent", back_populates="appointments")
-    appointment_users = relationship("AppointmentUser", back_populates="appointment", cascade="all, delete-orphan")
+    appointment_contacts = relationship("AppointmentContact", back_populates="appointment", cascade="all, delete-orphan")

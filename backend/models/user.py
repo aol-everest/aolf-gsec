@@ -102,25 +102,20 @@ class User(Base):
         back_populates="updated_by_user",
         foreign_keys="[CalendarEvent.updated_by]"
     )
-    appointment_participations = relationship(
-        "AppointmentUser",
-        back_populates="user",
-        foreign_keys="[AppointmentUser.user_id]"
-    )
     checked_in_appointments = relationship(
-        "AppointmentUser",
+        "AppointmentContact",
         back_populates="checked_in_by_user",
-        foreign_keys="[AppointmentUser.checked_in_by]"
+        foreign_keys="[AppointmentContact.checked_in_by]"
     )
-    created_appointment_users = relationship(
-        "AppointmentUser",
+    created_appointment_contacts = relationship(
+        "AppointmentContact",
         back_populates="created_by_user",
-        foreign_keys="[AppointmentUser.created_by]"
+        foreign_keys="[AppointmentContact.created_by]"
     )
-    updated_appointment_users = relationship(
-        "AppointmentUser",
+    updated_appointment_contacts = relationship(
+        "AppointmentContact",
         back_populates="updated_by_user",
-        foreign_keys="[AppointmentUser.updated_by]"
+        foreign_keys="[AppointmentContact.updated_by]"
     )
     
     # User contacts relationships

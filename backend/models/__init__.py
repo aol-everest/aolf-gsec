@@ -5,7 +5,7 @@ from .location import Location, MeetingPlace
 from .appointment import Appointment
 from .appointmentAttachment import AppointmentAttachment
 from .appointmentDignitary import AppointmentDignitary
-from .appointmentUser import AppointmentUser
+from .appointmentContact import AppointmentContact
 from .accessControl import UserAccess
 from .auditLog import AuditLog
 from .geoCountry import GeoCountry
@@ -93,7 +93,7 @@ __all__ = [
     'EventType',
     'EventStatus',
     'CalendarCreationContext',
-    'AppointmentUser',
+    'AppointmentContact',
     'UserContact',
     'AOLTeacherStatus',
     'AOLProgramType',
