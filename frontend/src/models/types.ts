@@ -265,6 +265,49 @@ export interface PersonalAttendee {
   comments?: string;
 }
 
+export interface UserContact {
+  id: number;
+  owner_user_id: number;
+  contact_user_id?: number;
+  first_name: string;
+  last_name: string;
+  email?: string;
+  phone?: string;
+  relationship_to_owner?: string;
+  notes?: string;
+  appointment_usage_count: number;
+  last_used_at?: string;
+  created_at: string;
+  updated_at: string;
+  contact_user?: User;
+}
+
+export interface UserContactCreateData {
+  first_name: string;
+  last_name: string;
+  email?: string;
+  phone?: string;
+  relationship_to_owner?: string;
+  notes?: string;
+  contact_user_id?: number;
+}
+
+export interface UserContactListResponse {
+  contacts: UserContact[];
+  total: number;
+  page: number;
+  per_page: number;
+  total_pages: number;
+  has_next: boolean;
+  has_prev: boolean;
+}
+
+export interface UserContactSearchResponse {
+  contacts: UserContact[];
+  total_results: number;
+  search_query: string;
+}
+
 export type { 
   Location, 
   User, 
