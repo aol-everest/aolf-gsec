@@ -17,33 +17,33 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-@router.get("/countries/enabled", response_model=List[schemas.CountryResponse])
+@router.get("/countries/enabled", response_model=List[schemas.GeoCountryResponse])
 async def get_enabled_countries(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_read_db)
 ):
     """Get all enabled countries for dropdowns and selectors"""
-    countries = db.query(models.Country).filter(models.Country.is_enabled == True).order_by(models.Country.name).all()
+    countries = db.query(models.GeoCountry).filter(models.GeoCountry.is_enabled == True).order_by(models.GeoCountry.name).all()
     return countries
 
-@router.get("/countries/all", response_model=List[schemas.CountryResponse])
+@router.get("/countries/all", response_model=List[schemas.GeoCountryResponse])
 async def get_all_countries(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_read_db)
 ):
     """Get all countries for dropdowns and selectors"""
-    countries = db.query(models.Country).order_by(models.Country.name).all()
+    countries = db.query(models.GeoCountry).order_by(models.GeoCountry.name).all()
     return countries
 
-@router.get("/admin/countries/enabled", response_model=List[schemas.CountryResponse])
+@router.get("/admin/countries/enabled", response_model=List[schemas.GeoCountryResponse])
 @requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
 async def get_enabled_countries_admin(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_read_db)
 ):
     """Get all enabled countries for dropdowns and selectors with admin access control"""
-    query = db.query(models.Country).filter(
-        models.Country.is_enabled == True
+    query = db.query(models.GeoCountry).filter(
+        models.GeoCountry.is_enabled == True
     )
 
     # Get all countries
@@ -54,9 +54,41 @@ async def get_enabled_countries_admin(
             required_access_level=models.AccessLevel.ADMIN
         )
         query = query.filter(
-            models.Country.iso2_code.in_(countries)
+            models.GeoCountry.iso2_code.in_(countries)
         )
 
     # Get countries
-    countries = query.order_by(models.Country.name).all()
-    return countries 
+    countries = query.order_by(models.GeoCountry.name).all()
+    return countries
+
+# Subdivision endpoints
+@router.get("/subdivisions/enabled", response_model=List[schemas.GeoSubdivisionResponse])
+async def get_enabled_subdivisions(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_read_db)
+):
+    """Get all enabled subdivisions for dropdowns and selectors"""
+    subdivisions = db.query(models.GeoSubdivision).filter(models.GeoSubdivision.is_enabled == True).order_by(models.GeoSubdivision.name).all()
+    return subdivisions
+
+@router.get("/subdivisions/country/{country_code}", response_model=List[schemas.GeoSubdivisionResponse])
+async def get_subdivisions_by_country(
+    country_code: str,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_read_db)
+):
+    """Get all enabled subdivisions for a specific country"""
+    subdivisions = db.query(models.GeoSubdivision).filter(
+        models.GeoSubdivision.country_code == country_code,
+        models.GeoSubdivision.is_enabled == True
+    ).order_by(models.GeoSubdivision.name).all()
+    return subdivisions
+
+@router.get("/subdivisions/all", response_model=List[schemas.GeoSubdivisionResponse])
+async def get_all_subdivisions(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_read_db)
+):
+    """Get all subdivisions (including disabled) for admin purposes"""
+    subdivisions = db.query(models.GeoSubdivision).order_by(models.GeoSubdivision.country_code, models.GeoSubdivision.name).all()
+    return subdivisions 

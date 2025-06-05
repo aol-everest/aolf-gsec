@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session, joinedload
 from models.appointment import Appointment, AppointmentStatus, AppointmentSubStatus
 from models.calendarEvent import CalendarEvent, EventStatus
 from models.dignitary import Dignitary, HonorificTitle
-from models.country import Country
+from models.geoCountry import GeoCountry
 import models
 from utils.utils import str_to_bool, convert_to_datetime_with_tz
 from zoneinfo import ZoneInfo
@@ -186,7 +186,7 @@ def get_country_timezone(db: Session, country_code: str) -> Optional[str]:
         return None
     
     try:
-        country = db.query(Country).filter(Country.iso2_code == country_code).first()
+        country = db.query(GeoCountry).filter(GeoCountry.iso2_code == country_code).first()
         if country and country.default_timezone:
             return country.default_timezone
     except Exception as e:

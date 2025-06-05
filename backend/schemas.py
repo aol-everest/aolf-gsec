@@ -822,7 +822,7 @@ class UserAccessSummary(BaseModel):
     access_count: int
 
 # Country schemas
-class CountryBase(BaseModel):
+class GeoCountryBase(BaseModel):
     name: str
     iso2_code: str
     iso3_code: str
@@ -835,14 +835,14 @@ class CountryBase(BaseModel):
     timezones: Optional[List[str]] = None
     default_timezone: Optional[str] = None
 
-class Country(CountryBase):
+class GeoCountry(GeoCountryBase):
     class Config:
         orm_mode = True
 
-class CountryCreate(CountryBase):
+class GeoCountryCreate(GeoCountryBase):
     pass
 
-class CountryUpdate(BaseModel):
+class GeoCountryUpdate(BaseModel):
     name: Optional[str] = None
     iso3_code: Optional[str] = None
     region: Optional[str] = None
@@ -854,9 +854,40 @@ class CountryUpdate(BaseModel):
     timezones: Optional[List[str]] = None
     default_timezone: Optional[str] = None
 
-class CountryResponse(CountryBase):
+class GeoCountryResponse(GeoCountryBase):
     class Config:
         orm_mode = True
+
+# Subdivision schemas
+class GeoSubdivisionBase(BaseModel):
+    country_code: str
+    subdivision_code: str
+    name: str
+    subdivision_type: str
+    is_enabled: bool = True
+
+class GeoSubdivision(GeoSubdivisionBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class GeoSubdivisionResponse(GeoSubdivisionBase):
+    id: int
+    full_code: str  # Computed property
+    
+    class Config:
+        from_attributes = True
+
+class GeoSubdivisionCreate(GeoSubdivisionBase):
+    pass
+
+class GeoSubdivisionUpdate(BaseModel):
+    name: Optional[str] = None
+    subdivision_type: Optional[str] = None
+    is_enabled: Optional[bool] = None
 
 # New schema for appointment time slot aggregation
 class AppointmentStatsByDateAndTimeSlot(BaseModel):

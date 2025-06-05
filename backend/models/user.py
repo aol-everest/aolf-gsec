@@ -41,7 +41,7 @@ class User(Base):
     city = Column(String, nullable=True)  # City
     
     # Art of Living Teacher Information
-    teacher_status = Column(Enum(AOLTeacherStatus), nullable=False, default=AOLTeacherStatus.NOT_TEACHER)
+    teacher_status = Column(Enum(AOLTeacherStatus), nullable=True, default=AOLTeacherStatus.NOT_TEACHER)
     teacher_code = Column(String, nullable=True)  # Teacher identification code
     programs_taught = Column(JSON, nullable=True)  # Array of programs: values from AOLProgramType enum
     

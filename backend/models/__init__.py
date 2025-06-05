@@ -8,7 +8,8 @@ from .appointmentDignitary import AppointmentDignitary
 from .appointmentUser import AppointmentUser
 from .accessControl import UserAccess
 from .auditLog import AuditLog
-from .country import Country
+from .geoCountry import GeoCountry
+from .geoSubdivision import GeoSubdivision
 from .calendarEvent import CalendarEvent
 
 # Import all enums from the shared enums file
@@ -86,7 +87,7 @@ __all__ = [
     'UserAccess',
     'AccessLevel',
     'EntityType',
-    'Country',
+    'GeoCountry',
     'AttendanceStatus',
     'CalendarEvent',
     'EventType',
@@ -96,4 +97,5 @@ __all__ = [
     'AOLTeacherStatus',
     'AOLProgramType',
     'AOLAffiliation',
+    'GeoSubdivision',
 ]
