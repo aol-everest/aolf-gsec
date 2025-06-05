@@ -45,7 +45,7 @@ import { useTheme } from '@mui/material/styles';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
-import { Location, Dignitary, Appointment, RequestTypeConfig, PersonalAttendee, UserContact, UserContactCreateData, UserContactListResponse } from '../models/types';
+import { Location, Dignitary, Appointment, RequestTypeConfig, PersonalAttendee, UserContact, UserContactCreateData, UserContactUpdateData, UserContactListResponse } from '../models/types';
 import { EnumSelect } from './EnumSelect';
 import { useEnums } from '../hooks/useEnums';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -204,6 +204,7 @@ export const AppointmentRequestForm: React.FC = () => {
   const [selectedUserContacts, setSelectedUserContacts] = useState<UserContact[]>([]);
   const [isContactFormExpanded, setIsContactFormExpanded] = useState(false);
   const [contactFormMode, setContactFormMode] = useState<'select' | 'create'>('select');
+  const [editingContactId, setEditingContactId] = useState<number | null>(null);
   
   // Add a state to track if the selected dignitary has been modified
   const [isDignitaryModified, setIsDignitaryModified] = useState(false);
@@ -587,6 +588,32 @@ export const AppointmentRequestForm: React.FC = () => {
     }
   });
 
+  // Mutation for updating user contact
+  const updateUserContactMutation = useMutation<UserContact, Error, { id: number; data: UserContactUpdateData }>({
+    mutationFn: async ({ id, data }: { id: number; data: UserContactUpdateData }) => {
+      const { data: response } = await api.put<UserContact>(`/contacts/${id}`, data);
+      return response;
+    },
+    onSuccess: (updatedContact) => {
+      // Update the contacts list with the updated contact
+      setUserContacts(prev => 
+        prev.map(contact => 
+          contact.id === updatedContact.id ? updatedContact : contact
+        )
+      );
+      
+      queryClient.invalidateQueries({ queryKey: ['user-contacts'] });
+      enqueueSnackbar('Contact updated successfully', { variant: 'success' });
+    },
+    onError: (error: any) => {
+      console.error('Failed to update contact:', error);
+      enqueueSnackbar(`Failed to update contact: ${error.response?.data?.detail || 'Unknown error'}`, { 
+        variant: 'error',
+        autoHideDuration: 6000
+      });
+    }
+  });
+
   // Mutation for creating new appointment
   const createAppointmentMutation = useMutation<AppointmentResponse, Error, any>({
     mutationFn: async (data: any) => {
@@ -943,6 +970,57 @@ export const AppointmentRequestForm: React.FC = () => {
       setContactFormMode('select');
     } catch (error) {
       console.error('Error creating contact:', error);
+    }
+  };
+
+  const editContactInList = (contact: UserContact) => {
+    setEditingContactId(contact.id);
+    setIsContactFormExpanded(true);
+    setContactFormMode('create');
+    
+    // Populate the form with contact data
+    personalAttendeeForm.setValue('firstName', contact.first_name);
+    personalAttendeeForm.setValue('lastName', contact.last_name);
+    personalAttendeeForm.setValue('email', contact.email || '');
+    personalAttendeeForm.setValue('phone', contact.phone || '');
+    personalAttendeeForm.setValue('relationshipToRequester', contact.relationship_to_owner || '');
+    personalAttendeeForm.setValue('comments', contact.notes || '');
+  };
+
+  const updateContactInList = async (contactData: UserContactCreateData) => {
+    try {
+      if (!editingContactId) return;
+      
+      // Prepare update data (convert undefined to null for backend)
+      const updateData: UserContactUpdateData = {
+        first_name: contactData.first_name,
+        last_name: contactData.last_name,
+        email: contactData.email || undefined,
+        phone: contactData.phone || undefined,
+        relationship_to_owner: contactData.relationship_to_owner || undefined,
+        notes: contactData.notes || undefined,
+      };
+      
+      // Call the API to update the contact
+      const updatedContact = await updateUserContactMutation.mutateAsync({ 
+        id: editingContactId, 
+        data: updateData 
+      });
+      
+      // Update in the selected contacts list
+      setSelectedUserContacts(prev => 
+        prev.map(contact => 
+          contact.id === editingContactId ? updatedContact : contact
+        )
+      );
+      
+      setIsContactFormExpanded(false);
+      setEditingContactId(null);
+      setContactFormMode('select');
+      resetPersonalAttendeeForm();
+    } catch (error) {
+      console.error('Failed to update contact:', error);
+      // The mutation already handles the error notification
     }
   };
 
@@ -1987,21 +2065,26 @@ export const AppointmentRequestForm: React.FC = () => {
                                       </Typography>
                                     </>
                                   )}
-                                  <br />
-                                  <Typography component="span" variant="caption" color="text.secondary">
-                                    Used in {contact.appointment_usage_count} appointment(s)
-                                  </Typography>
                                 </>
                               }
                             />
                             <ListItemSecondaryAction>
-                              <IconButton 
-                                edge="end" 
-                                aria-label="delete"
-                                onClick={() => removeContactFromList(contact.id)}
-                              >
-                                <DeleteIcon />
-                              </IconButton>
+                              <Box sx={{ display: 'flex', gap: 1 }}>
+                                <IconButton 
+                                  size="small"
+                                  aria-label="edit"
+                                  onClick={() => editContactInList(contact)}
+                                >
+                                  <EditIcon />
+                                </IconButton>
+                                <IconButton 
+                                  size="small"
+                                  aria-label="delete"
+                                  onClick={() => removeContactFromList(contact.id)}
+                                >
+                                  <DeleteIcon />
+                                </IconButton>
+                              </Box>
                             </ListItemSecondaryAction>
                           </ListItem>
                         ))}
@@ -2038,38 +2121,45 @@ export const AppointmentRequestForm: React.FC = () => {
                         <Divider sx={{ my: 2 }} />
                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                           <Typography variant="subtitle1">
-                            Add a {selectedRequestTypeConfig?.attendee_label_singular || 'Contact'}
+                            {editingContactId 
+                              ? `Edit ${selectedRequestTypeConfig?.attendee_label_singular || 'Contact'}`
+                              : `Add a ${selectedRequestTypeConfig?.attendee_label_singular || 'Contact'}`
+                            }
                           </Typography>
-                          <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
-                            Adding {selectedRequestTypeConfig?.attendee_label_singular?.toLowerCase() || 'contact'} {selectedUserContacts.length + 1} of {requiredDignitariesCount}
-                          </Typography>
+                          {!editingContactId && (
+                            <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
+                              Adding {selectedRequestTypeConfig?.attendee_label_singular?.toLowerCase() || 'contact'} {selectedUserContacts.length + 1} of {requiredDignitariesCount}
+                            </Typography>
+                          )}
                         </Box>
                       </Grid>
 
-                      {/* Mode selection */}
-                      <Grid item xs={12}>
-                        <FormControl component="fieldset">
-                          <RadioGroup
-                            row
-                            value={contactFormMode}
-                            onChange={(e) => setContactFormMode(e.target.value as 'select' | 'create')}
-                          >
-                            <FormControlLabel 
-                              value="select" 
-                              control={<Radio />} 
-                              label="Select existing contact" 
-                              disabled={userContacts.filter(c => !selectedUserContacts.some(sc => sc.id === c.id)).length === 0}
-                            />
-                            <FormControlLabel 
-                              value="create" 
-                              control={<Radio />} 
-                              label="Create new contact" 
-                            />
-                          </RadioGroup>
-                        </FormControl>
-                      </Grid>
+                      {/* Mode selection - only show when not editing */}
+                      {!editingContactId && (
+                        <Grid item xs={12}>
+                          <FormControl component="fieldset">
+                            <RadioGroup
+                              row
+                              value={contactFormMode}
+                              onChange={(e) => setContactFormMode(e.target.value as 'select' | 'create')}
+                            >
+                              <FormControlLabel 
+                                value="select" 
+                                control={<Radio />} 
+                                label="Select existing contact" 
+                                disabled={userContacts.filter(c => !selectedUserContacts.some(sc => sc.id === c.id)).length === 0}
+                              />
+                              <FormControlLabel 
+                                value="create" 
+                                control={<Radio />} 
+                                label="Create new contact" 
+                              />
+                            </RadioGroup>
+                          </FormControl>
+                        </Grid>
+                      )}
 
-                      {contactFormMode === 'select' ? (
+                      {(contactFormMode === 'select' && !editingContactId) ? (
                         /* Contact selection */
                         <Grid item xs={12}>
                           <FormControl fullWidth>
@@ -2094,16 +2184,12 @@ export const AppointmentRequestForm: React.FC = () => {
                                       <Typography variant="body1">
                                         {contact.first_name} {contact.last_name}
                                       </Typography>
-                                      {contact.email && (
-                                        <Typography variant="body2" color="text.secondary">
-                                          {contact.email}
-                                        </Typography>
-                                      )}
-                                      {contact.relationship_to_owner && (
-                                        <Typography variant="caption" color="text.secondary">
-                                          Relationship: {contact.relationship_to_owner} | Used {contact.appointment_usage_count} times
-                                        </Typography>
-                                      )}
+                                      <Typography variant="body2" color="text.secondary">
+                                        {[
+                                          contact.relationship_to_owner,
+                                          contact.email
+                                        ].filter(Boolean).join(' | ') || 'No additional info'}
+                                      </Typography>
                                     </Box>
                                   </MenuItem>
                                 ))}
@@ -2217,17 +2303,19 @@ export const AppointmentRequestForm: React.FC = () => {
                             onClick={() => {
                               resetPersonalAttendeeForm();
                               setIsContactFormExpanded(false);
+                              setEditingContactId(null);
+                              setContactFormMode('select');
                             }}
                             sx={{ width: { xs: '100%', sm: 'auto' } }}
                           >
                             Cancel
                           </SecondaryButton>
                           
-                          {/* Add/Create button */}
+                          {/* Add/Create/Update button */}
                           {contactFormMode === 'create' && (
                             <PrimaryButton
                               size="medium"
-                              startIcon={<AddIcon />}
+                              startIcon={editingContactId ? <EditIcon /> : <AddIcon />}
                               onClick={async () => {
                                 const isValid = await personalAttendeeForm.trigger();
                                 if (!isValid) return;
@@ -2242,11 +2330,15 @@ export const AppointmentRequestForm: React.FC = () => {
                                   notes: formData.comments || undefined,
                                 };
 
-                                await createAndAddContact(contactData);
+                                if (editingContactId) {
+                                  await updateContactInList(contactData);
+                                } else {
+                                  await createAndAddContact(contactData);
+                                }
                               }}
                               sx={{ width: { xs: '100%', sm: 'auto' } }}
                             >
-                              Create and Add
+                              {editingContactId ? 'Update' : 'Create and Add'}
                             </PrimaryButton>
                           )}
                         </Box>

@@ -292,6 +292,16 @@ export interface UserContactCreateData {
   contact_user_id?: number;
 }
 
+export interface UserContactUpdateData {
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  phone?: string;
+  relationship_to_owner?: string;
+  notes?: string;
+  contact_user_id?: number;
+}
+
 export interface UserContactListResponse {
   contacts: UserContact[];
   total: number;
