@@ -23,6 +23,29 @@ def trim_value(value):
     # Final trim
     return cleaned.strip()
 
+def clean_subdivision_name(name, log_changes=True):
+    """Clean subdivision name by removing specific patterns like '(see also separate...)'."""
+    if not name:
+        return ""
+    
+    original_name = name
+    
+    # Remove "(see also separate...)" patterns
+    # This matches "(see also separate" followed by any text until the closing parenthesis
+    cleaned = re.sub(r'\(see also [^)]*\)', '', name, flags=re.IGNORECASE)
+    
+    # Clean up any double spaces that might result from the removal
+    cleaned = re.sub(r'\s+', ' ', cleaned)
+    
+    # Trim any trailing/leading whitespace
+    cleaned = cleaned.strip()
+    
+    # Log if the name was changed
+    if log_changes and cleaned != original_name:
+        print("-- Name cleaned: '{}' -> '{}'".format(original_name, cleaned), file=sys.stderr)
+    
+    return cleaned
+
 def csv_to_sql(csv_file):
     """Convert CSV subdivision data to SQL INSERT statements."""
     try:
@@ -50,6 +73,7 @@ def csv_to_sql(csv_file):
         csv_reader = csv.reader(io.StringIO(csv_content))
         
         raw_count = 0
+        cleaned_names_count = 0
         for row_num, row in enumerate(csv_reader, 1):
             # Skip empty rows
             if not row or len(row) < 4:
@@ -59,8 +83,13 @@ def csv_to_sql(csv_file):
                 # Thoroughly trim all values
                 country_code = trim_value(row[0])
                 subdivision_code = trim_value(row[1])
-                name = trim_value(row[2])
+                raw_name = trim_value(row[2])
+                name = clean_subdivision_name(raw_name)
                 subdivision_type = trim_value(row[3]) if len(row) > 3 else ""
+                
+                # Count if name was cleaned
+                if name != raw_name:
+                    cleaned_names_count += 1
                 
                 # Validate required data after trimming
                 if not all([country_code, subdivision_code, name]):
@@ -85,6 +114,7 @@ def csv_to_sql(csv_file):
         
         # Remove duplicates based on country_code + subdivision_code key (keep first occurrence)
         print("-- Raw records parsed: {}".format(raw_count), file=sys.stderr)
+        print("-- Names cleaned (removed 'see also separate' patterns): {}".format(cleaned_names_count), file=sys.stderr)
         
         # Use a set to track unique keys (country_code + subdivision_code)
         seen_keys = set()
@@ -147,6 +177,7 @@ def csv_to_sql(csv_file):
         print("-- Generated on: {}".format(datetime.now().isoformat()))
         print("-- Source file: {}".format(csv_file))
         print("-- Raw records: {}".format(raw_count))
+        print("-- Names cleaned: {}".format(cleaned_names_count))
         print("-- Total duplicates removed: {} (exact: {}, key: {})".format(total_duplicates, exact_duplicate_count, duplicate_key_count))
         print("-- Final unique records: {}".format(len(subdivisions_data)))
         print()
