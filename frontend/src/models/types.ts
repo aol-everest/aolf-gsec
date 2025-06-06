@@ -140,6 +140,9 @@ interface Appointment {
   status: string;
   sub_status: string;
   updated_at: string;
+  appointment_contacts?: AppointmentContact[];
+  request_type: string;
+  number_of_attendees?: number;
 }
 
 interface AdminAppointmentUpdate {
@@ -166,6 +169,21 @@ interface AppointmentDignitary {
   dignitary_id: number;
   dignitary: Dignitary;
   created_at?: string;
+}
+
+interface AppointmentContact {
+  id: number;
+  appointment_id: number;
+  contact_id: number;
+  contact: UserContact;
+  role_in_team_project?: string;
+  role_in_team_project_other?: string;
+  attendance_status?: string;
+  checked_in_at?: string;
+  checked_in_by?: number;
+  comments?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface StatusSubStatusMapping {
@@ -326,6 +344,7 @@ export type {
   Appointment, 
   AppointmentAttachment, 
   AppointmentDignitary, 
+  AppointmentContact,
   AdminAppointmentUpdate,
   StatusSubStatusMapping, 
   StatusMap, 

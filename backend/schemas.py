@@ -587,6 +587,7 @@ class AdminAppointmentDignitaryWithDignitary(AppointmentDignitaryBase):
 
 class AdminAppointment(AppointmentBase):
     id: int
+    request_type: Optional[RequestType] = None
     requester_id: Optional[int] = None
     purpose: Optional[str] = None
     preferred_date: Optional[date] = None
