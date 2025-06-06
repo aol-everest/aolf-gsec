@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Table,
   TableBody,
@@ -10,7 +10,9 @@ import {
   Typography,
   Box,
   IconButton,
-  useTheme
+  useTheme,
+  Checkbox,
+  Chip
 } from '@mui/material';
 import {
   useReactTable,
@@ -20,20 +22,25 @@ import {
   flexRender,
   createColumnHelper,
   SortingState,
-  FilterFn
+  FilterFn,
+  RowSelectionState
 } from '@tanstack/react-table';
-import { Appointment, AppointmentDignitary, AppointmentContact } from '../models/types';
+import { Appointment, AppointmentDignitary, AppointmentContact, StatusMap } from '../models/types';
 import { formatDate } from '../utils/dateUtils';
 import { formatHonorificTitle } from '../utils/formattingUtils';
 import { AppointmentStatusChip } from './AppointmentStatusChip';
-import { EditIconV2 } from './iconsv2';
+import { EditIconV2, CheckCircleIconV2 } from './iconsv2';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import { useQuery } from '@tanstack/react-query';
+import { useApi } from '../hooks/useApi';
 
 interface AppointmentTableProps {
   appointments: Appointment[];
   onRowClick: (appointment: Appointment) => void;
   onEdit: (appointmentId: number) => void;
+  selectedRows?: number[];
+  onRowSelectionChange?: (selectedIds: number[]) => void;
 }
 
 // Create a column helper for type safety
@@ -95,44 +102,106 @@ const getAttendeesInfo = (appointment: Appointment) => {
   return `${allNames[0]} +${totalCount - 1} others`;
 };
 
-// Helper function to get date/time display
-const getDateTimeDisplay = (appointment: Appointment) => {
-  if (['approved', 'completed'].includes(appointment.status.toLowerCase()) && appointment.appointment_date) {
-    const date = formatDate(appointment.appointment_date, false);
-    const time = appointment.appointment_time || '';
-    return { date, time };
+// Helper function to determine which date/time to show and if appointment date should be marked
+const getDateTimeDisplay = (appointment: Appointment, statusMap: StatusMap) => {
+  // Check if appointment is to be rescheduled, approved, or completed
+  const shouldShowAppointmentDate = appointment.status === statusMap['APPROVED'] || 
+                                   appointment.status === statusMap['COMPLETED'] ||
+                                   (appointment.status === statusMap['APPROVED'] && appointment.sub_status === 'NEED_RESCHEDULE');
+
+  let date, time, isAppointmentDate = false;
+
+  if (shouldShowAppointmentDate && appointment.appointment_date) {
+    // Show appointment date/time with checkmark
+    date = formatDate(appointment.appointment_date, false);
+    time = appointment.appointment_time || '';
+    isAppointmentDate = true;
   } else {
-    const date = formatDate(appointment.preferred_date || '', false);
-    const time = appointment.preferred_time_of_day || '';
-    return { date, time };
+    // Show requested date/time (use created_at as proxy for requested date)
+    date = formatDate(appointment.created_at || '', false);
+    time = ''; // We don't have a specific requested time field
+    isAppointmentDate = false;
   }
-};
 
-// Helper function to get requested date/time
-const getRequestedDateTime = (appointment: Appointment) => {
-  const date = formatDate(appointment.created_at || '', false);
-  const time = ''; // Could be derived from created_at if needed
-  return { date, time };
-};
-
-// Helper function to get last updated date/time
-const getLastUpdatedDateTime = (appointment: Appointment) => {
-  const date = formatDate(appointment.updated_at || appointment.created_at || '', false);
-  const time = ''; // Could be derived from updated_at if needed
-  return { date, time };
+  return { date, time, isAppointmentDate };
 };
 
 export const AppointmentTable: React.FC<AppointmentTableProps> = ({
   appointments,
   onRowClick,
-  onEdit
+  onEdit,
+  selectedRows = [],
+  onRowSelectionChange
 }) => {
   const theme = useTheme();
-  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const api = useApi();
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+
+  // Fetch status map from the API
+  const { data: statusMap = {} } = useQuery<StatusMap>({
+    queryKey: ['status-map'],
+    queryFn: async () => {
+      const { data } = await api.get<StatusMap>('/appointments/status-options-map');
+      return data;
+    },
+  });
+
+  // Update row selection when selectedRows prop changes
+  React.useEffect(() => {
+    const newRowSelection: RowSelectionState = {};
+    selectedRows.forEach(id => {
+      const index = appointments.findIndex(apt => apt.id === id);
+      if (index !== -1) {
+        newRowSelection[index] = true;
+      }
+    });
+    setRowSelection(newRowSelection);
+  }, [selectedRows, appointments]);
+
+  // Handle row selection change
+  const handleRowSelectionChange = (updater: any) => {
+    const newSelection = typeof updater === 'function' ? updater(rowSelection) : updater;
+    setRowSelection(newSelection);
+    
+    if (onRowSelectionChange) {
+      const selectedIds = Object.keys(newSelection)
+        .filter(key => newSelection[key])
+        .map(key => appointments[parseInt(key)]?.id)
+        .filter(Boolean);
+      onRowSelectionChange(selectedIds);
+    }
+  };
 
   // Define columns using TanStack Table with exact Figma widths
   const columns = useMemo(
     () => [
+      // Checkbox column for multi-select
+      columnHelper.display({
+        id: 'select',
+        header: ({ table }) => (
+          <Checkbox
+            checked={table.getIsAllRowsSelected()}
+            indeterminate={table.getIsSomeRowsSelected()}
+            onChange={table.getToggleAllRowsSelectedHandler()}
+            size="small"
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            disabled={!row.getCanSelect()}
+            indeterminate={row.getIsSomeSelected()}
+            onChange={row.getToggleSelectedHandler()}
+            size="small"
+          />
+        ),
+        size: 50,
+        minSize: 50,
+        maxSize: 50,
+        enableSorting: false,
+      }),
+
       columnHelper.accessor('id', {
         id: 'id',
         header: 'ID',
@@ -153,7 +222,7 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
 
       columnHelper.accessor((row) => getAttendeesInfo(row), {
         id: 'dignitary',
-        header: 'Dignitary',
+        header: 'Attendees',
         cell: (info) => (
           <Typography 
             variant="body2" 
@@ -172,70 +241,43 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
         maxSize: 180,
       }),
 
-      columnHelper.accessor((row) => getRequestedDateTime(row), {
-        id: 'requested_date_time',
-        header: 'Requested Date & Time',
-        cell: (info) => {
-          const { date, time } = info.getValue();
-          return (
-            <Box>
-              <Typography sx={{ 
-                fontSize: '14px',
-                color: '#6f7283',
-                fontWeight: 400,
-                fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
-                lineHeight: 1,
-              }}>
-                {date}
-              </Typography>
-              {time && (
-                <Typography sx={{ 
-                  fontSize: '14px',
-                  color: '#6f7283',
-                  fontWeight: 400,
-                  fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
-                  lineHeight: 1,
-                  mt: '8px',
-                }}>
-                  {time}
-                </Typography>
-              )}
-            </Box>
-          );
-        },
-        size: 130,
-        minSize: 130,
-        maxSize: 150,
-        // enableSorting: false,
-      }),
-
-      columnHelper.accessor((row) => getDateTimeDisplay(row), {
-        id: 'appointment_date_time',
+      // Combined Date & Time column
+      columnHelper.accessor((row) => getDateTimeDisplay(row, statusMap), {
+        id: 'date_time',
         header: 'Appointment Date & Time',
         cell: (info) => {
-          const { date, time } = info.getValue();
+          const { date, time, isAppointmentDate } = info.getValue();
           return (
-            <Box>
-              <Typography sx={{ 
-                fontSize: '14px',
-                color: '#6f7283',
-                fontWeight: 400,
-                fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
-                lineHeight: 1,
-              }}>
-                {date}
-              </Typography>
-              {time && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'space-between' }}>
+              <Box>
                 <Typography sx={{ 
                   fontSize: '14px',
                   color: '#6f7283',
                   fontWeight: 400,
                   fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
                   lineHeight: 1,
-                  mt: '8px',
                 }}>
-                  {time}
+                  {date}
                 </Typography>
+                {time && (
+                  <Typography sx={{ 
+                    fontSize: '14px',
+                    color: '#6f7283',
+                    fontWeight: 400,
+                    fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
+                    lineHeight: 1,
+                    mt: '8px',
+                  }}>
+                    {time}
+                  </Typography>
+                )}
+              </Box>
+              {isAppointmentDate && (
+                <CheckCircleIconV2 sx={{ 
+                  color: '#aaa', 
+                  fontSize: 16,
+                  flexShrink: 0
+                }} />
               )}
             </Box>
           );
@@ -243,7 +285,6 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
         size: 130,
         minSize: 130,
         maxSize: 150,
-        // enableSorting: false,
       }),
 
       columnHelper.accessor((row) => row.location?.name || 'N/A', {
@@ -255,7 +296,6 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
             color: '#6f7283',
             fontWeight: 400,
             fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
-            // whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
           }}>
@@ -278,71 +318,26 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
         maxSize: 116,
       }),
 
-      columnHelper.accessor((row) => getRequestedDateTime(row), {
+      // Requested column (when the appointment was requested)
+      columnHelper.accessor('created_at', {
         id: 'requested',
         header: 'Requested',
         cell: (info) => {
-          const { date, time } = info.getValue();
+          const createdAt = info.getValue();
           return (
-            <Box>
-              <Typography sx={{ 
-                fontSize: '14px',
-                color: '#6f7283',
-                fontWeight: 400,
-                fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
-                lineHeight: 1,
-              }}>
-                {date}
-              </Typography>
-              {time && (
-                <Typography sx={{ 
-                  fontSize: '14px',
-                  color: '#6f7283',
-                  fontWeight: 400,
-                  fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
-                  lineHeight: 1,
-                  mt: '8px',
-                }}>
-                  {time}
-                </Typography>
-              )}
-            </Box>
+            <Typography sx={{
+              fontSize: '14px',
+              color: '#6f7283',
+              fontWeight: 400,
+              fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
+            }}>
+              {createdAt ? formatDate(createdAt, false) : '-'}
+            </Typography>
           );
         },
-      }),
-
-      columnHelper.accessor((row) => getLastUpdatedDateTime(row), {
-        id: 'last_updated',
-        header: 'Last Updated',
-        cell: (info) => {
-          const { date, time } = info.getValue();
-          return (
-            <Box>
-              <Typography sx={{ 
-                fontSize: '14px',
-                color: '#6f7283',
-                fontWeight: 400,
-                fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
-                lineHeight: 1,
-              }}>
-                {date}
-              </Typography>
-              {time && (
-                <Typography sx={{ 
-                  fontSize: '14px',
-                  color: '#6f7283',
-                  fontWeight: 400,
-                  fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
-                  lineHeight: 1,
-                  mt: '8px',
-                }}>
-                  {time}
-                </Typography>
-              )}
-            </Box>
-          );
-        },
-        enableSorting: false,
+        size: 108,
+        minSize: 108,
+        maxSize: 108,
       }),
 
       columnHelper.display({
@@ -369,13 +364,13 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
             <EditIconV2 sx={{ width: 20, height: 20 }} />
           </IconButton>
         ),
-        size: 72,
-        minSize: 72,
-        maxSize: 72,
+        size: 56,
+        minSize: 56,
+        maxSize: 56,
         enableSorting: false,
       }),
     ],
-    [onEdit]
+    [onEdit, statusMap]
   );
 
   // Create table instance
@@ -384,12 +379,16 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
     columns,
     state: {
       sorting,
+      rowSelection,
     },
+    enableRowSelection: true,
+    onRowSelectionChange: handleRowSelectionChange,
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     globalFilterFn,
+    getRowId: (row) => row.id.toString(),
     debugTable: false,
   });
 
@@ -401,8 +400,19 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
     );
   }
 
+  const selectedCount = Object.keys(rowSelection).filter(key => rowSelection[key]).length;
+
   return (
     <Box sx={{ width: '100%' }}>
+      {/* Selection info */}
+      {selectedCount > 0 && (
+        <Box sx={{ mb: 2, p: 2, backgroundColor: theme.palette.primary.light, borderRadius: 1 }}>
+          <Typography variant="body2" color="primary.dark">
+            {selectedCount} appointment{selectedCount === 1 ? '' : 's'} selected
+          </Typography>
+        </Box>
+      )}
+
       <TableContainer 
         component={Paper} 
         sx={{ 
@@ -482,7 +492,8 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
                   },
                   '&:last-child td': {
                     borderBottom: 'none',
-                  }
+                  },
+                  backgroundColor: row.getIsSelected() ? theme.palette.action.selected : 'inherit',
                 }}
               >
                 {row.getVisibleCells().map((cell) => (

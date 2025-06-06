@@ -1348,6 +1348,11 @@ const AdminAppointmentTiles: React.FC = () => {
                       const currentUrl = window.location.pathname + window.location.search;
                       navigate(`${AdminAppointmentsEditRoute.path?.replace(':id', appointmentId.toString())}?redirectTo=${encodeURIComponent(currentUrl)}` || '');
                     }}
+                    selectedRows={[]}
+                    onRowSelectionChange={(selectedIds) => {
+                      console.log('Selected appointment IDs:', selectedIds);
+                      // TODO: Handle selection change if needed
+                    }}
                   />
                 </Box>
                             ) : selectedAppointment ? (
