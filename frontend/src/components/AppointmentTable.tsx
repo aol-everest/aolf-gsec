@@ -146,8 +146,8 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
             #{info.getValue()}
           </Typography>
         ),
-        size: 40,
-        minSize: 30,
+        size: 50,
+        minSize: 40,
         maxSize: 100,
       }),
 
@@ -203,10 +203,10 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
             </Box>
           );
         },
-        size: 170,
-        minSize: 170,
-        maxSize: 170,
-        enableSorting: false,
+        size: 130,
+        minSize: 130,
+        maxSize: 150,
+        // enableSorting: false,
       }),
 
       columnHelper.accessor((row) => getDateTimeDisplay(row), {
@@ -240,10 +240,10 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
             </Box>
           );
         },
-        size: 180,
-        minSize: 180,
-        maxSize: 180,
-        enableSorting: false,
+        size: 130,
+        minSize: 130,
+        maxSize: 150,
+        // enableSorting: false,
       }),
 
       columnHelper.accessor((row) => row.location?.name || 'N/A', {
@@ -309,7 +309,6 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
             </Box>
           );
         },
-        enableSorting: false,
       }),
 
       columnHelper.accessor((row) => getLastUpdatedDateTime(row), {
