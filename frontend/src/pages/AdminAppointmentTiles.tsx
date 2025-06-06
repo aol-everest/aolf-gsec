@@ -915,8 +915,8 @@ const AdminAppointmentTiles: React.FC = () => {
   };
 
   // Get count of appointments for a specific request type
-  const getRequestTypeAppointmentCount = (requestType: string) => {
-    return appointments.filter(a => (a.request_type === requestType)).length;
+  const getRequestTypeAppointmentCount = (requestType: string, status: string) => {
+    return appointments.filter(a => (a.request_type === requestType && (a.status === status || status === 'All'))).length;
   };
 
   // Handle table row click to show card view
@@ -1145,7 +1145,7 @@ const AdminAppointmentTiles: React.FC = () => {
                       const option = requestTypeOptions.find((opt: { value: string; display: string }) => opt.value === requestType);
                       return option ? option.display : requestType;
                     }}
-                    getCount={(requestType) => getRequestTypeAppointmentCount(requestType)}
+                    getCount={(requestType) => getRequestTypeAppointmentCount(requestType, filters.status || 'All')}
                     getColor={(_, theme) => theme.palette.secondary.main}
                     onToggle={handleRequestTypeFilter}
                     sx={{
