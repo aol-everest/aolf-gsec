@@ -607,6 +607,12 @@ const AdminAppointmentTiles: React.FC = () => {
   const getFilteredAppointments = useCallback(() => {
     logger(`Called getFilteredAppointments`);
 
+    // Request type filter is mandatory - return empty if not selected
+    if (!filters.requestType) {
+      logger('No request type selected - returning empty results');
+      return [];
+    }
+
     let filtered = [...appointments];
    
     // Apply status filter if selected
@@ -623,13 +629,11 @@ const AdminAppointmentTiles: React.FC = () => {
       );
     }
     
-    // Apply request type filter if selected
-    if (filters.requestType) {
-      logger(`Filtering by request type: ${filters.requestType}`);
-      filtered = filtered.filter(appointment => 
-        appointment.request_type === filters.requestType
-      );
-    }
+    // Apply request type filter (this is now mandatory)
+    logger(`Filtering by request type: ${filters.requestType}`);
+    filtered = filtered.filter(appointment => 
+      appointment.request_type === filters.requestType
+    );
     
     // Apply search filter if search term exists
     if (filters.searchTerm.trim()) {
@@ -706,13 +710,13 @@ const AdminAppointmentTiles: React.FC = () => {
         if (existsInAllAppointments && (filters.status || filters.locationId || filters.searchTerm || filters.startDate || filters.endDate)) {
           // It exists but is filtered out - clear filters
           logger(`Clearing filters to show appointment ID ${appointmentId}`);
-          // Don't clear status if that's the filter that was just applied from URL
+          // Don't clear status or request type when showing filtered appointment
           if (!isInitialLoadRef.current) {
             setFilters(prev => ({
               ...prev,
               status: null,
               locationId: null,
-              requestType: null,
+              // Keep requestType as it's mandatory
               searchTerm: '',
               startDate: null,
               endDate: null
@@ -1128,12 +1132,14 @@ const AdminAppointmentTiles: React.FC = () => {
                   <ListIconV2 sx={{ width: 22, height: 22 }} />
                 </Grid>
                 <Grid item xs={11} md={1.6} sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Typography variant="body2" sx={{ m: 0 }}>Request Type</Typography>
+                  <Typography variant="body2" sx={{ m: 0, fontWeight: 600 }}>
+                    Request Type*
+                  </Typography>
                 </Grid>
                 <Grid item xs={12} md={10} sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}>
                   <FilterChipGroup
                     key={`request-type-filter-group-${filters.status || 'all'}`}
-                    options={requestTypeOptions.filter((type: { value: string; display: string }) => getRequestTypeAppointmentCount(type.value) > 0).map((type: { value: string; display: string }) => type.value)}
+                    options={requestTypeOptions.map((type: { value: string; display: string }) => type.value)}
                     selectedValue={filters.requestType}
                     getLabel={(requestType: string) => {
                       const option = requestTypeOptions.find((opt: { value: string; display: string }) => opt.value === requestType);
@@ -1322,6 +1328,15 @@ const AdminAppointmentTiles: React.FC = () => {
               <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
                 <CircularProgress />
               </Box>
+            ) : !filters.requestType ? (
+              <Paper sx={{ p: 4, textAlign: 'center', bgcolor: 'background.paper' }}>
+                <Typography variant="h6" gutterBottom>
+                  Select a Request Type to View Appointments
+                </Typography>
+                <Typography variant="body1" color="text.secondary">
+                  Please choose a request type from the filter options above to see appointments.
+                </Typography>
+              </Paper>
             ) : filteredAppointments.length > 0 ? (
               viewMode === 'table' ? (
                 /* Table View */

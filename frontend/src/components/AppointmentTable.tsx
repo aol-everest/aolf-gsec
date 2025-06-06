@@ -128,24 +128,7 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
         minSize: 80,
         maxSize: 120,
       }),
-      columnHelper.accessor('request_type', {
-        id: 'request_type',
-        header: 'Type',
-        cell: (info) => (
-          <Chip 
-            label={info.getValue() || 'Dignitary'} 
-            size="small"
-            variant="outlined"
-            sx={{ 
-              fontSize: '0.75rem',
-              color: theme.palette.primary.main,
-              borderColor: theme.palette.primary.main
-            }}
-          />
-        ),
-        minSize: 120,
-        maxSize: 160,
-      }),
+
       columnHelper.accessor((row) => getAttendeesInfo(row), {
         id: 'attendees',
         header: 'Attendees',
