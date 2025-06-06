@@ -460,6 +460,19 @@ class MeetingPlaceUpdate(MeetingPlaceBase):
     lng: Optional[float] = None
 
 
+# Appointment Contact Schemas
+class AppointmentContactBase(BaseModel):
+    appointment_id: int
+    contact_id: int
+
+class AppointmentContactWithContact(AppointmentContactBase):
+    id: int
+    created_at: datetime
+    contact: "UserContact"
+
+    class Config:
+        orm_mode = True
+
 class AppointmentDignitaryWithDignitary(AppointmentDignitaryBase):
     id: int
     created_at: datetime
@@ -498,18 +511,8 @@ class CalendarEventBasicInfo(BaseModel):
         orm_mode = True
 
 
-class AppointmentUserInfo(BaseModel):
-    """Schema for appointment user info in responses"""
-    id: int
-    first_name: str
-    last_name: str
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    relationship_to_requester: Optional[PersonRelationshipType] = None
-    created_at: datetime
-    
-    class Config:
-        orm_mode = True
+# NOTE: Using UserContact and AdminUserContact schemas directly
+# AppointmentContactWithContact contains junction table data + UserContact object
 
 
 class Appointment(AppointmentBase):
@@ -537,7 +540,7 @@ class Appointment(AppointmentBase):
     
     # New relationships
     calendar_event: Optional[CalendarEventBasicInfo] = None
-    appointment_users: Optional[List[AppointmentUserInfo]] = None
+    appointment_contacts: Optional[List[AppointmentContactWithContact]] = None
 
     class Config:
         orm_mode = True
@@ -585,6 +588,14 @@ class AdminAppointmentDignitaryWithDignitary(AppointmentDignitaryBase):
     class Config:
         orm_mode = True
 
+class AdminAppointmentContactWithContact(AppointmentContactBase):
+    id: int
+    created_at: datetime
+    contact: "AdminUserContact"
+
+    class Config:
+        orm_mode = True
+
 class AdminAppointment(AppointmentBase):
     id: int
     request_type: Optional[RequestType] = None
@@ -593,7 +604,8 @@ class AdminAppointment(AppointmentBase):
     preferred_date: Optional[date] = None
     preferred_time_of_day: Optional[AppointmentTimeOfDay] = None
     requester_notes_to_secretariat: Optional[str] = None
-    appointment_dignitaries: List[AdminAppointmentDignitaryWithDignitary]
+    appointment_dignitaries: Optional[List[AdminAppointmentDignitaryWithDignitary]] = None
+    appointment_contacts: Optional[List[AdminAppointmentContactWithContact]] = None
     requester: Optional[User] = None
     status: AppointmentStatus
     sub_status: Optional[AppointmentSubStatus] = None
@@ -727,7 +739,7 @@ class RequesterUsherView(BaseModel):
     class Config:
         orm_mode = True
 
-class AppointmentUserUsherView(BaseModel):
+class AppointmentContactUsherView(BaseModel):
     """Usher view of appointment users (darshan attendees)"""
     id: int
     first_name: str
@@ -755,7 +767,7 @@ class AppointmentUsherView(BaseModel):
     requester: Optional[RequesterUsherView] = None
     location: Optional[Location] = None
     appointment_dignitaries: Optional[List[AppointmentDignitaryUsherView]] = []
-    appointment_users: Optional[List[AppointmentUserUsherView]] = []  # NEW
+    appointment_contacts: Optional[List[AppointmentContactUsherView]] = []  # Updated from appointment_users
 
     class Config:
         orm_mode = True
@@ -904,16 +916,16 @@ class AttendanceStatusUpdate(BaseModel):
     appointment_dignitary_id: int
     attendance_status: AttendanceStatus
 
-# Appointment User Schemas (for darshan attendees)
-from models.appointmentContact import PersonRelationshipType
+# Enhanced Appointment Creation Schema
+from models.enums import PersonRelationshipType
 
-class AppointmentUserCreate(BaseModel):
+class AppointmentContactCreate(BaseModel):
     """Schema for creating appointment users (darshan attendees)"""
     first_name: str
     last_name: str
     email: Optional[str] = None
     phone: Optional[str] = None
-    relationship_to_requester: Optional[PersonRelationshipType] = None
+    relationship_to_owner: Optional[PersonRelationshipType] = None
     comments: Optional[str] = None  # Special requirements
 
 # Enhanced Appointment Creation Schema
@@ -983,7 +995,7 @@ class AppointmentResponseEnhanced(BaseModel):
     
     # Related entities
     appointment_dignitaries: Optional[List[AppointmentDignitaryWithDignitary]] = None
-    appointment_users: Optional[List[AppointmentUserInfo]] = None  # If darshan/other
+    appointment_contacts: Optional[List[AppointmentContactWithContact]] = None  # If darshan/other
     
     # Legacy fields (populated from calendar_event for backward compatibility)
     appointment_date: Optional[date] = None  # From calendar_event.start_date
@@ -1195,6 +1207,26 @@ class UserContactBase(BaseModel):
     relationship_to_owner: Optional[PersonRelationshipType] = None
     notes: Optional[str] = None
 
+class UserContact(UserContactBase):
+    """Schema for user contact responses"""
+    id: int
+    owner_user_id: int
+    contact_user_id: Optional[int] = None
+    appointment_usage_count: int
+    last_used_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+class AdminUserContact(UserContactBase):
+    id: int
+    owner_user_id: int
+    contact_user_id: Optional[int] = None
+    appointment_usage_count: int
+    last_used_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+
 class UserContactCreate(UserContactBase):
     """Schema for creating a new user contact"""
     contact_user_id: Optional[int] = None  # Link to existing user if applicable
@@ -1268,3 +1300,6 @@ class UserContactSearchResponse(BaseModel):
     contacts: List[UserContactResponse]
     total_results: int
     search_query: str
+
+# NOTE: Removed duplicate schemas - using UserContact and AdminUserContact directly
+

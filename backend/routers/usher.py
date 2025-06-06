@@ -132,18 +132,18 @@ async def get_usher_appointments(
         location = appointment.calendar_event.location or appointment.location  # Calendar event location takes precedence
         
         # Convert appointment_contacts to proper usher view format
-        appointment_users_usher = []
+        appointment_contacts_usher = []
         if appointment.appointment_contacts:
             for ac in appointment.appointment_contacts:
                 # Merge AppointmentContact and UserContact data for usher view (limited fields only)
-                user_usher_data = {
+                contact_usher_data = {
                     'id': ac.id,
                     'created_at': ac.created_at,
                     'attendance_status': ac.attendance_status,
                     'checked_in_at': ac.checked_in_at,
                     **{k: v for k, v in ac.contact.__dict__.items() if k in ['first_name', 'last_name']}  # Ushers only get names
                 }
-                appointment_users_usher.append(schemas.AppointmentUserUsherView(**user_usher_data))
+                appointment_contacts_usher.append(schemas.AppointmentContactUsherView(**contact_usher_data))
 
         # Create usher view with calendar event data
         usher_appointment = schemas.AppointmentUsherView(
@@ -153,7 +153,7 @@ async def get_usher_appointments(
             requester=appointment.requester,
             location=location,
             appointment_dignitaries=appointment.appointment_dignitaries,
-            appointment_users=appointment_users_usher
+            appointment_contacts=appointment_contacts_usher
         )
         usher_appointments.append(usher_appointment)
     
@@ -206,7 +206,7 @@ async def update_dignitary_checkin(
     
     return appointment_dignitary
 
-@router.patch("/appointment-contacts/{appointment_contact_id}/check-in", response_model=schemas.AppointmentUserUsherView)
+@router.patch("/appointment-contacts/{appointment_contact_id}/check-in", response_model=schemas.AppointmentContactUsherView)
 @requires_any_role([models.UserRole.USHER, models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
 async def check_in_appointment_contact(
     appointment_contact_id: int,
@@ -248,7 +248,7 @@ async def check_in_appointment_contact(
     db.commit()
     db.refresh(appointment_contact)
     
-    # Return contact data in AppointmentUserUsherView format (limited data for ushers)
+    # Return contact data in AppointmentContactUsherView format (limited data for ushers)
     contact_data = {
         'id': appointment_contact.id,
         'created_at': appointment_contact.created_at,
@@ -256,7 +256,7 @@ async def check_in_appointment_contact(
         'checked_in_at': appointment_contact.checked_in_at,
         **{k: v for k, v in appointment_contact.contact.__dict__.items() if k in ['first_name', 'last_name']}  # Ushers only get names
     }
-    return schemas.AppointmentUserUsherView(**contact_data)
+    return schemas.AppointmentContactUsherView(**contact_data)
 
 @router.post("/appointments/{appointment_id}/check-in-all", response_model=schemas.BulkCheckinResponse)
 @requires_any_role([models.UserRole.USHER, models.UserRole.SECRETARIAT, models.UserRole.ADMIN])

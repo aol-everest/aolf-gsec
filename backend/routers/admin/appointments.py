@@ -255,19 +255,11 @@ def prepare_enhanced_admin_appointment_response(appointment: models.Appointment,
             **appointment.calendar_event.__dict__
         )
     
-    # Prepare appointment users
-    appointment_users = []
+    # Prepare appointment contacts - no field mapping needed since we use UserContact directly
+    appointment_contacts = []
     if appointment.appointment_contacts:
         for ac in appointment.appointment_contacts:
-            # Create AppointmentUserInfo from contact data - admin gets full access
-            contact_data = {
-                'id': ac.id,
-                'created_at': ac.created_at,
-                **{k: v for k, v in ac.contact.__dict__.items() 
-                   if not k.startswith('_') and k not in ['relationship_to_owner']},  # Exclude SQLAlchemy internals and mapped field
-                'relationship_to_requester': ac.contact.relationship_to_owner  # Field name mapping
-            }
-            appointment_users.append(schemas.AppointmentUserInfo(**contact_data))
+            appointment_contacts.append(schemas.AdminAppointmentContactWithContact(**ac.__dict__))
     
     # Prepare appointment dignitaries
     appointment_dignitaries = []
@@ -279,7 +271,7 @@ def prepare_enhanced_admin_appointment_response(appointment: models.Appointment,
     response_data = {
         **appointment.__dict__,
         'calendar_event': calendar_event_info,
-        'appointment_users': appointment_users if appointment_users else None,
+        'appointment_contacts': appointment_contacts if appointment_contacts else None,
         'appointment_dignitaries': appointment_dignitaries if appointment_dignitaries else None,
         # Legacy compatibility
         'appointment_date': appointment.calendar_event.start_date if appointment.calendar_event else appointment.preferred_date,
