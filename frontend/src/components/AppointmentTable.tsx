@@ -184,6 +184,7 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
             checked={table.getIsAllRowsSelected()}
             indeterminate={table.getIsSomeRowsSelected()}
             onChange={table.getToggleAllRowsSelectedHandler()}
+            onClick={(e) => e.stopPropagation()}
             size="small"
           />
         ),
@@ -193,6 +194,7 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
             disabled={!row.getCanSelect()}
             indeterminate={row.getIsSomeSelected()}
             onChange={row.getToggleSelectedHandler()}
+            onClick={(e) => e.stopPropagation()}
             size="small"
           />
         ),
