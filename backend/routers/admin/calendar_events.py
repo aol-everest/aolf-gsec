@@ -1,0 +1,497 @@
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import func, and_, or_
+from datetime import datetime, date, time
+from typing import Optional, List
+import logging
+
+import models
+import schemas
+from dependencies.database import get_db, get_read_db
+from dependencies.auth import get_current_user_for_write, get_current_user, requires_any_role
+from models.calendarEvent import EventType, EventStatus
+from utils.utils import convert_to_datetime_with_tz
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter()
+
+def calculate_event_capacity(db: Session, event_id: int) -> tuple[int, int]:
+    """Calculate current and available capacity for an event"""
+    # Count appointments linked to this event
+    current_capacity = db.query(func.sum(models.Appointment.number_of_attendees)).filter(
+        models.Appointment.calendar_event_id == event_id,
+        models.Appointment.status.notin_([
+            models.AppointmentStatus.CANCELLED,
+            models.AppointmentStatus.REJECTED
+        ])
+    ).scalar() or 0
+    
+    return current_capacity, current_capacity
+
+def format_time_from_datetime(dt: datetime) -> str:
+    """Format datetime to HH:MM string"""
+    return dt.strftime("%H:%M")
+
+def combine_date_and_time(start_date: date, start_time: str) -> datetime:
+    """Combine date and time string into naive datetime"""
+    try:
+        # Parse time string
+        time_parts = start_time.split(':')
+        hour = int(time_parts[0])
+        minute = int(time_parts[1]) if len(time_parts) > 1 else 0
+        
+        # Combine into naive datetime
+        return datetime.combine(start_date, time(hour, minute))
+    except (ValueError, IndexError) as e:
+        raise ValueError(f"Invalid time format '{start_time}'. Expected HH:MM format.") from e
+
+def create_timezone_aware_datetime_for_event(start_date: date, start_time: str, location_id: int, db: Session) -> datetime:
+    """Create timezone-aware datetime for CalendarEvent from date and time strings"""
+    
+    # First create naive datetime
+    naive_datetime = combine_date_and_time(start_date, start_time)
+    
+    # Get location information for timezone determination
+    location = None
+    if location_id:
+        location = db.query(models.Location).filter(models.Location.id == location_id).first()
+    
+    # Convert to the format expected by convert_to_datetime_with_tz
+    date_str = start_date.isoformat()
+    time_str = f"{start_time}:00" if len(start_time.split(':')) == 2 else start_time
+    
+    # Use the sophisticated timezone conversion logic
+    return convert_to_datetime_with_tz(date_str, time_str, location)
+
+@router.post("/", response_model=schemas.CalendarEventResponse)
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def create_calendar_event(
+    event: schemas.CalendarEventCreate,
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
+):
+    """Create a new calendar event"""
+    logger.info(f"Creating calendar event: {event.title} by user {current_user.email}")
+    
+    # Create timezone-aware datetime from separate date and time fields
+    timezone_aware_datetime = create_timezone_aware_datetime_for_event(
+        event.start_date, 
+        event.start_time, 
+        event.location_id, 
+        db
+    )
+    
+    # Create the event
+    db_event = models.CalendarEvent(
+        event_type=event.event_type,
+        title=event.title,
+        description=event.description,
+        start_datetime=timezone_aware_datetime,     # Timezone-aware calculated datetime
+        start_date=event.start_date,                # Original user input date
+        start_time=event.start_time,                # Original user input time
+        duration=event.duration,
+        location_id=event.location_id,
+        meeting_place_id=event.meeting_place_id,
+        max_capacity=event.max_capacity,
+        is_open_for_booking=event.is_open_for_booking,
+        instructions=event.instructions,
+        status=event.status,
+        created_by=current_user.id,
+        updated_by=current_user.id
+    )
+    
+    db.add(db_event)
+    db.commit()
+    db.refresh(db_event)
+    
+    # Calculate capacity
+    current_capacity, _ = calculate_event_capacity(db, db_event.id)
+    
+    # Prepare response
+    response = schemas.CalendarEventResponse(
+        **db_event.__dict__,
+        current_capacity=current_capacity,
+        available_capacity=db_event.max_capacity - current_capacity,
+        linked_appointments_count=0
+    )
+    
+    return response
+
+@router.get("/", response_model=List[schemas.CalendarEventResponse])
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def list_calendar_events(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_read_db),
+    event_type: Optional[EventType] = None,
+    status: Optional[EventStatus] = None,
+    location_id: Optional[int] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    is_open_for_booking: Optional[bool] = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000)
+):
+    """List calendar events with filters"""
+    query = db.query(models.CalendarEvent)
+    
+    # Apply filters
+    if event_type:
+        query = query.filter(models.CalendarEvent.event_type == event_type)
+    if status:
+        query = query.filter(models.CalendarEvent.status == status)
+    if location_id:
+        query = query.filter(models.CalendarEvent.location_id == location_id)
+    if start_date:
+        query = query.filter(models.CalendarEvent.start_date >= start_date)
+    if end_date:
+        query = query.filter(models.CalendarEvent.start_date <= end_date)
+    if is_open_for_booking is not None:
+        query = query.filter(models.CalendarEvent.is_open_for_booking == is_open_for_booking)
+    
+    # Order by start datetime
+    query = query.order_by(models.CalendarEvent.start_datetime.asc())
+    
+    # Add eager loading
+    query = query.options(
+        joinedload(models.CalendarEvent.location),
+        joinedload(models.CalendarEvent.meeting_place),
+        joinedload(models.CalendarEvent.created_by_user),
+        joinedload(models.CalendarEvent.updated_by_user)
+    )
+    
+    # Apply pagination
+    events = query.offset(skip).limit(limit).all()
+    
+    # Calculate capacity for each event
+    response_events = []
+    for event in events:
+        current_capacity, _ = calculate_event_capacity(db, event.id)
+        appointments_count = db.query(func.count(models.Appointment.id)).filter(
+            models.Appointment.calendar_event_id == event.id
+        ).scalar()
+        
+        response_events.append(schemas.CalendarEventResponse(
+            **event.__dict__,
+            current_capacity=current_capacity,
+            available_capacity=event.max_capacity - current_capacity,
+            linked_appointments_count=appointments_count
+        ))
+    
+    return response_events
+
+@router.get("/{event_id}", response_model=schemas.CalendarEventResponse)
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def get_calendar_event(
+    event_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_read_db)
+):
+    """Get a specific calendar event"""
+    event = db.query(models.CalendarEvent).options(
+        joinedload(models.CalendarEvent.location),
+        joinedload(models.CalendarEvent.meeting_place),
+        joinedload(models.CalendarEvent.created_by_user),
+        joinedload(models.CalendarEvent.updated_by_user)
+    ).filter(models.CalendarEvent.id == event_id).first()
+    
+    if not event:
+        raise HTTPException(status_code=404, detail="Calendar event not found")
+    
+    # Calculate capacity
+    current_capacity, _ = calculate_event_capacity(db, event.id)
+    appointments_count = db.query(func.count(models.Appointment.id)).filter(
+        models.Appointment.calendar_event_id == event.id
+    ).scalar()
+    
+    return schemas.CalendarEventResponse(
+        **event.__dict__,
+        current_capacity=current_capacity,
+        available_capacity=event.max_capacity - current_capacity,
+        linked_appointments_count=appointments_count
+    )
+
+@router.put("/{event_id}", response_model=schemas.CalendarEventResponse)
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def update_calendar_event(
+    event_id: int,
+    event_update: schemas.CalendarEventUpdate,
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
+):
+    """Update a calendar event"""
+    event = db.query(models.CalendarEvent).filter(models.CalendarEvent.id == event_id).first()
+    
+    if not event:
+        raise HTTPException(status_code=404, detail="Calendar event not found")
+    
+    # Update fields
+    update_data = event_update.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(event, field, value)
+    
+    # Handle date/time updates - calculate new timezone-aware start_datetime if needed
+    if 'start_date' in update_data and 'start_time' in update_data:
+        # Create new timezone-aware datetime from updated date/time
+        timezone_aware_datetime = create_timezone_aware_datetime_for_event(
+            update_data['start_date'], 
+            update_data['start_time'], 
+            event.location_id, 
+            db
+        )
+        event.start_datetime = timezone_aware_datetime
+    
+    event.updated_by = current_user.id
+    event.updated_at = datetime.utcnow()
+    
+    db.commit()
+    db.refresh(event)
+    
+    # Calculate capacity
+    current_capacity, _ = calculate_event_capacity(db, event.id)
+    appointments_count = db.query(func.count(models.Appointment.id)).filter(
+        models.Appointment.calendar_event_id == event.id
+    ).scalar()
+    
+    return schemas.CalendarEventResponse(
+        **event.__dict__,
+        current_capacity=current_capacity,
+        available_capacity=event.max_capacity - current_capacity,
+        linked_appointments_count=appointments_count
+    )
+
+@router.delete("/{event_id}")
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def delete_calendar_event(
+    event_id: int,
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
+):
+    """Delete a calendar event"""
+    event = db.query(models.CalendarEvent).filter(models.CalendarEvent.id == event_id).first()
+    
+    if not event:
+        raise HTTPException(status_code=404, detail="Calendar event not found")
+    
+    # Check if there are any linked appointments
+    linked_appointments = db.query(models.Appointment).filter(
+        models.Appointment.calendar_event_id == event_id,
+        models.Appointment.status.notin_([
+            models.AppointmentStatus.CANCELLED,
+            models.AppointmentStatus.REJECTED
+        ])
+    ).count()
+    
+    if linked_appointments > 0:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Cannot delete event with {linked_appointments} active appointments"
+        )
+    
+    db.delete(event)
+    db.commit()
+    
+    return {"message": "Calendar event deleted successfully"}
+
+@router.get("/{event_id}/availability", response_model=schemas.CalendarEventAvailability)
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def check_event_availability(
+    event_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_read_db)
+):
+    """Check availability for a calendar event"""
+    event = db.query(models.CalendarEvent).filter(models.CalendarEvent.id == event_id).first()
+    
+    if not event:
+        raise HTTPException(status_code=404, detail="Calendar event not found")
+    
+    current_capacity, _ = calculate_event_capacity(db, event.id)
+    available_capacity = event.max_capacity - current_capacity
+    
+    return schemas.CalendarEventAvailability(
+        event_id=event.id,
+        max_capacity=event.max_capacity,
+        current_capacity=current_capacity,
+        available_capacity=available_capacity,
+        is_available=available_capacity > 0 and event.is_open_for_booking,
+        message="Available for booking" if available_capacity > 0 else "Event is full"
+    )
+
+@router.get("/{event_id}/appointments", response_model=List[schemas.AdminAppointment])
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def get_event_appointments(
+    event_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_read_db)
+):
+    """Get all appointments linked to a calendar event"""
+    event = db.query(models.CalendarEvent).filter(models.CalendarEvent.id == event_id).first()
+    
+    if not event:
+        raise HTTPException(status_code=404, detail="Calendar event not found")
+    
+    appointments = db.query(models.Appointment).filter(
+        models.Appointment.calendar_event_id == event_id
+    ).options(
+        joinedload(models.Appointment.appointment_dignitaries).joinedload(
+            models.AppointmentDignitary.dignitary
+        ),
+        joinedload(models.Appointment.requester),
+        joinedload(models.Appointment.location),
+        joinedload(models.Appointment.meeting_place),
+        joinedload(models.Appointment.appointment_contacts).joinedload(models.AppointmentContact.contact)
+    ).all()
+    
+    return appointments
+
+@router.post("/batch", response_model=schemas.CalendarEventBatchResponse)
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def create_calendar_events_batch(
+    batch_data: schemas.CalendarEventBatchCreate,
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
+):
+    """Create multiple calendar events (e.g., recurring darshan sessions)"""
+    logger.info(f"Creating {len(batch_data.start_dates)} calendar events by user {current_user.email}")
+    
+    created_events = []
+    errors = []
+    
+    for event_date in batch_data.start_dates:
+        try:
+            # Create timezone-aware datetime from date and time
+            timezone_aware_datetime = create_timezone_aware_datetime_for_event(
+                event_date, 
+                batch_data.start_time, 
+                batch_data.location_id, 
+                db
+            )
+            
+            # Format title with date if template includes {date}
+            title = batch_data.title_template.format(date=event_date.strftime("%B %d, %Y"))
+            
+            db_event = models.CalendarEvent(
+                event_type=batch_data.event_type,
+                title=title,
+                description=batch_data.description,
+                start_datetime=timezone_aware_datetime,     # Timezone-aware calculated datetime
+                start_date=event_date,                      # Original user input date
+                start_time=batch_data.start_time,           # Original user input time string
+                duration=batch_data.duration,
+                location_id=batch_data.location_id,
+                meeting_place_id=batch_data.meeting_place_id,
+                max_capacity=batch_data.max_capacity,
+                is_open_for_booking=batch_data.is_open_for_booking,
+                instructions=batch_data.instructions,
+                status=batch_data.status,
+                created_by=current_user.id,
+                updated_by=current_user.id
+            )
+            
+            db.add(db_event)
+            db.flush()  # Get the ID without committing
+            
+            created_events.append(schemas.CalendarEventResponse(
+                **db_event.__dict__,
+                current_capacity=0,
+                available_capacity=db_event.max_capacity,
+                linked_appointments_count=0
+            ))
+            
+        except Exception as e:
+            errors.append({
+                "date": str(event_date),
+                "error": str(e)
+            })
+            logger.error(f"Error creating event for {event_date}: {str(e)}")
+    
+    db.commit()
+    
+    return schemas.CalendarEventBatchResponse(
+        total_requested=len(batch_data.start_dates),
+        successful=len(created_events),
+        failed=len(errors),
+        events=created_events,
+        errors=errors if errors else None
+    )
+
+@router.put("/batch", response_model=schemas.CalendarEventBatchResponse)
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def update_calendar_events_batch(
+    batch_data: schemas.CalendarEventBatchUpdate,
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
+):
+    """Update multiple calendar events"""
+    logger.info(f"Updating {len(batch_data.event_ids)} calendar events by user {current_user.email}")
+    
+    updated_events = []
+    errors = []
+    
+    # Get all events to update
+    events = db.query(models.CalendarEvent).filter(
+        models.CalendarEvent.id.in_(batch_data.event_ids)
+    ).all()
+    
+    if len(events) != len(batch_data.event_ids):
+        found_ids = [e.id for e in events]
+        missing_ids = [id for id in batch_data.event_ids if id not in found_ids]
+        raise HTTPException(
+            status_code=404,
+            detail=f"Calendar events not found: {missing_ids}"
+        )
+    
+    update_data = batch_data.update_data.dict(exclude_unset=True)
+    
+    for event in events:
+        try:
+            # Update fields (excluding special date/time handling)
+            for field, value in update_data.items():
+                setattr(event, field, value)
+            
+            # Handle date/time updates - calculate new timezone-aware start_datetime if needed
+            if 'start_date' in update_data and 'start_time' in update_data:
+                # Create new timezone-aware datetime from updated date/time
+                timezone_aware_datetime = create_timezone_aware_datetime_for_event(
+                    update_data['start_date'], 
+                    update_data['start_time'], 
+                    event.location_id, 
+                    db
+                )
+                event.start_datetime = timezone_aware_datetime
+            
+            event.updated_by = current_user.id
+            event.updated_at = datetime.utcnow()
+            
+            db.flush()
+            
+            # Calculate capacity
+            current_capacity, _ = calculate_event_capacity(db, event.id)
+            appointments_count = db.query(func.count(models.Appointment.id)).filter(
+                models.Appointment.calendar_event_id == event.id
+            ).scalar()
+            
+            updated_events.append(schemas.CalendarEventResponse(
+                **event.__dict__,
+                current_capacity=current_capacity,
+                available_capacity=event.max_capacity - current_capacity,
+                linked_appointments_count=appointments_count
+            ))
+            
+        except Exception as e:
+            errors.append({
+                "event_id": event.id,
+                "error": str(e)
+            })
+            logger.error(f"Error updating event {event.id}: {str(e)}")
+    
+    db.commit()
+    
+    return schemas.CalendarEventBatchResponse(
+        total_requested=len(batch_data.event_ids),
+        successful=len(updated_events),
+        failed=len(errors),
+        events=updated_events,
+        errors=errors if errors else None
+    ) 

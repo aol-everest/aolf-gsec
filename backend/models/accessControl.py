@@ -3,50 +3,11 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
 from database import Base
+from .enums import AccessLevel, EntityType
 import os
 
 schema = os.getenv('POSTGRES_SCHEMA', 'public')
 schema_prefix = f"{schema}." if schema != 'public' else ''
-
-class AccessLevel(str, enum.Enum):
-    """Access level enum with proper case values"""
-    READ = "Read Only"
-    READ_WRITE = "Read and Edit"
-    ADMIN = "Admin"
-
-    def __str__(self):
-        return self.value
-
-    def get_int_value(self):
-        if self == AccessLevel.READ:
-            return 1
-        elif self == AccessLevel.READ_WRITE:
-            return 2
-        elif self == AccessLevel.ADMIN:
-            return 3
-        else:
-            raise ValueError(f"Invalid access level: {self}")
-    
-    def is_higher_than_or_equal_to(self, other: "AccessLevel"):
-        """
-        Check if this access level is greater than or equal to the other
-        """
-        return self.get_int_value() >= other.get_int_value()
-
-    def get_higher_or_equal_access_levels(self):
-        """
-        Get the access that allow this access level
-        """
-        return [access_level for access_level in AccessLevel if access_level.is_higher_than_or_equal_to(self)]
-
-
-class EntityType(str, enum.Enum):
-    """Entity type enum with proper case values"""
-    APPOINTMENT = "Appointment"
-    APPOINTMENT_AND_DIGNITARY = "Appointment and Dignitary"
-
-    def __str__(self):
-        return self.value
 
 class UserAccess(Base):
     __tablename__ = "user_access"
@@ -94,7 +55,8 @@ class UserAccess(Base):
         Create a user access with role-based restrictions.
         If the user has the USHER role, it will enforce read-only access to appointments only.
         """
-        from models.user import User, UserRole
+        from models.user import User
+        from models.enums import UserRole
         
         # Get the user to check their role
         user = db.query(User).filter(User.id == user_id).first()
@@ -143,7 +105,8 @@ class UserAccess(Base):
         Returns:
             The updated UserAccess object
         """
-        from models.user import User, UserRole
+        from models.user import User
+        from models.enums import UserRole
         
         # Get the user to check their role
         user = db.query(User).filter(User.id == access_record.user_id).first()

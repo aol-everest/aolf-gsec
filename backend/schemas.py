@@ -1,13 +1,29 @@
 from pydantic import BaseModel, EmailStr, validator
 from typing import Optional, Dict, Any, Union, List
 from datetime import datetime, date
-from models.appointment import AppointmentStatus, AppointmentTimeOfDay, AppointmentSubStatus, AppointmentType
-from models.dignitary import HonorificTitle, PrimaryDomain, DignitarySource
-from models.dignitaryPointOfContact import RelationshipType
-from models.accessControl import AccessLevel, EntityType
+from models.enums import (
+    AppointmentStatus, 
+    AppointmentTimeOfDay, 
+    AppointmentSubStatus, 
+    AppointmentType,
+    HonorificTitle, 
+    PrimaryDomain, 
+    DignitarySource,
+    RelationshipType,
+    AccessLevel, 
+    EntityType,
+    AttachmentType,
+    AttendanceStatus,
+    EventType, 
+    EventStatus,
+    CalendarCreationContext,
+    RequestType,
+    PersonRelationshipType,
+    AOLTeacherStatus,
+    AOLProgramType,
+    AOLAffiliation,
+)
 from enum import Enum
-from models.appointmentAttachment import AttachmentType
-from models.appointmentDignitary import AttendanceStatus
 import json
 
 class GoogleToken(BaseModel):
@@ -30,6 +46,23 @@ class User(UserBase):
     role: str
     last_login_at: Optional[datetime] = None
     country_code: Optional[str] = None
+    
+    # Professional Information (consistent with dignitary model)
+    title_in_organization: Optional[str] = None
+    organization: Optional[str] = None
+    
+    # Enhanced Location Information
+    state_province: Optional[str] = None
+    state_province_code: Optional[str] = None
+    city: Optional[str] = None
+    
+    # Art of Living Teacher Information
+    teacher_status: Optional[str] = None
+    teacher_code: Optional[str] = None
+    programs_taught: Optional[List[str]] = None
+    
+    # Art of Living Roles/Affiliations
+    aol_affiliations: Optional[List[str]] = None
 
     class Config:
         orm_mode = True
@@ -39,6 +72,23 @@ class UserUpdate(BaseModel):
     picture: Optional[str] = None
     email_notification_preferences: Optional[Dict[str, bool]] = None
     country_code: Optional[str] = None
+    
+    # Professional Information (consistent with dignitary model)
+    title_in_organization: Optional[str] = None
+    organization: Optional[str] = None
+    
+    # Enhanced Location Information
+    state_province: Optional[str] = None
+    state_province_code: Optional[str] = None
+    city: Optional[str] = None
+    
+    # Art of Living Teacher Information
+    teacher_status: Optional[str] = None
+    teacher_code: Optional[str] = None
+    programs_taught: Optional[List[str]] = None
+    
+    # Art of Living Roles/Affiliations
+    aol_affiliations: Optional[List[str]] = None
     
     class Config:
         orm_mode = True
@@ -55,12 +105,46 @@ class UserAdminView(UserBase):
     role: str
     country_code: Optional[str] = None
     
+    # Professional Information (consistent with dignitary model)
+    title_in_organization: Optional[str] = None
+    organization: Optional[str] = None
+    
+    # Enhanced Location Information
+    state_province: Optional[str] = None
+    state_province_code: Optional[str] = None
+    city: Optional[str] = None
+    
+    # Art of Living Teacher Information
+    teacher_status: Optional[str] = None
+    teacher_code: Optional[str] = None
+    programs_taught: Optional[List[str]] = None
+    
+    # Art of Living Roles/Affiliations
+    aol_affiliations: Optional[List[str]] = None
+    
     class Config:
         orm_mode = True
 
 class UserAdminUpdate(BaseModel):
     role: Optional[str] = None
     country_code: Optional[str] = None
+    
+    # Professional Information (consistent with dignitary model)
+    title_in_organization: Optional[str] = None
+    organization: Optional[str] = None
+    
+    # Enhanced Location Information
+    state_province: Optional[str] = None
+    state_province_code: Optional[str] = None
+    city: Optional[str] = None
+    
+    # Art of Living Teacher Information
+    teacher_status: Optional[str] = None
+    teacher_code: Optional[str] = None
+    programs_taught: Optional[List[str]] = None
+    
+    # Art of Living Roles/Affiliations
+    aol_affiliations: Optional[List[str]] = None
     
     class Config:
         orm_mode = True
@@ -378,6 +462,19 @@ class MeetingPlaceUpdate(MeetingPlaceBase):
     lng: Optional[float] = None
 
 
+# Appointment Contact Schemas
+class AppointmentContactBase(BaseModel):
+    appointment_id: int
+    contact_id: int
+
+class AppointmentContactWithContact(AppointmentContactBase):
+    id: int
+    created_at: datetime
+    contact: "UserContact"
+
+    class Config:
+        orm_mode = True
+
 class AppointmentDignitaryWithDignitary(AppointmentDignitaryBase):
     id: int
     created_at: datetime
@@ -401,6 +498,24 @@ class AppointmentCreate(AppointmentBase):
     requester_notes_to_secretariat: Optional[str] = None
 
 
+# Calendar Event Schemas
+class CalendarEventBasicInfo(BaseModel):
+    """Minimal calendar event info for embedding in other responses"""
+    id: int
+    start_datetime: datetime
+    start_date: date
+    start_time: str
+    duration: int
+    location_id: Optional[int] = None
+    meeting_place_id: Optional[int] = None
+    
+    class Config:
+        orm_mode = True
+
+
+# NOTE: Using UserContact and AdminUserContact schemas directly
+# AppointmentContactWithContact contains junction table data + UserContact object
+
 
 class Appointment(AppointmentBase):
     id: int
@@ -419,6 +534,15 @@ class Appointment(AppointmentBase):
     appointment_time: Optional[str] = None
     secretariat_notes_to_requester: Optional[str] = None
     approved_datetime: Optional[datetime] = None
+    
+    # New fields for enhanced functionality
+    request_type: Optional[RequestType] = RequestType.DIGNITARY
+    calendar_event_id: Optional[int] = None
+    number_of_attendees: Optional[int] = 1
+    
+    # New relationships
+    calendar_event: Optional[CalendarEventBasicInfo] = None
+    appointment_contacts: Optional[List[AppointmentContactWithContact]] = None
 
     class Config:
         orm_mode = True
@@ -466,14 +590,24 @@ class AdminAppointmentDignitaryWithDignitary(AppointmentDignitaryBase):
     class Config:
         orm_mode = True
 
+class AdminAppointmentContactWithContact(AppointmentContactBase):
+    id: int
+    created_at: datetime
+    contact: "AdminUserContact"
+
+    class Config:
+        orm_mode = True
+
 class AdminAppointment(AppointmentBase):
     id: int
+    request_type: Optional[RequestType] = None
     requester_id: Optional[int] = None
     purpose: Optional[str] = None
     preferred_date: Optional[date] = None
     preferred_time_of_day: Optional[AppointmentTimeOfDay] = None
     requester_notes_to_secretariat: Optional[str] = None
-    appointment_dignitaries: List[AdminAppointmentDignitaryWithDignitary]
+    appointment_dignitaries: Optional[List[AdminAppointmentDignitaryWithDignitary]] = None
+    appointment_contacts: Optional[List[AdminAppointmentContactWithContact]] = None
     requester: Optional[User] = None
     status: AppointmentStatus
     sub_status: Optional[AppointmentSubStatus] = None
@@ -607,6 +741,18 @@ class RequesterUsherView(BaseModel):
     class Config:
         orm_mode = True
 
+class AppointmentContactUsherView(BaseModel):
+    """Usher view of appointment users (darshan attendees)"""
+    id: int
+    first_name: str
+    last_name: str
+    attendance_status: AttendanceStatus
+    checked_in_at: Optional[datetime] = None
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
+
 class AppointmentDignitaryUsherView(AppointmentDignitaryBase):
     id: int
     created_at: datetime
@@ -623,6 +769,7 @@ class AppointmentUsherView(BaseModel):
     requester: Optional[RequesterUsherView] = None
     location: Optional[Location] = None
     appointment_dignitaries: Optional[List[AppointmentDignitaryUsherView]] = []
+    appointment_contacts: Optional[List[AppointmentContactUsherView]] = []  # Updated from appointment_users
 
     class Config:
         orm_mode = True
@@ -630,6 +777,12 @@ class AppointmentUsherView(BaseModel):
             datetime: lambda v: v.isoformat(),
             date: lambda v: v.strftime("%Y-%m-%d")
         }
+
+class BulkCheckinResponse(BaseModel):
+    """Response for bulk check-in operations"""
+    total_checked_in: int
+    already_checked_in: int
+    failed: int = 0
 
 class AppointmentDignitary(AppointmentDignitaryBase):
     id: int
@@ -684,7 +837,7 @@ class UserAccessSummary(BaseModel):
     access_count: int
 
 # Country schemas
-class CountryBase(BaseModel):
+class GeoCountryBase(BaseModel):
     name: str
     iso2_code: str
     iso3_code: str
@@ -697,14 +850,14 @@ class CountryBase(BaseModel):
     timezones: Optional[List[str]] = None
     default_timezone: Optional[str] = None
 
-class Country(CountryBase):
+class GeoCountry(GeoCountryBase):
     class Config:
         orm_mode = True
 
-class CountryCreate(CountryBase):
+class GeoCountryCreate(GeoCountryBase):
     pass
 
-class CountryUpdate(BaseModel):
+class GeoCountryUpdate(BaseModel):
     name: Optional[str] = None
     iso3_code: Optional[str] = None
     region: Optional[str] = None
@@ -716,9 +869,40 @@ class CountryUpdate(BaseModel):
     timezones: Optional[List[str]] = None
     default_timezone: Optional[str] = None
 
-class CountryResponse(CountryBase):
+class GeoCountryResponse(GeoCountryBase):
     class Config:
         orm_mode = True
+
+# Subdivision schemas
+class GeoSubdivisionBase(BaseModel):
+    country_code: str
+    subdivision_code: str
+    name: str
+    subdivision_type: str
+    is_enabled: bool = True
+
+class GeoSubdivision(GeoSubdivisionBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class GeoSubdivisionResponse(GeoSubdivisionBase):
+    id: int
+    full_code: str  # Computed property
+    
+    class Config:
+        from_attributes = True
+
+class GeoSubdivisionCreate(GeoSubdivisionBase):
+    pass
+
+class GeoSubdivisionUpdate(BaseModel):
+    name: Optional[str] = None
+    subdivision_type: Optional[str] = None
+    is_enabled: Optional[bool] = None
 
 # New schema for appointment time slot aggregation
 class AppointmentStatsByDateAndTimeSlot(BaseModel):
@@ -733,3 +917,391 @@ class AppointmentTimeSlotDetailsMap(BaseModel):
 class AttendanceStatusUpdate(BaseModel):
     appointment_dignitary_id: int
     attendance_status: AttendanceStatus
+
+# Enhanced Appointment Creation Schema
+from models.enums import PersonRelationshipType
+
+class AppointmentContactCreate(BaseModel):
+    """Schema for creating appointment users (darshan attendees)"""
+    first_name: str
+    last_name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    relationship_to_owner: Optional[PersonRelationshipType] = None
+    comments: Optional[str] = None  # Special requirements
+
+# Enhanced Appointment Creation Schema
+from models.appointment import RequestType
+
+class AppointmentCreateEnhanced(BaseModel):
+    """Enhanced appointment creation supporting both dignitary and darshan types"""
+    purpose: str
+    requester_notes_to_secretariat: Optional[str] = None
+    request_type: RequestType = RequestType.DIGNITARY
+    
+    # Option 1: Link to existing calendar event (ADMIN/SECRETARIAT ONLY)
+    calendar_event_id: Optional[int] = None
+    
+    # Option 2: User preferred time (creates calendar event on approval)
+    preferred_date: Optional[date] = None
+    preferred_time_of_day: Optional[AppointmentTimeOfDay] = None
+    
+    # Option 3: Admin exact scheduling (creates calendar event immediately)
+    appointment_date: Optional[date] = None
+    appointment_time: Optional[str] = None
+    
+    location_id: Optional[int] = None
+    meeting_place_id: Optional[int] = None
+    duration: Optional[int] = 15
+    max_capacity: Optional[int] = None  # For calendar event creation
+    is_open_for_booking: Optional[bool] = None  # For calendar event creation
+    
+    # For dignitary appointments - if present, create AppointmentDignitary records
+    dignitary_ids: Optional[List[int]] = None  # All dignitaries for this appointment
+    
+    # For contact attendees - if present, create AppointmentContact records  
+    contact_ids: Optional[List[int]] = None
+    
+    @validator('contact_ids')
+    def validate_contact_ids_not_empty(cls, v):
+        if v is not None and len(v) == 0:
+            raise ValueError("If contact_ids is provided, it must contain at least one contact")
+        return v
+    
+    @validator('dignitary_ids')
+    def validate_dignitary_ids_not_empty(cls, v):
+        if v is not None and len(v) == 0:
+            raise ValueError("If dignitary_ids is provided, it must contain at least one dignitary")
+        return v
+    
+    @validator('appointment_time')
+    def validate_appointment_time_format(cls, v, values):
+        # If appointment_date is specified, appointment_time should also be specified
+        if values.get('appointment_date') and not v:
+            raise ValueError("appointment_time is required when appointment_date is specified")
+        return v
+
+# Enhanced Appointment Response Schema
+class AppointmentResponseEnhanced(BaseModel):
+    """Enhanced appointment response with calendar event and appointment users"""
+    id: int
+    requester: Optional[User] = None
+    purpose: str
+    status: AppointmentStatus
+    sub_status: Optional[AppointmentSubStatus] = None
+    request_type: RequestType
+    number_of_attendees: int
+    
+    # Calendar event info (replaces direct date/time fields)
+    calendar_event: Optional[CalendarEventBasicInfo] = None
+    
+    # Related entities
+    appointment_dignitaries: Optional[List[AppointmentDignitaryWithDignitary]] = None
+    appointment_contacts: Optional[List[AppointmentContactWithContact]] = None  # If darshan/other
+    
+    # Legacy fields (populated from calendar_event for backward compatibility)
+    appointment_date: Optional[date] = None  # From calendar_event.start_date
+    appointment_time: Optional[str] = None   # From calendar_event.start_time
+    location: Optional[Location] = None
+    meeting_place: Optional[MeetingPlace] = None
+
+    created_at: datetime
+    updated_at: datetime
+    requester_notes_to_secretariat: Optional[str] = None
+    secretariat_notes_to_requester: Optional[str] = None
+    approved_datetime: Optional[datetime] = None
+    
+    class Config:
+        orm_mode = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat(),
+            date: lambda v: v.strftime("%Y-%m-%d")
+        }
+
+class AdminAppointmentResponseEnhanced(AppointmentResponseEnhanced):
+    """Enhanced admin appointment response with additional admin fields"""
+    created_by: Optional[int] = None
+    created_by_user: Optional[User] = None
+    last_updated_by: Optional[int] = None
+    last_updated_by_user: Optional[User] = None
+    approved_by: Optional[int] = None
+    approved_by_user: Optional[User] = None
+    secretariat_meeting_notes: Optional[str] = None
+    secretariat_follow_up_actions: Optional[str] = None
+    duration: Optional[int] = 15
+
+class CalendarEventCreate(BaseModel):
+    """Schema for creating a new calendar event"""
+    event_type: EventType
+    title: str
+    description: Optional[str] = None
+    start_date: date  # User input date
+    start_time: str   # User input time in HH:MM format
+    duration: int  # minutes
+    location_id: Optional[int] = None
+    meeting_place_id: Optional[int] = None
+    max_capacity: int = 1  # 1 for dignitary, 50-100+ for darshan
+    is_open_for_booking: bool = True
+    instructions: Optional[str] = None  # Special instructions for darshan
+    status: EventStatus = EventStatus.DRAFT
+    
+    @validator('start_time')
+    def validate_start_time_format(cls, v):
+        # Validate HH:MM format
+        import re
+        if not re.match(r'^([01]?[0-9]|2[0-3]):[0-5][0-9]$', v):
+            raise ValueError("start_time must be in HH:MM format (e.g., '14:30')")
+        return v
+    
+    @validator('max_capacity')
+    def validate_capacity(cls, v, values):
+        if 'event_type' in values:
+            if values['event_type'] == EventType.DARSHAN and v < 1:
+                raise ValueError("Darshan events must have capacity of at least 1")
+            elif values['event_type'] == EventType.DIGNITARY_APPOINTMENT and v != 1:
+                raise ValueError("Dignitary appointments must have capacity of exactly 1")
+        return v
+
+class CalendarEventUpdate(BaseModel):
+    """Schema for updating an existing calendar event"""
+    event_type: Optional[EventType] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
+    start_date: Optional[date] = None   # User input date
+    start_time: Optional[str] = None    # User input time in HH:MM format
+    duration: Optional[int] = None
+    location_id: Optional[int] = None
+    meeting_place_id: Optional[int] = None
+    max_capacity: Optional[int] = None
+    is_open_for_booking: Optional[bool] = None
+    instructions: Optional[str] = None
+    status: Optional[EventStatus] = None
+    
+    @validator('start_time')
+    def validate_start_time_format(cls, v):
+        if v is not None:
+            # Validate HH:MM format
+            import re
+            if not re.match(r'^([01]?[0-9]|2[0-3]):[0-5][0-9]$', v):
+                raise ValueError("start_time must be in HH:MM format (e.g., '14:30')")
+        return v
+
+class CalendarEventResponse(CalendarEventCreate):
+    """Full calendar event response with all details"""
+    id: int
+    start_datetime: datetime  # Calculated timezone-aware datetime (included in response)
+    # start_date and start_time are inherited from CalendarEventCreate (user input)
+    current_capacity: int  # Calculated field
+    available_capacity: int  # max_capacity - current_capacity
+    linked_appointments_count: int
+    external_calendar_id: Optional[str] = None
+    external_calendar_link: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    created_by: Optional[int] = None
+    updated_by: Optional[int] = None
+    created_by_user: Optional[User] = None
+    updated_by_user: Optional[User] = None
+    location: Optional[Location] = None
+    meeting_place: Optional[MeetingPlace] = None
+    creation_context: Optional[CalendarCreationContext] = None
+    creation_context_id: Optional[str] = None  # String to match model
+    
+    class Config:
+        orm_mode = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat(),
+            date: lambda v: v.strftime("%Y-%m-%d")
+        }
+
+class CalendarEventAvailability(BaseModel):
+    """Response for checking event availability"""
+    event_id: int
+    max_capacity: int
+    current_capacity: int
+    available_capacity: int
+    is_available: bool
+    message: Optional[str] = None
+
+class CalendarEventBatchCreate(BaseModel):
+    """Schema for creating multiple calendar events (e.g., recurring darshan)"""
+    event_type: EventType
+    title_template: str  # Can include {date} placeholder
+    description: Optional[str] = None
+    start_dates: List[date]  # List of dates to create events
+    start_time: str  # HH:MM format - same time for all events
+    duration: int  # minutes
+    location_id: Optional[int] = None
+    meeting_place_id: Optional[int] = None
+    max_capacity: int = 1
+    is_open_for_booking: bool = True
+    instructions: Optional[str] = None
+    status: EventStatus = EventStatus.DRAFT
+    
+    @validator('start_time')
+    def validate_start_time_format(cls, v):
+        # Validate HH:MM format
+        import re
+        if not re.match(r'^([01]?[0-9]|2[0-3]):[0-5][0-9]$', v):
+            raise ValueError("start_time must be in HH:MM format (e.g., '14:30')")
+        return v
+    
+    @validator('start_dates')
+    def validate_dates(cls, v):
+        if not v:
+            raise ValueError("At least one date must be provided")
+        if len(v) > 365:
+            raise ValueError("Cannot create more than 365 events at once")
+        return v
+
+class CalendarEventBatchUpdate(BaseModel):
+    """Schema for updating multiple calendar events"""
+    event_ids: List[int]
+    update_data: CalendarEventUpdate
+    
+    @validator('event_ids')
+    def validate_event_ids(cls, v):
+        if not v:
+            raise ValueError("At least one event ID must be provided")
+        if len(v) > 100:
+            raise ValueError("Cannot update more than 100 events at once")
+        return v
+
+class CalendarEventBatchResponse(BaseModel):
+    """Response for batch operations"""
+    total_requested: int
+    successful: int
+    failed: int
+    events: List[CalendarEventResponse]
+    errors: Optional[List[Dict[str, Any]]] = None
+
+
+# ============================================================================
+# REQUEST TYPE CONFIGURATION SCHEMAS
+# ============================================================================
+
+class RequestTypeConfigResponse(BaseModel):
+    """Response schema for request type configurations"""
+    request_type: RequestType
+    display_name: str
+    description: str
+    attendee_type: str  # AttendeeType enum as string
+    max_attendees: int
+    attendee_label_singular: str
+    attendee_label_plural: str
+    step_2_title: str
+    step_2_description: str
+
+    class Config:
+        orm_mode = True
+
+
+# ============================================================================
+# USER CONTACT SCHEMAS
+# ============================================================================
+
+class UserContactBase(BaseModel):
+    """Base schema for user contacts"""
+    first_name: str
+    last_name: str
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    relationship_to_owner: Optional[PersonRelationshipType] = None
+    notes: Optional[str] = None
+
+class UserContact(UserContactBase):
+    """Schema for user contact responses"""
+    id: int
+    owner_user_id: int
+    contact_user_id: Optional[int] = None
+    appointment_usage_count: int
+    last_used_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+class AdminUserContact(UserContactBase):
+    id: int
+    owner_user_id: int
+    contact_user_id: Optional[int] = None
+    appointment_usage_count: int
+    last_used_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class UserContactCreate(UserContactBase):
+    """Schema for creating a new user contact"""
+    contact_user_id: Optional[int] = None  # Link to existing user if applicable
+    
+    @validator('first_name', 'last_name')
+    def validate_names(cls, v):
+        if not v or not v.strip():
+            raise ValueError("First name and last name are required")
+        return v.strip()
+    
+    @validator('email')
+    def validate_email_format(cls, v):
+        if v and not v.strip():
+            return None  # Convert empty string to None
+        return v
+
+class UserContactUpdate(BaseModel):
+    """Schema for updating an existing user contact"""
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    relationship_to_owner: Optional[PersonRelationshipType] = None
+    notes: Optional[str] = None
+    contact_user_id: Optional[int] = None
+    
+    @validator('first_name', 'last_name')
+    def validate_names(cls, v):
+        if v is not None and (not v or not v.strip()):
+            raise ValueError("Names cannot be empty")
+        return v.strip() if v else v
+    
+    @validator('email')
+    def validate_email_format(cls, v):
+        if v is not None and not v.strip():
+            return None  # Convert empty string to None
+        return v
+
+class UserContactResponse(UserContactBase):
+    """Schema for user contact responses"""
+    id: int
+    owner_user_id: int
+    contact_user_id: Optional[int] = None
+    appointment_usage_count: int
+    last_used_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+    
+    # Nested contact user info if linked
+    contact_user: Optional[User] = None
+
+    class Config:
+        orm_mode = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat(),
+            date: lambda v: v.strftime("%Y-%m-%d")
+        }
+
+class UserContactListResponse(BaseModel):
+    """Schema for paginated contact list responses"""
+    contacts: List[UserContactResponse]
+    total: int
+    page: int
+    per_page: int
+    total_pages: int
+    has_next: bool
+    has_prev: bool
+
+class UserContactSearchResponse(BaseModel):
+    """Schema for contact search responses"""
+    contacts: List[UserContactResponse]
+    total_results: int
+    search_query: str
+
+# NOTE: Removed duplicate schemas - using UserContact and AdminUserContact directly
+

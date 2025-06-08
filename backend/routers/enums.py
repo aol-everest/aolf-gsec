@@ -59,6 +59,36 @@ async def get_appointment_time_of_day_map():
     """Get a dictionary mapping of appointment time of day enum names to their display values"""
     return {time.name: time.value for time in models.AppointmentTimeOfDay}
 
+@router.get("/appointments/request-type-options", response_model=List[str])
+async def get_request_type_options():
+    """Get all possible request type options"""
+    return [req_type.value for req_type in models.RequestType]
+
+@router.get("/appointments/request-type-options-map")
+async def get_request_type_map():
+    """Get a dictionary mapping of request type enum names to their display values"""
+    return {req_type.name: req_type.value for req_type in models.RequestType}
+
+@router.get("/appointments/attendance-status-options", response_model=List[str])
+async def get_attendance_status_options():
+    """Get all possible attendance status options"""
+    return [status.value for status in models.AttendanceStatus]
+
+@router.get("/appointments/attendance-status-options-map")
+async def get_attendance_status_map():
+    """Get a dictionary mapping of attendance status enum names to their display values"""
+    return {status.name: status.value for status in models.AttendanceStatus}
+
+@router.get("/appointments/role-in-team-project-options", response_model=List[str])
+async def get_role_in_team_project_options():
+    """Get all possible role in team project options"""
+    return [role.value for role in models.RoleInTeamProject]
+
+@router.get("/appointments/role-in-team-project-options-map")
+async def get_role_in_team_project_map():
+    """Get a dictionary mapping of role in team project enum names to their display values"""
+    return {role.name: role.value for role in models.RoleInTeamProject}
+
 # Dignitary-related enum endpoints
 @router.get("/dignitaries/relationship-type-options", response_model=List[str])
 async def get_relationship_type_options():
@@ -69,6 +99,16 @@ async def get_relationship_type_options():
 async def get_relationship_type_map():
     """Get a dictionary mapping of relationship type enum names to their display values"""
     return {rel_type.name: rel_type.value for rel_type in models.RelationshipType}
+
+@router.get("/appointments/person-relationship-type-options", response_model=List[str])
+async def get_person_relationship_type_options():
+    """Get all possible person relationship type options"""
+    return [rel_type.value for rel_type in models.PersonRelationshipType]
+
+@router.get("/appointments/person-relationship-type-options-map")
+async def get_person_relationship_type_map():
+    """Get a dictionary mapping of person relationship type enum names to their display values"""
+    return {rel_type.name: rel_type.value for rel_type in models.PersonRelationshipType}
 
 @router.get("/dignitaries/honorific-title-options", response_model=List[str])
 async def get_honorific_title_options():
@@ -90,6 +130,58 @@ async def get_primary_domain_map():
     """Get a dictionary mapping of primary domain enum names to their display values"""
     return {domain.name: domain.value for domain in models.PrimaryDomain}
 
+@router.get("/dignitaries/source-options", response_model=List[str])
+async def get_dignitary_source_options():
+    """Get all possible dignitary source options"""
+    return [source.value for source in models.DignitarySource]
+
+@router.get("/dignitaries/source-options-map")
+async def get_dignitary_source_map():
+    """Get a dictionary mapping of dignitary source enum names to their display values"""
+    return {source.name: source.value for source in models.DignitarySource}
+
+# Calendar-related enum endpoints
+@router.get("/calendar/event-type-options", response_model=List[str])
+async def get_event_type_options():
+    """Get all possible calendar event type options"""
+    return [event_type.value for event_type in models.EventType]
+
+@router.get("/calendar/event-type-options-map")
+async def get_event_type_map():
+    """Get a dictionary mapping of calendar event type enum names to their display values"""
+    return {event_type.name: event_type.value for event_type in models.EventType}
+
+@router.get("/calendar/event-status-options", response_model=List[str])
+async def get_event_status_options():
+    """Get all possible calendar event status options"""
+    return [status.value for status in models.EventStatus]
+
+@router.get("/calendar/event-status-options-map")
+async def get_event_status_map():
+    """Get a dictionary mapping of calendar event status enum names to their display values"""
+    return {status.name: status.value for status in models.EventStatus}
+
+@router.get("/calendar/creation-context-options", response_model=List[str])
+async def get_calendar_creation_context_options():
+    """Get all possible calendar creation context options"""
+    return [context.value for context in models.CalendarCreationContext]
+
+@router.get("/calendar/creation-context-options-map")
+async def get_calendar_creation_context_map():
+    """Get a dictionary mapping of calendar creation context enum names to their display values"""
+    return {context.name: context.value for context in models.CalendarCreationContext}
+
+# Attachment-related enum endpoints
+@router.get("/attachments/type-options", response_model=List[str])
+async def get_attachment_type_options():
+    """Get all possible attachment type options"""
+    return [att_type.value for att_type in models.AttachmentType]
+
+@router.get("/attachments/type-options-map")
+async def get_attachment_type_map():
+    """Get a dictionary mapping of attachment type enum names to their display values"""
+    return {att_type.name: att_type.value for att_type in models.AttachmentType}
+
 # Admin-specific enum endpoints
 @router.get("/admin/user-role-options", response_model=List[str])
 @requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
@@ -105,6 +197,36 @@ async def get_user_role_map(
 ):
     """Get a dictionary mapping of user role enum names to their display values"""
     return {role.name: role.value for role in models.UserRole if role.is_less_than(current_user.role) or current_user.role == models.UserRole.ADMIN}
+
+@router.get("/users/aol-teacher-status-options", response_model=List[str])
+async def get_aol_teacher_status_options():
+    """Get all possible AOL teacher status options"""
+    return [status.value for status in models.AOLTeacherStatus]
+
+@router.get("/users/aol-teacher-status-options-map")
+async def get_aol_teacher_status_map():
+    """Get a dictionary mapping of AOL teacher status enum names to their display values"""
+    return {status.name: status.value for status in models.AOLTeacherStatus}
+
+@router.get("/users/aol-program-type-options", response_model=List[str])
+async def get_aol_program_type_options():
+    """Get all possible AOL program type options"""
+    return [program.value for program in models.AOLProgramType]
+
+@router.get("/users/aol-program-type-options-map")
+async def get_aol_program_type_map():
+    """Get a dictionary mapping of AOL program type enum names to their display values"""
+    return {program.name: program.value for program in models.AOLProgramType}
+
+@router.get("/users/aol-affiliation-options", response_model=List[str])
+async def get_aol_affiliation_options():
+    """Get all possible AOL affiliation options"""
+    return [affiliation.value for affiliation in models.AOLAffiliation]
+
+@router.get("/users/aol-affiliation-options-map")
+async def get_aol_affiliation_map():
+    """Get a dictionary mapping of AOL affiliation enum names to their display values"""
+    return {affiliation.name: affiliation.value for affiliation in models.AOLAffiliation}
 
 @router.get("/admin/access-level-options", response_model=List[str])
 async def get_access_levels():

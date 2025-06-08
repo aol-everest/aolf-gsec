@@ -2,19 +2,11 @@ from sqlalchemy import Column, Integer, String, DateTime, Enum, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
-import enum
+from .enums import RelationshipType
 import os
 
 schema = os.getenv('POSTGRES_SCHEMA', 'public')
 schema_prefix = f"{schema}." if schema != 'public' else ''
-
-class RelationshipType(str, enum.Enum):
-    """Relationship type enum with proper case values"""
-    DIRECT = "Direct"
-    INDIRECT = "Indirect"
-
-    def __str__(self):
-        return self.value
 
 class DignitaryPointOfContact(Base):
     __tablename__ = "dignitary_point_of_contacts"

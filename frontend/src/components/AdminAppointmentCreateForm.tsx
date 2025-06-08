@@ -65,7 +65,7 @@ import ImageIcon from '@mui/icons-material/Image';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import DescriptionIcon from '@mui/icons-material/Description';
 import AdminAppointmentEditCard, { AdminAppointmentEditCardRef } from './AdminAppointmentEditCard';
-import { StatusMap, SubStatusMap, StatusSubStatusMapping } from '../models/types';
+import { StatusMap, SubStatusMap, StatusSubStatusMapping, EventTypeMap, CalendarEvent } from '../models/types';
 import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
 import { PencilIconV2, TrashIconV2 } from './iconsv2';
@@ -92,6 +92,7 @@ interface Country {
 interface InitialFormData {
   numberOfDignitaries: number;
   isPlaceholderAppointment?: boolean;
+  eventType: string;
 }
 
 // For Step 2: Dignitary Information
@@ -141,9 +142,11 @@ interface AppointmentFormData {
   preferred_time_of_day?: string;
   purpose_of_meeting?: string;
   location_id?: number | null;
+  meeting_place_id?: number | null;
   requester_notes_to_secretariat?: string;
   appointment_date?: string;
   appointment_time?: string;
+  duration?: number;
   status?: string;
   sub_status?: string;
   appointment_type?: string | null;
@@ -166,7 +169,7 @@ interface ValidationErrors {
   purpose_of_meeting?: string;
 }
 
-const steps = ['Initial Information', 'Add Dignitary Information', 'Appointment Details'];
+const steps = ['Event Type', 'Add Attendee Information', 'Event Details'];
 
 export const AdminAppointmentCreateForm: React.FC = () => {
   const { userInfo } = useAuth();
@@ -213,6 +216,8 @@ export const AdminAppointmentCreateForm: React.FC = () => {
 
   // Add this line near the top with other state variables
   const [isPlaceholderMode, setIsPlaceholderMode] = useState(false);
+  const [selectedEventType, setSelectedEventType] = useState<string>('');
+  const [isCalendarEventMode, setIsCalendarEventMode] = useState(false);
 
   // Fetch status options
   const { data: statusOptions = [] } = useQuery<string[]>({
@@ -292,11 +297,30 @@ export const AdminAppointmentCreateForm: React.FC = () => {
 
   // Fetch all substatus options
   const { values: allSubStatusOptions = [] } = useEnums('appointmentSubStatus');
+
+  // Fetch event type options
+  const { data: eventTypeOptions = [] } = useQuery<string[]>({
+    queryKey: ['calendar-event-type-options'],
+    queryFn: async () => {
+      const { data } = await api.get<string[]>('/calendar/event-type-options');
+      return data;
+    },
+  });
+
+  // Fetch event type map from the API
+  const { data: eventTypeMap = {} } = useQuery<EventTypeMap>({
+    queryKey: ['calendar-event-type-map'],
+    queryFn: async () => {
+      const { data } = await api.get<EventTypeMap>('/calendar/event-type-options-map');
+      return data;
+    },
+  });
   
   // Forms for each step
   const initialForm = useForm<InitialFormData>({
     defaultValues: {
       numberOfDignitaries: 1,
+      eventType: '',
     }
   });
 
@@ -818,6 +842,36 @@ export const AdminAppointmentCreateForm: React.FC = () => {
     }
   });
 
+  // Mutation for creating new calendar event
+  const createCalendarEventMutation = useMutation<CalendarEvent, Error, any>({
+    mutationFn: async (data: any) => {
+      const { data: response } = await api.post<CalendarEvent>('/admin/calendar-events', data);
+      return response;
+    },
+    onSuccess: async (eventResponse) => {
+      // Set the submitted appointment to the calendar event for display purposes
+      setSubmittedAppointment({
+        ...eventResponse as any,
+        id: eventResponse.id!,
+        purpose: eventResponse.description || '',
+        appointment_date: eventResponse.start_date,
+        appointment_time: eventResponse.start_time,
+      });
+      
+      setShowConfirmation(true);
+      setIsUploading(false);
+      queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
+    },
+    onError: (error: any) => {
+      console.error('Error creating calendar event:', error);
+      setIsUploading(false);
+      enqueueSnackbar(`Failed to create calendar event: ${error.response?.data?.detail || 'Unknown error'}`, { 
+        variant: 'error',
+        autoHideDuration: 6000
+      });
+    }
+  });
+
   // Generate time options in 15-minute increments
   const timeOptions = useMemo(() => {
     const options = [];
@@ -853,15 +907,29 @@ export const AdminAppointmentCreateForm: React.FC = () => {
       
       const initialData = initialForm.getValues();
       
-      // If it's a placeholder appointment, skip to step 3 (appointment details)
-      if (initialData.isPlaceholderAppointment) {
-        setRequiredDignitariesCount(0);
-        setIsPlaceholderMode(true);
-        setActiveStep(2);
+      // Check event type and set modes accordingly
+      const isDignitary = eventTypeMap && initialData.eventType === eventTypeMap['DIGNITARY_APPOINTMENT'];
+      const isPlaceholder = initialData.isPlaceholderAppointment;
+      
+      setSelectedEventType(initialData.eventType);
+      setIsCalendarEventMode(!isDignitary && !isPlaceholder);
+      
+      // For dignitary appointments (regular or placeholder), use existing flow
+      if (isDignitary) {
+        if (isPlaceholder) {
+          setRequiredDignitariesCount(0);
+          setIsPlaceholderMode(true);
+          setActiveStep(2);
+        } else {
+          setRequiredDignitariesCount(initialData.numberOfDignitaries);
+          setIsPlaceholderMode(false);
+          setActiveStep(1);
+        }
       } else {
-        setRequiredDignitariesCount(initialData.numberOfDignitaries);
-        setIsPlaceholderMode(false);
-        setActiveStep(1);
+        // For other event types, skip directly to event details (no dignitaries needed)
+        setRequiredDignitariesCount(0);
+        setIsCalendarEventMode(true);
+        setActiveStep(2);
       }
     } else if (activeStep === 1) {
       // For step 2, check if we have at least one dignitary
@@ -923,46 +991,66 @@ export const AdminAppointmentCreateForm: React.FC = () => {
       }
       
       try {
-        // Get dignitary IDs from the selected dignitaries
-        const dignitary_ids = selectedDignitaries.map(d => d.id);
-        
-        // For placeholder appointments, we don't need dignitaries
-        const isPlaceholder = initialForm.getValues().isPlaceholderAppointment;
-        if (dignitary_ids.length === 0 && !isPlaceholder) {
-          enqueueSnackbar('No dignitaries selected for appointment', { variant: 'error' });
-          return;
-        }
-        
         const formData = appointmentForm.getValues();
         
-        const appointmentCreateData = {
-          dignitary_ids: dignitary_ids,
-          purpose: formData.purpose_of_meeting || '',
-          preferred_date: formData.preferred_date || '',
-          preferred_time_of_day: formData.preferred_time_of_day || '',
-          location_id: formData.location_id,
-          requester_notes_to_secretariat: formData.requester_notes_to_secretariat,
-          appointment_date: formData.appointment_date,
-          appointment_time: formData.appointment_time,
-          status: formData.status,
-          sub_status: formData.sub_status,
-          appointment_type: formData.appointment_type,
-          secretariat_notes_to_requester: formData.secretariat_notes_to_requester,
-          secretariat_meeting_notes: formData.secretariat_meeting_notes,
-          secretariat_follow_up_actions: formData.secretariat_follow_up_actions,
-          is_placeholder: isPlaceholder,
-        };
-        
-        await createAppointmentMutation.mutateAsync(appointmentCreateData);
+        if (isCalendarEventMode) {
+          // Create calendar event for non-dignitary event types
+          const calendarEventData = {
+            event_type: selectedEventType,
+            title: formData.purpose_of_meeting || 'Untitled Event',
+            description: formData.purpose_of_meeting || '',
+            start_date: formData.appointment_date,
+            start_time: formData.appointment_time,
+            duration: formData.duration || 60,
+            location_id: formData.location_id,
+            meeting_place_id: formData.meeting_place_id,
+            max_capacity: 50, // Default capacity for non-dignitary events
+            is_open_for_booking: true,
+            instructions: formData.secretariat_notes_to_requester,
+            status: 'DRAFT', // Default status for calendar events
+          };
+          
+          await createCalendarEventMutation.mutateAsync(calendarEventData);
+        } else {
+          // Create appointment for dignitary event types (existing flow)
+          const dignitary_ids = selectedDignitaries.map(d => d.id);
+          
+          // For placeholder appointments, we don't need dignitaries
+          const isPlaceholder = initialForm.getValues().isPlaceholderAppointment;
+          if (dignitary_ids.length === 0 && !isPlaceholder && !isCalendarEventMode) {
+            enqueueSnackbar('No dignitaries selected for appointment', { variant: 'error' });
+            return;
+          }
+          
+          const appointmentCreateData = {
+            dignitary_ids: dignitary_ids,
+            purpose: formData.purpose_of_meeting || '',
+            preferred_date: formData.preferred_date || '',
+            preferred_time_of_day: formData.preferred_time_of_day || '',
+            location_id: formData.location_id,
+            requester_notes_to_secretariat: formData.requester_notes_to_secretariat,
+            appointment_date: formData.appointment_date,
+            appointment_time: formData.appointment_time,
+            status: formData.status,
+            sub_status: formData.sub_status,
+            appointment_type: formData.appointment_type,
+            secretariat_notes_to_requester: formData.secretariat_notes_to_requester,
+            secretariat_meeting_notes: formData.secretariat_meeting_notes,
+            secretariat_follow_up_actions: formData.secretariat_follow_up_actions,
+            is_placeholder: isPlaceholder,
+          };
+          
+          await createAppointmentMutation.mutateAsync(appointmentCreateData);
+        }
       } catch (error) {
-        console.error('Error creating appointment:', error);
+        console.error('Error creating event:', error);
       }
     }
   };
 
   const handleBack = () => {
-    // If we're in placeholder mode and at step 3, go back to step 1
-    if (isPlaceholderMode && activeStep === 2) {
+    // If we're in placeholder mode or calendar event mode and at step 3, go back to step 1
+    if ((isPlaceholderMode || isCalendarEventMode) && activeStep === 2) {
       setActiveStep(0);
     } else {
       setActiveStep(prev => prev - 1);
@@ -998,61 +1086,109 @@ export const AdminAppointmentCreateForm: React.FC = () => {
             <Grid container spacing={3}>
               <Grid item xs={12}>
                 <Typography variant="h6" gutterBottom>
-                  Appointment Information
+                  Event Information
                 </Typography>
               </Grid>
 
-              <Grid item xs={12} md={6}>
-                <FormControl component="fieldset" sx={{ mb: 2 }}>
-                  <FormLabel component="legend">Appointment Type</FormLabel>
-                  <RadioGroup
-                    row
-                    value={initialForm.watch('isPlaceholderAppointment') ? 'placeholder' : 'regular'}
-                    onChange={(e) => {
-                      const isPlaceholder = e.target.value === 'placeholder';
-                      initialForm.setValue('isPlaceholderAppointment', isPlaceholder);
-                      setIsPlaceholderMode(isPlaceholder);
-                      
-                      // If placeholder is selected, set dignitaries to 0
-                      if (isPlaceholder) {
-                        initialForm.setValue('numberOfDignitaries', 0);
-                      } else if (initialForm.getValues('numberOfDignitaries') === 0) {
-                        // If switching back to regular and dignitaries was 0, set to 1
-                        initialForm.setValue('numberOfDignitaries', 1);
-                      }
-                    }}
-                  >
-                    <FormControlLabel value="regular" control={<Radio />} label="Regular Appointment" />
-                    <FormControlLabel value="placeholder" control={<Radio />} label="Placeholder Appointment" />
-                  </RadioGroup>
-                </FormControl>
+              <Grid item xs={12}>
+                <Controller
+                  name="eventType"
+                  control={initialForm.control}
+                  rules={{ required: 'Event type is required' }}
+                  render={({ field }) => (
+                    <FormControl fullWidth error={!!initialForm.formState.errors.eventType}>
+                      <InputLabel>Event Type</InputLabel>
+                      <Select
+                        {...field}
+                        label="Event Type"
+                        onChange={(e) => {
+                          field.onChange(e.target.value);
+                          const selectedType = e.target.value;
+                          
+                          // Reset placeholder mode when event type changes
+                          initialForm.setValue('isPlaceholderAppointment', false);
+                          setIsPlaceholderMode(false);
+                          
+                          // If it's a dignitary appointment, show dignitary options
+                          const isDignitary = eventTypeMap && selectedType === eventTypeMap['DIGNITARY_APPOINTMENT'];
+                          if (isDignitary && initialForm.getValues('numberOfDignitaries') === 0) {
+                            initialForm.setValue('numberOfDignitaries', 1);
+                          }
+                        }}
+                      >
+                        <MenuItem value="">
+                          <em>Select an event type</em>
+                        </MenuItem>
+                        {eventTypeOptions.map((eventType) => (
+                          <MenuItem key={eventType} value={eventType}>
+                            {eventType}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      {initialForm.formState.errors.eventType && (
+                        <FormHelperText>{initialForm.formState.errors.eventType.message}</FormHelperText>
+                      )}
+                    </FormControl>
+                  )}
+                />
               </Grid>
 
-              {!initialForm.watch('isPlaceholderAppointment') && (
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    type="number"
-                    label="Number of Dignitaries"
-                    InputLabelProps={{ shrink: true }}
-                    inputProps={{ min: 1, max: 8 }}
-                    {...initialForm.register('numberOfDignitaries', { 
-                      required: !initialForm.watch('isPlaceholderAppointment') ? 'Number of dignitaries is required' : false,
-                      min: {
-                        value: 1,
-                        message: 'At least 1 dignitary is required'
-                      },
-                      max: {
-                        value: 8,
-                        message: 'Maximum 8 dignitaries allowed'
-                      },
-                      valueAsNumber: true
-                    })}
-                    error={!!initialForm.formState.errors.numberOfDignitaries}
-                    helperText={initialForm.formState.errors.numberOfDignitaries?.message}
-                    required={!initialForm.watch('isPlaceholderAppointment')}
-                  />
-                </Grid>
+              {/* Show dignitary-specific options only for dignitary appointments */}
+              {eventTypeMap && initialForm.watch('eventType') === eventTypeMap['DIGNITARY_APPOINTMENT'] && (
+                <>
+                  <Grid item xs={12} md={6}>
+                    <FormControl component="fieldset" sx={{ mb: 2 }}>
+                      <FormLabel component="legend">Appointment Type</FormLabel>
+                      <RadioGroup
+                        row
+                        value={initialForm.watch('isPlaceholderAppointment') ? 'placeholder' : 'regular'}
+                        onChange={(e) => {
+                          const isPlaceholder = e.target.value === 'placeholder';
+                          initialForm.setValue('isPlaceholderAppointment', isPlaceholder);
+                          setIsPlaceholderMode(isPlaceholder);
+                          
+                          // If placeholder is selected, set dignitaries to 0
+                          if (isPlaceholder) {
+                            initialForm.setValue('numberOfDignitaries', 0);
+                          } else if (initialForm.getValues('numberOfDignitaries') === 0) {
+                            // If switching back to regular and dignitaries was 0, set to 1
+                            initialForm.setValue('numberOfDignitaries', 1);
+                          }
+                        }}
+                      >
+                        <FormControlLabel value="regular" control={<Radio />} label="Regular Appointment" />
+                        <FormControlLabel value="placeholder" control={<Radio />} label="Placeholder Appointment" />
+                      </RadioGroup>
+                    </FormControl>
+                  </Grid>
+
+                  {!initialForm.watch('isPlaceholderAppointment') && (
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        fullWidth
+                        type="number"
+                        label="Number of Dignitaries"
+                        InputLabelProps={{ shrink: true }}
+                        inputProps={{ min: 1, max: 8 }}
+                        {...initialForm.register('numberOfDignitaries', { 
+                          required: !initialForm.watch('isPlaceholderAppointment') ? 'Number of dignitaries is required' : false,
+                          min: {
+                            value: 1,
+                            message: 'At least 1 dignitary is required'
+                          },
+                          max: {
+                            value: 8,
+                            message: 'Maximum 8 dignitaries allowed'
+                          },
+                          valueAsNumber: true
+                        })}
+                        error={!!initialForm.formState.errors.numberOfDignitaries}
+                        helperText={initialForm.formState.errors.numberOfDignitaries?.message}
+                        required={!initialForm.watch('isPlaceholderAppointment')}
+                      />
+                    </Grid>
+                  )}
+                </>
               )}
             </Grid>
           </Box>
@@ -1720,7 +1856,7 @@ export const AdminAppointmentCreateForm: React.FC = () => {
             )}
 
             <Grid container spacing={3}>
-              {/* Purpose of Meeting */}
+              {/* Purpose/Title field */}
               <Grid item xs={12}>
                 <Controller
                   name="purpose_of_meeting"
@@ -1729,7 +1865,7 @@ export const AdminAppointmentCreateForm: React.FC = () => {
                     <TextField
                       {...field}
                       fullWidth
-                      label="Purpose of Meeting"
+                      label={isCalendarEventMode ? "Event Title" : "Purpose of Meeting"}
                       multiline
                       rows={3}
                       required
@@ -1737,11 +1873,33 @@ export const AdminAppointmentCreateForm: React.FC = () => {
                   )}
                 />
               </Grid>
+
+              {/* Duration field for calendar events */}
+              {isCalendarEventMode && (
+                <Grid item xs={12} md={6}>
+                  <Controller
+                    name="duration"
+                    control={appointmentForm.control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        type="number"
+                        label="Duration (minutes)"
+                        InputLabelProps={{ shrink: true }}
+                        inputProps={{ min: 15, max: 480, step: 15 }}
+                        value={field.value || 60}
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || 60)}
+                      />
+                    )}
+                  />
+                </Grid>
+              )}
               
               {/* Secretariat Actions Section */}
               <Grid item xs={12}>
                 <Typography variant="h6" gutterBottom color="primary" sx={{ mt: 2 }}>
-                  Secretariat Actions
+                  {isCalendarEventMode ? "Event Details" : "Secretariat Actions"}
                 </Typography>
                 
                 {/* Using the reusable component for secretariat fields */}
@@ -1757,9 +1915,9 @@ export const AdminAppointmentCreateForm: React.FC = () => {
                   getValues={appointmentForm.getValues}
                   setValue={appointmentForm.setValue}
                   defaultAppointmentDetails={true}
-                  showNotesFields={true}
+                  showNotesFields={!isCalendarEventMode}
                   showBusinessCards={false} 
-                  showAttachments={true}
+                  showAttachments={!isCalendarEventMode}
                   uploadStrategy="deferred"
                   selectedFiles={selectedFiles}
                   onRemoveFile={handleRemoveFile}
@@ -1796,19 +1954,27 @@ export const AdminAppointmentCreateForm: React.FC = () => {
         fullWidth
         onClose={() => {
           setShowConfirmation(false);
-          navigate('/admin/appointments/review');
+          navigate(isCalendarEventMode ? '/admin/calendar' : '/admin/appointments/review');
         }}
       >
-        <DialogTitle>Appointment Created Successfully</DialogTitle>
+        <DialogTitle>{isCalendarEventMode ? 'Calendar Event Created Successfully' : 'Appointment Created Successfully'}</DialogTitle>
         <DialogContent>
           <Box sx={{ mb: 3 }}>
             <Typography variant="subtitle1" color="primary" gutterBottom>
-              Appointment ID: {submittedAppointment.id}
+              {isCalendarEventMode ? 'Event' : 'Appointment'} ID: {submittedAppointment.id}
             </Typography>
             {isPlaceholderMode && (
               <Chip 
                 label="Placeholder Appointment" 
                 color="primary" 
+                variant="outlined" 
+                sx={{ mt: 1 }} 
+              />
+            )}
+            {isCalendarEventMode && (
+              <Chip 
+                label={`Event Type: ${selectedEventType}`} 
+                color="secondary" 
                 variant="outlined" 
                 sx={{ mt: 1 }} 
               />

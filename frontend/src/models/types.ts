@@ -140,6 +140,9 @@ interface Appointment {
   status: string;
   sub_status: string;
   updated_at: string;
+  appointment_contacts?: AppointmentContact[];
+  request_type: string;
+  number_of_attendees?: number;
 }
 
 interface AdminAppointmentUpdate {
@@ -168,6 +171,21 @@ interface AppointmentDignitary {
   created_at?: string;
 }
 
+interface AppointmentContact {
+  id: number;
+  appointment_id: number;
+  contact_id: number;
+  contact: UserContact;
+  role_in_team_project?: string;
+  role_in_team_project_other?: string;
+  attendance_status?: string;
+  checked_in_at?: string;
+  checked_in_by?: number;
+  comments?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 interface StatusSubStatusMapping {
   [key: string]: {
     default_sub_status: string;
@@ -180,6 +198,10 @@ interface StatusMap {
 }
 
 interface SubStatusMap {
+  [key: string]: string;
+}
+
+interface EventTypeMap {
   [key: string]: string;
 }
 
@@ -242,6 +264,103 @@ export interface MeetingPlace {
   };
 }
 
+export interface RequestTypeConfig {
+  request_type: string;
+  display_name: string;
+  description: string;
+  attendee_type: string;
+  max_attendees: number;
+  attendee_label_singular: string;
+  attendee_label_plural: string;
+  step_2_title: string;
+  step_2_description: string;
+}
+
+export interface PersonalAttendee {
+  first_name: string;
+  last_name: string;
+  email?: string;
+  phone?: string;
+  relationship_to_requester?: string;
+  role_in_team_project?: string;
+  role_in_team_project_other?: string;
+  comments?: string;
+}
+
+export interface UserContact {
+  id: number;
+  owner_user_id: number;
+  contact_user_id?: number;
+  first_name: string;
+  last_name: string;
+  email?: string;
+  phone?: string;
+  relationship_to_owner?: string;
+  notes?: string;
+  appointment_usage_count: number;
+  last_used_at?: string;
+  created_at: string;
+  updated_at: string;
+  contact_user?: User;
+}
+
+export interface UserContactCreateData {
+  first_name: string;
+  last_name: string;
+  email?: string;
+  phone?: string;
+  relationship_to_owner?: string;
+  notes?: string;
+  contact_user_id?: number;
+}
+
+export interface UserContactUpdateData {
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  phone?: string;
+  relationship_to_owner?: string;
+  notes?: string;
+  contact_user_id?: number;
+}
+
+export interface UserContactListResponse {
+  contacts: UserContact[];
+  total: number;
+  page: number;
+  per_page: number;
+  total_pages: number;
+  has_next: boolean;
+  has_prev: boolean;
+}
+
+export interface UserContactSearchResponse {
+  contacts: UserContact[];
+  total_results: number;
+  search_query: string;
+}
+
+export interface CalendarEvent {
+  id?: number;
+  event_type: string;
+  title: string;
+  description?: string;
+  start_datetime: string;
+  start_date: string;
+  start_time: string;
+  duration: number;
+  location_id?: number;
+  meeting_place_id?: number;
+  max_capacity?: number;
+  is_open_for_booking?: boolean;
+  instructions?: string;
+  status?: string;
+  creation_context?: string;
+  creation_context_id?: string;
+  external_calendar_id?: string;
+  external_calendar_link?: string;
+}
+
 export type { 
   Location, 
   User, 
@@ -250,10 +369,12 @@ export type {
   Appointment, 
   AppointmentAttachment, 
   AppointmentDignitary, 
+  AppointmentContact,
   AdminAppointmentUpdate,
   StatusSubStatusMapping, 
   StatusMap, 
   SubStatusMap, 
+  EventTypeMap,
   RoleMap, 
   AccessLevelMap, 
   EntityTypeMap, 

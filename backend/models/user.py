@@ -3,51 +3,11 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
 import enum
+from .enums import UserRole, AOLTeacherStatus
 import os
 
 schema = os.getenv('POSTGRES_SCHEMA', 'public')
 schema_prefix = f"{schema}." if schema != 'public' else ''
-
-class UserRole(str, enum.Enum):
-    """User role enum with proper case values"""
-    SECRETARIAT = "SECRETARIAT"
-    GENERAL = "GENERAL"
-    USHER = "USHER"
-    ADMIN = "ADMIN"
-
-    def __str__(self):
-        return self.value
-    
-    def is_admin_role_type(self):
-        return (self == UserRole.ADMIN or self == UserRole.SECRETARIAT)
-    
-    def is_general_role_type(self):
-        return self == UserRole.GENERAL
-
-    def get_int_value(self):
-        if self == UserRole.GENERAL:
-            return 1
-        elif self == UserRole.USHER:
-            return 2
-        elif self == UserRole.SECRETARIAT:
-            return 3
-        elif self == UserRole.ADMIN:
-            return 4
-        else:
-            raise ValueError(f"Invalid user role: {self}")
-    
-    def is_greater_than_or_equal_to(self, other: "UserRole"):
-        """
-        Check if this user role is greater than or equal to the other
-        """
-        return self.get_int_value() >= other.get_int_value()
-
-    def is_less_than(self, other: "UserRole"):
-        """
-        Check if this user role is less than the other
-        """
-        return self.get_int_value() < other.get_int_value()
-
 
 # Define default notification preferences
 DEFAULT_EMAIL_NOTIFICATION_PREFERENCES = {
@@ -70,6 +30,24 @@ class User(Base):
     country_code = Column(String, nullable=True)
     role = Column(Enum(UserRole), nullable=False, default=UserRole.GENERAL)
     email_notification_preferences = Column(JSON, nullable=False, default=lambda: DEFAULT_EMAIL_NOTIFICATION_PREFERENCES)
+    
+    # Professional Information (consistent with dignitary model)
+    title_in_organization = Column(String, nullable=True)  # Professional title/designation
+    organization = Column(String, nullable=True)  # Company or organization name
+    
+    # Enhanced Location Information
+    state_province = Column(String, nullable=True)  # State or province name
+    state_province_code = Column(String, nullable=True)  # State or province code
+    city = Column(String, nullable=True)  # City
+    
+    # Art of Living Teacher Information
+    teacher_status = Column(Enum(AOLTeacherStatus), nullable=True, default=AOLTeacherStatus.NOT_TEACHER)
+    teacher_code = Column(String, nullable=True)  # Teacher identification code
+    programs_taught = Column(JSON, nullable=True)  # Array of programs: values from AOLProgramType enum
+    
+    # Art of Living Roles/Affiliations
+    aol_affiliations = Column(JSON, nullable=True)  # Array of roles: values from AOLAffiliation enum
+    
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_login_at = Column(DateTime)
@@ -111,4 +89,54 @@ class User(Base):
         "Location",
         back_populates="updated_by_user",
         foreign_keys="[Location.updated_by]"
+    )
+    
+    # New relationships for calendar management
+    created_calendar_events = relationship(
+        "CalendarEvent",
+        back_populates="created_by_user",
+        foreign_keys="[CalendarEvent.created_by]"
+    )
+    updated_calendar_events = relationship(
+        "CalendarEvent",
+        back_populates="updated_by_user",
+        foreign_keys="[CalendarEvent.updated_by]"
+    )
+    checked_in_appointments = relationship(
+        "AppointmentContact",
+        back_populates="checked_in_by_user",
+        foreign_keys="[AppointmentContact.checked_in_by]"
+    )
+    created_appointment_contacts = relationship(
+        "AppointmentContact",
+        back_populates="created_by_user",
+        foreign_keys="[AppointmentContact.created_by]"
+    )
+    updated_appointment_contacts = relationship(
+        "AppointmentContact",
+        back_populates="updated_by_user",
+        foreign_keys="[AppointmentContact.updated_by]"
+    )
+    
+    # User contacts relationships
+    owned_contacts = relationship(
+        "UserContact",
+        back_populates="owner_user",
+        foreign_keys="[UserContact.owner_user_id]",
+        cascade="all, delete-orphan"
+    )
+    contact_references = relationship(
+        "UserContact",
+        back_populates="contact_user",
+        foreign_keys="[UserContact.contact_user_id]"
+    )
+    created_user_contacts = relationship(
+        "UserContact",
+        back_populates="created_by_user",
+        foreign_keys="[UserContact.created_by]"
+    )
+    updated_user_contacts = relationship(
+        "UserContact",
+        back_populates="updated_by_user",
+        foreign_keys="[UserContact.updated_by]"
     )

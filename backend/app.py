@@ -63,11 +63,13 @@ from routers.admin import dignitaries as admin_dignitaries
 from routers.admin import stats as admin_stats
 from routers.admin import users as admin_users
 from routers.admin import locations as admin_locations
+from routers.admin import calendar_events as admin_calendar_events
 from routers.user import appointments as user_appointments
 from routers.user import dignitaries as user_dignitaries
 from routers.user import profile as user_profile
 from routers.user import locations as user_locations
 from routers.user import attachments as user_attachments
+from routers.user import contacts as user_contacts
 from routers import auth, usher, enums, metadata
 
 
@@ -177,11 +179,13 @@ app.include_router(admin_dignitaries.router, prefix="/admin/dignitaries", tags=[
 app.include_router(admin_stats.router, prefix="/admin/stats", tags=["admin"])
 app.include_router(admin_users.router, prefix="/admin/users", tags=["admin"])
 app.include_router(admin_locations.router, prefix="/admin/locations", tags=["admin"])
+app.include_router(admin_calendar_events.router, prefix="/admin/calendar-events", tags=["admin"])
 app.include_router(user_appointments.router, tags=["user"])
 app.include_router(user_dignitaries.router, tags=["user"])
 app.include_router(user_profile.router, tags=["user"])
 app.include_router(user_locations.router, tags=["user"])
 app.include_router(user_attachments.router, tags=["user"])
+app.include_router(user_contacts.router, tags=["user"])
 app.include_router(auth.router, tags=["auth"])
 app.include_router(usher.router, prefix="/usher", tags=["usher"])
 app.include_router(enums.router, tags=["enums"])

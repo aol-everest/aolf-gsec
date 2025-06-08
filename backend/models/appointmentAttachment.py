@@ -1,18 +1,11 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, Enum
 from sqlalchemy.sql import func
 from database import Base
-import enum
+from .enums import AttachmentType
 import os
 
 schema = os.getenv('POSTGRES_SCHEMA', 'public')
 schema_prefix = f"{schema}." if schema != 'public' else ''
-
-class AttachmentType(str, enum.Enum):
-    GENERAL = "general"
-    BUSINESS_CARD = "business_card"
-
-    def __str__(self):
-        return self.value
 
 class AppointmentAttachment(Base):
     __tablename__ = "appointment_attachments"

@@ -6,7 +6,7 @@ import { useApi } from './useApi';
  */
 export type EnumType = 'userRole' | 'appointmentStatus' | 'appointmentSubStatus' | 
   'appointmentType' | 'appointmentTimeOfDay' | 'honorificTitle' | 'primaryDomain' | 
-  'relationshipType' | 'attachmentType' | 'accessLevel' | 'entityType';
+  'relationshipType' | 'personRelationshipType' | 'attachmentType' | 'accessLevel' | 'entityType';
 
 // Map enum types to their endpoint paths
 const enumEndpoints: Record<EnumType, string> = {
@@ -18,6 +18,7 @@ const enumEndpoints: Record<EnumType, string> = {
   honorificTitle: '/dignitaries/honorific-title-options',
   primaryDomain: '/dignitaries/primary-domain-options',
   relationshipType: '/dignitaries/relationship-type-options',
+  personRelationshipType: '/appointments/person-relationship-type-options',
   attachmentType: '/attachments/type-options',
   accessLevel: '/admin/access-level-options',
   entityType: '/admin/entity-type-options'
@@ -67,6 +68,7 @@ const enumMapEndpoints: Record<EnumType, string> = {
   honorificTitle: '/dignitaries/honorific-title-options-map',
   primaryDomain: '/dignitaries/primary-domain-options-map',
   relationshipType: '/dignitaries/relationship-type-options-map',
+  personRelationshipType: '/appointments/person-relationship-type-options-map',
   attachmentType: '/attachments/type-options-map',
   accessLevel: '/admin/access-level-options-map',
   entityType: '/admin/entity-type-options-map'

@@ -3,7 +3,7 @@ import { formatDate, formatDateWithTimezone } from "../utils/dateUtils"
 import { formatHonorificTitle, formatPrimaryDomain } from "../utils/formattingUtils"
 import { validateUrl } from "../utils/urlUtils"
 import EditIcon from "@mui/icons-material/Edit"
-import { Appointment, AppointmentAttachment, AppointmentDignitary } from "../models/types"
+import { Appointment, AppointmentAttachment, AppointmentDignitary, AppointmentContact } from "../models/types"
 import { useNavigate } from "react-router-dom";
 import { AdminAddNewDignitaryRoute, AdminAppointmentsEditRoute, AdminEditDignitaryRoute } from "../config/routes";
 import { useEffect, useState, useMemo, useRef } from "react";
@@ -41,7 +41,7 @@ export const AppointmentCard: React.FC<{
     showCloseButton?: boolean,
     onClose?: () => void,
     displayMode?: AppointmentCardDisplayMode
-}> = ({ appointment, showCloseButton = false, onClose = () => {}, displayMode = 'regular' }) => {
+}> = ({ appointment, showCloseButton = false, onClose, displayMode = 'regular' }) => {
     const theme = useTheme();
     const navigate = useNavigate();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -294,6 +294,113 @@ export const AppointmentCard: React.FC<{
             )
         }
     }
+
+    // Helper function to render contacts section details
+    const renderContactsSectionDetails = (appointment: Appointment) => {
+        // Check if appointment has appointment_contacts array
+        if (appointment.appointment_contacts && appointment.appointment_contacts.length > 0) {
+            return (
+                <>
+                    {appointment.appointment_contacts.map((appointmentContact: AppointmentContact, index: number) => {
+                        const contact = appointmentContact.contact;
+                        return (
+                            <Box
+                                sx={{ 
+                                    pt: 1, 
+                                    pb: 1, 
+                                    mb: index < appointment.appointment_contacts!.length - 1 ? 1 : 0, 
+                                    position: 'relative'
+                                }} 
+                                key={contact.id}
+                            >
+                                <Box sx={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'space-between',
+                                    gap: 1,
+                                    border: '1px solid #f1f1f1',
+                                    borderRadius: '10px',
+                                    bgcolor: 'grey.50',
+                                    pl: 2,
+                                    pr: 1,
+                                    pt: 0.5,
+                                    pb: 0.5,
+                                    mb: 1.3
+                                }}>
+                                    <Typography variant="h5" sx={{ 
+                                        fontWeight: 600, 
+                                        p: 0,
+                                        m: 0,
+                                        color: theme.palette.text.primary
+                                    }}>
+                                        {index + 1}. {contact.first_name} {contact.last_name}
+                                    </Typography>
+                                </Box>
+                                <Box sx={{ 
+                                    pl: 1, 
+                                    pr: 1, 
+                                    pt: 1, 
+                                    pb: 1 
+                                }}>
+                                    <Grid container spacing={1}>
+                                        <GridItemIconText containerRef={cardContainerRef} icon={<MailIconV2 sx={{ width: 22, height: 22 }} />} text={contact.email || 'N/A'} theme={theme} maxGridWidth={6} />
+                                        <GridItemIconText containerRef={cardContainerRef} icon={<PhoneIconV2 sx={{ width: 22, height: 22 }} />} text={contact.phone || 'N/A'} theme={theme} maxGridWidth={6} />
+                                        {contact.relationship_to_owner && (
+                                            <Grid item xs={12} sm={6}>
+                                                <Typography sx={{ color: theme.palette.text.primary }}>
+                                                    <Typography sx={{ fontWeight: 500, color: theme.palette.secondary.dark, display: 'inline', mr: 1 }}>Relationship:</Typography> 
+                                                    {contact.relationship_to_owner}
+                                                </Typography>
+                                            </Grid>
+                                        )}
+                                        {appointmentContact.role_in_team_project && (
+                                            <Grid item xs={12} sm={6}>
+                                                <Typography sx={{ color: theme.palette.text.primary }}>
+                                                    <Typography sx={{ fontWeight: 500, color: theme.palette.secondary.dark, display: 'inline', mr: 1 }}>Role:</Typography> 
+                                                    {appointmentContact.role_in_team_project}
+                                                    {appointmentContact.role_in_team_project_other && ` (${appointmentContact.role_in_team_project_other})`}
+                                                </Typography>
+                                            </Grid>
+                                        )}
+                                        {(contact.notes || appointmentContact.comments) && (
+                                            <Grid item xs={12}>
+                                                <Typography sx={{ fontWeight: 500, mr: 1, display: 'inline' }}>Notes:</Typography>
+                                                <Typography sx={{ 
+                                                    color: theme.palette.text.primary, 
+                                                    display: 'inline', 
+                                                    whiteSpace: 'pre-line' as const,
+                                                    wordBreak: 'break-word',
+                                                    overflowWrap: 'break-word'
+                                                }}>
+                                                    {contact.notes || appointmentContact.comments || 'N/A'}
+                                                </Typography>
+                                            </Grid>
+                                        )}
+                                    </Grid>
+                                </Box>
+                            </Box>
+                        );
+                    })}
+                </>
+            );
+        } else {
+            return (
+                <Typography variant="body1" color="text.secondary">
+                    No contact information available
+                </Typography>
+            );
+        }
+    };
+
+    const renderContactsSection = (appointment: Appointment, displayMode: AppointmentCardDisplayMode) => {
+        if (appointment.appointment_contacts && appointment.appointment_contacts.length > 0) {
+            return (
+                <AppointmentCardSection isMobile={isMobile} theme={theme} header="Contacts" headerCountBadge={appointment.appointment_contacts?.length}>
+                    {renderContactsSectionDetails(appointment)}
+                </AppointmentCardSection>
+            )
+        }
+    }
     
     const renderAppointmentDetailsSection = (appointment: Appointment, displayMode: AppointmentCardDisplayMode) => {
         let dignitariesCount = 0;
@@ -530,7 +637,7 @@ export const AppointmentCard: React.FC<{
                 p: 0,
             }}>
                 {/* Header with Request # and Status */}
-                {showCloseButton && (
+                {showCloseButton && onClose && (
                     <IconButton
                         onClick={() => onClose()}
                         sx={{
@@ -684,6 +791,8 @@ export const AppointmentCard: React.FC<{
                                             {renderRequesterSection(appointment, displayMode)}
                                             {/* Dignitary Information */}
                                             {renderDignitariesSection(appointment, displayMode)}
+                                            {/* Contact Information */}
+                                            {renderContactsSection(appointment, displayMode)}
                                             {/* Purpose */}
                                             {renderPurposeSection(appointment, displayMode)}
                                             {/* Secretariat Notes */}
@@ -700,6 +809,8 @@ export const AppointmentCard: React.FC<{
                                 {renderRequesterSection(appointment, displayMode)}
                                 {/* Dignitary Information */}
                                 {renderDignitariesSection(appointment, displayMode)}
+                                {/* Contact Information */}
+                                {renderContactsSection(appointment, displayMode)}
                                 {/* Appointment Information */}
                                 {renderAppointmentDetailsSection(appointment, displayMode)}
                                 {/* Purpose */}

@@ -42,7 +42,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import Layout from '../components/Layout';
 import { formatDate } from '../utils/dateUtils';
-import { LocationThinIconV2, CalendarIconV2 } from '../components/iconsv2';
+import { LocationThinIconV2, CalendarIconV2, ListIconV2 } from '../components/iconsv2';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -56,10 +56,23 @@ import { AdminAppointmentsEditRoute } from '../config/routes';
 import { debugLog, createDebugLogger } from '../utils/debugUtils';
 
 import { Appointment, AppointmentDignitary } from '../models/types';
-
 import { AppointmentCard } from '../components/AppointmentCard';
+import AppointmentTable from '../components/AppointmentTable';
 import { subDays, addDays } from 'date-fns';
 import { SecondaryButton } from '../components/SecondaryButton';
+
+// Request type configuration interface
+interface RequestTypeConfig {
+  request_type: string;
+  display_name: string;
+  description: string;
+  attendee_type: string;
+  max_attendees: number;
+  attendee_label_singular: string;
+  attendee_label_plural: string;
+  step_2_title: string;
+  step_2_description: string;
+}
 
 // Search configuration - customize this to include or exclude fields from search
 const SEARCH_CONFIG = {
@@ -276,6 +289,7 @@ interface Location {
 interface FilterState {
   status: string | null;
   locationId: number | null;
+  requestType: string | null;
   searchTerm: string;
   startDate: Date | null;
   endDate: Date | null;
@@ -292,11 +306,14 @@ const AdminAppointmentTiles: React.FC = () => {
   const [filters, setFilters] = useState<FilterState>({
     status: null,
     locationId: null,
+    requestType: null,
     searchTerm: '',
     startDate: subDays(new Date(), 1),
     endDate: addDays(new Date(), 7)
   });
   const [filteredAppointments, setFilteredAppointments] = useState<Appointment[]>([]);
+  const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const theme = useTheme();
   const navigate = useNavigate();
   const { id } = useParams<{ id?: string }>();
@@ -315,6 +332,31 @@ const AdminAppointmentTiles: React.FC = () => {
   // Fetch status options using useEnums hook
   const { values: statusOptions = [], isLoading: isLoadingStatusOptions } = useEnums('appointmentStatus');
 
+  // Fetch request type configurations from API
+  const { data: requestTypeConfigs = [], isLoading: isLoadingRequestTypes } = useQuery<RequestTypeConfig[]>({
+    queryKey: ['requestTypeConfigurations'],
+    queryFn: async () => {
+      try {
+        const { data } = await api.get<RequestTypeConfig[]>('/request-types/configurations');
+        return data;
+      } catch (error) {
+        console.error('Error fetching request type configurations:', error);
+        enqueueSnackbar('Failed to fetch request type configurations', { variant: 'error' });
+        return [];
+      }
+    },
+    retry: 1,
+    staleTime: 10 * 60 * 1000, // 10 minutes - these don't change often
+  });
+
+  // Extract request type options from configurations
+  const requestTypeOptions = requestTypeConfigs.map((config: RequestTypeConfig) => ({
+    value: config.request_type,
+    display: config.display_name
+  }));
+
+  console.log('requestTypeOptions', requestTypeOptions);
+
   // Helper function to update URL with current filters
   const updateUrlWithFilters = useCallback(() => {
     if (isNavigatingRef.current || isInitialLoadRef.current) return;
@@ -332,6 +374,10 @@ const AdminAppointmentTiles: React.FC = () => {
     
     if (filters.locationId) {
       searchParams.set('locationId', filters.locationId.toString());
+    }
+    
+    if (filters.requestType) {
+      searchParams.set('requestType', filters.requestType);
     }
     
     if (filters.searchTerm) {
@@ -377,6 +423,7 @@ const AdminAppointmentTiles: React.FC = () => {
     const newFilters: FilterState = {
       status: null,
       locationId: null,
+      requestType: null,
       searchTerm: '',
       startDate: filters.startDate,
       endDate: filters.endDate
@@ -395,6 +442,14 @@ const AdminAppointmentTiles: React.FC = () => {
     if (locationParam) {
       logger(`Setting location from URL: ${locationParam}`);
       newFilters.locationId = parseInt(locationParam, 10);
+      hasAppliedFilters = true;
+    }
+    
+    // Parse request type filter
+    const requestTypeParam = searchParams.get('requestType');
+    if (requestTypeParam) {
+      logger(`Setting request type from URL: ${requestTypeParam}`);
+      newFilters.requestType = requestTypeParam;
       hasAppliedFilters = true;
     }
     
@@ -552,6 +607,12 @@ const AdminAppointmentTiles: React.FC = () => {
   const getFilteredAppointments = useCallback(() => {
     logger(`Called getFilteredAppointments`);
 
+    // Request type filter is mandatory - return empty if not selected
+    if (!filters.requestType) {
+      logger('No request type selected - returning empty results');
+      return [];
+    }
+
     let filtered = [...appointments];
    
     // Apply status filter if selected
@@ -567,6 +628,12 @@ const AdminAppointmentTiles: React.FC = () => {
         appointment.location && appointment.location.id === filters.locationId
       );
     }
+    
+    // Apply request type filter (this is now mandatory)
+    logger(`Filtering by request type: ${filters.requestType}`);
+    filtered = filtered.filter(appointment => 
+      appointment.request_type === filters.requestType
+    );
     
     // Apply search filter if search term exists
     if (filters.searchTerm.trim()) {
@@ -634,6 +701,8 @@ const AdminAppointmentTiles: React.FC = () => {
         // ID exists in filtered results
         logger(`Setting activeStep to ${index} for appointment ID ${appointmentId}`);
         setActiveStep(index);
+        setSelectedAppointment(filtered[index]);
+        setViewMode('card');
       } else {
         // ID doesn't exist in filtered results - check if it exists at all
         const existsInAllAppointments = appointments.some(apt => apt.id === appointmentId);
@@ -641,12 +710,13 @@ const AdminAppointmentTiles: React.FC = () => {
         if (existsInAllAppointments && (filters.status || filters.locationId || filters.searchTerm || filters.startDate || filters.endDate)) {
           // It exists but is filtered out - clear filters
           logger(`Clearing filters to show appointment ID ${appointmentId}`);
-          // Don't clear status if that's the filter that was just applied from URL
+          // Don't clear status or request type when showing filtered appointment
           if (!isInitialLoadRef.current) {
             setFilters(prev => ({
               ...prev,
               status: null,
               locationId: null,
+              // Keep requestType as it's mandatory
               searchTerm: '',
               startDate: null,
               endDate: null
@@ -684,6 +754,10 @@ const AdminAppointmentTiles: React.FC = () => {
         logger('Resetting activeStep to 0 - current step is invalid');
         setActiveStep(0);
       }
+      
+      // Reset to table view when no ID is in URL
+      setSelectedAppointment(null);
+      setViewMode('table');
       
       // If there's no ID in URL but we have appointments, update URL
       if (!id && !isNavigatingRef.current && filtered.length > 0) {
@@ -789,6 +863,13 @@ const AdminAppointmentTiles: React.FC = () => {
     setActiveStep(0);
   };
 
+  const handleRequestTypeFilter = (requestType: string | null) => {
+    logger(`Setting request type filter: ${requestType}`);
+    isFilteringRef.current = true;
+    setFilters(prev => ({ ...prev, requestType }));
+    setActiveStep(0);
+  };
+
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     logger(`Setting search term: ${event.target.value}`);
     isFilteringRef.current = true;
@@ -831,6 +912,35 @@ const AdminAppointmentTiles: React.FC = () => {
   // Get count of appointments for a specific status
   const getStatusAppointmentCount = (status: string) => {
     return appointments.filter(a => (a.status === status || status === 'All')).length;
+  };
+
+  // Get count of appointments for a specific request type
+  const getRequestTypeAppointmentCount = (requestType: string, status: string) => {
+    return appointments.filter(a => (a.request_type === requestType && (a.status === status || status === 'All'))).length;
+  };
+
+  // Handle table row click to show card view
+  const handleTableRowClick = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setViewMode('card');
+    
+    // Update URL with appointment ID
+    const searchParams = new URLSearchParams(window.location.search);
+    isNavigatingRef.current = true;
+    navigate(`/admin/appointments/review/${appointment.id}?${searchParams.toString()}`, { replace: true });
+    setTimeout(() => {
+      isNavigatingRef.current = false;
+    }, 100);
+  };
+
+  // Handle card close to return to table view
+  const handleCardClose = () => {
+    setSelectedAppointment(null);
+    setViewMode('table');
+    
+    // Remove appointment ID from URL but keep filter params
+    const searchParams = new URLSearchParams(window.location.search);
+    navigate(`/admin/appointments/review?${searchParams.toString()}`, { replace: true });
   };
 
   // Updated AppointmentTile component to safely handle undefined appointments
@@ -1015,6 +1125,55 @@ const AdminAppointmentTiles: React.FC = () => {
               )}
             </Box>
 
+            {/* Request Type Filters */}
+            <Box>
+              <Grid container spacing={2} alignItems="center">
+                <Grid item xs={1} md={0.4} sx={{ display: 'flex', alignItems: 'center' }}>
+                  <ListIconV2 sx={{ width: 22, height: 22 }} />
+                </Grid>
+                <Grid item xs={11} md={1.6} sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Typography variant="body2" sx={{ m: 0, fontWeight: 600 }}>
+                    Request Type*
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={10} sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}>
+                  <FilterChipGroup
+                    key={`request-type-filter-group-${filters.status || 'all'}`}
+                    options={requestTypeOptions.map((type: { value: string; display: string }) => type.value)}
+                    selectedValue={filters.requestType}
+                    getLabel={(requestType: string) => {
+                      const option = requestTypeOptions.find((opt: { value: string; display: string }) => opt.value === requestType);
+                      return option ? option.display : requestType;
+                    }}
+                    getCount={(requestType) => getRequestTypeAppointmentCount(requestType, filters.status || 'All')}
+                    getColor={(_, theme) => theme.palette.secondary.main}
+                    onToggle={handleRequestTypeFilter}
+                    sx={{
+                      pl: 0.5,
+                      pr: 0.5,
+                      color: '#9598A6',
+                      border: `1px solid rgba(149, 152, 166, 0.2)`,
+                      fontSize: '0.81rem',
+                      fontWeight: '500',
+                      backgroundColor: '#fff',
+                      borderRadius: '13px',
+                      '&:hover': {
+                        color: '#3D8BE8',
+                        border: '1px solid rgba(61, 139, 232, 0.2)',
+                        fontWeight: '500',
+                        backgroundColor: 'rgba(61, 139, 232, 0.1)',
+                      },
+                      '&.MuiChip-filled': {
+                        color: '#3D8BE8',
+                        fontWeight: '600',
+                        border: '1px solid rgba(61, 139, 232, 0.2)',
+                      }
+                    }}
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+
             {/* Location Filters */}
             <Box>
               <Grid container spacing={2} alignItems="center">
@@ -1022,7 +1181,7 @@ const AdminAppointmentTiles: React.FC = () => {
                   <LocationThinIconV2 sx={{ width: 22, height: 22 }} />
                 </Grid>
                 <Grid item xs={11} md={1.6} sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Typography variant="body2" sx={{ m: 0 }}>Filter by Location</Typography>
+                  <Typography variant="body2" sx={{ m: 0 }}>Location</Typography>
                 </Grid>
                 <Grid item xs={12} md={10} sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}>
                   {isLoadingLocations ? (
@@ -1082,7 +1241,7 @@ const AdminAppointmentTiles: React.FC = () => {
                       <CalendarIconV2 sx={{ width: 22, height: 22 }} />
                     </Grid>
                     <Grid item xs={11} md={1.6} sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Typography variant="body2" sx={{ m: 0, fontSize: '0.81rem' }}>Active Date Filters</Typography>
+                      <Typography variant="body2" sx={{ m: 0, fontSize: '0.81rem' }}>Date Range</Typography>
                     </Grid>
                     <Grid item xs={12} md={10} sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 1 }}>
                       {filters.startDate && (
@@ -1161,7 +1320,6 @@ const AdminAppointmentTiles: React.FC = () => {
             maxWidth: '100%', 
             flexGrow: 1,
             position: 'relative',
-            touchAction: 'pan-y pinch-zoom',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center'
@@ -1170,97 +1328,135 @@ const AdminAppointmentTiles: React.FC = () => {
               <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
                 <CircularProgress />
               </Box>
+            ) : !filters.requestType ? (
+              <Paper sx={{ p: 4, textAlign: 'center', bgcolor: 'background.paper' }}>
+                <Typography variant="h6" gutterBottom>
+                  Select a Request Type to View Appointments
+                </Typography>
+                <Typography variant="body1" color="text.secondary">
+                  Please choose a request type from the filter options above to see appointments.
+                </Typography>
+              </Paper>
             ) : filteredAppointments.length > 0 ? (
-              <>
-                {/* Add the edge navigation buttons */}
-                <EdgeNavigationButtons
-                  onPrev={handleBack}
-                  onNext={handleNext}
-                  hasPrev={activeStep > 0}
-                  hasNext={activeStep < filteredAppointments.length - 1}
-                />
-                
-                {/* For smaller number of items use regular SwipeableViews */}
-                {filteredAppointments.length <= 20 ? (
-                  <SwipeableViews
-                    index={activeStep}
-                    onChangeIndex={(index) => {
-                      logger(`Swipe detected, changing to index ${index}`);
-                      isManualNavigationRef.current = true;
-                      setActiveStep(index);
+              viewMode === 'table' ? (
+                /* Table View */
+                <Box sx={{ width: '100%' }}>
+                  <AppointmentTable
+                    appointments={filteredAppointments}
+                    onRowClick={handleTableRowClick}
+                    onEdit={(appointmentId) => {
+                      const currentUrl = window.location.pathname + window.location.search;
+                      navigate(`${AdminAppointmentsEditRoute.path?.replace(':id', appointmentId.toString())}?redirectTo=${encodeURIComponent(currentUrl)}` || '');
                     }}
-                    enableMouseEvents
-                    resistance
-                    style={{ overflow: 'hidden', width: '100%' }}
-                    animateTransitions
-                    springConfig={{
-                      duration: '0.35s',
-                      easeFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
-                      delay: '0s',
+                    selectedRows={[]}
+                    onRowSelectionChange={(selectedIds) => {
+                      console.log('Selected appointment IDs:', selectedIds);
+                      // TODO: Handle selection change if needed
                     }}
-                  >
-                    {filteredAppointments.map((appointment, index) => (
-                      <div key={appointment.id} style={{ overflow: 'hidden', padding: '0 4px', position: 'relative' }}>
-                        {/* Add swipe indicators for mobile devices */}
-                        <SwipeIndicators currentIndex={index} totalCount={filteredAppointments.length} />
-                        {Math.abs(activeStep - index) <= 1 ? (
-                          <AppointmentTile appointment={appointment} />
-                        ) : null}
-                      </div>
-                    ))}
-                  </SwipeableViews>
-                ) : (
-                  /* Use virtualized version for larger datasets */
-                  <VirtualizedSwipeableViews
-                    index={activeStep}
-                    onChangeIndex={(index) => {
-                      logger(`Virtualized swipe detected, changing to index ${index}`);
-                      isManualNavigationRef.current = true;
-                      setActiveStep(index);
-                    }}
-                    slideRenderer={slideRenderer(filteredAppointments, AppointmentTile, theme, activeStep)}
-                    slideCount={filteredAppointments.length}
-                    enableMouseEvents
-                    resistance
-                    style={{ overflow: 'hidden', width: '100%' }}
                   />
-                )}
-                
-                <MobileStepper
-                  variant="dots"
-                  steps={filteredAppointments.length}
-                  position="static"
-                  activeStep={Math.min(activeStep, filteredAppointments.length - 1)}
-                  sx={{ 
-                    maxWidth: '100%', 
-                    flexGrow: 1,
-                    justifyContent: 'center',
-                    background: 'transparent',
-                    mt: 3
-                  }}
-                  nextButton={
-                    <Button
-                      size="small"
-                      onClick={handleNext}
-                      disabled={activeStep >= filteredAppointments.length - 1}
+                </Box>
+                            ) : selectedAppointment ? (
+                /* Card View - Show single appointment card */
+                <Box sx={{ width: '100%', maxWidth: '900px' }}>
+                  <AppointmentCard 
+                    appointment={selectedAppointment} 
+                    showCloseButton={true}
+                    onClose={handleCardClose}
+                    displayMode="regular" 
+                  />
+                </Box>
+              ) : (
+                /* Card View - Navigation Mode */
+                <>
+                  {/* Add the edge navigation buttons */}
+                  <EdgeNavigationButtons
+                    onPrev={handleBack}
+                    onNext={handleNext}
+                    hasPrev={activeStep > 0}
+                    hasNext={activeStep < filteredAppointments.length - 1}
+                  />
+                  
+                  {/* For smaller number of items use regular SwipeableViews */}
+                  {filteredAppointments.length <= 20 ? (
+                    <SwipeableViews
+                      index={activeStep}
+                      onChangeIndex={(index) => {
+                        logger(`Swipe detected, changing to index ${index}`);
+                        isManualNavigationRef.current = true;
+                        setActiveStep(index);
+                      }}
+                      enableMouseEvents
+                      resistance
+                      style={{ overflow: 'hidden', width: '100%' }}
+                      animateTransitions
+                      springConfig={{
+                        duration: '0.35s',
+                        easeFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+                        delay: '0s',
+                      }}
                     >
-                      Next
-                      <NavigateNextIcon />
-                    </Button>
-                  }
-                  backButton={
-                    <Button 
-                      size="small" 
-                      onClick={handleBack}
-                      disabled={activeStep === 0}
-                    >
-                      <NavigateBeforeIcon />
-                      Back
-                    </Button>
-                  }
-                />
-              </>
-            ) : (
+                      {filteredAppointments.map((appointment, index) => (
+                        <div key={appointment.id} style={{ overflow: 'hidden', padding: '0 4px', position: 'relative' }}>
+                          {/* Add swipe indicators for mobile devices */}
+                          <SwipeIndicators currentIndex={index} totalCount={filteredAppointments.length} />
+                          {Math.abs(activeStep - index) <= 1 ? (
+                            <AppointmentTile appointment={appointment} />
+                          ) : null}
+                        </div>
+                      ))}
+                    </SwipeableViews>
+                  ) : (
+                    /* Use virtualized version for larger datasets */
+                    <VirtualizedSwipeableViews
+                      index={activeStep}
+                      onChangeIndex={(index) => {
+                        logger(`Virtualized swipe detected, changing to index ${index}`);
+                        isManualNavigationRef.current = true;
+                        setActiveStep(index);
+                      }}
+                      slideRenderer={slideRenderer(filteredAppointments, AppointmentTile, theme, activeStep)}
+                      slideCount={filteredAppointments.length}
+                      enableMouseEvents
+                      resistance
+                      style={{ overflow: 'hidden', width: '100%' }}
+                    />
+                  )}
+                  
+                  <MobileStepper
+                    variant="dots"
+                    steps={filteredAppointments.length}
+                    position="static"
+                    activeStep={Math.min(activeStep, filteredAppointments.length - 1)}
+                    sx={{ 
+                      maxWidth: '100%', 
+                      flexGrow: 1,
+                      justifyContent: 'center',
+                      background: 'transparent',
+                      mt: 3
+                    }}
+                    nextButton={
+                      <Button
+                        size="small"
+                        onClick={handleNext}
+                        disabled={activeStep >= filteredAppointments.length - 1}
+                      >
+                        Next
+                        <NavigateNextIcon />
+                      </Button>
+                    }
+                    backButton={
+                      <Button 
+                        size="small" 
+                        onClick={handleBack}
+                        disabled={activeStep === 0}
+                      >
+                        <NavigateBeforeIcon />
+                        Back
+                      </Button>
+                    }
+                  />
+                </>
+              )) : (
               <Paper sx={{ p: 3, textAlign: 'center' }}>
                 <Typography>No appointments found for the selected filters.</Typography>
               </Paper>

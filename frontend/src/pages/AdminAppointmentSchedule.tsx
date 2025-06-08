@@ -521,7 +521,7 @@ const AdminAppointmentSchedule: React.FC = () => {
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   inputProps={{
-                    min: getLocalDateString(-30),
+                    min: getLocalDateString(-365),
                     max: getLocalDateString(365),
                   }}
                   sx={{ width: 150 }}

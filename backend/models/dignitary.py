@@ -6,95 +6,11 @@ from database import Base
 from sqlalchemy import Enum
 import enum
 from typing import Optional
+from .enums import HonorificTitle, PrimaryDomain, DignitarySource
 import os
 
 schema = os.getenv('POSTGRES_SCHEMA', 'public')
 schema_prefix = f"{schema}." if schema != 'public' else ''
-
-class HonorificTitle(str, enum.Enum):
-    """Honorific title enum with proper case values"""
-    NA = "(Not Applicable)"
-    MR = "Mr."
-    MRS = "Mrs."
-    MS = "Ms."
-    ADMIRAL = "Admiral"
-    AIR_CHIEF_MARSHAL = "Air Chief Marshal"
-    AMBASSADOR = "Ambassador"
-    APOSTLE = "Apostle"
-    BISHOP = "Bishop"
-    BRIGADIER_GENERAL = "Brigadier General"
-    CHANCELLOR = "Chancellor"
-    CHIEF = "Chief"
-    COLONEL = "Colonel"
-    COMMISSIONER = "Commissioner"
-    COUNSELLOR = "Counsellor"
-    DR = "Dr."
-    ELDER = "Elder"
-    GENERAL = "General"
-    GENERAL_RETD = "General (Retd.)"
-    HE = "H.E."
-    HER_EXCELLENCY_THE_RIGHT_HONOURABLE = "Her Excellency the Right Honourable"
-    HER_MAJESTY = "Her Majesty"
-    HER_WORSHIP = "Her Worship"
-    HIS_EMINENCE = "His Eminence"
-    HIS_MAJESTY = "His Majesty"
-    HIS_WORSHIP = "His Worship"
-    IMAM = "Imam"
-    JUSTICE = "Justice"
-    KAMI = "Kami"
-    LT_COL = "Lt. Col"
-    PASTOR = "Pastor"
-    PRIEST = "Priest"
-    PROF = "Prof."
-    RABBI = "Rabbi"
-    RIGHT_HONOURABLE = "Right Honourable"
-    SADHVI = "Sadhvi"
-    SERGEANT = "Sergeant"
-    SHERIFF = "Sheriff"
-    SHRI = "Shri"
-    SIR = "Sir"
-    SMT = "Smt."
-    SUSHRI = "Sushri"
-    SWAMI = "Swami"
-    THE_HONORABLE = "The Honorable"
-    THE_HONOURABLE = "The Honourable"
-    THE_REVEREND = "The Reverend"
-    SHEIKH = "Sheikh"
-
-    def __str__(self):
-        return self.value
-    
-    # Helper function to format honorific titles by removing '(not applicable)'
-    @staticmethod
-    def format_honorific_title(title: Optional[str]) -> str:
-        """Format honorific title by replacing '(not applicable)' with an empty string."""
-        if not title:
-            return ""
-        return "" if title.lower() == "(not applicable)" else title
-
-
-
-class PrimaryDomain(str, enum.Enum):
-    """Primary domain enum with proper case values"""
-    BUSINESS = "Business"
-    GOVERNMENT = "Government"
-    RELIGIOUS_SPIRITUAL = "Religious / Spiritual"
-    SPORTS = "Sports"
-    ENTERTAINMENT_MEDIA = "Entertainment & Media"
-    EDUCATION = "Education"
-    HEALTHCARE = "Healthcare"
-    OTHER = "Other"
-
-    def __str__(self):
-        return self.value
-
-class DignitarySource(str, enum.Enum):
-    """Source of dignitary record"""
-    MANUAL = "manual"
-    BUSINESS_CARD = "business_card"
-
-    def __str__(self):
-        return self.value
 
 class Dignitary(Base):
     __tablename__ = "dignitaries"

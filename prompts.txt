@@ -1,3 +1,15 @@
+Can you come up with a plan to add this functionality. Here are the high level things I am thinking:
+Backend: @backend 
+1. Database level changes (new table, etc)
+2. APIs to support creating, updating (user and admin)
+@frontend 
+3. Adding / updating pages to submit a request in the @frontend 
+4. Adding / updating pages to review/approve requests. And for approved requests assigning them to darshan slot.
+5. Interface to manage darshan slots.
+
+Can you come up with a plan?
+
+
 Build a portal to people to request for appointments with Gurudev Sri Sri Ravi Shankar. 
 
 The portal will have 4 pages
@@ -35,3 +47,12 @@ Lets do below:
 (3) When a user logs in, lets create a user in @user.py if it does not exist. If exists we might need to pull their ID to the front end? We would also need to verify the Google login on the backend by hitting the Google APIs?
 (4) Update the backend to manage some kind of authentication for the front end app to call the APIs. I am assuming JWT using the Google token.
 (5) Update the models to ensure all attributes in @frontend code is also present in backend for dignitary
+
+
+
+
+
+For every change being made, share the all details in bulleted form before you make the change. Get confirmation from me that they look good, and only then make the changes.
+
+
+Please do not assume anything. Please ask me if something is not clear.

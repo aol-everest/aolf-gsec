@@ -45,7 +45,7 @@ import { useTheme } from '@mui/material/styles';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
-import { Location, Dignitary, Appointment } from '../models/types';
+import { Location, Dignitary, Appointment, RequestTypeConfig, PersonalAttendee, UserContact, UserContactCreateData, UserContactUpdateData, UserContactListResponse } from '../models/types';
 import { EnumSelect } from './EnumSelect';
 import { useEnums } from '../hooks/useEnums';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -88,7 +88,8 @@ interface PocFormData {
   pocLastName: string;
   pocEmail: string;
   pocPhone: string;
-  numberOfDignitaries: number;
+  requestType: string;
+  numberOfAttendees: number; // Changed from numberOfDignitaries to be generic
 }
 
 // Step 2: Dignitary Information
@@ -133,6 +134,18 @@ interface SelectedDignitary extends PartialDignitary {
   created_at?: string; // Add created_at property
 }
 
+// Personal Attendee Form Data
+interface PersonalAttendeeFormData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  relationshipToRequester: string;
+  roleInTeamProject: string;
+  roleInTeamProjectOther: string;
+  comments: string;
+}
+
 // Step 3: Appointment Information
 interface AppointmentFormData {
   purpose: string;
@@ -142,7 +155,11 @@ interface AppointmentFormData {
   requesterNotesToSecretariat: string;
 }
 
-const steps = ['Initial Information', 'Add Dignitary Information', 'Appointment Details'];
+// Dynamic step labels based on request type
+const getDynamicSteps = (requestTypeConfig: RequestTypeConfig | null) => {
+  const step2Label = requestTypeConfig?.step_2_title || 'Add Attendee Information';
+  return ['Initial Information', step2Label, 'Appointment Details'];
+};
 
 export const AppointmentRequestForm: React.FC = () => {
   const { userInfo, updateUserInfo } = useAuth();
@@ -168,8 +185,26 @@ export const AppointmentRequestForm: React.FC = () => {
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   
-  // State to track the required number of dignitaries
+  // State to track the required number of dignitaries/attendees
   const [requiredDignitariesCount, setRequiredDignitariesCount] = useState<number>(1);
+  
+  // State for selected request type configuration
+  const [selectedRequestTypeConfig, setSelectedRequestTypeConfig] = useState<RequestTypeConfig | null>(null);
+  
+  // State for personal attendees (non-dignitary requests)
+  const [selectedPersonalAttendees, setSelectedPersonalAttendees] = useState<PersonalAttendee[]>([]);
+  
+  // State for personal attendee form
+  const [isPersonalAttendeeFormExpanded, setIsPersonalAttendeeFormExpanded] = useState(false);
+  const [isEditingPersonalAttendee, setIsEditingPersonalAttendee] = useState(false);
+  const [editingPersonalAttendeeIndex, setEditingPersonalAttendeeIndex] = useState<number | null>(null);
+  
+  // State for user contacts integration
+  const [userContacts, setUserContacts] = useState<UserContact[]>([]);
+  const [selectedUserContacts, setSelectedUserContacts] = useState<UserContact[]>([]);
+  const [isContactFormExpanded, setIsContactFormExpanded] = useState(false);
+  const [contactFormMode, setContactFormMode] = useState<'select' | 'create'>('select');
+  const [editingContactId, setEditingContactId] = useState<number | null>(null);
   
   // Add a state to track if the selected dignitary has been modified
   const [isDignitaryModified, setIsDignitaryModified] = useState(false);
@@ -182,6 +217,15 @@ export const AppointmentRequestForm: React.FC = () => {
     queryKey: ['status-options'],
     queryFn: async () => {
       const { data } = await api.get<string[]>('/appointments/status-options');
+      return data;
+    },
+  });
+
+  // Fetch request type configurations
+  const { data: requestTypeConfigs = [], isLoading: isLoadingRequestTypes } = useQuery<RequestTypeConfig[]>({
+    queryKey: ['request-type-configurations'],
+    queryFn: async () => {
+      const { data } = await api.get<RequestTypeConfig[]>('/request-types/configurations');
       return data;
     },
   });
@@ -211,6 +255,17 @@ export const AppointmentRequestForm: React.FC = () => {
       return data;
     },
   });
+
+  // Fetch user contacts
+  const { data: fetchedUserContacts = [], isLoading: isLoadingUserContacts } = useQuery<UserContact[]>({
+    queryKey: ['user-contacts'],
+    queryFn: async () => {
+      const { data } = await api.get<UserContactListResponse>('/contacts/', {
+        params: { page: 1, per_page: 100, sort_by: 'usage' }
+      });
+      return data.contacts;
+    },
+  });
   
   // Fetch countries
   const { data: countries = [], isLoading: isLoadingCountries } = useQuery<Country[]>({
@@ -233,7 +288,8 @@ export const AppointmentRequestForm: React.FC = () => {
       pocLastName: userInfo?.last_name || '',
       pocEmail: userInfo?.email || '',
       pocPhone: userInfo?.phone_number || '',
-      numberOfDignitaries: 0,
+      requestType: 'Dignitary', // Default to dignitary request
+      numberOfAttendees: 1,
     }
   });
 
@@ -274,6 +330,19 @@ export const AppointmentRequestForm: React.FC = () => {
     }
   });
 
+  const personalAttendeeForm = useForm<PersonalAttendeeFormData>({
+    defaultValues: {
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      relationshipToRequester: '',
+      roleInTeamProject: '',
+      roleInTeamProjectOther: '',
+      comments: '',
+    }
+  });
+
   // Update the useEffect to handle the dignitaries data
   useEffect(() => {
     if (fetchedDignitaries.length > 0) {
@@ -285,6 +354,23 @@ export const AppointmentRequestForm: React.FC = () => {
       populateDignitaryForm(fetchedDignitaries[0]);
     }
   }, [fetchedDignitaries]);
+
+  // Set the fetched contacts
+  useEffect(() => {
+    if (fetchedUserContacts.length > 0) {
+      setUserContacts(fetchedUserContacts);
+    }
+  }, [fetchedUserContacts]);
+
+  // Update contact form mode based on available contacts
+  useEffect(() => {
+    if (isContactFormExpanded) {
+      const availableContacts = userContacts.filter(c => !selectedUserContacts.some(sc => sc.id === c.id));
+      if (availableContacts.length === 0 && contactFormMode === 'select') {
+        setContactFormMode('create');
+      }
+    }
+  }, [isContactFormExpanded, userContacts, selectedUserContacts, contactFormMode]);
 
   // Function to populate dignitary form fields
   const populateDignitaryForm = (dignitary: Dignitary) => {
@@ -370,6 +456,21 @@ export const AppointmentRequestForm: React.FC = () => {
       pocForm.setValue('pocPhone', userInfo.phone_number || '');
     }
   }, [userInfo, pocForm]);
+
+  // Set default request type when configs are loaded
+  useEffect(() => {
+    if (requestTypeConfigs.length > 0 && !pocForm.getValues('requestType')) {
+      const defaultConfig = requestTypeConfigs.find(c => c.request_type === 'Dignitary') || requestTypeConfigs[0];
+      pocForm.setValue('requestType', defaultConfig.request_type);
+    }
+  }, [requestTypeConfigs, pocForm]);
+
+  // Update selected request type config when form value changes
+  useEffect(() => {
+    const requestType = pocForm.watch('requestType');
+    const config = requestTypeConfigs.find(c => c.request_type === requestType);
+    setSelectedRequestTypeConfig(config || null);
+  }, [pocForm.watch('requestType'), requestTypeConfigs]);
 
   // Query for checking existing appointments
   const checkExistingAppointments = async (dignitaryId: number) => {
@@ -459,6 +560,54 @@ export const AppointmentRequestForm: React.FC = () => {
     onError: (error: any) => {
       console.error('Failed to create dignitary:', error);
       enqueueSnackbar(`Failed to create dignitary: ${error.response?.data?.detail || 'Unknown error'}`, { 
+        variant: 'error',
+        autoHideDuration: 6000
+      });
+    }
+  });
+
+  // Mutation for creating new user contact
+  const createUserContactMutation = useMutation<UserContact, Error, UserContactCreateData>({
+    mutationFn: async (data: UserContactCreateData) => {
+      const { data: response } = await api.post<UserContact>('/contacts/', data);
+      return response;
+    },
+    onSuccess: (newContact) => {
+      // Update the contacts list with the new contact
+      setUserContacts(prev => [...prev, newContact]);
+      
+      queryClient.invalidateQueries({ queryKey: ['user-contacts'] });
+      enqueueSnackbar('New contact created successfully', { variant: 'success' });
+    },
+    onError: (error: any) => {
+      console.error('Failed to create contact:', error);
+      enqueueSnackbar(`Failed to create contact: ${error.response?.data?.detail || 'Unknown error'}`, { 
+        variant: 'error',
+        autoHideDuration: 6000
+      });
+    }
+  });
+
+  // Mutation for updating user contact
+  const updateUserContactMutation = useMutation<UserContact, Error, { id: number; data: UserContactUpdateData }>({
+    mutationFn: async ({ id, data }: { id: number; data: UserContactUpdateData }) => {
+      const { data: response } = await api.put<UserContact>(`/contacts/${id}`, data);
+      return response;
+    },
+    onSuccess: (updatedContact) => {
+      // Update the contacts list with the updated contact
+      setUserContacts(prev => 
+        prev.map(contact => 
+          contact.id === updatedContact.id ? updatedContact : contact
+        )
+      );
+      
+      queryClient.invalidateQueries({ queryKey: ['user-contacts'] });
+      enqueueSnackbar('Contact updated successfully', { variant: 'success' });
+    },
+    onError: (error: any) => {
+      console.error('Failed to update contact:', error);
+      enqueueSnackbar(`Failed to update contact: ${error.response?.data?.detail || 'Unknown error'}`, { 
         variant: 'error',
         autoHideDuration: 6000
       });
@@ -720,6 +869,161 @@ export const AppointmentRequestForm: React.FC = () => {
     setSelectedCountryCode(undefined);
   };
 
+  // Personal attendee management functions
+  const addPersonalAttendeeToList = async () => {
+    const isValid = await personalAttendeeForm.trigger();
+    if (!isValid) {
+      enqueueSnackbar('Please fill in all required fields', { variant: 'error' });
+      return;
+    }
+
+    const formData = personalAttendeeForm.getValues();
+    const attendeeData: PersonalAttendee = {
+      first_name: formData.firstName,
+      last_name: formData.lastName,
+      email: formData.email || undefined,
+      phone: formData.phone || undefined,
+      relationship_to_requester: formData.relationshipToRequester || undefined,
+      role_in_team_project: formData.roleInTeamProject || undefined,
+      role_in_team_project_other: formData.roleInTeamProjectOther || undefined,
+      comments: formData.comments || undefined,
+    };
+
+    if (isEditingPersonalAttendee && editingPersonalAttendeeIndex !== null) {
+      // Update existing attendee
+      const updatedAttendees = [...selectedPersonalAttendees];
+      updatedAttendees[editingPersonalAttendeeIndex] = attendeeData;
+      setSelectedPersonalAttendees(updatedAttendees);
+      setIsEditingPersonalAttendee(false);
+      setEditingPersonalAttendeeIndex(null);
+      enqueueSnackbar('Personal attendee updated successfully', { variant: 'success' });
+    } else {
+      // Add new attendee
+      setSelectedPersonalAttendees(prev => [...prev, attendeeData]);
+      enqueueSnackbar('Personal attendee added successfully', { variant: 'success' });
+    }
+
+    resetPersonalAttendeeForm();
+    setIsPersonalAttendeeFormExpanded(false);
+  };
+
+  const removePersonalAttendeeFromList = (index: number) => {
+    setSelectedPersonalAttendees(prev => prev.filter((_, i) => i !== index));
+    enqueueSnackbar('Personal attendee removed', { variant: 'info' });
+  };
+
+  const editPersonalAttendeeInList = (index: number) => {
+    const attendee = selectedPersonalAttendees[index];
+    personalAttendeeForm.setValue('firstName', attendee.first_name);
+    personalAttendeeForm.setValue('lastName', attendee.last_name);
+    personalAttendeeForm.setValue('email', attendee.email || '');
+    personalAttendeeForm.setValue('phone', attendee.phone || '');
+    personalAttendeeForm.setValue('relationshipToRequester', attendee.relationship_to_requester || '');
+    personalAttendeeForm.setValue('roleInTeamProject', attendee.role_in_team_project || '');
+    personalAttendeeForm.setValue('roleInTeamProjectOther', attendee.role_in_team_project_other || '');
+    personalAttendeeForm.setValue('comments', attendee.comments || '');
+    
+    setIsEditingPersonalAttendee(true);
+    setEditingPersonalAttendeeIndex(index);
+    setIsPersonalAttendeeFormExpanded(true);
+  };
+
+  const resetPersonalAttendeeForm = () => {
+    personalAttendeeForm.reset({
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      relationshipToRequester: '',
+      roleInTeamProject: '',
+      roleInTeamProjectOther: '',
+      comments: '',
+    });
+  };
+
+  // Contact management functions
+  const addContactToList = (contact: UserContact) => {
+    if (selectedUserContacts.some(c => c.id === contact.id)) {
+      enqueueSnackbar('Contact already added to this appointment', { variant: 'warning' });
+      return;
+    }
+    
+    if (selectedUserContacts.length >= requiredDignitariesCount) {
+      enqueueSnackbar(`Maximum ${requiredDignitariesCount} ${selectedRequestTypeConfig?.attendee_label_plural?.toLowerCase() || 'attendees'} allowed for this request type`, { variant: 'warning' });
+      return;
+    }
+    
+    setSelectedUserContacts(prev => [...prev, contact]);
+    enqueueSnackbar(`${contact.first_name} ${contact.last_name} added to appointment`, { variant: 'success' });
+  };
+
+  const removeContactFromList = (contactId: number) => {
+    setSelectedUserContacts(prev => prev.filter(c => c.id !== contactId));
+    enqueueSnackbar('Contact removed from appointment', { variant: 'info' });
+  };
+
+  const createAndAddContact = async (contactData: UserContactCreateData) => {
+    try {
+      const newContact = await createUserContactMutation.mutateAsync(contactData);
+      addContactToList(newContact);
+      setIsContactFormExpanded(false);
+      setContactFormMode('select');
+    } catch (error) {
+      console.error('Error creating contact:', error);
+    }
+  };
+
+  const editContactInList = (contact: UserContact) => {
+    setEditingContactId(contact.id);
+    setIsContactFormExpanded(true);
+    setContactFormMode('create');
+    
+    // Populate the form with contact data
+    personalAttendeeForm.setValue('firstName', contact.first_name);
+    personalAttendeeForm.setValue('lastName', contact.last_name);
+    personalAttendeeForm.setValue('email', contact.email || '');
+    personalAttendeeForm.setValue('phone', contact.phone || '');
+    personalAttendeeForm.setValue('relationshipToRequester', contact.relationship_to_owner || '');
+    personalAttendeeForm.setValue('comments', contact.notes || '');
+  };
+
+  const updateContactInList = async (contactData: UserContactCreateData) => {
+    try {
+      if (!editingContactId) return;
+      
+      // Prepare update data (convert undefined to null for backend)
+      const updateData: UserContactUpdateData = {
+        first_name: contactData.first_name,
+        last_name: contactData.last_name,
+        email: contactData.email || undefined,
+        phone: contactData.phone || undefined,
+        relationship_to_owner: contactData.relationship_to_owner || undefined,
+        notes: contactData.notes || undefined,
+      };
+      
+      // Call the API to update the contact
+      const updatedContact = await updateUserContactMutation.mutateAsync({ 
+        id: editingContactId, 
+        data: updateData 
+      });
+      
+      // Update in the selected contacts list
+      setSelectedUserContacts(prev => 
+        prev.map(contact => 
+          contact.id === editingContactId ? updatedContact : contact
+        )
+      );
+      
+      setIsContactFormExpanded(false);
+      setEditingContactId(null);
+      setContactFormMode('select');
+      resetPersonalAttendeeForm();
+    } catch (error) {
+      console.error('Failed to update contact:', error);
+      // The mutation already handles the error notification
+    }
+  };
+
   const handleNext = async (skipExistingCheck: boolean = false) => {
     if (activeStep === 0) {
       // Validate POC form
@@ -737,47 +1041,72 @@ export const AppointmentRequestForm: React.FC = () => {
         try {
           await updateUserMutation.mutateAsync({ phone_number: data.pocPhone });
           // Set the required number of dignitaries
-          setRequiredDignitariesCount(data.numberOfDignitaries);
+          setRequiredDignitariesCount(data.numberOfAttendees);
           setActiveStep(1);
         } catch (error) {
           console.error('Error updating user:', error);
         }
       })();
     } else if (activeStep === 1) {
-      // For step 2, check if we have at least one dignitary
-      if (selectedDignitaries.length === 0) {
-        // If the current form has data, try to add it
-        const currentFormData = dignitaryForm.getValues();
-        if (currentFormData.dignitaryFirstName && currentFormData.dignitaryLastName) {
-          // Try to add the current dignitary
-          await addDignitaryToList();
+      // Handle different attendee types based on request type
+      if (selectedRequestTypeConfig?.attendee_type === 'dignitary') {
+        // For dignitary requests, check dignitaries
+        if (selectedDignitaries.length === 0) {
+          // If the current form has data, try to add it
+          const currentFormData = dignitaryForm.getValues();
+          if (currentFormData.dignitaryFirstName && currentFormData.dignitaryLastName) {
+            // Try to add the current dignitary
+            await addDignitaryToList();
+          }
+          
+          // Check again after potential addition
+          if (selectedDignitaries.length === 0) {
+            enqueueSnackbar('Please add at least one dignitary', { 
+              variant: 'error',
+              autoHideDuration: 3000
+            });
+            return;
+          }
         }
         
-        // Check again after potential addition
-        if (selectedDignitaries.length === 0) {
-          enqueueSnackbar('Please add at least one dignitary', { 
+        // Check if we have added the required number of dignitaries
+        if (selectedDignitaries.length < requiredDignitariesCount) {
+          enqueueSnackbar(`Please add ${requiredDignitariesCount - selectedDignitaries.length} more dignitary(s). You specified ${requiredDignitariesCount} dignitary(s) in the previous step.`, { 
+            variant: 'error',
+            autoHideDuration: 5000
+          });
+          return;
+        }
+        
+        // Since dignitaries are already created/updated when added to the list,
+        // we just need to collect their IDs
+        const dignitaryIds = selectedDignitaries.map(d => d.id);
+        
+        // Store the list of dignitary IDs for appointment creation
+        sessionStorage.setItem('appointmentDignitaryIds', JSON.stringify(dignitaryIds));
+      } else {
+        // For non-dignitary requests, check contacts
+        if (selectedUserContacts.length === 0) {
+          enqueueSnackbar(`Please add at least one ${selectedRequestTypeConfig?.attendee_label_singular?.toLowerCase() || 'attendee'}`, { 
             variant: 'error',
             autoHideDuration: 3000
           });
           return;
         }
+        
+        // Check if we have added the required number of contacts
+        if (selectedUserContacts.length < requiredDignitariesCount) {
+          enqueueSnackbar(`Please add ${requiredDignitariesCount - selectedUserContacts.length} more ${selectedRequestTypeConfig?.attendee_label_singular?.toLowerCase() || 'attendee'}(s). You specified ${requiredDignitariesCount} ${selectedRequestTypeConfig?.attendee_label_singular?.toLowerCase() || 'attendee'}(s) in the previous step.`, { 
+            variant: 'error',
+            autoHideDuration: 5000
+          });
+          return;
+        }
+        
+        // Store the list of contact IDs for appointment creation
+        const contactIds = selectedUserContacts.map(contact => contact.id);
+        sessionStorage.setItem('appointmentContactIds', JSON.stringify(contactIds));
       }
-      
-      // Check if we have added the required number of dignitaries
-      if (selectedDignitaries.length < requiredDignitariesCount) {
-        enqueueSnackbar(`Please add ${requiredDignitariesCount - selectedDignitaries.length} more dignitary(s). You specified ${requiredDignitariesCount} dignitary(s) in the previous step.`, { 
-          variant: 'error',
-          autoHideDuration: 5000
-        });
-        return;
-      }
-      
-      // Since dignitaries are already created/updated when added to the list,
-      // we just need to collect their IDs
-      const dignitaryIds = selectedDignitaries.map(d => d.id);
-      
-      // Store the list of dignitary IDs for appointment creation
-      sessionStorage.setItem('appointmentDignitaryIds', JSON.stringify(dignitaryIds));
       
       setActiveStep(2);
     } else if (activeStep === 2) {
@@ -794,23 +1123,38 @@ export const AppointmentRequestForm: React.FC = () => {
       
       const appointmentData = await appointmentForm.handleSubmit(async (data) => {
         try {
-          // Get dignitary IDs from storage
-          const dignitary_ids = JSON.parse(sessionStorage.getItem('appointmentDignitaryIds') || '[]');
-          
-          if (dignitary_ids.length === 0) {
-            enqueueSnackbar('No dignitaries selected for appointment', { variant: 'error' });
-            return;
-          }
-          
-          const appointmentCreateData = {
-            dignitary_ids: dignitary_ids,
+          let appointmentCreateData: any = {
             purpose: data.purpose,
             preferred_date: data.preferredDate,
             preferred_time_of_day: data.preferredTimeOfDay,
             location_id: data.location_id,
             requester_notes_to_secretariat: data.requesterNotesToSecretariat,
             status: statusOptions[0],
+            request_type: selectedRequestTypeConfig?.request_type || 'Dignitary',
           };
+
+          if (selectedRequestTypeConfig?.attendee_type === 'dignitary') {
+            // Get dignitary IDs from storage
+            const dignitary_ids = JSON.parse(sessionStorage.getItem('appointmentDignitaryIds') || '[]');
+            
+            if (dignitary_ids.length === 0) {
+              enqueueSnackbar('No dignitaries selected for appointment', { variant: 'error' });
+              return;
+            }
+            
+            appointmentCreateData.dignitary_ids = dignitary_ids;
+                  } else {
+          // Get contact IDs from storage
+          const contactIds = JSON.parse(sessionStorage.getItem('appointmentContactIds') || '[]');
+          
+          if (contactIds.length === 0) {
+            enqueueSnackbar(`No ${selectedRequestTypeConfig?.attendee_label_plural?.toLowerCase() || 'attendees'} selected for appointment`, { variant: 'error' });
+            return;
+          }
+          
+          appointmentCreateData.contact_ids = contactIds;
+          appointmentCreateData.number_of_attendees = contactIds.length;
+          }
           
           await createAppointmentMutation.mutateAsync(appointmentCreateData);
         } catch (error) {
@@ -935,26 +1279,66 @@ export const AppointmentRequestForm: React.FC = () => {
               </Grid>
 
               <Grid item xs={12} md={6}>
+                <FormControl fullWidth required error={!!pocForm.formState.errors.requestType}>
+                  <InputLabel>Request Type</InputLabel>
+                  <Controller
+                    name="requestType"
+                    control={pocForm.control}
+                    rules={{ required: 'Request type is required' }}
+                    render={({ field }) => (
+                      <Select
+                        label="Request Type *"
+                        {...field}
+                        disabled={isLoadingRequestTypes}
+                      >
+                        {requestTypeConfigs.map((config) => (
+                          <MenuItem key={config.request_type} value={config.request_type}>
+                            <Box>
+                              <Typography variant="body1">{config.display_name}</Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {config.description}
+                              </Typography>
+                            </Box>
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    )}
+                  />
+                  {pocForm.formState.errors.requestType && (
+                    <FormHelperText>
+                      {pocForm.formState.errors.requestType.message}
+                    </FormHelperText>
+                  )}
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
                   type="number"
-                  label="Number of Dignitaries"
+                  label={selectedRequestTypeConfig ? 
+                    `Number of ${selectedRequestTypeConfig.attendee_label_plural}` : 
+                    "Number of Attendees"
+                  }
                   InputLabelProps={{ shrink: true }}
-                  inputProps={{ min: 1, max: 8 }}
-                  {...pocForm.register('numberOfDignitaries', { 
-                    required: 'Number of dignitaries is required',
+                  inputProps={{ 
+                    min: 1, 
+                    max: selectedRequestTypeConfig?.max_attendees || 15 
+                  }}
+                  {...pocForm.register('numberOfAttendees', { 
+                    required: `Number of ${selectedRequestTypeConfig?.attendee_label_plural?.toLowerCase() || 'attendees'} is required`,
                     min: {
                       value: 1,
-                      message: 'At least 1 dignitary is required'
+                      message: `At least 1 ${selectedRequestTypeConfig?.attendee_label_singular?.toLowerCase() || 'attendee'} is required`
                     },
                     max: {
-                      value: 8,
-                      message: 'Maximum 8 dignitaries allowed'
+                      value: selectedRequestTypeConfig?.max_attendees || 15,
+                      message: `Maximum ${selectedRequestTypeConfig?.max_attendees || 15} ${selectedRequestTypeConfig?.attendee_label_plural?.toLowerCase() || 'attendees'} allowed`
                     },
                     valueAsNumber: true
                   })}
-                  error={!!pocForm.formState.errors.numberOfDignitaries}
-                  helperText={pocForm.formState.errors.numberOfDignitaries?.message}
+                  error={!!pocForm.formState.errors.numberOfAttendees}
+                  helperText={pocForm.formState.errors.numberOfAttendees?.message}
                   required
                 />
               </Grid>
@@ -968,18 +1352,21 @@ export const AppointmentRequestForm: React.FC = () => {
             <Grid container spacing={3}>
               <Grid item xs={12}>
                 <Typography variant="h6" gutterBottom>
-                  Dignitary Information
+                  {selectedRequestTypeConfig?.step_2_title || 'Attendee Information'}
                 </Typography>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Add one or more dignitaries to this appointment request.
+                  {selectedRequestTypeConfig?.step_2_description || 'Add attendees to this appointment request.'}
                   {requiredDignitariesCount > 0 && (
-                    <span> You need to add {requiredDignitariesCount} dignitary(s) in total.</span>
+                    <span> You need to add {requiredDignitariesCount} {selectedRequestTypeConfig?.attendee_label_singular?.toLowerCase() || 'attendee'}(s) in total.</span>
                   )}
                 </Typography>
               </Grid>
 
-              {/* List of selected dignitaries */}
-              {selectedDignitaries.length > 0 && (
+              {/* Show dignitary form for dignitary requests */}
+              {selectedRequestTypeConfig?.attendee_type === 'dignitary' ? (
+                <>
+                  {/* List of selected dignitaries */}
+                  {selectedDignitaries.length > 0 && (
                 <Grid item xs={12}>
                   <Typography variant="subtitle1" gutterBottom>
                     Selected Dignitaries ({selectedDignitaries.length} of {requiredDignitariesCount})
@@ -1622,6 +2009,344 @@ export const AppointmentRequestForm: React.FC = () => {
                   </Grid>
                 </>
               )}
+              </> 
+              ) : (
+                /* Contact management for non-dignitary requests */
+                <>
+                  {/* List of selected contacts */}
+                  {selectedUserContacts.length > 0 && (
+                    <Grid item xs={12}>
+                      <Typography variant="subtitle1" gutterBottom>
+                        Selected {selectedRequestTypeConfig?.attendee_label_plural || 'Attendees'} ({selectedUserContacts.length} of {requiredDignitariesCount})
+                      </Typography>
+                      <List>
+                        {selectedUserContacts.map((contact, index) => (
+                          <ListItem 
+                            key={contact.id}
+                            component={Paper}
+                            elevation={1}
+                            sx={{ 
+                              mb: 1,
+                              borderRadius: 1,
+                              border: '1px solid',
+                              borderColor: 'divider',
+                            }}
+                          >
+                            <ListItemText
+                              primary={`${contact.first_name} ${contact.last_name}`}
+                              secondary={
+                                <>
+                                  {contact.email && (
+                                    <Typography component="span" variant="body2">
+                                      Email: {contact.email}
+                                    </Typography>
+                                  )}
+                                  {contact.phone && (
+                                    <>
+                                      <br />
+                                      <Typography component="span" variant="body2">
+                                        Phone: {contact.phone}
+                                      </Typography>
+                                    </>
+                                  )}
+                                  {contact.relationship_to_owner && selectedRequestTypeConfig?.attendee_type === 'personal' && (
+                                    <>
+                                      <br />
+                                      <Typography component="span" variant="body2" color="text.secondary">
+                                        Relationship: {contact.relationship_to_owner}
+                                      </Typography>
+                                    </>
+                                  )}
+                                  {contact.notes && (
+                                    <>
+                                      <br />
+                                      <Typography component="span" variant="body2" color="text.secondary">
+                                        Notes: {contact.notes}
+                                      </Typography>
+                                    </>
+                                  )}
+                                </>
+                              }
+                            />
+                            <ListItemSecondaryAction>
+                              <Box sx={{ display: 'flex', gap: 1 }}>
+                                <IconButton 
+                                  size="small"
+                                  aria-label="edit"
+                                  onClick={() => editContactInList(contact)}
+                                >
+                                  <EditIcon />
+                                </IconButton>
+                                <IconButton 
+                                  size="small"
+                                  aria-label="delete"
+                                  onClick={() => removeContactFromList(contact.id)}
+                                >
+                                  <DeleteIcon />
+                                </IconButton>
+                              </Box>
+                            </ListItemSecondaryAction>
+                          </ListItem>
+                        ))}
+                      </List>
+                    </Grid>
+                  )}
+
+                  {/* Button to expand the contact form when it's collapsed */}
+                  {!isContactFormExpanded && (
+                    <Grid item xs={12}>
+                      <PrimaryButton
+                        size="medium"
+                        startIcon={<AddIcon />}
+                        onClick={() => {
+                          setIsContactFormExpanded(true);
+                          // Set mode based on available contacts
+                          const availableContacts = userContacts.filter(c => !selectedUserContacts.some(sc => sc.id === c.id));
+                          setContactFormMode(availableContacts.length > 0 ? 'select' : 'create');
+                        }}
+                        sx={{ mt: 2 }}
+                        disabled={selectedUserContacts.length >= requiredDignitariesCount}
+                      >
+                        {selectedUserContacts.length < requiredDignitariesCount
+                          ? `Add ${selectedRequestTypeConfig?.attendee_label_singular || 'Contact'} ${selectedUserContacts.length + 1} of ${requiredDignitariesCount}`
+                          : `All ${requiredDignitariesCount} ${selectedRequestTypeConfig?.attendee_label_plural?.toLowerCase() || 'contacts'} added`}
+                      </PrimaryButton>
+                    </Grid>
+                  )}
+
+                  {/* Contact form when expanded */}
+                  {isContactFormExpanded && (
+                    <>
+                      <Grid item xs={12}>
+                        <Divider sx={{ my: 2 }} />
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                          <Typography variant="subtitle1">
+                            {editingContactId 
+                              ? `Edit ${selectedRequestTypeConfig?.attendee_label_singular || 'Contact'}`
+                              : `Add a ${selectedRequestTypeConfig?.attendee_label_singular || 'Contact'}`
+                            }
+                          </Typography>
+                          {!editingContactId && (
+                            <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
+                              Adding {selectedRequestTypeConfig?.attendee_label_singular?.toLowerCase() || 'contact'} {selectedUserContacts.length + 1} of {requiredDignitariesCount}
+                            </Typography>
+                          )}
+                        </Box>
+                      </Grid>
+
+                      {/* Mode selection - only show when not editing */}
+                      {!editingContactId && (
+                        <Grid item xs={12}>
+                          <FormControl component="fieldset">
+                            <RadioGroup
+                              row
+                              value={contactFormMode}
+                              onChange={(e) => setContactFormMode(e.target.value as 'select' | 'create')}
+                            >
+                              <FormControlLabel 
+                                value="select" 
+                                control={<Radio />} 
+                                label="Select existing contact" 
+                                disabled={userContacts.filter(c => !selectedUserContacts.some(sc => sc.id === c.id)).length === 0}
+                              />
+                              <FormControlLabel 
+                                value="create" 
+                                control={<Radio />} 
+                                label="Create new contact" 
+                              />
+                            </RadioGroup>
+                          </FormControl>
+                        </Grid>
+                      )}
+
+                      {(contactFormMode === 'select' && !editingContactId) ? (
+                        /* Contact selection */
+                        <Grid item xs={12}>
+                          <FormControl fullWidth>
+                            <InputLabel>Select Contact</InputLabel>
+                            <Select
+                              label="Select Contact"
+                              value=""
+                              onChange={(e) => {
+                                const contactId = Number(e.target.value);
+                                const contact = userContacts.find(c => c.id === contactId);
+                                if (contact) {
+                                  addContactToList(contact);
+                                  setIsContactFormExpanded(false);
+                                }
+                              }}
+                            >
+                              {userContacts
+                                .filter(contact => !selectedUserContacts.some(selected => selected.id === contact.id))
+                                .map((contact) => (
+                                  <MenuItem key={contact.id} value={contact.id}>
+                                    <Box>
+                                      <Typography variant="body1">
+                                        {contact.first_name} {contact.last_name}
+                                      </Typography>
+                                      <Typography variant="body2" color="text.secondary">
+                                        {[
+                                          contact.relationship_to_owner,
+                                          contact.email
+                                        ].filter(Boolean).join(' | ') || 'No additional info'}
+                                      </Typography>
+                                    </Box>
+                                  </MenuItem>
+                                ))}
+                            </Select>
+                            {userContacts.filter(c => !selectedUserContacts.some(sc => sc.id === c.id)).length === 0 && (
+                              <FormHelperText>All contacts have been added to this appointment</FormHelperText>
+                            )}
+                          </FormControl>
+                        </Grid>
+                      ) : (
+                        /* Contact creation form */
+                        <>
+                          <Grid item xs={12} md={6}>
+                            <TextField
+                              fullWidth
+                              label="First Name"
+                              InputLabelProps={{ shrink: true }}
+                              {...personalAttendeeForm.register('firstName', { required: 'First name is required' })}
+                              error={!!personalAttendeeForm.formState.errors.firstName}
+                              helperText={personalAttendeeForm.formState.errors.firstName?.message}
+                              required
+                            />
+                          </Grid>
+                          
+                          <Grid item xs={12} md={6}>
+                            <TextField
+                              fullWidth
+                              label="Last Name"
+                              InputLabelProps={{ shrink: true }}
+                              {...personalAttendeeForm.register('lastName', { required: 'Last name is required' })}
+                              error={!!personalAttendeeForm.formState.errors.lastName}
+                              helperText={personalAttendeeForm.formState.errors.lastName?.message}
+                              required
+                            />
+                          </Grid>
+                          
+                          <Grid item xs={12} md={6}>
+                            <TextField
+                              fullWidth
+                              label="Email"
+                              type="email"
+                              InputLabelProps={{ shrink: true }}
+                              {...personalAttendeeForm.register('email')}
+                              error={!!personalAttendeeForm.formState.errors.email}
+                              helperText={personalAttendeeForm.formState.errors.email?.message}
+                            />
+                          </Grid>
+                          
+                          <Grid item xs={12} md={6}>
+                            <TextField
+                              fullWidth
+                              label="Phone Number"
+                              InputLabelProps={{ shrink: true }}
+                              {...personalAttendeeForm.register('phone')}
+                              error={!!personalAttendeeForm.formState.errors.phone}
+                              helperText={personalAttendeeForm.formState.errors.phone?.message}
+                            />
+                          </Grid>
+
+                          {/* Conditional fields based on attendee type */}
+                          {selectedRequestTypeConfig?.attendee_type === 'personal' && (
+                            <Grid item xs={12} md={6}>
+                              <Controller
+                                name="relationshipToRequester"
+                                control={personalAttendeeForm.control}
+                                render={({ field }) => (
+                                  <EnumSelect
+                                    enumType="personRelationshipType"
+                                    label="Relationship to You"
+                                    error={!!personalAttendeeForm.formState.errors.relationshipToRequester}
+                                    helperText={personalAttendeeForm.formState.errors.relationshipToRequester?.message}
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                  />
+                                )}
+                              />
+                            </Grid>
+                          )}
+
+                          <Grid item xs={12}>
+                            <TextField
+                              fullWidth
+                              multiline
+                              rows={3}
+                              label="Notes"
+                              InputLabelProps={{ shrink: true }}
+                              {...personalAttendeeForm.register('comments')}
+                              error={!!personalAttendeeForm.formState.errors.comments}
+                              helperText={personalAttendeeForm.formState.errors.comments?.message}
+                            />
+                          </Grid>
+                        </>
+                      )}
+
+                      {/* Action buttons */}
+                      <Grid item xs={12}>
+                        <Box 
+                          sx={{ 
+                            display: 'flex', 
+                            flexDirection: { xs: 'column', sm: 'row' },
+                            alignItems: { xs: 'stretch', sm: 'center' },
+                            justifyContent: 'flex-end',
+                            gap: 2,
+                            mt: 2 
+                          }}
+                        >
+                          {/* Cancel button */}
+                          <SecondaryButton
+                            size="medium"
+                            startIcon={<CancelIcon />}
+                            onClick={() => {
+                              resetPersonalAttendeeForm();
+                              setIsContactFormExpanded(false);
+                              setEditingContactId(null);
+                              setContactFormMode('select');
+                            }}
+                            sx={{ width: { xs: '100%', sm: 'auto' } }}
+                          >
+                            Cancel
+                          </SecondaryButton>
+                          
+                          {/* Add/Create/Update button */}
+                          {contactFormMode === 'create' && (
+                            <PrimaryButton
+                              size="medium"
+                              startIcon={editingContactId ? <EditIcon /> : <AddIcon />}
+                              onClick={async () => {
+                                const isValid = await personalAttendeeForm.trigger();
+                                if (!isValid) return;
+
+                                const formData = personalAttendeeForm.getValues();
+                                const contactData: UserContactCreateData = {
+                                  first_name: formData.firstName,
+                                  last_name: formData.lastName,
+                                  email: formData.email || undefined,
+                                  phone: formData.phone || undefined,
+                                  relationship_to_owner: formData.relationshipToRequester || undefined,
+                                  notes: formData.comments || undefined,
+                                };
+
+                                if (editingContactId) {
+                                  await updateContactInList(contactData);
+                                } else {
+                                  await createAndAddContact(contactData);
+                                }
+                              }}
+                              sx={{ width: { xs: '100%', sm: 'auto' } }}
+                            >
+                              {editingContactId ? 'Update' : 'Create and Add'}
+                            </PrimaryButton>
+                          )}
+                        </Box>
+                      </Grid>
+                    </>
+                  )}
+                </>
+              )}
             </Grid>
           </Box>
         );
@@ -1862,9 +2587,15 @@ export const AppointmentRequestForm: React.FC = () => {
           <Grid container spacing={2}>
             <Grid item xs={12}>
               <Typography variant="body1">
-                <strong>Dignitaries:</strong> {selectedDignitaries.map(d => 
-                  `${formatHonorificTitle(d.honorific_title || '')} ${d.first_name} ${d.last_name}`
-                ).join(', ')}
+                <strong>{selectedRequestTypeConfig?.attendee_label_plural || 'Attendees'}:</strong> {
+                  selectedRequestTypeConfig?.attendee_type === 'dignitary' 
+                    ? selectedDignitaries.map(d => 
+                        `${formatHonorificTitle(d.honorific_title || '')} ${d.first_name} ${d.last_name}`
+                      ).join(', ')
+                    : selectedUserContacts.map(c => 
+                        `${c.first_name} ${c.last_name}`
+                      ).join(', ')
+                }
               </Typography>
             </Grid>
             <Grid item xs={12}>
@@ -2012,7 +2743,7 @@ export const AppointmentRequestForm: React.FC = () => {
   return (
     <Box sx={{ width: '100%' }}>
       <Stepper activeStep={activeStep} sx={{ mb: 4 }} alternativeLabel>
-        {steps.map((label) => (
+        {getDynamicSteps(selectedRequestTypeConfig).map((label: string) => (
           <Step key={label}>
             <StepLabel>{label}</StepLabel>
           </Step>
@@ -2027,7 +2758,7 @@ export const AppointmentRequestForm: React.FC = () => {
             <SecondaryButton 
               onClick={handleBack} 
               sx={{ mr: 1 }}
-              disabled={(activeStep === 1 && isDignitaryFormExpanded)}
+              disabled={(activeStep === 1 && (isDignitaryFormExpanded || isContactFormExpanded))}
             >
               Back
             </SecondaryButton>
@@ -2035,17 +2766,17 @@ export const AppointmentRequestForm: React.FC = () => {
           <PrimaryButton
             onClick={() => handleNext(false)}
             disabled={
-              // If the active step is the last step, disable the next button
-              activeStep === steps.length || 
-              // At step 2, if the dignitary form is expanded, disable the next button
-              (activeStep === 1 && isDignitaryFormExpanded) || 
-              // At step 2, if no dignitaries are selected, disable the next button
-              (activeStep === 1 && selectedDignitaries.length === 0) ||
-              // At step 2, if not enough dignitaries are added, disable the next button
-              (activeStep === 1 && selectedDignitaries.length < requiredDignitariesCount)
+              // At step 2, if any form is expanded, disable the next button
+              (activeStep === 1 && (isDignitaryFormExpanded || isContactFormExpanded)) || 
+              // At step 2, if no attendees are selected (dignitary or contacts), disable the next button
+              (activeStep === 1 && selectedRequestTypeConfig?.attendee_type === 'dignitary' && selectedDignitaries.length === 0) ||
+              (activeStep === 1 && selectedRequestTypeConfig?.attendee_type !== 'dignitary' && selectedUserContacts.length === 0) ||
+              // At step 2, if not enough attendees are added, disable the next button
+              (activeStep === 1 && selectedRequestTypeConfig?.attendee_type === 'dignitary' && selectedDignitaries.length < requiredDignitariesCount) ||
+              (activeStep === 1 && selectedRequestTypeConfig?.attendee_type !== 'dignitary' && selectedUserContacts.length < requiredDignitariesCount)
             }
           >
-            {activeStep === steps.length - 1 ? 'Submit' : 'Next'}
+            {activeStep === getDynamicSteps(selectedRequestTypeConfig).length - 1 ? 'Submit' : 'Next'}
           </PrimaryButton>
         </Box>
       </Paper>

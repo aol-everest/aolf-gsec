@@ -2,13 +2,61 @@ from .user import User, UserRole
 from .dignitary import Dignitary, HonorificTitle, PrimaryDomain, DignitarySource
 from .dignitaryPointOfContact import DignitaryPointOfContact, RelationshipType
 from .location import Location, MeetingPlace
-from .appointment import Appointment, AppointmentStatus, AppointmentTimeOfDay, AppointmentSubStatus, AppointmentType, STATUS_SUBSTATUS_MAPPING, VALID_STATUS_OPTIONS, VALID_SUBSTATUS_OPTIONS
-from .appointmentAttachment import AppointmentAttachment, AttachmentType
-from .appointmentDignitary import AppointmentDignitary, AttendanceStatus
-from .accessControl import UserAccess, AccessLevel, EntityType
+from .appointment import Appointment
+from .appointmentAttachment import AppointmentAttachment
+from .appointmentDignitary import AppointmentDignitary
+from .appointmentContact import AppointmentContact
+from .accessControl import UserAccess
 from .auditLog import AuditLog
-from .country import Country
+from .geoCountry import GeoCountry
+from .geoSubdivision import GeoSubdivision
+from .calendarEvent import CalendarEvent
+from .userContact import UserContact
 from database import Base
+
+# Import all enums from the shared enums file
+from .enums import (
+    # User-related enums
+    UserRole,
+    AOLTeacherStatus,
+    AOLProgramType,
+    AOLAffiliation,
+    
+    # Appointment-related enums
+    AppointmentStatus,
+    AppointmentSubStatus,
+    AppointmentType,
+    AppointmentTimeOfDay,
+    RequestType,
+    RoleInTeamProject,
+    AttendanceStatus,
+    
+    # Dignitary-related enums
+    HonorificTitle,
+    PrimaryDomain,
+    DignitarySource,
+    
+    # Relationship-related enums
+    RelationshipType,
+    PersonRelationshipType,
+    
+    # Access control enums
+    AccessLevel,
+    EntityType,
+    
+    # Calendar-related enums
+    EventType,
+    EventStatus,
+    CalendarCreationContext,
+    
+    # Attachment-related enums
+    AttachmentType,
+    
+    # Status mapping and validation data
+    STATUS_SUBSTATUS_MAPPING,
+    VALID_STATUS_OPTIONS,
+    VALID_SUBSTATUS_OPTIONS,
+)
 
 __all__ = [
     'User',
@@ -19,6 +67,7 @@ __all__ = [
     'DignitarySource',
     'DignitaryPointOfContact',
     'RelationshipType',
+    'PersonRelationshipType',
     'Location',
     'MeetingPlace',
     'Appointment',
@@ -26,6 +75,8 @@ __all__ = [
     'AppointmentTimeOfDay',
     'AppointmentSubStatus',
     'AppointmentType',
+    'RequestType',
+    'RoleInTeamProject',
     'AppointmentAttachment',
     'AttachmentType',
     'AppointmentDignitary',
@@ -36,6 +87,19 @@ __all__ = [
     'UserAccess',
     'AccessLevel',
     'EntityType',
-    'Country',
+    'GeoCountry',
     'AttendanceStatus',
-] 
+    'CalendarEvent',
+    'EventType',
+    'EventStatus',
+    'CalendarCreationContext',
+    'AppointmentContact',
+    'UserContact',
+    'AOLTeacherStatus',
+    'AOLProgramType',
+    'AOLAffiliation',
+    'GeoSubdivision',
+    'RoleInTeamProject',
+    'PersonRelationshipType',
+    'CalendarCreationContext',
+]
