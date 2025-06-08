@@ -127,6 +127,7 @@ interface Location {
     last_name: string;
   };
   attachment_thumbnail_path?: string;
+  is_active: boolean;
 }
 
 interface LocationFormData {
@@ -148,6 +149,7 @@ interface LocationFormData {
   attachment_name?: string;
   attachment_file_type?: string;
   attachment_thumbnail_path?: string;
+  is_active: boolean;
 }
 
 const initialFormData: LocationFormData = {
@@ -169,6 +171,7 @@ const initialFormData: LocationFormData = {
   attachment_name: '',
   attachment_file_type: '',
   attachment_thumbnail_path: '',
+  is_active: true,
 };
 
 // Meeting Place Interface
@@ -739,7 +742,8 @@ export default function AdminLocationsManage() {
         // Set form data with all location information including coordinates and derived timezone
         setFormData({
           ...locationData,
-          timezone: result.timezone
+          timezone: result.timezone,
+          is_active: true // Default to active for new locations
         });
 
         // Clear the input after selection
@@ -795,6 +799,7 @@ export default function AdminLocationsManage() {
         attachment_name: location.attachment_name || '',
         attachment_file_type: location.attachment_file_type || '',
         attachment_thumbnail_path: location.attachment_thumbnail_path || '',
+        is_active: location.is_active,
       };
       
       // Set form data with existing values immediately
@@ -1038,6 +1043,23 @@ export default function AdminLocationsManage() {
       headerName: 'Timezone',
       width: 150,
       flex: 0.7,
+    },
+    {
+      field: 'is_active',
+      headerName: 'Status',
+      width: 100,
+      flex: 0.4,
+      renderCell: (params) => (
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            color: params.row.is_active ? 'success.main' : 'error.main',
+            fontWeight: 'medium'
+          }}
+        >
+          {params.row.is_active ? 'Active' : 'Inactive'}
+        </Typography>
+      )
     },
     {
       field: 'created_by_name',
@@ -1330,6 +1352,22 @@ export default function AdminLocationsManage() {
                     />
                   </Grid>
                   <Grid item xs={12}>
+                    <FormControlLabel
+                      control={
+                        <Switch 
+                          checked={formData.is_active} 
+                          onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.checked }))}
+                          name="is_active" 
+                        />
+                      }
+                      label="Location is Active"
+                      sx={{ mt: 1 }}
+                    />
+                    <Typography variant="body2" color="text.secondary" sx={{ ml: 4, mt: 0.5 }}>
+                      Inactive locations will be hidden from front-end users
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12}>
                     <Box sx={{ mt: 2 }}>
                       <Typography variant="subtitle1" gutterBottom>
                         Attachment
@@ -1541,7 +1579,7 @@ export default function AdminLocationsManage() {
               rows={locations}
               columns={columns}
               loading={isLoading}
-              defaultVisibleColumns={['name', 'street_address', 'city', 'attachment', 'actions']}
+              defaultVisibleColumns={['name', 'street_address', 'city', 'is_active', 'attachment', 'actions']}
             />
           )}
         </Box>

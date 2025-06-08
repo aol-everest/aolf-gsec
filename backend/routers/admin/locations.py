@@ -56,7 +56,11 @@ async def get_all_locations(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_read_db)
 ):
-    """Get all locations with creator and updater information"""
+    """Get all locations with creator and updater information.
+    
+    Note: Admin endpoints intentionally show ALL locations including disabled ones (is_active=False).
+    This allows administrators to manage location status and view complete location data.
+    """
 
     # Create aliases for the User table for creator and updater
     CreatorUser = aliased(models.User)
@@ -98,7 +102,10 @@ async def get_location(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_read_db)
 ):
-    """Get a specific location with creator and updater information"""
+    """Get a specific location with creator and updater information.
+    
+    Note: Admin endpoints show all locations regardless of is_active status.
+    """
     # Create aliases for the User table for creator and updater
     CreatorUser = aliased(models.User)
     UpdaterUser = aliased(models.User)
@@ -140,7 +147,10 @@ async def get_meeting_places_for_location(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_read_db)
 ):
-    """Get all meeting places for a specific location"""
+    """Get all meeting places for a specific location.
+    
+    Note: Admin endpoints show meeting places for all locations including disabled ones.
+    """
     # First, check if the user has access to the parent location
     location = db.query(models.Location).filter(models.Location.id == location_id).first()
     if not location:

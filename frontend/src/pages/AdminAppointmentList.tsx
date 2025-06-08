@@ -118,7 +118,7 @@ const AdminAppointmentList: React.FC = () => {
   const { data: locations = [], isLoading: isLoadingLocations } = useQuery({
     queryKey: ['locations'],
     queryFn: async () => {
-      const { data } = await api.get<Location[]>('/locations/all');
+      const { data } = await api.get<Location[]>('/admin/locations/all');
       return data;
     },
     retry: 1,
