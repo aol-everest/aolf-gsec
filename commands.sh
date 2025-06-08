@@ -129,13 +129,13 @@ curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/mac/sessi
 # Backend Deployment to AWS Elastic Beanstalk
 cd backend
 # Deploy to UAT environment
-./deploy-eb.sh --env=uat
+# ./deploy-eb.sh --env=uat
 # Deploy to UAT environment with update mode (for existing environments)
-./deploy-eb.sh --env=uat --update
+# ./deploy-eb.sh --env=uat --update
 # Deploy to production environment
-./deploy-eb.sh --env=prod
+# ./deploy-eb.sh --env=prod
 # Deploy to production environment with update mode
-./deploy-eb.sh --env=prod --update
+# ./deploy-eb.sh --env=prod --update
 
 # View Elastic Beanstalk logs
 eb logs aolf-gsec-backend-uat
@@ -150,13 +150,15 @@ aws ssm start-session --target i-001d04a51ce791d3d
 # Frontend Deployment to AWS S3 and CloudFront
 cd frontend
 # Deploy to UAT environment
-./deploy.sh --env=uat
+# ./deploy.sh --env=uat
+./deploy-frontend-uat.sh --env uat
 # Deploy to production environment
-./deploy.sh --env=prod
+# ./deploy.sh --env=prod
+./deploy-frontend-prod.sh --env prod
 
 # Verify deployments
-cd backend && ./verify-eb-deployment.sh --env=uat
-cd frontend && ./verify-deployment.sh --env=uat
+# cd backend && ./verify-eb-deployment.sh --env=uat
+# cd frontend && ./verify-deployment.sh --env=uat
 
 # AWS S3 commands
 aws s3 ls s3://aolf-gsec-uat/frontend/
@@ -455,7 +457,7 @@ terraform apply
 terraform state show aws_rds_cluster.aurora
 
 # Deploy the frontend
-./deploy-frontend.sh --cloudfront-id=$(terraform -chdir=../terraform output -raw cloudfront_distribution_id)
+# ./deploy-frontend.sh --cloudfront-id=$(terraform -chdir=../terraform output -raw cloudfront_distribution_id)
 
 # Deploy the backend
 cd backend; eb deploy

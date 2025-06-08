@@ -26,6 +26,12 @@ fi
 # Set environment variables for UAT
 export ENVIRONMENT=uat
 echo "Environment: $ENVIRONMENT"
+export POSTGRES_HOST=aolf-gsec-db-uat.cxg084kkue8o.us-east-2.rds.amazonaws.com
+export POSTGRES_PORT=5432
+export POSTGRES_DB=aolf_gsec
+export POSTGRES_USER=aolf_gsec_user
+export POSTGRES_PASSWORD=''
+export POSTGRES_SCHEMA=public
 
 # Database connection should be set via environment variables
 # These should already be configured in the UAT environment:

@@ -30,6 +30,13 @@ fi
 # Set environment variables for PRODUCTION
 export ENVIRONMENT=production
 echo "Environment: $ENVIRONMENT"
+export POSTGRES_HOST="aolf-gsec-prod-database.cluster-cxg084kkue8o.us-east-2.rds.amazonaws.com"
+export POSTGRES_PORT=5432
+export POSTGRES_DB=aolf_gsec
+export POSTGRES_USER=aolf_gsec_admin
+export POSTGRES_PASSWORD=''
+export POSTGRES_SCHEMA=aolf_gsec_app
+
 
 # Database connection should be set via environment variables
 # These should already be configured in the PRODUCTION environment:
@@ -100,7 +107,7 @@ psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c "
 
 # Count existing locations
 LOCATION_COUNT=$(psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -t -c "
-    SELECT COUNT(*) FROM locations;
+    SELECT COUNT(*) FROM aolf_gsec_app.locations;
 " | xargs)
 
 echo "Current location count: $LOCATION_COUNT"
@@ -136,7 +143,7 @@ if [ "$COLUMN_EXISTS" -gt 0 ]; then
         SELECT 
             is_active,
             COUNT(*) as count
-        FROM locations 
+        FROM aolf_gsec_app.locations 
         GROUP BY is_active
         ORDER BY is_active DESC;
     "
@@ -153,7 +160,7 @@ else
     
     echo "Step 1: Adding is_active column as nullable..."
     psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c "
-        ALTER TABLE locations ADD COLUMN is_active BOOLEAN;
+        ALTER TABLE aolf_gsec_app.locations ADD COLUMN is_active BOOLEAN;
     "
     
     if [ $? -eq 0 ]; then
@@ -174,23 +181,23 @@ else
     
     # Show NULL count before update
     NULL_COUNT_BEFORE=$(psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -t -c "
-        SELECT COUNT(*) FROM locations WHERE is_active IS NULL;
+        SELECT COUNT(*) FROM aolf_gsec_app.locations WHERE is_active IS NULL;
     " | xargs)
     echo "Locations with NULL is_active before update: $NULL_COUNT_BEFORE"
     
     # Update all NULL values to true
     psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c "
-        UPDATE locations SET is_active = true WHERE is_active IS NULL;
+        UPDATE aolf_gsec_app.locations SET is_active = true WHERE is_active IS NULL;
     "
     
     if [ $? -eq 0 ]; then
         # Verify update was successful
         UPDATED_COUNT=$(psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -t -c "
-            SELECT COUNT(*) FROM locations WHERE is_active = true;
+            SELECT COUNT(*) FROM aolf_gsec_app.locations WHERE is_active = true;
         " | xargs)
         
         NULL_COUNT_AFTER=$(psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -t -c "
-            SELECT COUNT(*) FROM locations WHERE is_active IS NULL;
+            SELECT COUNT(*) FROM aolf_gsec_app.locations WHERE is_active IS NULL;
         " | xargs)
         
         echo "✅ Successfully updated locations to active"
@@ -221,8 +228,8 @@ else
     
     echo "Step 3: Making is_active column NOT NULL with default value..."
     psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c "
-        ALTER TABLE locations ALTER COLUMN is_active SET NOT NULL;
-        ALTER TABLE locations ALTER COLUMN is_active SET DEFAULT true;
+        ALTER TABLE aolf_gsec_app.locations ALTER COLUMN is_active SET NOT NULL;
+        ALTER TABLE aolf_gsec_app.locations ALTER COLUMN is_active SET DEFAULT true;
     "
     
     if [ $? -eq 0 ]; then
@@ -252,19 +259,19 @@ psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c "
 
 # Verify all locations are active
 FINAL_ACTIVE_COUNT=$(psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -t -c "
-    SELECT COUNT(*) FROM locations WHERE is_active = true;
+    SELECT COUNT(*) FROM aolf_gsec_app.locations WHERE is_active = true;
 " | xargs)
 
 FINAL_TOTAL_COUNT=$(psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -t -c "
-    SELECT COUNT(*) FROM locations;
+    SELECT COUNT(*) FROM aolf_gsec_app.locations;
 " | xargs)
 
 FINAL_FALSE_COUNT=$(psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -t -c "
-    SELECT COUNT(*) FROM locations WHERE is_active = false;
+    SELECT COUNT(*) FROM aolf_gsec_app.locations WHERE is_active = false;
 " | xargs)
 
 FINAL_NULL_COUNT=$(psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -t -c "
-    SELECT COUNT(*) FROM locations WHERE is_active IS NULL;
+    SELECT COUNT(*) FROM aolf_gsec_app.locations WHERE is_active IS NULL;
 " | xargs)
 
 echo "Final counts:"
@@ -295,7 +302,7 @@ psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c "
     SELECT 
         is_active,
         COUNT(*) as count
-    FROM locations 
+    FROM aolf_gsec_app.locations 
     GROUP BY is_active
     ORDER BY is_active DESC;
 "
@@ -303,7 +310,7 @@ psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c "
 echo "Step 6: Sample of locations with new column..."
 psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c "
     SELECT id, name, is_active 
-    FROM locations 
+    FROM aolf_gsec_app.locations 
     ORDER BY id 
     LIMIT 10;
 "
