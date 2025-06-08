@@ -289,6 +289,7 @@ class LocationBase(BaseModel):
     attachment_thumbnail_path: Optional[str] = None
     lat: Optional[float] = None
     lng: Optional[float] = None
+    is_active: bool = True
 
 class Location(LocationBase):
     id: int
@@ -317,6 +318,7 @@ class LocationAdminUpdate(LocationBase):
     attachment_name: Optional[str] = None
     attachment_file_type: Optional[str] = None
     attachment_thumbnail_path: Optional[str] = None
+    is_active: Optional[bool] = None
 
 class LocationAdmin(LocationBase):
     id: int

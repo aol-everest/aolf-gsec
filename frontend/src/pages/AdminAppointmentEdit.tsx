@@ -255,7 +255,7 @@ const AdminAppointmentEdit: React.FC = () => {
   const { data: locations = [] } = useQuery<Location[]>({
     queryKey: ['locations'],
     queryFn: async () => {
-      const { data } = await api.get<Location[]>('/locations/all');
+      const { data } = await api.get<Location[]>('/admin/locations/all');
       return data;
     },
   });

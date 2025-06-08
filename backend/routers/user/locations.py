@@ -23,8 +23,8 @@ async def get_locations_for_users(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_read_db)
 ):
-    """Get all locations - accessible by all users"""
-    locations = db.query(models.Location).all()
+    """Get all active locations - accessible by all users"""
+    locations = db.query(models.Location).filter(models.Location.is_active == True).all()
     return locations
 
 @router.get("/locations/{location_id}", response_model=schemas.Location)
@@ -33,8 +33,11 @@ async def get_location_for_user(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_read_db)
 ):
-    """Get a specific location - accessible by all users"""
-    location = db.query(models.Location).filter(models.Location.id == location_id).first()
+    """Get a specific active location - accessible by all users"""
+    location = db.query(models.Location).filter(
+        models.Location.id == location_id,
+        models.Location.is_active == True
+    ).first()
     if not location:
         raise HTTPException(status_code=404, detail="Location not found")
     return location
@@ -46,9 +49,12 @@ async def get_meeting_places_for_location(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_read_db)
 ):
-    """Get all meeting places for a specific location"""
-    # First, check if the user has access to the parent location
-    location = db.query(models.Location).filter(models.Location.id == location_id).first()
+    """Get all meeting places for a specific active location"""
+    # First, check if the location exists and is active
+    location = db.query(models.Location).filter(
+        models.Location.id == location_id,
+        models.Location.is_active == True
+    ).first()
     if not location:
         raise HTTPException(status_code=404, detail="Location not found")
 
@@ -89,8 +95,11 @@ async def get_location_attachment(
     location_id: int,
     db: Session = Depends(get_read_db)
 ):
-    """Get a location's attachment - accessible to all users"""
-    location = db.query(models.Location).filter(models.Location.id == location_id).first()
+    """Get an active location's attachment - accessible to all users"""
+    location = db.query(models.Location).filter(
+        models.Location.id == location_id,
+        models.Location.is_active == True
+    ).first()
     if not location:
         raise HTTPException(status_code=404, detail="Location not found")
     
@@ -127,8 +136,11 @@ async def get_location_thumbnail(
     location_id: int,
     db: Session = Depends(get_read_db)
 ):
-    """Get a location's attachment thumbnail - accessible to all users"""
-    location = db.query(models.Location).filter(models.Location.id == location_id).first()
+    """Get an active location's attachment thumbnail - accessible to all users"""
+    location = db.query(models.Location).filter(
+        models.Location.id == location_id,
+        models.Location.is_active == True
+    ).first()
     if not location:
         raise HTTPException(status_code=404, detail="Location not found")
     

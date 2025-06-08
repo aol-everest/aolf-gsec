@@ -29,6 +29,7 @@ class Location(Base):
     attachment_name = Column(String)  # Original filename of the attachment
     attachment_file_type = Column(String)  # MIME type of the attachment
     attachment_thumbnail_path = Column(String)  # Path to the thumbnail in S3
+    is_active = Column(Boolean, default=True, nullable=False)  # Allow admins to disable locations for front-end users
     
     # Timestamps and audit fields
     created_at = Column(DateTime, default=datetime.utcnow)

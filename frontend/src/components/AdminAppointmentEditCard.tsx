@@ -373,7 +373,7 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
     queryFn: async () => {
       if (!watchLocationId) return [];
       try {
-        const { data } = await api.get<MeetingPlace[]>(`/locations/${watchLocationId}/meeting_places`);
+        const { data } = await api.get<MeetingPlace[]>(`/admin/locations/${watchLocationId}/meeting_places`);
         return data;
       } catch (error) {
         console.error("Error fetching meeting places:", error);
