@@ -201,6 +201,10 @@ interface SubStatusMap {
   [key: string]: string;
 }
 
+interface EventTypeMap {
+  [key: string]: string;
+}
+
 interface RoleMap {
   [key: string]: string;
 }
@@ -336,6 +340,27 @@ export interface UserContactSearchResponse {
   search_query: string;
 }
 
+export interface CalendarEvent {
+  id?: number;
+  event_type: string;
+  title: string;
+  description?: string;
+  start_datetime: string;
+  start_date: string;
+  start_time: string;
+  duration: number;
+  location_id?: number;
+  meeting_place_id?: number;
+  max_capacity?: number;
+  is_open_for_booking?: boolean;
+  instructions?: string;
+  status?: string;
+  creation_context?: string;
+  creation_context_id?: string;
+  external_calendar_id?: string;
+  external_calendar_link?: string;
+}
+
 export type { 
   Location, 
   User, 
@@ -349,6 +374,7 @@ export type {
   StatusSubStatusMapping, 
   StatusMap, 
   SubStatusMap, 
+  EventTypeMap,
   RoleMap, 
   AccessLevelMap, 
   EntityTypeMap, 
