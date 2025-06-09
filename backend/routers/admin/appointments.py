@@ -292,18 +292,42 @@ def prepare_enhanced_admin_appointment_response(appointment: models.Appointment,
     appointment_dignitaries = []
     if appointment.appointment_dignitaries:
         for ad in appointment.appointment_dignitaries:
-            appointment_dignitaries.append(schemas.AppointmentDignitaryWithDignitary(**ad.__dict__))
+            ad_dict = ad.__dict__.copy()
+            if ad.dignitary is not None:
+                ad_dict['dignitary'] = schemas.Dignitary.from_orm(ad.dignitary)
+            appointment_dignitaries.append(schemas.AppointmentDignitaryWithDignitary(**ad_dict))
+    
+    # Convert the appointment to dict and handle nested relationships dynamically
+    response_data = appointment.__dict__.copy()
+    
+    # Dynamic relationship conversion mapping
+    relationship_mappings = {
+        'location': schemas.Location,
+        'created_by_user': schemas.User,
+        'last_updated_by_user': schemas.User,
+        'approved_by_user': schemas.User,
+        'requester': schemas.User,
+        'meeting_place': schemas.MeetingPlace,
+    }
+    
+    # Dynamically convert SQLAlchemy relationships to Pydantic models
+    for field_name, pydantic_schema in relationship_mappings.items():
+        if hasattr(appointment, field_name):
+            field_value = getattr(appointment, field_name)
+            if field_value is not None:
+                # Check if it's a SQLAlchemy model instance (has __table__ attribute)
+                if hasattr(field_value, '__table__'):
+                    response_data[field_name] = pydantic_schema.from_orm(field_value)
     
     # Prepare response
-    response_data = {
-        **appointment.__dict__,
+    response_data.update({
         'calendar_event': calendar_event_info,
         'appointment_contacts': appointment_contacts if appointment_contacts else None,
         'appointment_dignitaries': appointment_dignitaries if appointment_dignitaries else None,
         # Legacy compatibility
         'appointment_date': appointment.calendar_event.start_date if appointment.calendar_event else appointment.preferred_date,
         'appointment_time': appointment.calendar_event.start_time if appointment.calendar_event else None,
-    }
+    })
     
     return schemas.AdminAppointmentResponseEnhanced(**response_data)
 

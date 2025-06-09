@@ -66,6 +66,7 @@ class User(UserBase):
 
     class Config:
         orm_mode = True
+        from_attributes = True
 
 class UserUpdate(BaseModel):
     phone_number: Optional[str] = None
@@ -235,6 +236,7 @@ class Dignitary(DignitaryBase):
 
     class Config:
         orm_mode = True
+        from_attributes = True
 
 class DignitaryWithRelationship(DignitaryWithAppointments):
     relationship_type: str
@@ -380,6 +382,7 @@ class Location(LocationBase):
 
     class Config:
         orm_mode = True
+        from_attributes = True
 
 class LocationAdminCreate(LocationBase):
     secretariat_internal_notes: Optional[str] = None
