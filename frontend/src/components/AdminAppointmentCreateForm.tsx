@@ -834,7 +834,16 @@ export const AdminAppointmentCreateForm: React.FC = () => {
     onError: (error: any) => {
       console.error('Error creating appointment:', error);
       setIsUploading(false);
-      enqueueSnackbar(`Failed to create appointment: ${error.response?.data?.detail || 'Unknown error'}`, { 
+      let errorMsg = 'Some required fields are missing or invalid.';
+      if (error.response?.data) {
+        // If backend returns a string, use it; otherwise, keep generic message
+        if (typeof error.response.data === 'string') {
+          errorMsg = error.response.data;
+        }
+      } else if (error.message) {
+        errorMsg = error.message;
+      }
+      enqueueSnackbar(`Failed to create appointment: ${errorMsg}`, { 
         variant: 'error',
         autoHideDuration: 6000
       });
@@ -864,7 +873,15 @@ export const AdminAppointmentCreateForm: React.FC = () => {
     onError: (error: any) => {
       console.error('Error creating calendar event:', error);
       setIsUploading(false);
-      enqueueSnackbar(`Failed to create calendar event: ${error.response?.data?.detail || 'Unknown error'}`, { 
+      let errorMsg = 'Some required fields are missing or invalid.';
+      if (error.response?.data) {
+        if (typeof error.response.data === 'string') {
+          errorMsg = error.response.data;
+        }
+      } else if (error.message) {
+        errorMsg = error.message;
+      }
+      enqueueSnackbar(`Failed to create calendar event: ${errorMsg}`, { 
         variant: 'error',
         autoHideDuration: 6000
       });
@@ -1000,6 +1017,7 @@ export const AdminAppointmentCreateForm: React.FC = () => {
             status: 'DRAFT', // Default status for calendar events
           };
           
+          console.log('[DEBUG] Calendar Event Creation Payload:', calendarEventData);
           await createCalendarEventMutation.mutateAsync(calendarEventData);
         } else {
           // Create appointment for dignitary event types (existing flow)
@@ -1013,8 +1031,6 @@ export const AdminAppointmentCreateForm: React.FC = () => {
           const appointmentCreateData = {
             dignitary_ids: dignitary_ids,
             purpose: formData.purpose_of_meeting || '',
-            preferred_date: formData.preferred_date || '',
-            preferred_time_of_day: formData.preferred_time_of_day || '',
             location_id: formData.location_id,
             requester_notes_to_secretariat: formData.requester_notes_to_secretariat,
             appointment_date: formData.appointment_date,
@@ -1026,8 +1042,11 @@ export const AdminAppointmentCreateForm: React.FC = () => {
             secretariat_meeting_notes: formData.secretariat_meeting_notes,
             secretariat_follow_up_actions: formData.secretariat_follow_up_actions,
             is_placeholder: false,
+            duration: formData.duration || 15,
+            event_type: selectedEventType,
           };
           
+          console.log('[DEBUG] Appointment Creation Payload:', appointmentCreateData);
           await createAppointmentMutation.mutateAsync(appointmentCreateData);
         }
       } catch (error) {

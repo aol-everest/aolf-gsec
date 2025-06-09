@@ -476,6 +476,16 @@ EVENT_TYPE_TO_REQUEST_TYPE_MAPPING = {
     RequestType.OTHER: EventType.OTHER
 }
 
+# Explicit event type to request type mapping for appointment creation (all event types covered)
+EVENT_TYPE_TO_REQUEST_TYPE_EXPLICIT = {
+    EventType.DIGNITARY_APPOINTMENT: RequestType.DIGNITARY,
+    EventType.DARSHAN: RequestType.DARSHAN,
+    EventType.VOLUNTEER_MEETING: RequestType.PROJECT_TEAM_MEETING,
+    EventType.PROJECT_TEAM_MEETING: RequestType.PROJECT_TEAM_MEETING,
+    EventType.PRIVATE_EVENT: RequestType.OTHER,
+    EventType.OTHER: RequestType.OTHER,
+}
+
 # ============================================================================
 # STATUS MAPPING AND VALIDATION DATA
 # ============================================================================

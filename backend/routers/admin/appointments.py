@@ -13,6 +13,7 @@ from dependencies.access_control import admin_get_appointment
 from utils.email_notifications import notify_appointment_creation, notify_appointment_update
 from utils.calendar_sync import check_and_sync_appointment, check_and_sync_updated_appointment
 from utils.utils import convert_to_datetime_with_tz
+from models.enums import RequestType, EVENT_TYPE_TO_REQUEST_TYPE_EXPLICIT
 
 logger = logging.getLogger(__name__)
 
@@ -88,10 +89,36 @@ async def create_appointment(
 ):
     """Create a new appointment (unified admin endpoint supporting both legacy and enhanced requests)"""
     start_time = datetime.utcnow()
-    logger.info(f"Admin creating new {appointment.request_type.value} appointment for user {current_user.email} (ID: {current_user.id})")
+    logger.info(f"Admin creating new appointment for user {current_user.email} (ID: {current_user.id})")
     logger.debug(f"Appointment data: {appointment.dict()}")
+    logger.debug(f"event_type: {getattr(appointment, 'event_type', None)}, request_type: {getattr(appointment, 'request_type', None)}")
     
     try:
+        # Use explicit mapping from event_type to request_type
+        if getattr(appointment, 'event_type', None) and not getattr(appointment, 'request_type', None):
+            event_type = appointment.event_type
+            event_type_value = event_type.value if hasattr(event_type, 'value') else str(event_type)
+            # Try to get the enum member from the value if needed
+            event_type_enum = None
+            try:
+                from models.enums import EventType
+                event_type_enum = EventType(event_type_value)
+            except Exception:
+                pass
+            request_type = None
+            if event_type_enum and event_type_enum in EVENT_TYPE_TO_REQUEST_TYPE_EXPLICIT:
+                request_type = EVENT_TYPE_TO_REQUEST_TYPE_EXPLICIT[event_type_enum]
+            elif event_type_value in [et.value for et in EVENT_TYPE_TO_REQUEST_TYPE_EXPLICIT.keys()]:
+                # fallback: match by value
+                for et, rt in EVENT_TYPE_TO_REQUEST_TYPE_EXPLICIT.items():
+                    if et.value == event_type_value:
+                        request_type = rt
+                        break
+            if request_type:
+                appointment.request_type = request_type
+            else:
+                logger.warning(f"Unrecognized event_type '{event_type_value}' for mapping to request_type.")
+        
         # Handle calendar event creation scenarios
         calendar_event = None
         

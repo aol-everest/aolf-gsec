@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, validator
+from pydantic import BaseModel, EmailStr, validator, root_validator
 from typing import Optional, Dict, Any, Union, List
 from datetime import datetime, date
 from models.enums import (
@@ -937,7 +937,8 @@ class AppointmentCreateEnhanced(BaseModel):
     """Enhanced appointment creation supporting both dignitary and darshan types"""
     purpose: str
     requester_notes_to_secretariat: Optional[str] = None
-    request_type: RequestType = RequestType.DIGNITARY
+    request_type: Optional[RequestType] = None
+    event_type: Optional[EventType] = None
     
     # Option 1: Link to existing calendar event (ADMIN/SECRETARIAT ONLY)
     calendar_event_id: Optional[int] = None
@@ -980,6 +981,19 @@ class AppointmentCreateEnhanced(BaseModel):
         if values.get('appointment_date') and not v:
             raise ValueError("appointment_time is required when appointment_date is specified")
         return v
+
+    @root_validator(pre=True)
+    def set_request_type_from_event_type(cls, values):
+        if not values.get('request_type') and values.get('event_type'):
+            from models.enums import EVENT_TYPE_TO_REQUEST_TYPE_MAPPING
+            event_type = values['event_type']
+            # Reverse the mapping to get request_type from event_type
+            reverse_map = {v.value: k.value for k, v in EVENT_TYPE_TO_REQUEST_TYPE_MAPPING.items()}
+            if event_type in reverse_map:
+                values['request_type'] = reverse_map[event_type]
+            elif hasattr(event_type, 'value') and event_type.value in reverse_map:
+                values['request_type'] = reverse_map[event_type.value]
+        return values
 
 # Enhanced Appointment Response Schema
 class AppointmentResponseEnhanced(BaseModel):
