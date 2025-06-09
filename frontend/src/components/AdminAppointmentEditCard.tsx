@@ -145,6 +145,7 @@ interface AdminAppointmentEditCardProps {
   timeSlotDetailsMap?: AppointmentTimeSlotDetailsMap | null;
   currentAppointmentId?: number;
   isLoadingTimeSlots?: boolean;
+  showStatusFields?: boolean;
 }
 
 // Common file types and their corresponding icons
@@ -335,6 +336,7 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
   timeSlotDetailsMap,
   currentAppointmentId,
   isLoadingTimeSlots = false,
+  showStatusFields = true,
 }, ref) => {
   // File input refs
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1155,86 +1157,92 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
       </Grid>
 
       {/* Status */}
-      <Grid item xs={12} md={6} lg={4}>
-        <Controller
-          name="status"
-          control={control}
-          render={({ field }) => (
-            <FormControl fullWidth error={!!validationErrors.status}>
-              <EnumSelect
-                enumType="appointmentStatus"
-                label="Status"
-                {...field}
-              />
-              {validationErrors.status && (
-                <FormHelperText error>{validationErrors.status}</FormHelperText>
-              )}
-            </FormControl>
-          )}
-        />
-      </Grid>
+      {showStatusFields && (
+        <Grid item xs={12} md={6} lg={4}>
+          <Controller
+            name="status"
+            control={control}
+            render={({ field }) => (
+              <FormControl fullWidth error={!!validationErrors.status}>
+                <EnumSelect
+                  enumType="appointmentStatus"
+                  label="Status"
+                  {...field}
+                />
+                {validationErrors.status && (
+                  <FormHelperText error>{validationErrors.status}</FormHelperText>
+                )}
+              </FormControl>
+            )}
+          />
+        </Grid>
+      )}
 
       {/* Sub-Status */}
-      <Grid item xs={12} md={6} lg={4}>
-        <Controller
-          name="sub_status"
-          control={control}
-          render={({ field }) => (
-            <FormControl fullWidth error={!!validationErrors.sub_status}>
-              <InputLabel>Sub-Status</InputLabel>
-              <Select
-                {...field}
-                label="Sub-Status"
-                value={field.value || ''}
-              >
-                {allSubStatusOptions.map((option) => {
-                  // Determine if this option should be disabled based on the API mapping
-                  const isDisabled = Boolean(
-                    watchStatus && 
-                    statusSubStatusMapping && 
-                    statusSubStatusMapping[watchStatus] && 
-                    statusSubStatusMapping[watchStatus].valid_sub_statuses.length > 0 && 
-                    !statusSubStatusMapping[watchStatus].valid_sub_statuses.includes(option)
-                  );
-                  
-                  return (
-                    <MenuItem 
-                      key={option} 
-                      value={option}
-                      disabled={isDisabled}
-                    >
-                      {option}
-                    </MenuItem>
-                  );
-                })}
-              </Select>
-              {validationErrors.sub_status && (
-                <FormHelperText error>{validationErrors.sub_status}</FormHelperText>
-              )}
-            </FormControl>
-          )}
-        />
-      </Grid>
+      {showStatusFields && (
+        <Grid item xs={12} md={6} lg={4}>
+          <Controller
+            name="sub_status"
+            control={control}
+            render={({ field }) => (
+              <FormControl fullWidth error={!!validationErrors.sub_status}>
+                <InputLabel>Sub-Status</InputLabel>
+                <Select
+                  {...field}
+                  label="Sub-Status"
+                  value={field.value || ''}
+                >
+                  {allSubStatusOptions.map((option) => {
+                    // Determine if this option should be disabled based on the API mapping
+                    const isDisabled = Boolean(
+                      watchStatus && 
+                      statusSubStatusMapping && 
+                      statusSubStatusMapping[watchStatus] && 
+                      statusSubStatusMapping[watchStatus].valid_sub_statuses.length > 0 && 
+                      !statusSubStatusMapping[watchStatus].valid_sub_statuses.includes(option)
+                    );
+                    
+                    return (
+                      <MenuItem 
+                        key={option} 
+                        value={option}
+                        disabled={isDisabled}
+                      >
+                        {option}
+                      </MenuItem>
+                    );
+                  })}
+                </Select>
+                {validationErrors.sub_status && (
+                  <FormHelperText error>{validationErrors.sub_status}</FormHelperText>
+                )}
+              </FormControl>
+            )}
+          />
+        </Grid>
+      )}
 
       {/* Appointment Type */}
-      <Grid item xs={12} md={6} lg={4}>
-        <Controller
-          name="appointment_type"
-          control={control}
-          render={({ field }) => (
-            <FormControl fullWidth error={!!validationErrors.appointment_type}>
-              <EnumSelect
-                enumType="appointmentType"
-                label="Appointment Type"
-                {...field}
-              />
-              {validationErrors.appointment_type && (
-                <FormHelperText error>{validationErrors.appointment_type}</FormHelperText>
-              )}
-            </FormControl>
-          )}
-        />
-      </Grid>
+      {showStatusFields && (
+        <Grid item xs={12} md={6} lg={4}>
+          <Controller
+            name="appointment_type"
+            control={control}
+            render={({ field }) => (
+              <FormControl fullWidth error={!!validationErrors.appointment_type}>
+                <EnumSelect
+                  enumType="appointmentType"
+                  label="Appointment Type"
+                  {...field}
+                />
+                {validationErrors.appointment_type && (
+                  <FormHelperText error>{validationErrors.appointment_type}</FormHelperText>
+                )}
+              </FormControl>
+            )}
+          />
+        </Grid>
+      )}
 
       {showNotesFields && (
         <>
