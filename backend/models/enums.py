@@ -418,12 +418,13 @@ class EventType(str, enum.Enum):
     """Calendar event type enum"""
     DIGNITARY_APPOINTMENT = "Dignitary Appointment"
     DARSHAN = "Darshan"
-    TEACHER_MEETING = "Teacher Meeting"
-    VOLUNTEER_MEETING = "Volunteer Meeting"
+    # TEACHER_MEETING = "Teacher Meeting"
+    VOLUNTEER_MEETING = "Teacher/Volunteer Meeting"
+    PROJECT_TEAM_MEETING = "Project/Team Meeting"
     PRIVATE_EVENT = "Private Event"
-    PLACEHOLDER = "Placeholder"
-    TRAVEL = "Travel"
-    OTHER = "Other"
+    # PLACEHOLDER = "Placeholder"
+    # TRAVEL = "Travel"
+    OTHER = "Other (placeholder)"
 
     def __str__(self):
         return self.value
@@ -471,7 +472,7 @@ class AttachmentType(str, enum.Enum):
 EVENT_TYPE_TO_REQUEST_TYPE_MAPPING = {
     RequestType.DIGNITARY: EventType.DIGNITARY_APPOINTMENT,
     RequestType.DARSHAN: EventType.DARSHAN,
-    RequestType.PROJECT_TEAM_MEETING: EventType.VOLUNTEER_MEETING,
+    RequestType.PROJECT_TEAM_MEETING: EventType.PROJECT_TEAM_MEETING,
     RequestType.OTHER: EventType.OTHER
 }
 
