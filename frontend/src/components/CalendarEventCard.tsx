@@ -36,7 +36,6 @@ export const CalendarEventCard: React.FC<{
     const [isSummaryExpanded, setIsSummaryExpanded] = useState(true)
     const [isDetailsExpanded, setIsDetailsExpanded] = useState(false)
     const [showAllDignitaries, setShowAllDignitaries] = useState(false)
-    const [showAllPurposes, setShowAllPurposes] = useState(false)
     const cardContainerRef = useRef<HTMLDivElement>(null)
     
     // Create a component-specific logger
@@ -214,53 +213,16 @@ export const CalendarEventCard: React.FC<{
                     </Grid>
                 )}
 
-                {/* Purposes - newline separated with more functionality */}
-                {purposes.length > 0 && (
-                    <Grid item xs={12}>
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                            {(showAllPurposes ? purposes : purposes.slice(0, 1)).map((purpose, index) => (
-                                <GridItemIconText 
-                                    key={index}
-                                    containerRef={cardContainerRef} 
-                                    icon={<ListIconV2 sx={{ width: 22, height: 22 }} />} 
-                                    text={purpose} 
-                                    theme={theme} 
-                                />
-                            ))}
-                            {purposes.length > 1 && (
-                                <Box sx={{ ml: 3 }}>
-                                    {!showAllPurposes ? (
-                                        <Button 
-                                            size="small" 
-                                            onClick={() => setShowAllPurposes(true)}
-                                            sx={{ 
-                                                minWidth: 'auto', 
-                                                p: 0.5, 
-                                                fontSize: '0.75rem',
-                                                textTransform: 'none'
-                                            }}
-                                        >
-                                            more ({purposes.length - 1} more)
-                                        </Button>
-                                    ) : (
-                                        <Button 
-                                            size="small" 
-                                            onClick={() => setShowAllPurposes(false)}
-                                            sx={{ 
-                                                minWidth: 'auto', 
-                                                p: 0.5, 
-                                                fontSize: '0.75rem',
-                                                textTransform: 'none'
-                                            }}
-                                        >
-                                            less
-                                        </Button>
-                                    )}
-                                </Box>
-                            )}
-                        </Box>
-                    </Grid>
-                )}
+                {/* Purposes - display all as GridItemIconText */}
+                {purposes.map((purpose, index) => (
+                    <GridItemIconText 
+                        key={index}
+                        containerRef={cardContainerRef} 
+                        icon={<ListIconV2 sx={{ width: 22, height: 22 }} />} 
+                        text={purpose} 
+                        theme={theme} 
+                    />
+                ))}
             </Grid>
         )
     }
