@@ -314,6 +314,15 @@ export const AdminAppointmentCreateForm: React.FC = () => {
       return data;
     },
   });
+
+  // Fetch event status map from the API
+  const { data: eventStatusMap = {} } = useQuery<Record<string, string>>({
+    queryKey: ['calendar-event-status-map'],
+    queryFn: async () => {
+      const { data } = await api.get<Record<string, string>>('/calendar/event-status-options-map');
+      return data;
+    },
+  });
   
   // Forms for each step
   const initialForm = useForm<InitialFormData>({
@@ -1014,7 +1023,7 @@ export const AdminAppointmentCreateForm: React.FC = () => {
             max_capacity: 50, // Default capacity for non-dignitary events
             is_open_for_booking: true,
             instructions: formData.secretariat_notes_to_requester,
-            status: 'DRAFT', // Default status for calendar events
+            status: eventStatusMap['CONFIRMED'] || 'Confirmed', // Use backend enum value with fallback
           };
           
           console.log('[DEBUG] Calendar Event Creation Payload:', calendarEventData);
@@ -1035,12 +1044,13 @@ export const AdminAppointmentCreateForm: React.FC = () => {
             requester_notes_to_secretariat: formData.requester_notes_to_secretariat,
             appointment_date: formData.appointment_date,
             appointment_time: formData.appointment_time,
-            status: formData.status,
-            sub_status: formData.sub_status,
-            appointment_type: formData.appointment_type,
-            secretariat_notes_to_requester: formData.secretariat_notes_to_requester,
-            secretariat_meeting_notes: formData.secretariat_meeting_notes,
-            secretariat_follow_up_actions: formData.secretariat_follow_up_actions,
+            // Only include these fields if they have a value
+            ...(formData.status ? { status: formData.status } : {}),
+            ...(formData.sub_status ? { sub_status: formData.sub_status } : {}),
+            ...(formData.appointment_type ? { appointment_type: formData.appointment_type } : {}),
+            ...(formData.secretariat_notes_to_requester ? { secretariat_notes_to_requester: formData.secretariat_notes_to_requester } : {}),
+            ...(formData.secretariat_meeting_notes ? { secretariat_meeting_notes: formData.secretariat_meeting_notes } : {}),
+            ...(formData.secretariat_follow_up_actions ? { secretariat_follow_up_actions: formData.secretariat_follow_up_actions } : {}),
             is_placeholder: false,
             duration: formData.duration || 15,
             event_type: selectedEventType,

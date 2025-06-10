@@ -472,62 +472,64 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
     const data = getValues();
     const errors: ValidationErrors = {};
     
-    // Common validation for all statuses
-    if (!data.status) {
-      errors.status = 'Status is required';
-    }
+    // Only validate status-related fields if showStatusFields is true
+    if (showStatusFields) {
+      // Common validation for all statuses
+      if (!data.status) {
+        errors.status = 'Status is required';
+      }
 
-    // Specific validation based on status and substatus combinations
-    if (data.status === statusMap['APPROVED']) {
-      if (!data.appointment_type) {
-        errors.appointment_type = 'Appointment type is required for Approved status';
+      // Specific validation based on status and substatus combinations
+      if (data.status === statusMap['APPROVED']) {
+        if (!data.appointment_type) {
+          errors.appointment_type = 'Appointment type is required for Approved status';
+        }
+        
+        if (data.sub_status === subStatusMap['SCHEDULED']) {
+          if (!data.appointment_date) {
+            errors.appointment_date = 'Appointment date is required for Scheduled appointments';
+          }
+          
+          if (!data.appointment_time) {
+            errors.appointment_time = 'Appointment time is required for Scheduled appointments';
+          }
+          
+          if (!data.location_id) {
+            errors.location_id = 'Location is required for Scheduled appointments';
+          }
+        }
+      }
+
+      if (data.status === statusMap['COMPLETED']) {
+        if (!data.appointment_date) {
+          errors.appointment_date = 'Appointment date is required for Completed appointments';
+        }
+
+        if (data.appointment_date && parseUTCDate(data.appointment_date) > new Date()) {
+          errors.appointment_date = 'Appointment date cannot be in the future for Completed appointments';
+        }
+
+        if (!data.location_id) {
+          errors.location_id = 'Location is required for Completed appointments';
+        }
+
+        if (data.sub_status === subStatusMap['FOLLOW_UP_REQUIRED'] && !data.secretariat_follow_up_actions) {
+          errors.secretariat_follow_up_actions = 'Follow-up actions are required for Completed appointments';
+        }
       }
       
-      if (data.sub_status === subStatusMap['SCHEDULED']) {
-        if (!data.appointment_date) {
-          errors.appointment_date = 'Appointment date is required for Scheduled appointments';
+      if (data.status === statusMap['REJECTED']) {
+        if (data.sub_status === subStatusMap['DARSHAN_LINE'] && (!data.secretariat_notes_to_requester || !data.secretariat_notes_to_requester.trim())) {
+          errors.secretariat_notes_to_requester = 'Please add notes about Darshan Line in the notes to requester input';
         }
-        
-        if (!data.appointment_time) {
-          errors.appointment_time = 'Appointment time is required for Scheduled appointments';
-        }
-        
-        if (!data.location_id) {
-          errors.location_id = 'Location is required for Scheduled appointments';
+      }
+      
+      if (data.status === statusMap['PENDING']) {
+        if (data.sub_status === subStatusMap['NEED_MORE_INFO'] && (!data.secretariat_notes_to_requester || !data.secretariat_notes_to_requester.trim())) {
+          errors.secretariat_notes_to_requester = 'Notes to requester are required when requesting more information';
         }
       }
     }
-
-    if (data.status === statusMap['COMPLETED']) {
-      if (!data.appointment_date) {
-        errors.appointment_date = 'Appointment date is required for Completed appointments';
-      }
-
-      if (data.appointment_date && parseUTCDate(data.appointment_date) > new Date()) {
-        errors.appointment_date = 'Appointment date cannot be in the future for Completed appointments';
-      }
-
-      if (!data.location_id) {
-        errors.location_id = 'Location is required for Completed appointments';
-      }
-
-      if (data.sub_status === subStatusMap['FOLLOW_UP_REQUIRED'] && !data.secretariat_follow_up_actions) {
-        errors.secretariat_follow_up_actions = 'Follow-up actions are required for Completed appointments';
-      }
-    }
-    
-    if (data.status === statusMap['REJECTED']) {
-      if (data.sub_status === subStatusMap['DARSHAN_LINE'] && (!data.secretariat_notes_to_requester || !data.secretariat_notes_to_requester.trim())) {
-        errors.secretariat_notes_to_requester = 'Please add notes about Darshan Line in the notes to requester input';
-      }
-    }
-    
-    if (data.status === statusMap['PENDING']) {
-      if (data.sub_status === subStatusMap['NEED_MORE_INFO'] && (!data.secretariat_notes_to_requester || !data.secretariat_notes_to_requester.trim())) {
-        errors.secretariat_notes_to_requester = 'Notes to requester are required when requesting more information';
-      }
-    }
-    
     // Report validation results to parent component if callback provided
     if (onValidationResult) {
       onValidationResult(errors);
