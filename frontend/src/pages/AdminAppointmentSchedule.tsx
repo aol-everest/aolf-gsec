@@ -498,7 +498,7 @@ const AdminAppointmentSchedule: React.FC = () => {
                   isAppointmentInPast={isAppointmentInPast}
                   convertAppointmentSummaryToAppointment={convertAppointmentSummaryToAppointment}
                   statusMap={statusMap}
-                />
+                  />
               );
             })}
           </Box>

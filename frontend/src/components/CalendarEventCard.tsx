@@ -1,18 +1,19 @@
 import { Typography, Box, IconButton, Grid, CardContent, Card, useMediaQuery, useTheme, Collapse, Button } from "@mui/material"
 import { formatDate, formatDateWithTimezone } from "../utils/dateUtils"
 import { formatHonorificTitle } from "../utils/formattingUtils"
-import { CalendarEventWithAppointments, AppointmentSummary, Appointment } from "../models/types"
+import { CalendarEventWithAppointments, AppointmentSummary, Appointment, EventTypeMap } from "../models/types"
 import { useNavigate } from "react-router-dom"
 import { AdminAppointmentsEditRoute } from "../config/routes"
 import { useState, useRef } from "react"
-import { 
+import {
     EditIconV2,
     CloseIconFilledCircleV2,
     CalendarIconV2,
     LocationThinIconV2,
     ClockSquareCircleIconV2,
     PeopleMenuIconV2,
-    ListIconV2
+    ListIconV2,
+    MemberListIconV2
 } from "./iconsv2"
 import { createDebugLogger } from '../utils/debugUtils'
 import { AppointmentStatusChip } from "./AppointmentStatusChip"
@@ -27,6 +28,8 @@ import {
     SecretariatNotesSection,
     AttachmentsSection
 } from './appointment-sections'
+import { useQuery } from '@tanstack/react-query'
+import { useApi } from '../hooks/useApi'
 
 type CalendarEventCardDisplayMode = 'regular' | 'calendar'
 
@@ -44,6 +47,16 @@ export const CalendarEventCard: React.FC<{
     const [isDetailsExpanded, setIsDetailsExpanded] = useState(false)
     const [showAllDignitaries, setShowAllDignitaries] = useState(false)
     const cardContainerRef = useRef<HTMLDivElement>(null)
+    const api = useApi()
+    
+    // Fetch event type map from the API
+    const { data: eventTypeMap = {} } = useQuery<EventTypeMap>({
+        queryKey: ['calendar-event-type-map'],
+        queryFn: async () => {
+            const { data } = await api.get<EventTypeMap>('/calendar/event-type-options-map');
+            return data;
+        },
+    });
     
     // Create a component-specific logger
     const logger = createDebugLogger(`CalendarEventCard:${calendarEvent.id}`)
@@ -237,6 +250,56 @@ export const CalendarEventCard: React.FC<{
     }
 
     const renderAppointmentsSection = (displayMode: CalendarEventCardDisplayMode) => {
+        // For "other" and "darshan" events, show summary information instead of individual appointments
+        if (calendarEvent.event_type === eventTypeMap['OTHER'] || calendarEvent.event_type === eventTypeMap['DARSHAN']) {
+            return (
+                <AppointmentCardSection isMobile={isMobile} theme={theme} header="Event Summary">
+                    <Grid container spacing={1}>
+                        {/* Number of appointments */}
+                        {calendarEvent.appointments && calendarEvent.appointments.length > 0 && (
+                            <GridItemIconText 
+                                containerRef={cardContainerRef} 
+                                icon={<CalendarIconV2 sx={{ width: 22, height: 22 }} />} 
+                                text={`${calendarEvent.appointments.length} appointment${calendarEvent.appointments.length !== 1 ? 's' : ''}`} 
+                                theme={theme} 
+                            />
+                        )}
+
+                        {/* Capacity information */}
+                        {calendarEvent.max_capacity && (
+                            <GridItemIconText 
+                                containerRef={cardContainerRef} 
+                                icon={<MemberListIconV2 sx={{ width: 22, height: 22 }} />} 
+                                text={`Capacity: ${calendarEvent.max_capacity}`} 
+                                theme={theme} 
+                            />
+                        )}
+
+                        {/* Number of people attending */}
+                        {calendarEvent.total_attendees !== undefined && (
+                            <GridItemIconText 
+                                containerRef={cardContainerRef} 
+                                icon={<PeopleMenuIconV2 sx={{ width: 22, height: 22 }} />} 
+                                text={`${calendarEvent.total_attendees} attendee${calendarEvent.total_attendees !== 1 ? 's' : ''}`} 
+                                theme={theme} 
+                            />
+                        )}
+
+                        {/* Event description */}
+                        {calendarEvent.description && (
+                            <GridItemIconText 
+                                containerRef={cardContainerRef} 
+                                icon={<ListIconV2 sx={{ width: 22, height: 22 }} />} 
+                                text={calendarEvent.description} 
+                                theme={theme} 
+                            />
+                        )}
+                    </Grid>
+                </AppointmentCardSection>
+            )
+        }
+
+        // For regular appointments, show individual appointment details
         if (!calendarEvent.appointments || calendarEvent.appointments.length === 0) {
             return renderNoAppointmentsSection()
         }

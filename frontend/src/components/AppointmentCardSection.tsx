@@ -25,25 +25,25 @@ const AppointmentCardSection: React.FC<AppointmentCardSectionProps> = ({ isMobil
         return (
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                 <Typography variant="h4" sx={{ display: 'flex', p: 0, m: 0, color: theme.palette.primary.main, alignItems: 'center', gap: 1, justifyContent: 'flex-start' }}>
-                    {headerIcon !== undefined && (
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                            {headerIcon}
-                        </Box>
-                    )}
-                    {header}
-                    {subheader !== undefined && (
-                        <Typography variant="h4" sx={{ color: theme.palette.text.primary, display: 'inline', p: 0, m: 0 }}>{subheader}</Typography>
-                    )}
-                    {headerCountBadge !== undefined && headerCountBadge > 0 && (
-                        <BadgeCount 
-                            count={headerCountBadge} 
-                            color={theme.palette.text.primary} 
-                            backgroundColor={theme.palette.secondary.light} 
-                            borderColor={theme.palette.divider}
-                            style="bold"
-                        />
-                    )}
-                </Typography>
+                {headerIcon !== undefined && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                        {headerIcon}
+                    </Box>
+                )}
+                {header}
+                {subheader !== undefined && (
+                    <Typography variant="h4" sx={{ color: theme.palette.text.primary, display: 'inline', p: 0, m: 0 }}>{subheader}</Typography>
+                )}
+                {headerCountBadge !== undefined && headerCountBadge > 0 && (
+                    <BadgeCount 
+                        count={headerCountBadge} 
+                        color={theme.palette.text.primary} 
+                        backgroundColor={theme.palette.secondary.light} 
+                        borderColor={theme.palette.divider}
+                        style="bold"
+                    />
+                )}
+            </Typography>
                 
                 {/* Right side content */}
                 {(rightIcon || rightStatus) && (
@@ -115,14 +115,14 @@ const AppointmentCardSection: React.FC<AppointmentCardSectionProps> = ({ isMobil
                                     {rightIcon}
                                 </Box>
                             )}
-                            {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                    {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                         </Box>
                     </Box>
                 </Box>
                 {children && (
-                    <Collapse in={isExpanded}>
-                        {children}
-                    </Collapse>
+                <Collapse in={isExpanded}>
+                    {children}
+                </Collapse>
                 )}
                 </>
             ) : (
