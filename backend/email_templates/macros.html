@@ -1,0 +1,66 @@
+{# Macro to render attendees (both dignitaries and contacts) #}
+{% macro render_attendees(appointment, format='list') %}
+    {% set attendees = [] %}
+    
+    {# Collect dignitaries #}
+    {% if appointment.appointment_dignitaries %}
+        {% for app_dignitary in appointment.appointment_dignitaries %}
+            {% set dignitary = app_dignitary.dignitary %}
+            {% set attendee_name = dignitary.honorific_title|format_honorific_title + " " + dignitary.first_name + " " + dignitary.last_name %}
+            {% set _ = attendees.append({'name': attendee_name.strip(), 'type': 'dignitary'}) %}
+        {% endfor %}
+    {% elif appointment.dignitary %}
+        {% set attendee_name = appointment.dignitary.honorific_title|format_honorific_title + " " + appointment.dignitary.first_name + " " + appointment.dignitary.last_name %}
+        {% set _ = attendees.append({'name': attendee_name.strip(), 'type': 'dignitary'}) %}
+    {% endif %}
+    
+    {# Collect contacts #}
+    {% if appointment.appointment_contacts %}
+        {% for app_contact in appointment.appointment_contacts %}
+            {% set contact = app_contact.contact %}
+            {% set attendee_name = contact.first_name + " " + contact.last_name %}
+            {% set relationship = contact.relationship_to_owner %}
+            {% set _ = attendees.append({'name': attendee_name.strip(), 'type': 'contact', 'relationship': relationship}) %}
+        {% endfor %}
+    {% endif %}
+    
+    {# Render based on format #}
+    {% if format == 'list' %}
+        {% if attendees %}
+            <ul>
+            {% for attendee in attendees %}
+                <li>{{ attendee.name }}{% if attendee.type == 'contact' and attendee.relationship %} ({{ attendee.relationship }}){% endif %}</li>
+            {% endfor %}
+            </ul>
+        {% else %}
+            <p>No attendees assigned</p>
+        {% endif %}
+    {% elif format == 'inline' %}
+        {% if attendees %}
+            {% for attendee in attendees %}
+                {{ attendee.name }}{% if not loop.last %}{% if loop.index == attendees|length - 1 %} and {% else %}, {% endif %}{% endif %}
+            {% endfor %}
+            {% if attendees|length > 1 %} (Group of {{ attendees|length }}){% endif %}
+        {% else %}
+            No attendees assigned
+        {% endif %}
+    {% elif format == 'separated' %}
+        {% set dignitaries = attendees|selectattr('type', 'equalto', 'dignitary')|list %}
+        {% set contacts = attendees|selectattr('type', 'equalto', 'contact')|list %}
+        
+        {% if dignitaries %}
+            <p><strong>Dignitaries:</strong> {{ dignitaries|map(attribute='name')|join(', ') }}</p>
+        {% endif %}
+        {% if contacts %}
+            <p><strong>Contacts:</strong> {{ contacts|map(attribute='name')|join(', ') }}</p>
+        {% endif %}
+        {% if not dignitaries and not contacts %}
+            <p>No attendees assigned</p>
+        {% endif %}
+    {% endif %}
+{% endmacro %}
+
+{# Macro to get total attendee count #}
+{% macro attendee_count(appointment) %}
+    {{ ((appointment.appointment_dignitaries or []) | length) + ((appointment.appointment_contacts or []) | length) }}
+{% endmacro %} 

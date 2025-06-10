@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'macros.html' import render_attendees, attendee_count %}
 {% block title %}Appointment Request Created{% endblock %}
 {% block content %}
 <!-- <h2>Appointment Request Created</h2> -->
@@ -16,14 +17,9 @@
             <li><strong>Meeting ID:</strong> {{ appointment.id }}</li>
             <li><strong>Requested Date:</strong> {{ appointment.preferred_date }} {{ appointment.preferred_time_of_day or '' }}</li>
             <li><strong>Location:</strong> {{ appointment.location.name }} - {{ appointment.location.city }}, {{ appointment.location.state }}</li>
-            <li><strong>Group Size:</strong> {{ appointment.appointment_dignitaries | length }} attendee(s)</li>
-            <li><strong>Dignitary(ies):</strong>
-                <ul>
-                {% for app_dignitary in appointment.appointment_dignitaries %}
-                    {% set dignitary = app_dignitary.dignitary %}
-                    <li>{{ dignitary.honorific_title|format_honorific_title }} {{ dignitary.first_name }} {{ dignitary.last_name }}</li>
-                {% endfor %}
-                </ul>
+            <li><strong>Group Size:</strong> {{ attendee_count(appointment) }} attendee(s)</li>
+            <li><strong>Attendees:</strong>
+                {{ render_attendees(appointment, 'list') }}
             </li>
         </ul>
     </p>

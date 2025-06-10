@@ -11,26 +11,100 @@ All templates extend from `base.html`, which provides the common layout and styl
 1. **appointment_created_requester.html**
    - Sent to the requester when they create a new appointment
    - Context variables: `user_name`, `appointment`
+   - ✅ **Updated**: Now supports both dignitaries and contacts
 
 2. **appointment_created_secretariat.html**
    - Sent to secretariat staff when a new appointment is created
    - Context variables: `user_name`, `appointment`, `admin_url` (optional)
+   - ✅ **Updated**: Now supports both dignitaries and contacts
 
 3. **appointment_updated_requester.html**
    - Sent to the requester when their appointment is updated
    - Context variables: `user_name`, `appointment`, `old_data`, `new_data`
+   - ✅ **Updated**: Now supports both dignitaries and contacts in change tracking
 
 4. **appointment_updated_secretariat.html**
    - Sent to secretariat staff when an appointment is updated
    - Context variables: `user_name`, `appointment`, `old_data`, `new_data`, `admin_url` (optional)
 
-5. **appointment_status_change.html**
+5. **appointment_confirmed.html**
+   - Sent when an appointment is confirmed with calendar event details
+   - Context variables: `user_name`, `appointment`
+   - ✅ **Updated**: Now supports both dignitaries and contacts
+
+6. **appointment_status_change.html**
    - Sent to the requester when the status of their appointment changes
    - Context variables: `user_name`, `appointment`
 
-6. **generic_notification.html**
+7. **macros.html**
+   - ✨ **New**: Reusable macros for attendee handling
+   - Contains `render_attendees()` and `attendee_count()` macros
+
+8. **generic_notification.html**
    - Generic template for miscellaneous notifications
    - Context variables: `user_name`, `subject`, `message`, `additional_content` (optional), `action_url` (optional), `action_text` (optional)
+
+## 🆕 Attendee Handling (Dignitaries & Contacts)
+
+All appointment templates now support both **dignitaries** and **contacts** as attendees. Use the macros from `macros.html`:
+
+### Import Macros
+```jinja2
+{% from 'macros.html' import render_attendees, attendee_count %}
+```
+
+### Available Macros
+
+#### `attendee_count(appointment)`
+Returns the total number of attendees (dignitaries + contacts).
+
+```jinja2
+{{ attendee_count(appointment) }} attendees
+```
+
+#### `render_attendees(appointment, format='list')`
+Renders attendees in different formats:
+
+1. **List format** (`'list'`): HTML bullet list
+```jinja2
+{{ render_attendees(appointment, 'list') }}
+<!-- Outputs:
+<ul>
+  <li>Dr. John Smith</li>
+  <li>Jane Doe (Contact)</li>
+</ul>
+-->
+```
+
+2. **Inline format** (`'inline'`): Comma-separated with proper grammar
+```jinja2
+{{ render_attendees(appointment, 'inline') }}
+<!-- Outputs: "Dr. John Smith and Jane Doe (Group of 2)" -->
+```
+
+3. **Separated format** (`'separated'`): Grouped by type
+```jinja2
+{{ render_attendees(appointment, 'separated') }}
+<!-- Outputs:
+<p><strong>Dignitaries:</strong> Dr. John Smith</p>
+<p><strong>Contacts:</strong> Jane Doe</p>
+-->
+```
+
+### Manual Handling (if needed)
+```jinja2
+<!-- Dignitaries -->
+{% for app_dignitary in appointment.appointment_dignitaries %}
+    {% set dignitary = app_dignitary.dignitary %}
+    {{ dignitary.honorific_title|format_honorific_title }} {{ dignitary.first_name }} {{ dignitary.last_name }}
+{% endfor %}
+
+<!-- Contacts -->
+{% for app_contact in appointment.appointment_contacts %}
+    {% set contact = app_contact.contact %}
+    {{ contact.first_name }} {{ contact.last_name }}
+{% endfor %}
+```
 
 ## Adding New Templates
 

@@ -449,8 +449,32 @@ def get_appointment_summary(appointment: Appointment) -> str:
     # Fallback to legacy dignitary relationship if no dignitaries in the new relationship
     elif appointment.dignitary:
         dignitaries_info = f"{HonorificTitle.format_honorific_title(appointment.dignitary.honorific_title)} {appointment.dignitary.first_name} {appointment.dignitary.last_name}".strip()
-    else:
+    
+    if not dignitaries_info:
         dignitaries_info = "No dignitaries assigned"
+    
+    # Handle contacts
+    contacts_info = ""
+    if appointment.appointment_contacts:
+        contacts_list = []
+        for app_contact in appointment.appointment_contacts:
+            contact = app_contact.contact
+            contacts_list.append(f"{contact.first_name} {contact.last_name}".strip())
+        
+        if contacts_list:
+            contacts_info = ", ".join(contacts_list)
+    
+    if not contacts_info:
+        contacts_info = "No contacts assigned"
+    
+    # Build attendees section
+    attendees_section = ""
+    if dignitaries_info != "No dignitaries assigned":
+        attendees_section += f"<p><strong>Dignitaries:</strong> {dignitaries_info}</p>"
+    if contacts_info != "No contacts assigned":
+        attendees_section += f"<p><strong>Contacts:</strong> {contacts_info}</p>"
+    if not attendees_section:
+        attendees_section = "<p><strong>Attendees:</strong> No attendees assigned</p>"
     
     # Get appointment date/time from calendar event only
     appointment_date = 'Not scheduled'
@@ -463,7 +487,7 @@ def get_appointment_summary(appointment: Appointment) -> str:
     return f"""
         <h3>Appointment Request Summary</h3>
         <p><strong>Request ID:</strong> {appointment.id}</p>
-        <p><strong>Dignitary/Dignitaries:</strong> {dignitaries_info}</p>
+        {attendees_section}
         <p><strong>Purpose:</strong> {appointment.purpose}</p>
         <p><strong>Preferred Date:</strong> {appointment.preferred_date}</p>
         <p><strong>Preferred Time:</strong> {appointment.preferred_time_of_day or 'Not specified'}</p>
@@ -485,7 +509,8 @@ def get_appointment_changes_summary(old_data: Dict[str, Any], new_data: Dict[str
         ('secretariat_meeting_notes', 'Meeting Notes'),
         ('secretariat_follow_up_actions', 'Follow-up Actions'),
         ('secretariat_notes_to_requester', 'Secretariat Comments'),
-        ('dignitaries', 'Dignitaries')
+        ('dignitaries', 'Dignitaries'),
+        ('contacts', 'Contacts')
     ]
 
     for field, display_name in fields_to_check:
@@ -508,6 +533,28 @@ def get_appointment_changes_summary(old_data: Dict[str, Any], new_data: Dict[str
                         new_names = ", ".join(
                             f"{HonorificTitle.format_honorific_title(d.get('honorific_title', ''))} {d.get('first_name', '')} {d.get('last_name', '')}".strip() 
                             for d in new_value
+                        ) or "None"
+                        changes.append(f"<p><strong>{display_name}:</strong> Changed from '{old_names}' to '{new_names}'</p>")
+                else:
+                    changes.append(f"<p><strong>{display_name}:</strong> Changed</p>")
+            continue
+            
+        # Special handling for contacts which might be a list
+        if field == 'contacts':
+            if old_value != new_value and new_value is not None:
+                # Convert to sets of contact IDs for easy comparison if they're lists
+                if isinstance(old_value, list) and isinstance(new_value, list):
+                    old_ids = set(c.get('id') for c in old_value if c.get('id'))
+                    new_ids = set(c.get('id') for c in new_value if c.get('id'))
+                    
+                    if old_ids != new_ids:
+                        old_names = ", ".join(
+                            f"{c.get('first_name', '')} {c.get('last_name', '')}".strip() 
+                            for c in old_value
+                        ) or "None"
+                        new_names = ", ".join(
+                            f"{c.get('first_name', '')} {c.get('last_name', '')}".strip() 
+                            for c in new_value
                         ) or "None"
                         changes.append(f"<p><strong>{display_name}:</strong> Changed from '{old_names}' to '{new_names}'</p>")
                 else:
@@ -586,6 +633,19 @@ def notify_appointment_update(db: Session, appointment: Appointment, old_data: D
                 'honorific_title': getattr(dignitary, 'honorific_title', '')
             })
         new_data['dignitaries'] = dignitaries_data
+    
+    # Ensure contacts data is properly prepared for get_appointment_changes_summary
+    if 'contacts' not in new_data:
+        # Get current contacts
+        contacts_data = []
+        for app_contact in appointment.appointment_contacts:
+            contact = app_contact.contact
+            contacts_data.append({
+                'id': contact.id,
+                'first_name': contact.first_name,
+                'last_name': contact.last_name
+            })
+        new_data['contacts'] = contacts_data
     
     # Get current appointment date/time from calendar event only
     current_appointment_date = None

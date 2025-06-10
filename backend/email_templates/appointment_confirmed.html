@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'macros.html' import render_attendees, attendee_count %}
 {% block title %}Confirmation of Your Appointment with Gurudev{% endblock %}
 {% block content %}
 <div class="content">
@@ -8,12 +9,8 @@
     
     <ul>
         <li><strong>Meeting Request ID:</strong> {{ appointment.id }}</li>
-        <li><strong>Appointment Requested For:</strong> 
-            {% for app_dignitary in appointment.appointment_dignitaries %}
-                {% set dignitary = app_dignitary.dignitary %}
-                {{ dignitary.honorific_title|format_honorific_title }} {{ dignitary.first_name }} {{ dignitary.last_name }}{% if not loop.last %}{% if loop.index == appointment.appointment_dignitaries|length - 1 %} and {% else %}, {% endif %}{% endif %}
-            {% endfor %}
-            {% if appointment.appointment_dignitaries|length > 1 %}Group of {{ appointment.appointment_dignitaries|length }}{% endif %}
+        <li><strong>Appointment Requested For:</strong>
+            {{ render_attendees(appointment, 'inline') }}
         </li>
         <li><strong>Date & Time:</strong> {% if appointment.appointment_date %}{{ appointment.appointment_date }} {% if appointment.appointment_time %}{{ appointment.appointment_time }}{% endif %}{% else %}To be determined{% endif %}</li>
         <li><strong>Location:</strong> 

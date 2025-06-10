@@ -456,6 +456,14 @@ async def bulk_update_appointments(
                 
                 updated_count += 1
                 
+                # Send email notification for this appointment
+                try:
+                    old_data = {'status': old_status}
+                    update_data = {'status': appointment.status}
+                    notify_appointment_update(db, appointment, old_data, update_data)
+                except Exception as e:
+                    logger.error(f"Error sending email notification for appointment {appointment_id}: {str(e)}")
+                
             except Exception as e:
                 logger.error(f"Error updating appointment {appointment_id}: {str(e)}")
                 failed_count += 1

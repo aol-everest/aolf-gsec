@@ -165,6 +165,12 @@ def appointment_to_dict(appointment):
             "dignitary": {}
         },
         
+        # Include appointment_contacts and their contacts
+        "appointment_contacts": {
+            # For each appointment_contact, include its contact
+            "contact": {}
+        },
+        
         # Include location with basic attributes
         "location": {},
         
