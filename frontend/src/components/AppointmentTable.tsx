@@ -118,9 +118,11 @@ const getDateTimeDisplay = (appointment: Appointment, statusMap: StatusMap) => {
     time = appointment.appointment_time || '';
     isAppointmentDate = true;
   } else {
-    // Show requested date/time (use created_at as proxy for requested date)
-    date = formatDate(appointment.created_at || '', false);
-    time = ''; // We don't have a specific requested time field
+    // Show requested date (preferred_date) for non-approved appointments
+    // Fall back to created_at if preferred_date is not available
+    const requestedDate = appointment.preferred_date || appointment.created_at;
+    date = formatDate(requestedDate || '', false);
+    time = appointment.preferred_time_of_day || ''; // Show preferred time of day if available
     isAppointmentDate = false;
   }
 
@@ -278,7 +280,7 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
       // Combined Date & Time column
       columnHelper.accessor((row) => getDateTimeDisplay(row, statusMap), {
         id: 'date_time',
-        header: 'Appointment Date & Time',
+        header: 'Date & Time',
         cell: (info) => {
           const { date, time, isAppointmentDate } = info.getValue();
           return (
