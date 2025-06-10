@@ -259,29 +259,23 @@ export const CalendarEventCard: React.FC<{
                     isMobile={isMobile} 
                     theme={theme} 
                     header={`Appointment #${appointmentSummary.id}`}
-                >
-                    <Grid container spacing={2}>
-                        {/* Appointment Actions Row */}
-                        <Grid item xs={12}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1, mb: 1 }}>
-                                <AppointmentStatusChip status={appointment.status} size="extrasmall" />
-                                <IconButton 
-                                    onClick={() => handleEditAppointment(appointmentSummary.id)}
-                                    size="small"
-                                    sx={{ 
-                                        background: '#F7F7F7',
-                                        border: '1px solid #E9E9E9',
-                                        borderRadius: '8px',
-                                        width: '28px',
-                                        height: '28px',
-                                    }}
-                                >
-                                    <EditIconV2 sx={{ width: 16, height: 16 }} />
-                                </IconButton>
-                            </Box>
-                        </Grid>
-                    </Grid>
-                </AppointmentCardSection>
+                    rightStatus={<AppointmentStatusChip status={appointment.status} size="extrasmall" />}
+                    rightIcon={
+                        <IconButton 
+                            onClick={() => handleEditAppointment(appointmentSummary.id)}
+                            size="small"
+                            sx={{ 
+                                background: '#F7F7F7',
+                                border: '1px solid #E9E9E9',
+                                borderRadius: '8px',
+                                width: '28px',
+                                height: '28px',
+                            }}
+                        >
+                            <EditIconV2 sx={{ width: 16, height: 16 }} />
+                        </IconButton>
+                    }
+                />
 
                 {/* Detailed sections using components */}
                 <DignitariesSection appointment={appointment} cardContainerRef={cardContainerRef} />
@@ -406,7 +400,11 @@ export const CalendarEventCard: React.FC<{
                     </Box>
 
                     {/* Show/Hide Details Toggle */}
-                    <Box>
+                    <Box
+                        sx={{
+                            mt: 2,
+                        }}
+                    >
                         <Box sx={{ 
                             display: 'flex', 
                             justifyContent: 'space-between', 
