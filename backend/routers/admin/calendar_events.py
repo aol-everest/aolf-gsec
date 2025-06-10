@@ -264,6 +264,85 @@ async def get_calendar_events_schedule(
         total_attendees = 0
         
         for apt in event_appointments:
+            # Convert ORM objects to schema objects
+            appointment_dignitaries = []
+            if apt.appointment_dignitaries:
+                for ad in apt.appointment_dignitaries:
+                    # Manually create AdminDignitary schema from ORM object
+                    dignitary_data = {
+                        'id': ad.dignitary.id,
+                        'first_name': ad.dignitary.first_name,
+                        'last_name': ad.dignitary.last_name,
+                        'honorific_title': ad.dignitary.honorific_title,
+                        'email': ad.dignitary.email,
+                        'phone': ad.dignitary.phone,
+                        'primary_domain': ad.dignitary.primary_domain,
+                        'primary_domain_other': ad.dignitary.primary_domain_other,
+                        'title_in_organization': ad.dignitary.title_in_organization,
+                        'organization': ad.dignitary.organization,
+                        'bio_summary': ad.dignitary.bio_summary,
+                        'linked_in_or_website': ad.dignitary.linked_in_or_website,
+                        'country': ad.dignitary.country,
+                        'country_code': ad.dignitary.country_code,
+                        'state': ad.dignitary.state,
+                        'city': ad.dignitary.city,
+                        'has_dignitary_met_gurudev': ad.dignitary.has_dignitary_met_gurudev,
+                        'gurudev_meeting_date': ad.dignitary.gurudev_meeting_date,
+                        'gurudev_meeting_location': ad.dignitary.gurudev_meeting_location,
+                        'gurudev_meeting_notes': ad.dignitary.gurudev_meeting_notes,
+                        'source': ad.dignitary.source,
+                        'source_appointment_id': ad.dignitary.source_appointment_id,
+                        'created_by': ad.dignitary.created_by,
+                        'created_at': ad.dignitary.created_at,
+                        'fax': getattr(ad.dignitary, 'fax', None),
+                        'other_phone': getattr(ad.dignitary, 'other_phone', None),
+                        'street_address': getattr(ad.dignitary, 'street_address', None),
+                        'social_media': getattr(ad.dignitary, 'social_media', None),
+                        'additional_info': getattr(ad.dignitary, 'additional_info', None),
+                        'business_card_file_name': getattr(ad.dignitary, 'business_card_file_name', None),
+                        'business_card_file_path': getattr(ad.dignitary, 'business_card_file_path', None),
+                        'business_card_file_type': getattr(ad.dignitary, 'business_card_file_type', None),
+                        'business_card_is_image': getattr(ad.dignitary, 'business_card_is_image', None),
+                        'business_card_thumbnail_path': getattr(ad.dignitary, 'business_card_thumbnail_path', None),
+                        'secretariat_notes': getattr(ad.dignitary, 'secretariat_notes', None),
+                    }
+                    
+                    appointment_dignitaries.append(schemas.AdminAppointmentDignitaryWithDignitary(
+                        id=ad.id,
+                        appointment_id=ad.appointment_id,
+                        dignitary_id=ad.dignitary_id,
+                        created_at=ad.created_at,
+                        dignitary=schemas.AdminDignitary(**dignitary_data)
+                    ))
+            
+            appointment_contacts = []
+            if apt.appointment_contacts:
+                for ac in apt.appointment_contacts:
+                    # Manually create AdminUserContact schema from ORM object
+                    contact_data = {
+                        'id': ac.contact.id,
+                        'first_name': ac.contact.first_name,
+                        'last_name': ac.contact.last_name,
+                        'email': ac.contact.email,
+                        'phone': ac.contact.phone,
+                        'relationship_to_owner': ac.contact.relationship_to_owner,
+                        'notes': ac.contact.notes,
+                        'owner_user_id': ac.contact.owner_user_id,
+                        'contact_user_id': ac.contact.contact_user_id,
+                        'appointment_usage_count': ac.contact.appointment_usage_count,
+                        'last_used_at': ac.contact.last_used_at,
+                        'created_at': ac.contact.created_at,
+                        'updated_at': ac.contact.updated_at,
+                    }
+                    
+                    appointment_contacts.append(schemas.AdminAppointmentContactWithContact(
+                        id=ac.id,
+                        appointment_id=ac.appointment_id,
+                        contact_id=ac.contact_id,
+                        created_at=ac.created_at,
+                        contact=schemas.AdminUserContact(**contact_data)
+                    ))
+            
             appointment_summaries.append(schemas.AdminAppointmentSummary(
                 id=apt.id,
                 purpose=apt.purpose,
@@ -272,8 +351,8 @@ async def get_calendar_events_schedule(
                 appointment_type=apt.appointment_type,
                 request_type=apt.request_type,
                 number_of_attendees=apt.number_of_attendees or 1,
-                appointment_dignitaries=apt.appointment_dignitaries,
-                appointment_contacts=apt.appointment_contacts,
+                appointment_dignitaries=appointment_dignitaries,
+                appointment_contacts=appointment_contacts,
                 requester=apt.requester,
                 secretariat_meeting_notes=apt.secretariat_meeting_notes,
                 secretariat_follow_up_actions=apt.secretariat_follow_up_actions,
