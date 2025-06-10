@@ -40,6 +40,7 @@ import { useSnackbar } from 'notistack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Appointment, StatusMap, SubStatusMap, StatusSubStatusMapping, CalendarEventWithAppointments, ScheduleResponse, AppointmentSummary } from '../models/types';
 import AppointmentCard from '../components/AppointmentCard';
+import CalendarEventCard from '../components/CalendarEventCard';
 import { useNavigate } from 'react-router-dom';
 import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
@@ -101,6 +102,7 @@ const AdminAppointmentSchedule: React.FC = () => {
   }, [isMobile]);
 
   const [expandedAppointment, setExpandedAppointment] = useState<Appointment | null>(null);
+  const [expandedCalendarEvent, setExpandedCalendarEvent] = useState<CalendarEventWithAppointments | null>(null);
   const [completionDialogOpen, setCompletionDialogOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const api = useApi();
@@ -255,22 +257,72 @@ const AdminAppointmentSchedule: React.FC = () => {
 
     setAppointmentCardDimensions(dimensions);
     setExpandedAppointment(expandedAppointment?.id === appointment.id ? null : appointment);
+    setExpandedCalendarEvent(null); // Close calendar event if open
+  };
+
+  const handleCalendarEventClick = (calendarEvent: CalendarEventWithAppointments, event: React.MouseEvent) => {
+    const element = event.currentTarget as HTMLElement;
+    const rect = element.getBoundingClientRect();
+    const gapToEdge = 16;
+    const maxCardWidth = 650;
+    const maxCardHeight = 700;
+    const bannerOffset = 56;
+    const filtersOffset = 130;
+    
+    let dimensions: AppointmentCardDimensions = {
+      left: null,
+      right: null,
+      top: null,
+      bottom: null,
+      width: null,
+      height: null
+    };
+
+    if (isMobile) {
+      // Fixed position on mobile
+      dimensions.width = window.innerWidth * 0.99;
+      dimensions.height = (window.innerHeight - bannerOffset) * 0.99;
+      dimensions.left = (window.innerWidth - dimensions.width) / 2;
+      dimensions.top = (((window.innerHeight - bannerOffset) - dimensions.height) / 2) + bannerOffset;
+    } else {
+      let availableWidth = 0;
+      const availableHeight = window.innerHeight - bannerOffset - filtersOffset - (gapToEdge * 2);
+      if (rect.left > window.innerWidth - rect.right) {
+        // Position to the left
+        availableWidth = rect.left - (gapToEdge * 2);
+        dimensions.left = null;
+        dimensions.right = window.innerWidth - rect.left + gapToEdge;
+      } else {
+        // Position to the right
+        availableWidth = window.innerWidth - rect.right - (gapToEdge * 2);
+        dimensions.left = rect.right + gapToEdge;
+        dimensions.right = null;
+      }
+      dimensions.width = availableWidth > maxCardWidth ? maxCardWidth : availableWidth;
+      dimensions.height = availableHeight > maxCardHeight ? maxCardHeight : availableHeight;
+      dimensions.top = rect.top + dimensions.height < availableHeight ? rect.top : gapToEdge + bannerOffset + filtersOffset;
+    }
+
+    setAppointmentCardDimensions(dimensions);
+    setExpandedCalendarEvent(expandedCalendarEvent?.id === calendarEvent.id ? null : calendarEvent);
+    setExpandedAppointment(null); // Close appointment if open
   };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (expandedAppointment) {
+      if (expandedAppointment || expandedCalendarEvent) {
         const target = event.target as HTMLElement;
-        const detailsCard = document.getElementById('appointment-details-card');
+        const detailsCard = document.getElementById('appointment-details-card') || document.getElementById('calendar-event-details-card');
         if (detailsCard && !detailsCard.contains(target) && !target.closest('.appointment-card-trigger')) {
           setExpandedAppointment(null);
+          setExpandedCalendarEvent(null);
         }
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [expandedAppointment]);
+  }, [expandedAppointment, expandedCalendarEvent]);
 
   // Update appointment mutation
   const updateAppointmentMutation = useMutation({
@@ -471,12 +523,7 @@ const AdminAppointmentSchedule: React.FC = () => {
                     mr: 1
                   }}
                   onClick={(e) => {
-                    // For now, if there's only one appointment, open that appointment's details
-                    // TODO: Later we'll create a calendar event details view
-                    if (calendarEvent.appointments && calendarEvent.appointments.length === 1) {
-                      const appointment = convertAppointmentSummaryToAppointment(calendarEvent.appointments[0], calendarEvent);
-                      handleAppointmentClick(appointment, e);
-                    }
+                    handleCalendarEventClick(calendarEvent, e);
                   }}
                 >
                   <Grid container spacing={1} ref={cardContainerRef}>
@@ -691,7 +738,7 @@ const AdminAppointmentSchedule: React.FC = () => {
         </Box>
       </Container>
 
-      {/* Floating Appointment Card */}
+      {/* Floating Cards */}
       <Portal>
         {expandedAppointment && appointmentCardDimensions && (
           <>
@@ -724,6 +771,41 @@ const AdminAppointmentSchedule: React.FC = () => {
                 showCloseButton={true}
                 onClose={() => setExpandedAppointment(null)}
                 displayMode="calendar"
+              />
+            </Box>
+          </>
+        )}
+        {expandedCalendarEvent && appointmentCardDimensions && (
+          <>
+            {isMobile && (
+              <Backdrop
+                open={true}
+                sx={{
+                  zIndex: theme.zIndex.drawer,
+                  backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                }}
+              />
+            )}
+            <Box
+              id="calendar-event-details-card"
+              sx={{
+                position: 'fixed',
+                left: appointmentCardDimensions.left,
+                right: appointmentCardDimensions.right,
+                top: appointmentCardDimensions.top,
+                bottom: appointmentCardDimensions.bottom,
+                width: appointmentCardDimensions.width,
+                height: appointmentCardDimensions.height,
+                maxHeight: appointmentCardDimensions.height,
+                overflow: 'none',
+                zIndex: theme.zIndex.drawer + 1,
+              }}
+            >
+              <CalendarEventCard 
+                calendarEvent={expandedCalendarEvent}
+                convertAppointmentSummaryToAppointment={convertAppointmentSummaryToAppointment}
+                showCloseButton={true}
+                onClose={() => setExpandedCalendarEvent(null)}
               />
             </Box>
           </>
