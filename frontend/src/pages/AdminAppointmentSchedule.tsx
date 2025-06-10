@@ -5,13 +5,10 @@ import {
   Paper,
   Box,
   TextField,
-  Chip,
   Grid,
   useTheme,
   alpha,
   CircularProgress,
-  Collapse,
-  Button,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -31,25 +28,23 @@ import format from 'date-fns/format';
 import isToday from 'date-fns/isToday';
 import parseISO from 'date-fns/parseISO';
 import isPast from 'date-fns/isPast';
-import isFuture from 'date-fns/isFuture';
 import addDays from 'date-fns/addDays';
-import subDays from 'date-fns/subDays';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import SwipeableViews from 'react-swipeable-views';
 import Layout from '../components/Layout';
-import { getLocalDateString, formatTime } from '../utils/dateUtils';
+import { getLocalDateString } from '../utils/dateUtils';
 import { formatHonorificTitle } from '../utils/formattingUtils';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Appointment, AppointmentDignitary, StatusMap, SubStatusMap, StatusSubStatusMapping } from '../models/types';
+import { Appointment, StatusMap, SubStatusMap, StatusSubStatusMapping, CalendarEventWithAppointments, ScheduleResponse, AppointmentSummary } from '../models/types';
 import AppointmentCard from '../components/AppointmentCard';
 import { useNavigate } from 'react-router-dom';
 import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
 import { AdminAppointmentUpdate } from '../models/types';
-import { CheckSquareCircleFilledIconV2, ClockSquareCircleIconV2, CloseIconFilledCircleV2, ContactCardIconV2, ListIconV2, PeopleMenuIconV2 } from '../components/iconsv2';
+import { CheckSquareCircleFilledIconV2, ClockSquareCircleIconV2, ContactCardIconV2, ListIconV2, LocationThinIconV2, PeopleMenuIconV2, BlankIconV2 } from '../components/iconsv2';
 import { debugLog } from '../utils/debugUtils';
 import { AppointmentStatusChip } from '../components/AppointmentStatusChip';
 import { AppointmentTimeChip } from '../components/AppointmentTimeChip';
@@ -121,37 +116,74 @@ const AdminAppointmentSchedule: React.FC = () => {
     height: null
   });
 
-  const { data: allAppointments = [], isLoading } = useQuery({
-    queryKey: ['appointments', datesToShow.join(',')],
+  const { data: scheduleData, isLoading } = useQuery<ScheduleResponse>({
+    queryKey: ['calendar-events-schedule', datesToShow.join(',')],
     queryFn: async () => {
       try {
-        const { data } = await api.get<Appointment[]>('/admin/appointments/all', {
+        const startDate = datesToShow[0];
+        const endDate = datesToShow[datesToShow.length - 1];
+        
+        const { data } = await api.get<ScheduleResponse>('/admin/calendar-events/schedule', {
           params: {
-            status: 'APPROVED,COMPLETED'
+            start_date: startDate,
+            end_date: endDate
           }
         });
         
-        // Filter appointments for the selected dates
-        return data
-          .filter((apt) => datesToShow.includes(apt.appointment_date))
-          .sort((a, b) => {
-            if (!a.appointment_time) return 1;
-            if (!b.appointment_time) return -1;
-            return a.appointment_time.localeCompare(b.appointment_time);
-          });
+        return data;
       } catch (error) {
-        console.error('Error fetching appointments:', error);
-        enqueueSnackbar('Failed to fetch appointments', { variant: 'error' });
+        console.error('Error fetching calendar events schedule:', error);
+        enqueueSnackbar('Failed to fetch schedule', { variant: 'error' });
         throw error;
       }
     }
   });
 
-  // Group appointments by date
-  const appointmentsByDate = datesToShow.reduce((acc, date) => {
-    acc[date] = allAppointments.filter(apt => apt.appointment_date === date);
-    return acc;
-  }, {} as Record<string, Appointment[]>);
+  // Transform calendar events to display format and group by date
+  const calendarEventsByDate = React.useMemo(() => {
+    if (!scheduleData?.calendar_events) return {};
+    
+    const eventsByDate: Record<string, CalendarEventWithAppointments[]> = {};
+    
+    // Group calendar events by date
+    scheduleData.calendar_events.forEach((event) => {
+      const date = event.start_date;
+      if (!eventsByDate[date]) {
+        eventsByDate[date] = [];
+      }
+      eventsByDate[date].push(event);
+    });
+    
+    // Sort events within each date by start time
+    Object.keys(eventsByDate).forEach(date => {
+      eventsByDate[date].sort((a, b) => {
+        if (!a.start_time) return 1;
+        if (!b.start_time) return -1;
+        return a.start_time.localeCompare(b.start_time);
+      });
+    });
+    
+    return eventsByDate;
+  }, [scheduleData]);
+
+  // Helper function to convert appointment summary to full appointment for compatibility
+  const convertAppointmentSummaryToAppointment = (summary: AppointmentSummary, event: CalendarEventWithAppointments): Appointment => {
+    return {
+      ...summary,
+      // Use calendar event data as authoritative source
+      appointment_date: event.start_date,
+      appointment_time: event.start_time,
+      duration: event.duration,
+      location: event.location!,
+      location_id: event.location?.id || 0,
+      meeting_place: event.meeting_place!,
+      meeting_place_id: event.meeting_place?.id || 0,
+      // Required fields for Appointment interface
+      created_at: event.created_at,
+      updated_at: event.updated_at,
+      dignitary: summary.appointment_dignitaries?.[0]?.dignitary || {} as any, // Legacy compatibility
+    } as Appointment;
+  };
 
   // Fetch status-substatus mapping from the API
   const { data: statusSubStatusMapping } = useQuery<StatusSubStatusMapping>({
@@ -247,7 +279,7 @@ const AdminAppointmentSchedule: React.FC = () => {
       return response;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['appointments', datesToShow.join(',')] });
+      queryClient.invalidateQueries({ queryKey: ['calendar-events-schedule', datesToShow.join(',')] });
       enqueueSnackbar('Appointment marked as completed', { variant: 'success' });
       setCompletionDialogOpen(false);
       setSelectedAppointment(null);
@@ -357,9 +389,30 @@ const AdminAppointmentSchedule: React.FC = () => {
     }
   };
 
-  // Render a single day column
+  // Render calendar event status chip using the same style as appointment status
+  const renderCalendarEventStatusChip = (event: CalendarEventWithAppointments) => {
+    return (
+      <AppointmentStatusChip 
+        size={daysToShow > 3 ? "extrasmall" : "small"}
+        status={event.status} 
+      />
+    );
+  };
+
+  // Render calendar event time chip using the same style as appointment time  
+  const renderCalendarEventTimeChip = (event: CalendarEventWithAppointments) => {
+    // Create a mock appointment object for the time chip component
+    const mockAppointment = {
+      appointment_time: event.start_time,
+      duration: event.duration
+    } as Appointment;
+    
+    return <AppointmentTimeChip appointment={mockAppointment} />;
+  };
+
+  // Render a single day column with calendar events
   const renderDayColumn = (date: string) => {
-    const appointments = appointmentsByDate[date] || [];
+    const calendarEvents = calendarEventsByDate[date] || [];
     const isCurrentDate = isToday(parseISO(date));
     
     return (
@@ -379,7 +432,7 @@ const AdminAppointmentSchedule: React.FC = () => {
           {format(parseISO(date), 'EEE, MMM d')}
         </Typography>
         
-        {appointments.length === 0 ? (
+        {calendarEvents.length === 0 ? (
           <Paper 
             sx={{ 
               p: 2, 
@@ -393,80 +446,151 @@ const AdminAppointmentSchedule: React.FC = () => {
             }}
           >
             <Typography variant="body2" color="text.secondary">
-              No appointments
+              No calendar events
             </Typography>
           </Paper>
         ) : (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, height: '100%', overflow: 'auto' }}>
-            {appointments.map((appointment: Appointment) => (
-              <Paper
-                key={appointment.id}
-                className="appointment-card-trigger"
-                elevation={1}
-                sx={{
-                  p: isMobile ? 1.5 : 2,
-                  borderRadius: 2,
-                  position: 'relative',
-                  cursor: 'pointer',
-                  '&:hover': {
-                    boxShadow: 3,
-                    transform: 'translateY(-1px)',
-                    transition: 'all 0.2s ease-in-out',
-                  },
-                  ml: 1,
-                  mr: 1
-                }}
-                onClick={(e) => handleAppointmentClick(appointment, e)}
-              >
-                <Grid container 
-                  spacing={1}
-                  ref={cardContainerRef}
+            {calendarEvents.map((calendarEvent: CalendarEventWithAppointments) => {
+              return (
+                <Paper
+                  key={calendarEvent.id}
+                  className="appointment-card-trigger"
+                  elevation={1}
+                  sx={{
+                    p: isMobile ? 1.5 : 2,
+                    borderRadius: 2,
+                    position: 'relative',
+                    cursor: 'pointer',
+                    '&:hover': {
+                      boxShadow: 3,
+                      transform: 'translateY(-1px)',
+                      transition: 'all 0.2s ease-in-out',
+                    },
+                    ml: 1,
+                    mr: 1
+                  }}
+                  onClick={(e) => {
+                    // For now, if there's only one appointment, open that appointment's details
+                    // TODO: Later we'll create a calendar event details view
+                    if (calendarEvent.appointments && calendarEvent.appointments.length === 1) {
+                      const appointment = convertAppointmentSummaryToAppointment(calendarEvent.appointments[0], calendarEvent);
+                      handleAppointmentClick(appointment, e);
+                    }
+                  }}
                 >
-                  {/* Time and Status */}
-                  <Grid item xs={12}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <AppointmentTimeChip appointment={appointment} />
-                      {statusMap && appointment.status === statusMap['COMPLETED'] ? (
-                        <AppointmentStatusChip 
-                          size={daysToShow > 3 ? "extrasmall" : "small"}
-                          status={appointment.status} 
-                        />
-                      ) : statusMap && isAppointmentInPast(appointment) && appointment.status === statusMap['APPROVED'] && (
-                        <PrimaryButton 
-                          size={daysToShow > 3 ? "extrasmall" : "small"}
-                          sx={{ ml: 0.5 }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openCompletionDialog(appointment);
-                          }}
-                        >
-                          {daysToShow === 1 ? "Complete Appointment" : (daysToShow === 3 ? "Complete" : <CheckSquareCircleFilledIconV2 sx={{ fontSize: '1.3rem' }} />)}
-                        </PrimaryButton>
-                      )}
-                    </Box>
+                  <Grid container spacing={1} ref={cardContainerRef}>
+                    {/* Calendar Event Header - Time, Duration, and Status */}
+                    <Grid item xs={12}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        {renderCalendarEventTimeChip(calendarEvent)}
+                        {renderCalendarEventStatusChip(calendarEvent)}
+                      </Box>
+                    </Grid>
+
+                    {/* Calendar Event Duration (if significant) */}
+                    {calendarEvent.duration && calendarEvent.duration > 15 && (
+                      <GridItemIconText 
+                        containerRef={cardContainerRef} 
+                        icon={<ClockSquareCircleIconV2 sx={{ width: 20, height: 20 }} />} 
+                        text={`${calendarEvent.duration} mins`} 
+                        theme={theme} 
+                      />
+                    )}
+
+                    {/* Calendar Event Location */}
+                    {calendarEvent.location && (
+                      <GridItemIconText 
+                        containerRef={cardContainerRef} 
+                        icon={<LocationThinIconV2 sx={{ width: 20, height: 20 }} />} 
+                        text={calendarEvent.location.name} 
+                        theme={theme} 
+                      />
+                    )}
+
+                    {calendarEvent.meeting_place && (
+                      <GridItemIconText 
+                        containerRef={cardContainerRef} 
+                        icon={<BlankIconV2 sx={{ width: 20, height: 20 }} />} 
+                        text={calendarEvent.meeting_place.name} 
+                        theme={theme} 
+                      />
+                    )}
+
+                    {/* Appointments within this calendar event */}
+                    {calendarEvent.appointments && calendarEvent.appointments.length > 0 ? (
+                      calendarEvent.appointments.map((appointmentSummary, index) => {
+                        const appointment = convertAppointmentSummaryToAppointment(appointmentSummary, calendarEvent);
+                        
+                        return (
+                          <React.Fragment key={appointmentSummary.id}>
+                            {/* Horizontal divider between appointments (not before first one) */}
+                            {index > 0 && (
+                              <Grid item xs={12}>
+                                <Box sx={{ 
+                                  borderTop: 1, 
+                                  borderColor: 'divider', 
+                                  my: 1,
+                                  mx: -1 
+                                }} />
+                              </Grid>
+                            )}
+
+                            {/* Appointment Details Section */}
+                            <Grid item xs={12}>
+                              <Box sx={{ pl: 1 }}>
+                                {/* Appointment Status (secondary to calendar event status) */}
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                  <Typography variant="caption" color="text.secondary">
+                                    Appointment #{index + 1}
+                                  </Typography>
+                                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                    <AppointmentStatusChip 
+                                      size="extrasmall"
+                                      status={appointment.status} 
+                                    />
+                                    {statusMap && isAppointmentInPast(appointment) && appointment.status === statusMap['APPROVED'] && (
+                                      <PrimaryButton 
+                                        size="extrasmall"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          openCompletionDialog(appointment);
+                                        }}
+                                      >
+                                        <CheckSquareCircleFilledIconV2 sx={{ fontSize: '1rem' }} />
+                                      </PrimaryButton>
+                                    )}
+                                  </Box>
+                                </Box>
+
+                                {/* Dignitary Information */}
+                                {renderDignitaryInfo(appointment)}
+
+                                {/* Purpose */}
+                                <GridItemIconText 
+                                  containerRef={cardContainerRef} 
+                                  icon={<ListIconV2 sx={{ width: 20, height: 20 }} />} 
+                                  text={appointment.purpose || ''} 
+                                  theme={theme} 
+                                />
+                              </Box>
+                            </Grid>
+                          </React.Fragment>
+                        );
+                      })
+                    ) : (
+                      /* Calendar event without appointments */
+                      <GridItemIconText 
+                        containerRef={cardContainerRef} 
+                        icon={<ListIconV2 sx={{ width: 20, height: 20 }} />} 
+                        text={calendarEvent.description || 'Calendar event without appointments'} 
+                        theme={theme} 
+                      />
+                    )}
                   </Grid>
-
-                  {appointment.duration && appointment.duration > 15 && (
-                    <GridItemIconText 
-                      containerRef={cardContainerRef} 
-                      icon={<ClockSquareCircleIconV2 sx={{ width: 20, height: 20 }} />} 
-                      text={appointment.duration ? appointment.duration.toString() + ' mins' : ''} 
-                      theme={theme} 
-                    />
-                  )}
-
-                  {/* Dignitary and Purpose */}
-                  {renderDignitaryInfo(appointment)}
-                  <GridItemIconText 
-                      containerRef={cardContainerRef} 
-                      icon={<ListIconV2 sx={{ width: 20, height: 20 }} />} 
-                      text={appointment.purpose || ''} 
-                      theme={theme} 
-                  />
-
-                </Grid>
-              </Paper>
-            ))}
+                </Paper>
+              );
+            })}
           </Box>
         )}
       </Box>

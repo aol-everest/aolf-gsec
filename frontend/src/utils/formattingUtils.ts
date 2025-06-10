@@ -12,6 +12,7 @@ export const getStatusTheme = (status: string, theme: Theme) => {
         'Approved': theme.palette.success,
         'Appointment Scheduled': theme.palette.success,
         'Scheduled': theme.palette.success,
+        'Confirmed': theme.palette.success,
   
         'Rejected': theme.palette.error,
   

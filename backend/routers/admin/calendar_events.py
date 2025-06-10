@@ -180,6 +180,133 @@ async def list_calendar_events(
     
     return response_events
 
+@router.get("/schedule", response_model=schemas.AdminCalendarEventScheduleResponse)
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def get_calendar_events_schedule(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_read_db),
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None
+):
+    """Get calendar events with enriched appointment data for schedule view"""
+    
+    # Set default date range - current week if not specified
+    if not start_date:
+        start_date = datetime.now().date()
+    if not end_date:
+        end_date = start_date
+    
+    # Get calendar events in date range with active/published status
+    # Only filters: start_date, end_date, and status in (CONFIRMED, COMPLETED)
+    events_query = db.query(models.CalendarEvent).filter(
+        models.CalendarEvent.start_date >= start_date,
+        models.CalendarEvent.start_date <= end_date,
+        models.CalendarEvent.status.in_([
+            models.EventStatus.CONFIRMED,
+            models.EventStatus.COMPLETED
+        ])
+    ).order_by(models.CalendarEvent.start_datetime.asc())
+    
+    # Add eager loading for related entities
+    events_query = events_query.options(
+        joinedload(models.CalendarEvent.location),
+        joinedload(models.CalendarEvent.meeting_place),
+        joinedload(models.CalendarEvent.created_by_user),
+        joinedload(models.CalendarEvent.updated_by_user)
+    )
+    
+    calendar_events = events_query.all()
+    
+    # Get appointments linked to calendar events with APPROVED/COMPLETED status
+    appointments_query = db.query(models.Appointment).filter(
+        models.Appointment.calendar_event_id.in_([e.id for e in calendar_events]),
+        models.Appointment.status.in_([
+            models.AppointmentStatus.APPROVED,
+            models.AppointmentStatus.COMPLETED
+        ])
+    ).options(
+        # Eager load all related entities
+        joinedload(models.Appointment.appointment_dignitaries).joinedload(
+            models.AppointmentDignitary.dignitary
+        ),
+        joinedload(models.Appointment.appointment_contacts).joinedload(
+            models.AppointmentContact.contact
+        ),
+        joinedload(models.Appointment.requester),
+        joinedload(models.Appointment.location),
+        joinedload(models.Appointment.meeting_place)
+    )
+    
+    linked_appointments = appointments_query.all()
+    
+    # Group appointments by calendar event
+    appointments_by_event = {}
+    for apt in linked_appointments:
+        event_id = apt.calendar_event_id
+        if event_id not in appointments_by_event:
+            appointments_by_event[event_id] = []
+        appointments_by_event[event_id].append(apt)
+    
+    # NOTE: Orphaned appointments concept has been removed
+    # All appointments must now be linked to calendar events
+    
+    # Build response
+    enriched_events = []
+    
+    for event in calendar_events:
+        event_appointments = appointments_by_event.get(event.id, [])
+        
+        # Calculate capacity
+        current_capacity, _ = calculate_event_capacity(db, event.id)
+        
+        # Convert appointments to summary format
+        appointment_summaries = []
+        total_attendees = 0
+        
+        for apt in event_appointments:
+            appointment_summaries.append(schemas.AdminAppointmentSummary(
+                id=apt.id,
+                purpose=apt.purpose,
+                status=apt.status,
+                sub_status=apt.sub_status,
+                appointment_type=apt.appointment_type,
+                request_type=apt.request_type,
+                number_of_attendees=apt.number_of_attendees or 1,
+                appointment_dignitaries=apt.appointment_dignitaries,
+                appointment_contacts=apt.appointment_contacts,
+                requester=apt.requester,
+                secretariat_meeting_notes=apt.secretariat_meeting_notes,
+                secretariat_follow_up_actions=apt.secretariat_follow_up_actions,
+                secretariat_notes_to_requester=apt.secretariat_notes_to_requester,
+                # Legacy fields from calendar event
+                appointment_date=event.start_date,
+                appointment_time=event.start_time,
+                duration=event.duration
+            ))
+            total_attendees += apt.number_of_attendees or 1
+        
+        # Create enriched calendar event
+        event_dict = event.__dict__.copy()
+        event_dict.pop('location', None)
+        event_dict.pop('meeting_place', None)
+        enriched_events.append(schemas.AdminCalendarEventWithAppointments(
+            **event_dict,
+            location=schemas.Location.from_orm(event.location) if event.location else None,
+            meeting_place=schemas.MeetingPlace.from_orm(event.meeting_place) if event.meeting_place else None,
+            current_capacity=current_capacity,
+            available_capacity=event.max_capacity - current_capacity,
+            linked_appointments_count=len(event_appointments),
+            appointments=appointment_summaries,
+            total_attendees=total_attendees,
+            appointment_count=len(event_appointments)
+        ))
+    
+    logger.info(f"/schedule API: Returning {len(enriched_events)} calendar events for date range {start_date} to {end_date}")
+    return schemas.AdminCalendarEventScheduleResponse(
+        calendar_events=enriched_events,
+        total_events=len(enriched_events)
+    )
+
 @router.get("/{event_id}", response_model=schemas.CalendarEventResponse)
 @requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
 async def get_calendar_event(

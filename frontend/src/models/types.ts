@@ -361,6 +361,64 @@ export interface CalendarEvent {
   external_calendar_link?: string;
 }
 
+// New types for calendar event-centric schedule
+export interface AppointmentSummary {
+  id: number;
+  purpose?: string;
+  status: string;
+  sub_status?: string;
+  appointment_type?: string;
+  request_type?: string;
+  number_of_attendees?: number;
+  appointment_dignitaries?: AppointmentDignitary[];
+  appointment_contacts?: AppointmentContact[];
+  requester?: User;
+  secretariat_meeting_notes?: string;
+  secretariat_follow_up_actions?: string;
+  secretariat_notes_to_requester?: string;
+  // Legacy fields - now sourced from calendar event
+  appointment_date: string;
+  appointment_time: string;
+  duration: number;
+}
+
+export interface CalendarEventWithAppointments {
+  id: number;
+  event_type: string;
+  title: string;
+  description?: string;
+  start_datetime: string;
+  start_date: string;
+  start_time: string;
+  duration: number;
+  location?: Location;
+  meeting_place?: MeetingPlace;
+  max_capacity: number;
+  is_open_for_booking: boolean;
+  instructions?: string;
+  status: string;
+  creation_context?: string;
+  creation_context_id?: string;
+  external_calendar_id?: string;
+  external_calendar_link?: string;
+  created_at: string;
+  updated_at: string;
+  created_by?: number;
+  updated_by?: number;
+  // Enriched fields
+  current_capacity: number;
+  available_capacity: number;
+  linked_appointments_count: number;
+  appointments: AppointmentSummary[];
+  total_attendees: number;
+  appointment_count: number;
+}
+
+export interface ScheduleResponse {
+  calendar_events: CalendarEventWithAppointments[];
+  total_events: number;
+}
+
 export type { 
   Location, 
   User, 

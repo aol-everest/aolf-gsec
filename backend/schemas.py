@@ -447,6 +447,7 @@ class MeetingPlace(MeetingPlaceBase):
     
     class Config:
         orm_mode = True
+        from_attributes = True
 
 class MeetingPlaceCreate(MeetingPlaceBase):
     pass  # Inherits all fields from MeetingPlaceBase
@@ -1191,6 +1192,73 @@ class CalendarEventBatchResponse(BaseModel):
     failed: int
     events: List[CalendarEventResponse]
     errors: Optional[List[Dict[str, Any]]] = None
+
+
+# Rename AppointmentSummary to AdminAppointmentSummary
+class AdminAppointmentSummary(BaseModel):
+    """Subset of appointment fields needed for schedule view"""
+    id: int
+    purpose: Optional[str] = None
+    status: AppointmentStatus
+    sub_status: Optional[AppointmentSubStatus] = None
+    appointment_type: Optional[AppointmentType] = None
+    request_type: Optional[RequestType] = RequestType.DIGNITARY
+    number_of_attendees: Optional[int] = 1
+    
+    # Dignitary details
+    appointment_dignitaries: Optional[List[AdminAppointmentDignitaryWithDignitary]] = None
+    
+    # Contact details for darshan
+    appointment_contacts: Optional[List[AdminAppointmentContactWithContact]] = None
+    
+    # Requester information
+    requester: Optional[User] = None
+    
+    # Meeting details
+    secretariat_meeting_notes: Optional[str] = None
+    secretariat_follow_up_actions: Optional[str] = None
+    secretariat_notes_to_requester: Optional[str] = None
+    
+    # Legacy fields for backward compatibility
+    appointment_date: Optional[date] = None
+    appointment_time: Optional[str] = None
+    duration: Optional[int] = None
+
+    class Config:
+        orm_mode = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat(),
+            date: lambda v: v.isoformat()
+        }
+
+
+# Rename CalendarEventWithAppointments to AdminCalendarEventWithAppointments
+class AdminCalendarEventWithAppointments(CalendarEventResponse):
+    """Calendar event with enriched appointment data for schedule view"""
+    appointments: List[AdminAppointmentSummary] = []
+    total_attendees: int = 0
+    appointment_count: int = 0
+    
+    class Config:
+        orm_mode = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat(),
+            date: lambda v: v.isoformat()
+        }
+
+
+# Rename CalendarEventScheduleResponse to AdminCalendarEventScheduleResponse
+class AdminCalendarEventScheduleResponse(BaseModel):
+    """Response for calendar events schedule API"""
+    calendar_events: List[AdminCalendarEventWithAppointments] = []
+    total_events: int = 0
+    
+    class Config:
+        orm_mode = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat(),
+            date: lambda v: v.isoformat()
+        }
 
 
 # ============================================================================

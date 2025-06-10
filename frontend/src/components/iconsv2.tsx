@@ -378,3 +378,8 @@ export const ClockSquareCircleIconV2: React.FC<IconProps> = React.memo(({ ...pro
         <path fill="currentColor" d="M11.994,1C4.929,1.044,1,5.016,1,11.982s3.932,11.018,11.006,11.018c7.162,0,10.861-3.737,10.994-11.017-.122-7.037-4.026-10.938-11.006-10.983Zm.012,20c-6.026-.035-8.888-2.895-9.006-9,.113-6.019,3.059-8.963,8.994-9,5.873,.038,8.903,3.072,9.006,8.981-.112,6.117-2.974,8.983-8.994,9.019Z"/>
     </SvgIcon>
 ));
+
+export const BlankIconV2: React.FC<IconProps> = React.memo(({ ...props }) => (
+    <SvgIcon xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" {...props}>
+    </SvgIcon>
+));
