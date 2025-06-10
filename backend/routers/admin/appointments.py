@@ -412,6 +412,177 @@ async def update_appointment(
     
     return appointment
 
+@router.patch("/bulk-update", response_model=dict)
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def bulk_update_appointments(
+    bulk_update: schemas.BulkAppointmentUpdate,
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
+):
+    """Update multiple appointments with the same status"""
+    logger.info(f"Bulk updating {len(bulk_update.appointment_ids)} appointments to status {bulk_update.status}")
+    
+    try:
+        updated_count = 0
+        failed_count = 0
+        
+        for appointment_id in bulk_update.appointment_ids:
+            try:
+                # Get appointment with access control
+                appointment = admin_get_appointment(
+                    current_user=current_user,
+                    db=db,
+                    appointment_id=appointment_id,
+                    required_access_level=models.AccessLevel.READ_WRITE
+                )
+                
+                # Exclude DIGNITARY and PROJECT_TEAM_MEETING types
+                if appointment.request_type in ['DIGNITARY', 'PROJECT_TEAM_MEETING']:
+                    logger.warning(f"Skipping appointment {appointment_id}: {appointment.request_type} type not allowed in bulk update")
+                    failed_count += 1
+                    continue
+                
+                # Save old status for notifications
+                old_status = appointment.status
+                
+                # Update status
+                appointment.status = bulk_update.status
+                appointment.last_updated_by = current_user.id
+                
+                # Handle approval
+                if old_status != models.AppointmentStatus.APPROVED and bulk_update.status == models.AppointmentStatus.APPROVED:
+                    appointment.approved_datetime = datetime.utcnow()
+                    appointment.approved_by = current_user.id
+                
+                updated_count += 1
+                
+            except Exception as e:
+                logger.error(f"Error updating appointment {appointment_id}: {str(e)}")
+                failed_count += 1
+                continue
+        
+        db.commit()
+        
+        logger.info(f"Bulk update completed: {updated_count} updated, {failed_count} failed")
+        
+        return {
+            "message": f"Successfully updated {updated_count} appointments",
+            "updated_count": updated_count,
+            "failed_count": failed_count
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in bulk update: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Bulk update failed: {str(e)}")
+
+@router.patch("/bulk-approve-schedule", response_model=dict)
+@requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def bulk_approve_and_schedule_appointments(
+    bulk_approve: schemas.BulkAppointmentApproveSchedule,
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
+):
+    """Approve and schedule multiple appointments to a specific calendar event"""
+    logger.info(f"Bulk approving and scheduling {len(bulk_approve.appointment_ids)} appointments to calendar event {bulk_approve.calendar_event_id}")
+    
+    try:
+        # Verify calendar event exists and is accessible
+        calendar_event = db.query(models.CalendarEvent).filter(
+            models.CalendarEvent.id == bulk_approve.calendar_event_id
+        ).first()
+        
+        if not calendar_event:
+            raise HTTPException(status_code=404, detail="Calendar event not found")
+        
+        # Check if calendar event is a darshan event
+        if calendar_event.event_type != models.EventType.DARSHAN:
+            raise HTTPException(status_code=400, detail="Calendar event must be a darshan event")
+        
+        updated_count = 0
+        failed_count = 0
+        
+        for appointment_id in bulk_approve.appointment_ids:
+            try:
+                # Get appointment with access control
+                appointment = admin_get_appointment(
+                    current_user=current_user,
+                    db=db,
+                    appointment_id=appointment_id,
+                    required_access_level=models.AccessLevel.READ_WRITE
+                )
+                
+                # Exclude DIGNITARY and PROJECT_TEAM_MEETING types
+                if appointment.request_type in ['DIGNITARY', 'PROJECT_TEAM_MEETING']:
+                    logger.warning(f"Skipping appointment {appointment_id}: {appointment.request_type} type not allowed in bulk approval")
+                    failed_count += 1
+                    continue
+                
+                # Save old data for notifications
+                old_status = appointment.status
+                old_sub_status = appointment.sub_status
+                
+                # Update appointment status and schedule details
+                appointment.status = models.AppointmentStatus.APPROVED
+                appointment.sub_status = models.AppointmentSubStatus.SCHEDULED
+                appointment.calendar_event_id = bulk_approve.calendar_event_id
+                appointment.last_updated_by = current_user.id
+                
+                # Set appointment date/time from calendar event
+                appointment.appointment_date = calendar_event.start_date
+                appointment.appointment_time = calendar_event.start_time
+                appointment.duration = calendar_event.duration
+                appointment.location_id = calendar_event.location_id
+                appointment.meeting_place_id = calendar_event.meeting_place_id
+                
+                # Handle approval metadata
+                if old_status != models.AppointmentStatus.APPROVED:
+                    appointment.approved_datetime = datetime.utcnow()
+                    appointment.approved_by = current_user.id
+                
+                # Add secretariat notes if provided
+                if bulk_approve.secretariat_notes_to_requester:
+                    appointment.secretariat_notes_to_requester = bulk_approve.secretariat_notes_to_requester
+                
+                updated_count += 1
+                
+                # Send email notification for this appointment
+                try:
+                    old_data = {
+                        'status': old_status,
+                        'sub_status': old_sub_status
+                    }
+                    update_data = {
+                        'status': appointment.status,
+                        'sub_status': appointment.sub_status,
+                        'calendar_event_id': appointment.calendar_event_id,
+                        'appointment_date': appointment.appointment_date,
+                        'appointment_time': appointment.appointment_time
+                    }
+                    notify_appointment_update(db, appointment, old_data, update_data)
+                except Exception as e:
+                    logger.error(f"Error sending email notification for appointment {appointment_id}: {str(e)}")
+                
+            except Exception as e:
+                logger.error(f"Error updating appointment {appointment_id}: {str(e)}")
+                failed_count += 1
+                continue
+        
+        db.commit()
+        
+        logger.info(f"Bulk approval completed: {updated_count} updated, {failed_count} failed")
+        
+        return {
+            "message": f"Successfully approved and scheduled {updated_count} appointments",
+            "updated_count": updated_count,
+            "failed_count": failed_count,
+            "calendar_event_id": bulk_approve.calendar_event_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in bulk approval: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Bulk approval failed: {str(e)}")
 
 @router.get("/all", response_model=List[schemas.AdminAppointment])
 @requires_any_role([models.UserRole.SECRETARIAT, models.UserRole.ADMIN])

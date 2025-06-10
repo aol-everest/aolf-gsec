@@ -249,3 +249,13 @@ async def get_entity_types():
 async def get_entity_type_map():
     """Get a dictionary mapping of entity type enum names to their display values"""
     return {entity_type.name: entity_type.value for entity_type in models.EntityType} 
+
+@router.get("/calendar/event-status-options-map")
+async def get_event_status_options_map():
+    """Get event status options as a map for frontend use"""
+    return {status.name: status.value for status in models.EventStatus} 
+
+@router.get("/appointment/request-type-options-map")
+async def get_appointment_request_type_options_map():
+    """Get appointment request type options as a map for frontend use"""
+    return {x.name: x.value for x in models.RequestType} 

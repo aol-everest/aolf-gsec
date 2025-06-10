@@ -28,6 +28,18 @@ import {
   TextField,
   InputAdornment,
   Stack,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemText,
+  Radio,
+  RadioGroup,
+  FormControlLabel,
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -40,6 +52,8 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import SearchIcon from '@mui/icons-material/Search';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
+import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import Layout from '../components/Layout';
 import { formatDate } from '../utils/dateUtils';
 import { LocationThinIconV2, CalendarIconV2, ListIconV2 } from '../components/iconsv2';
@@ -54,12 +68,14 @@ import { virtualize, bindKeyboard } from 'react-swipeable-views-utils';
 import ButtonWithBadge from '../components/ButtonWithBadge';
 import { AdminAppointmentsEditRoute } from '../config/routes';
 import { debugLog, createDebugLogger } from '../utils/debugUtils';
+import { getStatusColor, getStatusTheme } from '../utils/formattingUtils';
+import CalendarEventScheduleCard from '../components/CalendarEventScheduleCard';
+import { format, addDays, subDays } from 'date-fns';
+import { SecondaryButton } from '../components/SecondaryButton';
 
-import { Appointment, AppointmentDignitary } from '../models/types';
+import { Appointment, AppointmentDignitary, CalendarEventWithAppointments, AppointmentSummary, EventTypeMap } from '../models/types';
 import { AppointmentCard } from '../components/AppointmentCard';
 import AppointmentTable from '../components/AppointmentTable';
-import { subDays, addDays } from 'date-fns';
-import { SecondaryButton } from '../components/SecondaryButton';
 
 // Request type configuration interface
 interface RequestTypeConfig {
@@ -295,6 +311,22 @@ interface FilterState {
   endDate: Date | null;
 }
 
+// Bulk action confirmation dialog interface
+interface BulkActionDialogState {
+  open: boolean;
+  status: string | null;
+  appointmentCount: number;
+}
+
+// Calendar event selection dialog interface
+interface CalendarEventSelectionDialogState {
+  open: boolean;
+  selectedDate: Date;
+  selectedCalendarEventId: number | null;
+  secretariatNotes: string;
+  appointmentIds: number[];
+}
+
 const AdminAppointmentTiles: React.FC = () => {
   // Create a component-specific logger
   const logger = createDebugLogger('AdminAppointmentTiles');
@@ -331,6 +363,35 @@ const AdminAppointmentTiles: React.FC = () => {
   
   // Fetch status options using useEnums hook
   const { values: statusOptions = [], isLoading: isLoadingStatusOptions } = useEnums('appointmentStatus');
+
+  // Fetch status map for consistent status checking
+  const { data: statusMap } = useQuery<Record<string, string>>({
+    queryKey: ['status-map'],
+    queryFn: async () => {
+      const { data } = await api.get<Record<string, string>>('/appointments/status-options-map');
+      return data;
+    }
+  });
+
+  // Fetch event type map from the API
+  const { data: requestTypeMap = {} } = useQuery<Record<string, string>>({
+    queryKey: ['request-type-map'],
+    queryFn: async () => {
+      const { data } = await api.get<Record<string, string>>('/appointment/request-type-options-map');
+      return data;
+    },
+  });
+
+
+  // Fetch event type map from the API
+  const { data: eventTypeMap = {} } = useQuery<EventTypeMap>({
+    queryKey: ['calendar-event-type-map'],
+    queryFn: async () => {
+      const { data } = await api.get<EventTypeMap>('/calendar/event-type-options-map');
+      return data;
+    },
+  });
+
 
   // Fetch request type configurations from API
   const { data: requestTypeConfigs = [], isLoading: isLoadingRequestTypes } = useQuery<RequestTypeConfig[]>({
@@ -919,6 +980,317 @@ const AdminAppointmentTiles: React.FC = () => {
     return appointments.filter(a => (a.request_type === requestType && (a.status === status || status === 'All'))).length;
   };
 
+  // Bulk action states
+  const [selectedAppointmentIds, setSelectedAppointmentIds] = useState<number[]>([]);
+  const [bulkActionDialog, setBulkActionDialog] = useState<BulkActionDialogState>({
+    open: false,
+    status: null,
+    appointmentCount: 0
+  });
+  const [isUpdatingBulk, setIsUpdatingBulk] = useState(false);
+
+  // Calendar event selection dialog states
+  const [calendarEventSelectionDialog, setCalendarEventSelectionDialog] = useState<CalendarEventSelectionDialogState>({
+    open: false,
+    selectedDate: new Date(),
+    selectedCalendarEventId: null,
+    secretariatNotes: '',
+    appointmentIds: []
+  });
+
+  // Get selected appointments that can be bulk processed
+  const getEligibleSelectedAppointments = useCallback((targetStatus: string) => {
+    const selectedAppointments = filteredAppointments.filter(apt => 
+      selectedAppointmentIds.includes(apt.id)
+    );
+    
+    // Allow all appointment types for "Completed" status
+    if (statusMap && targetStatus === statusMap['COMPLETED']) {
+      return selectedAppointments;
+    }
+    
+    // For other statuses, filter out DIGNITARY and PROJECT_TEAM_MEETING types
+    return selectedAppointments.filter(apt => 
+      apt.request_type !== requestTypeMap['DIGNITARY'] && 
+      apt.request_type !== requestTypeMap['PROJECT_TEAM_MEETING']
+    );
+  }, [filteredAppointments, selectedAppointmentIds, statusMap, requestTypeMap]);
+
+  // Check if any selected appointments contain restricted types
+  const hasRestrictedAppointments = useCallback(() => {
+    const selectedAppointments = filteredAppointments.filter(apt => 
+      selectedAppointmentIds.includes(apt.id)
+    );
+    
+    return selectedAppointments.some(apt => 
+      apt.request_type === requestTypeMap['DIGNITARY'] || 
+      apt.request_type === requestTypeMap['PROJECT_TEAM_MEETING']
+    );
+  }, [filteredAppointments, selectedAppointmentIds, requestTypeMap]);
+
+  // Get all selected appointments (no filtering)
+  const getAllSelectedAppointments = useCallback(() => {
+    return filteredAppointments.filter(apt => 
+      selectedAppointmentIds.includes(apt.id)
+    );
+  }, [filteredAppointments, selectedAppointmentIds]);
+
+  // Fetch calendar events for the selected date
+  const { data: calendarEventsForDate = [], isLoading: isLoadingCalendarEvents } = useQuery({
+    queryKey: ['calendar-events-for-date', format(calendarEventSelectionDialog.selectedDate, 'yyyy-MM-dd')],
+    queryFn: async () => {
+      try {
+        const dateStr = format(calendarEventSelectionDialog.selectedDate, 'yyyy-MM-dd');
+        const { data } = await api.get<{ calendar_events: CalendarEventWithAppointments[] }>('/admin/calendar-events/schedule', {
+          params: {
+            start_date: dateStr,
+            end_date: dateStr
+          }
+        });
+        
+        // Filter for darshan events and sort by start time
+        const darshanEvents = data.calendar_events
+          .filter(event => event.event_type === eventTypeMap['DARSHAN'])
+          .sort((a, b) => {
+            if (!a.start_time) return 1;
+            if (!b.start_time) return -1;
+            return a.start_time.localeCompare(b.start_time);
+          });
+        
+        return darshanEvents;
+      } catch (error) {
+        console.error('Error fetching calendar events:', error);
+        enqueueSnackbar('Failed to fetch calendar events', { variant: 'error' });
+        return [];
+      }
+    },
+    enabled: calendarEventSelectionDialog.open,
+    staleTime: 5 * 60 * 1000 // 5 minutes
+  });
+
+  // Handle bulk status update
+  const handleBulkStatusUpdate = async (status: string) => {
+    const isCompleted = statusMap && status === statusMap['COMPLETED'];
+    const hasRestricted = hasRestrictedAppointments();
+    
+    // If we have restricted appointments and this isn't "Completed", don't allow the action
+    if (hasRestricted && !isCompleted) {
+      enqueueSnackbar('Cannot bulk update DIGNITARY or PROJECT_TEAM_MEETING appointments to this status. Only "Mark as Completed" is allowed.', { variant: 'warning' });
+      return;
+    }
+    
+    const appointmentsToUpdate = isCompleted ? getAllSelectedAppointments() : getEligibleSelectedAppointments(status);
+    
+    if (appointmentsToUpdate.length === 0) {
+      enqueueSnackbar('No appointments selected.', { variant: 'warning' });
+      return;
+    }
+    
+    // If status is "Approved", show calendar event selection dialog
+    if (statusMap && status === statusMap['APPROVED']) {
+      setCalendarEventSelectionDialog({
+        open: true,
+        selectedDate: new Date(),
+        selectedCalendarEventId: null,
+        secretariatNotes: '',
+        appointmentIds: appointmentsToUpdate.map(apt => apt.id)
+      });
+      return;
+    }
+    
+    // For other statuses, show confirmation dialog
+    setBulkActionDialog({
+      open: true,
+      status,
+      appointmentCount: appointmentsToUpdate.length
+    });
+  };
+
+  // Confirm bulk status update (for non-approval statuses)
+  const confirmBulkStatusUpdate = async () => {
+    if (!bulkActionDialog.status || selectedAppointmentIds.length === 0) return;
+    
+    const isCompleted = statusMap && bulkActionDialog.status === statusMap['COMPLETED'];
+    const appointmentsToUpdate = isCompleted ? getAllSelectedAppointments() : getEligibleSelectedAppointments(bulkActionDialog.status);
+    
+    if (appointmentsToUpdate.length === 0) return;
+    
+    setIsUpdatingBulk(true);
+    
+    try {
+      // Call API to update appointments in bulk
+      await api.patch('/admin/appointments/bulk-update', {
+        appointment_ids: appointmentsToUpdate.map(apt => apt.id),
+        status: bulkActionDialog.status
+      });
+      
+      // Invalidate queries to refresh data
+      await queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      
+      enqueueSnackbar(
+        `Successfully updated ${appointmentsToUpdate.length} appointment${appointmentsToUpdate.length === 1 ? '' : 's'} to ${bulkActionDialog.status}`,
+        { variant: 'success' }
+      );
+      
+      // Clear selection
+      setSelectedAppointmentIds([]);
+      
+    } catch (error) {
+      console.error('Error updating appointments in bulk:', error);
+      enqueueSnackbar('Failed to update appointments. Please try again.', { variant: 'error' });
+    } finally {
+      setIsUpdatingBulk(false);
+      setBulkActionDialog({ open: false, status: null, appointmentCount: 0 });
+    }
+  };
+
+  // Confirm bulk approval with calendar event selection
+  const confirmBulkApproval = async () => {
+    if (!calendarEventSelectionDialog.selectedCalendarEventId || calendarEventSelectionDialog.appointmentIds.length === 0) {
+      enqueueSnackbar('Please select a calendar event', { variant: 'warning' });
+      return;
+    }
+    
+    setIsUpdatingBulk(true);
+    
+    try {
+      // Call API to bulk approve and schedule appointments
+      await api.patch('/admin/appointments/bulk-approve-schedule', {
+        appointment_ids: calendarEventSelectionDialog.appointmentIds,
+        calendar_event_id: calendarEventSelectionDialog.selectedCalendarEventId,
+        secretariat_notes_to_requester: calendarEventSelectionDialog.secretariatNotes
+      });
+      
+      // Invalidate queries to refresh data
+      await queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      
+      enqueueSnackbar(
+        `Successfully approved and scheduled ${calendarEventSelectionDialog.appointmentIds.length} appointment${calendarEventSelectionDialog.appointmentIds.length === 1 ? '' : 's'}`,
+        { variant: 'success' }
+      );
+      
+      // Clear selection and close dialog
+      setSelectedAppointmentIds([]);
+      setCalendarEventSelectionDialog({
+        open: false,
+        selectedDate: new Date(),
+        selectedCalendarEventId: null,
+        secretariatNotes: '',
+        appointmentIds: []
+      });
+      
+    } catch (error) {
+      console.error('Error bulk approving appointments:', error);
+      enqueueSnackbar('Failed to approve appointments. Please try again.', { variant: 'error' });
+    } finally {
+      setIsUpdatingBulk(false);
+    }
+  };
+
+  // Cancel bulk action dialog
+  const cancelBulkAction = () => {
+    setBulkActionDialog({ open: false, status: null, appointmentCount: 0 });
+  };
+
+  // Cancel calendar event selection dialog
+  const cancelCalendarEventSelection = () => {
+    setCalendarEventSelectionDialog({
+      open: false,
+      selectedDate: new Date(),
+      selectedCalendarEventId: null,
+      secretariatNotes: '',
+      appointmentIds: []
+    });
+  };
+
+  // Navigate calendar date
+  const handlePrevDate = () => {
+    setCalendarEventSelectionDialog(prev => ({
+      ...prev,
+      selectedDate: subDays(prev.selectedDate, 1),
+      selectedCalendarEventId: null // Reset selection when date changes
+    }));
+  };
+
+  const handleNextDate = () => {
+    setCalendarEventSelectionDialog(prev => ({
+      ...prev,
+      selectedDate: addDays(prev.selectedDate, 1),
+      selectedCalendarEventId: null // Reset selection when date changes
+    }));
+  };
+
+  // Helper function to convert appointment summary to full appointment for compatibility
+  const convertAppointmentSummaryToAppointment = (summary: AppointmentSummary, event: CalendarEventWithAppointments): Appointment => {
+    return {
+      ...summary,
+      // Use calendar event data as authoritative source
+      appointment_date: event.start_date,
+      appointment_time: event.start_time,
+      duration: event.duration,
+      location: event.location!,
+      location_id: event.location?.id || 0,
+      meeting_place: event.meeting_place!,
+      meeting_place_id: event.meeting_place?.id || 0,
+      // Required fields for Appointment interface
+      created_at: event.created_at,
+      updated_at: event.updated_at,
+      dignitary: summary.appointment_dignitaries?.[0]?.dignitary || {} as any, // Legacy compatibility
+    } as Appointment;
+  };
+
+  // Custom styled status button component
+  const StatusActionButton: React.FC<{ 
+    status: string; 
+    count: number; 
+    onClick: () => void;
+  }> = ({ status, count, onClick }) => {
+    const theme = useTheme();
+    const statusTheme = getStatusTheme(status, theme);
+    
+    const isCompleted = statusMap && status === statusMap['COMPLETED'];
+    const hasRestricted = hasRestrictedAppointments();
+    
+    // If we have restricted appointments, only show "Mark as Completed" button
+    if (hasRestricted && !isCompleted) {
+      return null;
+    }
+    
+    // Get count based on whether we have restricted appointments
+    const appointmentCount = isCompleted ? getAllSelectedAppointments().length : getEligibleSelectedAppointments(status).length;
+    
+    // Don't show button if no appointments
+    if (appointmentCount === 0) return null;
+    
+    return (
+      <Button
+        onClick={onClick}
+        variant="outlined"
+        size="small"
+        sx={{
+          cursor: 'pointer',
+          bgcolor: statusTheme.light,
+          color: statusTheme.main,
+          // border: `1px solid ${statusTheme.main}`,
+          border: `1px solid rgba(61, 139, 232, 0.2)`,
+          borderRadius: '13px',
+          px: 1.5,
+          py: 0.5,
+          fontSize: '0.81rem',
+          fontWeight: '500',
+          textTransform: 'none',
+          '&:hover': {
+            bgcolor: statusTheme.main,
+            color: 'white',
+            opacity: 0.9,
+          },
+        }}
+      >
+        Mark as {status} ({appointmentCount})
+      </Button>
+    );
+  };
+
   // Handle table row click to show card view
   const handleTableRowClick = (appointment: Appointment) => {
     setSelectedAppointment(appointment);
@@ -941,6 +1313,22 @@ const AdminAppointmentTiles: React.FC = () => {
     // Remove appointment ID from URL but keep filter params
     const searchParams = new URLSearchParams(window.location.search);
     navigate(`/admin/appointments/review?${searchParams.toString()}`, { replace: true });
+  };
+
+  // Handle appointment row selection change
+  const handleRowSelectionChange = (selectedIds: number[]) => {
+    logger('🔍 [DEBUG] handleRowSelectionChange called with:', {
+      selectedIds,
+      count: selectedIds.length,
+      previousCount: selectedAppointmentIds.length,
+      previousIds: selectedAppointmentIds,
+      stackTrace: new Error().stack
+    });
+    
+    logger(`Selection changed: ${selectedIds.length} appointments selected`);
+    setSelectedAppointmentIds(selectedIds);
+    
+    logger('🔍 [DEBUG] After setSelectedAppointmentIds called');
   };
 
   // Updated AppointmentTile component to safely handle undefined appointments
@@ -1341,6 +1729,35 @@ const AdminAppointmentTiles: React.FC = () => {
               viewMode === 'table' ? (
                 /* Table View */
                 <Box sx={{ width: '100%' }}>
+                  {/* Bulk Action Buttons - Show when appointments are selected */}
+                  {selectedAppointmentIds.length > 0 && (
+                    <Box sx={{ 
+                      mb: 2, 
+                      p: 2, 
+                      // bgcolor: 'rgba(61, 139, 232, 0.1)',
+                      // borderRadius: 1,
+                      // border: '1px solid',
+                      // borderColor: 'divider'
+                    }}>
+                      <Typography variant="h6" sx={{ mb: 1, fontWeight: 600 }}>
+                        Bulk Actions
+                      </Typography>
+                      {/* <Typography variant="body2" sx={{ mb: 1 }}>
+                        {selectedAppointmentIds.length} appointment{selectedAppointmentIds.length === 1 ? '' : 's'} selected
+                      </Typography> */}
+                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                        {statusOptions.map((status) => (
+                          <StatusActionButton
+                            key={status}
+                            status={status}
+                            count={selectedAppointmentIds.length}
+                            onClick={() => handleBulkStatusUpdate(status)}
+                          />
+                        ))}
+                      </Box>
+                    </Box>
+                  )}
+                  
                   <AppointmentTable
                     appointments={filteredAppointments}
                     onRowClick={handleTableRowClick}
@@ -1348,14 +1765,11 @@ const AdminAppointmentTiles: React.FC = () => {
                       const currentUrl = window.location.pathname + window.location.search;
                       navigate(`${AdminAppointmentsEditRoute.path?.replace(':id', appointmentId.toString())}?redirectTo=${encodeURIComponent(currentUrl)}` || '');
                     }}
-                    selectedRows={[]}
-                    onRowSelectionChange={(selectedIds) => {
-                      console.log('Selected appointment IDs:', selectedIds);
-                      // TODO: Handle selection change if needed
-                    }}
+                    selectedRows={selectedAppointmentIds}
+                    onRowSelectionChange={handleRowSelectionChange}
                   />
                 </Box>
-                            ) : selectedAppointment ? (
+              ) : selectedAppointment ? (
                 /* Card View - Show single appointment card */
                 <Box sx={{ width: '100%', maxWidth: '900px' }}>
                   <AppointmentCard 
@@ -1456,7 +1870,8 @@ const AdminAppointmentTiles: React.FC = () => {
                     }
                   />
                 </>
-              )) : (
+              )
+            ) : (
               <Paper sx={{ p: 3, textAlign: 'center' }}>
                 <Typography>No appointments found for the selected filters.</Typography>
               </Paper>
@@ -1464,6 +1879,178 @@ const AdminAppointmentTiles: React.FC = () => {
           </Box>
         </Box>
       </Container>
+      
+      {/* Bulk Action Confirmation Dialog */}
+      <Dialog
+        open={bulkActionDialog.open}
+        onClose={cancelBulkAction}
+        aria-labelledby="bulk-action-dialog-title"
+        aria-describedby="bulk-action-dialog-description"
+      >
+        <DialogTitle id="bulk-action-dialog-title">
+          Confirm Bulk Status Update
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="bulk-action-dialog-description">
+            Are you sure you want to mark {bulkActionDialog.appointmentCount} appointment
+            {bulkActionDialog.appointmentCount === 1 ? '' : 's'} as "{bulkActionDialog.status}"?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={cancelBulkAction} disabled={isUpdatingBulk}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={confirmBulkStatusUpdate} 
+            variant="contained"
+            disabled={isUpdatingBulk}
+            startIcon={isUpdatingBulk ? <CircularProgress size={16} /> : undefined}
+          >
+            {isUpdatingBulk ? 'Updating...' : 'Confirm'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Calendar Event Selection Dialog */}
+      <Dialog
+        open={calendarEventSelectionDialog.open}
+        onClose={cancelCalendarEventSelection}
+        maxWidth="md"
+        fullWidth
+        aria-labelledby="calendar-event-selection-dialog-title"
+      >
+        <DialogTitle id="calendar-event-selection-dialog-title">
+          Select Calendar Event for Approval
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 1 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Approving {calendarEventSelectionDialog.appointmentIds.length} appointment
+              {calendarEventSelectionDialog.appointmentIds.length === 1 ? '' : 's'}. Please select a darshan event to schedule them.
+            </Typography>
+            
+            {/* Date Navigation */}
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 3 }}>
+              <IconButton onClick={handlePrevDate} size="small">
+                <ArrowBackIosNewIcon fontSize="small" />
+              </IconButton>
+              <LocalizationProvider dateAdapter={AdapterDateFns}>
+                <DatePicker
+                  value={calendarEventSelectionDialog.selectedDate}
+                  onChange={(date) => {
+                    if (date) {
+                      setCalendarEventSelectionDialog(prev => ({
+                        ...prev,
+                        selectedDate: date,
+                        selectedCalendarEventId: null // Reset selection when date changes
+                      }));
+                    }
+                  }}
+                  slotProps={{
+                    textField: {
+                      size: "small",
+                      sx: { width: 200, mx: 2 }
+                    }
+                  }}
+                />
+              </LocalizationProvider>
+              <IconButton onClick={handleNextDate} size="small">
+                <ArrowForwardIosIcon fontSize="small" />
+              </IconButton>
+            </Box>
+
+            {/* Calendar Events List */}
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                Available Darshan Events for {format(calendarEventSelectionDialog.selectedDate, 'EEE, MMM d, yyyy')}:
+              </Typography>
+              
+              {isLoadingCalendarEvents ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                  <CircularProgress size={24} />
+                </Box>
+              ) : calendarEventsForDate.length === 0 ? (
+                <Paper sx={{ p: 2, textAlign: 'center', bgcolor: 'background.paper' }}>
+                  <Typography variant="body2" color="text.secondary">
+                    No darshan events available for this date
+                  </Typography>
+                </Paper>
+              ) : (
+                <RadioGroup
+                  value={calendarEventSelectionDialog.selectedCalendarEventId?.toString() || ''}
+                  onChange={(e) => {
+                    setCalendarEventSelectionDialog(prev => ({
+                      ...prev,
+                      selectedCalendarEventId: parseInt(e.target.value, 10)
+                    }));
+                  }}
+                >
+                  <List sx={{ maxHeight: 300, overflow: 'auto' }}>
+                    {calendarEventsForDate.map((event) => (
+                      <ListItem key={event.id} disablePadding>
+                        <ListItemButton onClick={() => {
+                          setCalendarEventSelectionDialog(prev => ({
+                            ...prev,
+                            selectedCalendarEventId: event.id
+                          }));
+                        }}>
+                          <Radio
+                            value={event.id.toString()}
+                            size="small"
+                            sx={{ mr: 1 }}
+                          />
+                          <Box sx={{ flexGrow: 1 }}>
+                            <CalendarEventScheduleCard
+                              calendarEvent={event}
+                              daysToShow={1}
+                              isMobile={false}
+                              onCalendarEventClick={() => {}} // Disabled in selection mode
+                              onAppointmentCompletion={() => {}} // Disabled in selection mode
+                              isAppointmentInPast={() => false} // Not relevant in selection mode
+                              convertAppointmentSummaryToAppointment={convertAppointmentSummaryToAppointment}
+                              statusMap={{}}
+                            />
+                          </Box>
+                        </ListItemButton>
+                      </ListItem>
+                    ))}
+                  </List>
+                </RadioGroup>
+              )}
+            </Box>
+
+            {/* Notes Field */}
+            <TextField
+              label="Secretariat Notes to Requester"
+              multiline
+              rows={3}
+              fullWidth
+              value={calendarEventSelectionDialog.secretariatNotes}
+              onChange={(e) => {
+                setCalendarEventSelectionDialog(prev => ({
+                  ...prev,
+                  secretariatNotes: e.target.value
+                }));
+              }}
+              placeholder="Optional notes to include with the approval notification"
+              sx={{ mb: 2 }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={cancelCalendarEventSelection} disabled={isUpdatingBulk}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={confirmBulkApproval} 
+            variant="contained"
+            disabled={isUpdatingBulk || !calendarEventSelectionDialog.selectedCalendarEventId}
+            startIcon={isUpdatingBulk ? <CircularProgress size={16} /> : undefined}
+          >
+            {isUpdatingBulk ? 'Approving...' : 'Confirm Approval'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Layout>
   );
 };

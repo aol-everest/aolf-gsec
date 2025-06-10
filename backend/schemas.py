@@ -1388,5 +1388,28 @@ class UserContactSearchResponse(BaseModel):
     total_results: int
     search_query: str
 
+class BulkAppointmentUpdate(BaseModel):
+    """Schema for bulk appointment status updates"""
+    appointment_ids: List[int]
+    status: AppointmentStatus
+    
+    @validator('appointment_ids')
+    def validate_appointment_ids(cls, v):
+        if not v or len(v) == 0:
+            raise ValueError('At least one appointment ID is required')
+        return v
+
+class BulkAppointmentApproveSchedule(BaseModel):
+    """Schema for bulk appointment approval and scheduling to calendar event"""
+    appointment_ids: List[int]
+    calendar_event_id: int
+    secretariat_notes_to_requester: Optional[str] = None
+    
+    @validator('appointment_ids')
+    def validate_appointment_ids(cls, v):
+        if not v or len(v) == 0:
+            raise ValueError('At least one appointment ID is required')
+        return v
+
 # NOTE: Removed duplicate schemas - using UserContact and AdminUserContact directly
 

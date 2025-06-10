@@ -34,6 +34,7 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import { useQuery } from '@tanstack/react-query';
 import { useApi } from '../hooks/useApi';
+import { debugLog, createDebugLogger } from '../utils/debugUtils';
 
 interface AppointmentTableProps {
   appointments: Appointment[];
@@ -133,6 +134,7 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
   selectedRows = [],
   onRowSelectionChange
 }) => {
+  const logger = createDebugLogger('AppointmentTable');
   const theme = useTheme();
   const api = useApi();
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -149,26 +151,56 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
 
   // Update row selection when selectedRows prop changes
   React.useEffect(() => {
+    logger('📋 [TABLE DEBUG] selectedRows prop changed:', {
+      selectedRows,
+      count: selectedRows.length,
+      appointmentCount: appointments.length
+    });
+    
     const newRowSelection: RowSelectionState = {};
     selectedRows.forEach(id => {
-      const index = appointments.findIndex(apt => apt.id === id);
-      if (index !== -1) {
-        newRowSelection[index] = true;
+      // Since getRowId uses appointment ID, we use the ID directly as the key
+      const appointmentExists = appointments.some(apt => apt.id === id);
+      logger(`📋 [TABLE DEBUG] Looking for appointment ID ${id} exists: ${appointmentExists}`);
+      if (appointmentExists) {
+        newRowSelection[id.toString()] = true;
       }
     });
+    
+    logger('📋 [TABLE DEBUG] Setting new row selection:', newRowSelection);
     setRowSelection(newRowSelection);
   }, [selectedRows, appointments]);
 
   // Handle row selection change
   const handleRowSelectionChange = (updater: any) => {
+    logger('📋 [TABLE DEBUG] handleRowSelectionChange called with:', {
+      updaterType: typeof updater,
+      currentRowSelection: rowSelection,
+      appointmentCount: appointments.length
+    });
+    
     const newSelection = typeof updater === 'function' ? updater(rowSelection) : updater;
+    
+    logger('📋 [TABLE DEBUG] New selection computed:', {
+      newSelection,
+      selectedRowKeys: Object.keys(newSelection).filter(key => newSelection[key]),
+      totalSelected: Object.keys(newSelection).filter(key => newSelection[key]).length
+    });
+    
     setRowSelection(newSelection);
     
     if (onRowSelectionChange) {
       const selectedIds = Object.keys(newSelection)
         .filter(key => newSelection[key])
-        .map(key => appointments[parseInt(key)]?.id)
+        .map(key => {
+          // Since getRowId returns row.id.toString(), the key IS the appointment ID
+          const appointmentId = parseInt(key);
+          logger(`📋 [TABLE DEBUG] Selection key ${key} is appointment ID: ${appointmentId}`);
+          return appointmentId;
+        })
         .filter(Boolean);
+      
+      logger('📋 [TABLE DEBUG] Final selectedIds:', selectedIds);
       onRowSelectionChange(selectedIds);
     }
   };
@@ -408,7 +440,15 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
     <Box sx={{ width: '100%' }}>
       {/* Selection info */}
       {selectedCount > 0 && (
-        <Box sx={{ mb: 2, p: 2, backgroundColor: theme.palette.primary.light, borderRadius: 1 }}>
+        <Box sx={{ 
+          mb: 1, 
+          p: 2, 
+          // backgroundColor: theme.palette.primary.light, 
+          backgroundColor: 'rgba(255, 255, 255, 0.81)',
+          border: '1px solid rgba(56, 56, 56, 0.1)',
+          borderRadius: 2,
+          // border: `1px solid ${theme.palette.primary.main}`,
+        }}>
           <Typography variant="body2" color="primary.dark">
             {selectedCount} appointment{selectedCount === 1 ? '' : 's'} selected
           </Typography>

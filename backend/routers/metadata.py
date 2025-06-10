@@ -118,17 +118,3 @@ async def get_request_type_configurations(
         ))
     
     return configurations
-
-@router.get("/calendar/event-status-options-map")
-async def get_event_status_options_map(
-    current_user: models.User = Depends(get_current_user)
-):
-    """Get event status options as a map for frontend use"""
-    from models.enums import EventStatus
-    
-    status_map = {}
-    for status in EventStatus:
-        # Use enum name as key and enum value as value
-        status_map[status.name] = status.value
-    
-    return status_map 
