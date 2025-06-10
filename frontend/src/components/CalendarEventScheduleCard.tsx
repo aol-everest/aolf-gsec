@@ -57,14 +57,14 @@ const CalendarEventScheduleCard: React.FC<CalendarEventScheduleCardProps> = ({
   };
 
   // Render calendar event time chip using the same style as appointment time  
-  const renderCalendarEventTimeChip = (event: CalendarEventWithAppointments) => {
+  const renderCalendarEventTimeChip = (event: CalendarEventWithAppointments, includeDuration: boolean) => {
     // Create a mock appointment object for the time chip component
     const mockAppointment = {
       appointment_time: event.start_time,
       duration: event.duration
     } as Appointment;
     
-    return <AppointmentTimeChip appointment={mockAppointment} />;
+    return <AppointmentTimeChip appointment={mockAppointment} includeDuration={includeDuration} />;
   };
 
   // Helper function to render dignitary info for display
@@ -128,8 +128,8 @@ const CalendarEventScheduleCard: React.FC<CalendarEventScheduleCardProps> = ({
         {/* Calendar Event Header - Time, Duration, and Status */}
         <Grid item xs={12}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            {renderCalendarEventTimeChip(calendarEvent)}
-            {renderCalendarEventStatusChip(calendarEvent)}
+            {renderCalendarEventTimeChip(calendarEvent, true)}
+            {/* {renderCalendarEventStatusChip(calendarEvent)} */}
           </Box>
         </Grid>
 
@@ -176,48 +176,55 @@ const CalendarEventScheduleCard: React.FC<CalendarEventScheduleCardProps> = ({
                       borderTop: 1, 
                       borderColor: 'divider', 
                       my: 1,
-                      mx: -1 
+                      mx: -0.56 
                     }} />
                   </Grid>
                 )}
+
+                {calendarEvent.appointments.length > 1 && (
+                  <Typography variant="caption" color="text.secondary">
+                    Appointment #{index + 1}
+                  </Typography>
+                )}
+
+                {/* Dignitary Information */}
+                {renderDignitaryInfo(appointment)}
+
+                <GridItemIconText 
+                  containerRef={cardContainerRef} 
+                  icon={<ListIconV2 sx={{ width: 20, height: 20 }} />} 
+                  text={appointment.purpose || ''} 
+                  theme={theme} 
+                />
 
                 {/* Appointment Details Section */}
                 <Grid item xs={12}>
                   <Box sx={{ pl: 1 }}>
                     {/* Appointment Status (secondary to calendar event status) */}
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                      <Typography variant="caption" color="text.secondary">
-                        Appointment #{index + 1}
-                      </Typography>
-                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                        <AppointmentStatusChip 
+                      {(statusMap && isAppointmentInPast(appointment) && appointment.status === statusMap['APPROVED']) ? (
+                        <PrimaryButton 
                           size="extrasmall"
+                          sx={{
+                            pl: 1.5,
+                            pr: 1.5,
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onAppointmentCompletion(appointment);
+                          }}
+                        >
+                          <CheckSquareCircleFilledIconV2 sx={{ fontSize: '1rem' }} /> Mark complete
+                        </PrimaryButton>
+                      ) : (
+                        <AppointmentStatusChip 
+                          size="small"
                           status={appointment.status} 
                         />
-                        {statusMap && isAppointmentInPast(appointment) && appointment.status === statusMap['APPROVED'] && (
-                          <PrimaryButton 
-                            size="extrasmall"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onAppointmentCompletion(appointment);
-                            }}
-                          >
-                            <CheckSquareCircleFilledIconV2 sx={{ fontSize: '1rem' }} />
-                          </PrimaryButton>
-                        )}
-                      </Box>
+                      )}
                     </Box>
 
-                    {/* Dignitary Information */}
-                    {renderDignitaryInfo(appointment)}
 
-                    {/* Purpose */}
-                    <GridItemIconText 
-                      containerRef={cardContainerRef} 
-                      icon={<ListIconV2 sx={{ width: 20, height: 20 }} />} 
-                      text={appointment.purpose || ''} 
-                      theme={theme} 
-                    />
                   </Box>
                 </Grid>
               </React.Fragment>

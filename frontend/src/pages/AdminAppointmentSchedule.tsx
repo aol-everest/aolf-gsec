@@ -65,6 +65,7 @@ const AdminAppointmentSchedule: React.FC = () => {
   
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isLargeScreen = useMediaQuery(theme.breakpoints.up('xl'));
   const [appointmentUpdateData, setAppointmentUpdateData] = useState<AdminAppointmentUpdate>({});
   const [daysToShow, setDaysToShow] = useState<number>(isMobile ? 1 : 3);
   const [startDate, setStartDate] = useState(getLocalDateString(0));
@@ -538,7 +539,7 @@ const AdminAppointmentSchedule: React.FC = () => {
                     3 Days
                   </ToggleButton>
                 )}
-                {!isMobile && (
+                {isLargeScreen && (
                   <ToggleButton value={7} aria-label="7 days">
                     Week
                   </ToggleButton>
