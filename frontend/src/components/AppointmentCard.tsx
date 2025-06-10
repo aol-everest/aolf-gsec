@@ -1,13 +1,9 @@
 import { Paper, Typography, Box, IconButton, Grid, Theme, CardContent, Card, useMediaQuery, useTheme, Collapse } from "@mui/material"
-import { formatDate, formatDateWithTimezone } from "../utils/dateUtils"
-import { formatHonorificTitle, formatPrimaryDomain } from "../utils/formattingUtils"
-import { validateUrl } from "../utils/urlUtils"
-import EditIcon from "@mui/icons-material/Edit"
-import { Appointment, AppointmentAttachment, AppointmentDignitary, AppointmentContact } from "../models/types"
+import { formatDate } from "../utils/dateUtils"
+import { Appointment, AppointmentAttachment } from "../models/types"
 import { useNavigate } from "react-router-dom";
-import { AdminAddNewDignitaryRoute, AdminAppointmentsEditRoute, AdminEditDignitaryRoute } from "../config/routes";
-import { useEffect, useState, useMemo, useRef } from "react";
-import AttachmentSection from "./AttachmentSection";
+import { AdminAppointmentsEditRoute, AdminEditDignitaryRoute } from "../config/routes";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useApi } from "../hooks/useApi";
 import { 
     MailIconV2, 
@@ -33,6 +29,15 @@ import AppointmentCardSection from "./AppointmentCardSection"
 import GridItemIconText from "./GridItemIconText"
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import { 
+    RequesterSection,
+    AppointmentDetailsSection,
+    DignitariesSection,
+    ContactsSection,
+    PurposeSection,
+    SecretariatNotesSection,
+    AttachmentsSection
+} from './appointment-sections';
 
 type AppointmentCardDisplayMode = 'regular' | 'calendar'
 
@@ -54,6 +59,8 @@ export const AppointmentCard: React.FC<{
     
     // Create a component-specific logger
     const logger = createDebugLogger(`AppointmentCard:${appointment.id}`);
+
+    // No longer need render utils - using components directly
 
     // Separate attachments by type
     const businessCardAttachments = useMemo(() => {
@@ -139,472 +146,16 @@ export const AppointmentCard: React.FC<{
         logger(`Editing dignitary with ID: ${dignitaryId}`);
     };
 
-    // Helper function to get dignitaries display information
-    const renderDignitariesSectionDetails = (appointment: Appointment) => {
-        // Check if appointment has appointment_dignitaries array
-        if (appointment.appointment_dignitaries && appointment.appointment_dignitaries.length > 0) {
-            // If there are multiple dignitaries, display them all
-            return (
-                <>
-                    {appointment.appointment_dignitaries.map((appointmentDignitary: AppointmentDignitary, index: number) => {
-                        const dig = appointmentDignitary.dignitary;
-                        return (
-                            <Box
-                                sx={{ 
-                                    pt: 1, 
-                                    pb: 1, 
-                                    mb: index < appointment.appointment_dignitaries!.length - 1 ? 1 : 0, 
-                                    position: 'relative' // Added for absolute positioning of edit button
-                                }} 
-                                key={dig.id}
-                            >
-                                {/* Add Edit button for the dignitary */}
 
-                                <Box sx={{ 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
-                                    justifyContent: 'space-between',
-                                    gap: 1,
-                                    border: '1px solid #f1f1f1',
-                                    borderRadius: '10px',
-                                    bgcolor: 'grey.50',
-                                    pl: 2,
-                                    pr: 1,
-                                    pt: 0.5,
-                                    pb: 0.5,
-                                    mb: 1.3
-                                }}>
-                                    <Typography variant="h5" sx={{ 
-                                        fontWeight: 600, 
-                                        p: 0,
-                                        m: 0,
-                                        color: theme.palette.text.primary
-                                    }}>
-                                        {index + 1}. {formatHonorificTitle(dig.honorific_title)} {dig.first_name} {dig.last_name}
-                                    </Typography>
-                                    <IconButton 
-                                        color="primary"
-                                        onClick={() => handleEditDignitary(dig.id)}
-                                        size="small"
-                                        aria-label="Edit Dignitary"
-                                    >
-                                        <EditIconV2 sx={{ width: 20, height: 20 }} />
-                                    </IconButton>
-                                </Box>
-                                <Box sx={{ 
-                                    pl: 1, 
-                                    pr: 1, 
-                                    pt: 1, 
-                                    pb: 1 
-                                }}>
-                                    <Grid container spacing={1}>
-                                        <GridItemIconText containerRef={cardContainerRef} icon={<MailIconV2 sx={{ width: 22, height: 22 }} />} text={dig.email} theme={theme} maxGridWidth={6} />
-                                        <GridItemIconText containerRef={cardContainerRef} icon={<PhoneIconV2 sx={{ width: 22, height: 22 }} />} text={dig.phone || 'N/A'} theme={theme} maxGridWidth={6} />
-                                        <GridItemIconText containerRef={cardContainerRef} icon={<ContactCardIconV2 sx={{ width: 22, height: 22 }} />} text={[dig.title_in_organization, dig.organization].filter(Boolean).join(', ')} theme={theme} maxGridWidth={6} />
-                                        <GridItemIconText containerRef={cardContainerRef} icon={<WebsiteIconV2 sx={{ width: 22, height: 22 }} />} text={dig.linked_in_or_website || 'N/A'} theme={theme} maxGridWidth={6} />
-                                        <GridItemIconText 
-                                            containerRef={cardContainerRef} 
-                                            icon={<LocationThinIconV2 sx={{ width: 22, height: 22 }} />} 
-                                            text={[dig.country, dig.state, dig.city].filter(Boolean).join(', ')} 
-                                            theme={theme} 
-                                            maxGridWidth={6} 
-                                        />
-                                        <Grid item xs={12} sm={6}>
-                                            <Typography sx={{ color: theme.palette.text.primary }}>
-                                                <Typography sx={{ fontWeight: 500, color: theme.palette.secondary.dark, display: 'inline', mr: 1 }}>Domain:</Typography> 
-                                                {formatPrimaryDomain(dig.primary_domain, dig.primary_domain_other)}
-                                            </Typography>
-                                        </Grid>
-                                        <Grid item xs={12}>
-                                            <Typography sx={{ fontWeight: 500, mr: 1, display: 'inline' }}>Bio:</Typography>
-                                            <Typography sx={{ 
-                                                color: theme.palette.text.primary, 
-                                                display: 'inline', 
-                                                whiteSpace: 'pre-line' as const,
-                                                wordBreak: 'break-word',
-                                                overflowWrap: 'break-word'
-                                            }}>{dig.bio_summary}</Typography>
-                                        </Grid>
-                                        <Grid item xs={12} sm={12} md={12}>
-                                            <Typography sx={{ fontWeight: 500, mr: 1, display: 'inline' }}>Has Met Gurudev?</Typography>
-                                            <Typography sx={{ fontWeight: 'bold', display: 'inline', color: dig.has_dignitary_met_gurudev ? theme.palette.success.main : theme.palette.error.main }}>
-                                                {dig.has_dignitary_met_gurudev ? 'Yes' : 'No'}
-                                                {dig.has_dignitary_met_gurudev && (
-                                                    <>
-                                                        <Typography sx={{ ml: 1, color: theme.palette.text.primary, display: 'inline' }}>{dig.gurudev_meeting_date ? "on " + formatDateWithTimezone(dig.gurudev_meeting_date, 'UTC', false) : ''}</Typography>
-                                                        <Typography sx={{ ml: 1, color: theme.palette.text.primary, display: 'inline' }}>{dig.gurudev_meeting_location ? "at " + dig.gurudev_meeting_location : ''}</Typography>
-                                                    </>
-                                                )}
-                                            </Typography>
-                                        </Grid>
-                                        {dig.has_dignitary_met_gurudev && (
-                                            <Grid item xs={12}>
-                                                <Typography sx={{ fontWeight: 500, mr: 1, display: 'inline' }}>Gurudev Meeting Notes:</Typography>
-                                                <Typography sx={{ 
-                                                    color: theme.palette.text.primary, 
-                                                    display: 'inline', 
-                                                    whiteSpace: 'pre-line' as const,
-                                                    wordBreak: 'break-word',
-                                                    overflowWrap: 'break-word'
-                                                }}>{dig.gurudev_meeting_notes || 'N/A'}</Typography>
-                                            </Grid>
-                                        )}
-                                    </Grid>
-                                </Box>
-                            </Box>
-                        );
-                    })}
-                </>
-            );
-        } else {
-            return (
-                <Typography variant="body1" color="text.secondary">
-                    No dignitary information available
-                </Typography>
-            );
-        }
-    };
 
-    const renderRequesterSection = (appointment: Appointment, displayMode: AppointmentCardDisplayMode) => {
-        if (appointment.requester) {
-            return (
-                <AppointmentCardSection isMobile={isMobile} theme={theme} header="Point of Contact" subheader={appointment.requester ? appointment.requester?.first_name + ' ' + appointment.requester?.last_name : 'N/A'}>
-                    {appointment.requester ? (
-                        <>
-                        <Grid container spacing={1}>
-                        <GridItemIconText containerRef={cardContainerRef} icon={<MailIconV2 sx={{ width: 22, height: 22 }} />} text={appointment.requester?.email} theme={theme} maxGridWidth={6} />
-                        <GridItemIconText containerRef={cardContainerRef} icon={<PhoneIconV2 sx={{ width: 22, height: 22 }} />} text={appointment.requester?.phone_number || 'N/A'} theme={theme} maxGridWidth={6} />
-                    </Grid>
-                    </>
-                ) : (
-                    <Typography variant="body1" color="text.secondary">
-                        No POC information available
-                    </Typography>
-                )}
-            </AppointmentCardSection>
-        )}
-    }
 
-    const renderDignitariesSection = (appointment: Appointment, displayMode: AppointmentCardDisplayMode) => {
-        if (appointment.appointment_dignitaries && appointment.appointment_dignitaries.length > 0) {
-            return (
-                <AppointmentCardSection isMobile={isMobile} theme={theme} header="Dignitaries" headerCountBadge={appointment.appointment_dignitaries?.length}>
-                    {renderDignitariesSectionDetails(appointment)}
-                </AppointmentCardSection>
-            )
-        }
-    }
 
-    // Helper function to render contacts section details
-    const renderContactsSectionDetails = (appointment: Appointment) => {
-        // Check if appointment has appointment_contacts array
-        if (appointment.appointment_contacts && appointment.appointment_contacts.length > 0) {
-            return (
-                <>
-                    {appointment.appointment_contacts.map((appointmentContact: AppointmentContact, index: number) => {
-                        const contact = appointmentContact.contact;
-                        return (
-                            <Box
-                                sx={{ 
-                                    pt: 1, 
-                                    pb: 1, 
-                                    mb: index < appointment.appointment_contacts!.length - 1 ? 1 : 0, 
-                                    position: 'relative'
-                                }} 
-                                key={contact.id}
-                            >
-                                <Box sx={{ 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
-                                    justifyContent: 'space-between',
-                                    gap: 1,
-                                    border: '1px solid #f1f1f1',
-                                    borderRadius: '10px',
-                                    bgcolor: 'grey.50',
-                                    pl: 2,
-                                    pr: 1,
-                                    pt: 0.5,
-                                    pb: 0.5,
-                                    mb: 1.3
-                                }}>
-                                    <Typography variant="h5" sx={{ 
-                                        fontWeight: 600, 
-                                        p: 0,
-                                        m: 0,
-                                        color: theme.palette.text.primary
-                                    }}>
-                                        {index + 1}. {contact.first_name} {contact.last_name}
-                                    </Typography>
-                                </Box>
-                                <Box sx={{ 
-                                    pl: 1, 
-                                    pr: 1, 
-                                    pt: 1, 
-                                    pb: 1 
-                                }}>
-                                    <Grid container spacing={1}>
-                                        <GridItemIconText containerRef={cardContainerRef} icon={<MailIconV2 sx={{ width: 22, height: 22 }} />} text={contact.email || 'N/A'} theme={theme} maxGridWidth={6} />
-                                        <GridItemIconText containerRef={cardContainerRef} icon={<PhoneIconV2 sx={{ width: 22, height: 22 }} />} text={contact.phone || 'N/A'} theme={theme} maxGridWidth={6} />
-                                        {contact.relationship_to_owner && (
-                                            <Grid item xs={12} sm={6}>
-                                                <Typography sx={{ color: theme.palette.text.primary }}>
-                                                    <Typography sx={{ fontWeight: 500, color: theme.palette.secondary.dark, display: 'inline', mr: 1 }}>Relationship:</Typography> 
-                                                    {contact.relationship_to_owner}
-                                                </Typography>
-                                            </Grid>
-                                        )}
-                                        {appointmentContact.role_in_team_project && (
-                                            <Grid item xs={12} sm={6}>
-                                                <Typography sx={{ color: theme.palette.text.primary }}>
-                                                    <Typography sx={{ fontWeight: 500, color: theme.palette.secondary.dark, display: 'inline', mr: 1 }}>Role:</Typography> 
-                                                    {appointmentContact.role_in_team_project}
-                                                    {appointmentContact.role_in_team_project_other && ` (${appointmentContact.role_in_team_project_other})`}
-                                                </Typography>
-                                            </Grid>
-                                        )}
-                                        {(contact.notes || appointmentContact.comments) && (
-                                            <Grid item xs={12}>
-                                                <Typography sx={{ fontWeight: 500, mr: 1, display: 'inline' }}>Notes:</Typography>
-                                                <Typography sx={{ 
-                                                    color: theme.palette.text.primary, 
-                                                    display: 'inline', 
-                                                    whiteSpace: 'pre-line' as const,
-                                                    wordBreak: 'break-word',
-                                                    overflowWrap: 'break-word'
-                                                }}>
-                                                    {contact.notes || appointmentContact.comments || 'N/A'}
-                                                </Typography>
-                                            </Grid>
-                                        )}
-                                    </Grid>
-                                </Box>
-                            </Box>
-                        );
-                    })}
-                </>
-            );
-        } else {
-            return (
-                <Typography variant="body1" color="text.secondary">
-                    No contact information available
-                </Typography>
-            );
-        }
-    };
 
-    const renderContactsSection = (appointment: Appointment, displayMode: AppointmentCardDisplayMode) => {
-        if (appointment.appointment_contacts && appointment.appointment_contacts.length > 0) {
-            return (
-                <AppointmentCardSection isMobile={isMobile} theme={theme} header="Contacts" headerCountBadge={appointment.appointment_contacts?.length}>
-                    {renderContactsSectionDetails(appointment)}
-                </AppointmentCardSection>
-            )
-        }
-    }
-    
-    const renderAppointmentDetailsSection = (appointment: Appointment, displayMode: AppointmentCardDisplayMode) => {
-        let dignitariesCount = 0;
-        let dignitariesNames: string[] = [];
-        if (appointment.appointment_dignitaries && appointment.appointment_dignitaries.length > 0) {
-            appointment.appointment_dignitaries.map((appointmentDignitary: AppointmentDignitary, index: number) => {
-                const dig = appointmentDignitary.dignitary;
-                dignitariesCount++;
-                dignitariesNames.push(formatHonorificTitle(dig.honorific_title) + ' ' + dig.first_name + ' ' + dig.last_name);
-            });
-        }
-        const dignitariesNamesString = dignitariesNames.join(', ');
-        let locationName = appointment.location ? (appointment.location.name + ' (' + appointment.location.city + ', ' + appointment.location.state + ')') : 'N/A';
-        if (appointment.meeting_place) {
-            locationName = appointment.meeting_place.name + ' @ ' + locationName;
-        }
-        return (
-            <AppointmentCardSection isMobile={isMobile} theme={theme} header={displayMode === 'calendar' ? '' : (['approved', 'completed'].includes(appointment.status.toLowerCase()) ? 'Approved ' : 'Requested ') + 'Appointment Details'}>
-                <Grid container spacing={1}>
 
-                    <GridItemIconText 
-                        containerRef={cardContainerRef} 
-                        icon={<CalendarIconV2 sx={{ width: 22, height: 22 }} />} 
-                        text={['approved', 'completed'].includes(appointment.status.toLowerCase()) && appointment.appointment_date ? formatDateWithTimezone(appointment.appointment_date, 'UTC', false) + ' ' + (appointment.appointment_time || '') + ' ' + (appointment.duration ? '(' + appointment.duration + ' mins)' : '') : formatDateWithTimezone(appointment.preferred_date, 'UTC', false) + ' ' + (appointment.preferred_time_of_day || '')} 
-                        theme={theme} 
-                    />
 
-                    <GridItemIconText 
-                        containerRef={cardContainerRef} 
-                        icon={<LocationThinIconV2 sx={{ width: 22, height: 22 }} />} 
-                        text={locationName} 
-                        theme={theme} 
-                    />
 
-                    <GridItemIconText 
-                        containerRef={cardContainerRef} 
-                        icon={<TagsIconV2 sx={{ width: 22, height: 22 }} />} 
-                        text={appointment.appointment_type || 'Not Specified'} 
-                        theme={theme} 
-                    />
 
-                    {displayMode === 'calendar' && (
-                        <>
-                            {dignitariesNamesString && (
-                                <GridItemIconText 
-                                    containerRef={cardContainerRef} 
-                                    icon={<PeopleMenuIconV2 sx={{ width: 22, height: 22 }} />} 
-                                    text={dignitariesNamesString} 
-                                    theme={theme} 
-                                />
-                            )}
-                            <GridItemIconText 
-                                containerRef={cardContainerRef} 
-                                icon={<ListIconV2 sx={{ width: 22, height: 22 }} />} 
-                                text={appointment.purpose || ''} 
-                                theme={theme} 
-                            />
-                        </>
-                    )}
-                </Grid>
-            </AppointmentCardSection>
-        )
-    }
 
-    const renderPurposeSection = (appointment: Appointment, displayMode: AppointmentCardDisplayMode) => {
-        return (
-            <AppointmentCardSection isMobile={isMobile} theme={theme} header="Purpose">
-                <Grid container spacing={2}>
-                    <Grid item xs={12}>
-                        <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row' }}>
-                            <Typography component="span" sx={{ 
-                                color: theme.palette.text.primary, 
-                                whiteSpace: 'pre-line' as const,
-                                wordBreak: 'break-word',
-                                overflowWrap: 'break-word'
-                            }}>
-                                {appointment.purpose}
-                            </Typography>
-                        </Box>
-                    </Grid>
-                    {appointment.requester_notes_to_secretariat && (
-                        <Grid item xs={12}>
-                            <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row' }}>
-                                <Box component="span" sx={{ 
-                                    width: isMobile ? '100%' : '150px', 
-                                    fontWeight: 'medium',
-                                    mb: isMobile ? 0.5 : 0
-                                }}>
-                                    Note to Secretariat:
-                                </Box>
-                                <Typography component="span" sx={{ 
-                                    color: theme.palette.text.primary, 
-                                    whiteSpace: 'pre-line' as const,
-                                    wordBreak: 'break-word',
-                                    overflowWrap: 'break-word'
-                                }}>
-                                    {appointment.requester_notes_to_secretariat}
-                                </Typography>
-                            </Box>
-                        </Grid>
-                    )}
-                </Grid>
-            </AppointmentCardSection>
-
-        )
-    }
-
-    const renderSecretariatNotesSection = (appointment: Appointment, displayMode: AppointmentCardDisplayMode) => {
-        return (
-            <AppointmentCardSection isMobile={isMobile} theme={theme} header="Secretariat Notes">
-                <Grid container spacing={2}>
-                    <Grid item xs={12}>
-                        <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row' }}>
-                            <Box component="span" sx={{ 
-                                width: isMobile ? '100%' : '150px', 
-                                fontWeight: 'medium',
-                                mb: isMobile ? 0.5 : 0
-                            }}>
-                                Notes:
-                            </Box>
-                            <Typography component="span" sx={{ 
-                                color: theme.palette.text.primary, 
-                                whiteSpace: 'pre-line' as const,
-                                wordBreak: 'break-word',
-                                overflowWrap: 'break-word'
-                            }}>
-                                {appointment.secretariat_notes_to_requester || 'N/A'}
-                            </Typography>
-                        </Box>
-                    </Grid>
-                    {appointment.status === 'Approved' && appointment.appointment_date && new Date(appointment.appointment_date) >= new Date() && (
-                        <Grid item xs={12}>
-                            <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row' }}>
-                                <Box component="span" sx={{ 
-                                    width: isMobile ? '100%' : '150px', 
-                                    fontWeight: 'medium',
-                                    mb: isMobile ? 0.5 : 0
-                                }}>
-                                    Meeting Notes:
-                                </Box>
-                                <Typography component="span" sx={{ 
-                                    color: theme.palette.text.primary, 
-                                    whiteSpace: 'pre-line' as const,
-                                    wordBreak: 'break-word',
-                                    overflowWrap: 'break-word'
-                                }}>
-                                    {appointment.secretariat_meeting_notes || 'N/A'}
-                                </Typography>
-                            </Box>
-                        </Grid>
-                    )}
-                    {appointment.status === 'Approved' && appointment.appointment_date && new Date(appointment.appointment_date) >= new Date() && (
-                        <Grid item xs={12}>
-                            <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row' }}>
-                                <Box component="span" sx={{ 
-                                    width: isMobile ? '100%' : '150px', 
-                                    fontWeight: 'medium',
-                                    mb: isMobile ? 0.5 : 0
-                                }}>
-                                    Follow-up Actions:
-                                </Box>
-                                <Typography component="span" sx={{ 
-                                    color: theme.palette.text.primary, 
-                                    whiteSpace: 'pre-line' as const,
-                                    wordBreak: 'break-word',
-                                    overflowWrap: 'break-word'
-                                }}>
-                                    {appointment.secretariat_follow_up_actions || 'N/A'}
-                                </Typography>
-                            </Box>
-                        </Grid>
-                    )}
-                </Grid>
-            </AppointmentCardSection>
-        )
-    }
-
-    const renderAttachmentsSection = (appointment: Appointment, displayMode: AppointmentCardDisplayMode) => {
-        if (appointment.attachments && Array.isArray(appointment.attachments) && appointment.attachments.length > 0) {
-            return (
-                <AppointmentCardSection isMobile={isMobile} theme={theme} header="Attachments">
-                    {/* Business Card Attachments */}
-                    {businessCardAttachments.length > 0 && (
-                        <Paper elevation={0} sx={{ p: isMobile ? 2 : 3, mb: 3, borderRadius: 2, bgcolor: 'grey.50', width: '100%', boxSizing: 'border-box' }}>
-                            <Typography variant="h6" gutterBottom color="primary" fontWeight="medium">
-                                Business Cards
-                            </Typography>
-                            <AttachmentSection attachments={businessCardAttachments} />
-                        </Paper>
-                    )}
-                    
-                    {/* General Attachments */}
-                    {generalAttachments.length > 0 && (
-                        <Paper elevation={0} sx={{ p: isMobile ? 2 : 3, mb: 3, borderRadius: 2, bgcolor: 'grey.50', width: '100%', boxSizing: 'border-box' }}>
-                            <Typography variant="h6" gutterBottom color="primary" fontWeight="medium">
-                                Other Attachments
-                            </Typography>
-                            <AttachmentSection attachments={generalAttachments} />
-                        </Paper>
-                    )}
-                </AppointmentCardSection>
-            )
-        }
-    }
 
     return (
         <Card 
@@ -745,7 +296,7 @@ export const AppointmentCard: React.FC<{
                                             },
                                         },
                                     }}>
-                                        {renderAppointmentDetailsSection(appointment, displayMode)}
+                                        <AppointmentDetailsSection appointment={appointment} displayMode={displayMode} cardContainerRef={cardContainerRef} />
                                     </Box>
                                 </Collapse>
                                 <Box>
@@ -788,17 +339,17 @@ export const AppointmentCard: React.FC<{
                                             },
                                         }}>
                                             {/* Requester Information */}
-                                            {renderRequesterSection(appointment, displayMode)}
+                                            <RequesterSection appointment={appointment} displayMode={displayMode} cardContainerRef={cardContainerRef} />
                                             {/* Dignitary Information */}
-                                            {renderDignitariesSection(appointment, displayMode)}
+                                            <DignitariesSection appointment={appointment} cardContainerRef={cardContainerRef} />
                                             {/* Contact Information */}
-                                            {renderContactsSection(appointment, displayMode)}
+                                            <ContactsSection appointment={appointment} cardContainerRef={cardContainerRef} />
                                             {/* Purpose */}
-                                            {renderPurposeSection(appointment, displayMode)}
+                                            <PurposeSection appointment={appointment} />
                                             {/* Secretariat Notes */}
-                                            {renderSecretariatNotesSection(appointment, displayMode)}
+                                            <SecretariatNotesSection appointment={appointment} />
                                             {/* Attachments Section */}
-                                            {renderAttachmentsSection(appointment, displayMode)}
+                                            <AttachmentsSection appointment={appointment} attachments={attachments} />
                                         </Box>
                                     </Collapse>
                                 </Box>
@@ -806,19 +357,19 @@ export const AppointmentCard: React.FC<{
                         ) : (
                             <>
                                 {/* Requester Information */}
-                                {renderRequesterSection(appointment, displayMode)}
+                                <RequesterSection appointment={appointment} displayMode={displayMode} cardContainerRef={cardContainerRef} />
                                 {/* Dignitary Information */}
-                                {renderDignitariesSection(appointment, displayMode)}
+                                <DignitariesSection appointment={appointment} cardContainerRef={cardContainerRef} />
                                 {/* Contact Information */}
-                                {renderContactsSection(appointment, displayMode)}
+                                <ContactsSection appointment={appointment} cardContainerRef={cardContainerRef} />
                                 {/* Appointment Information */}
-                                {renderAppointmentDetailsSection(appointment, displayMode)}
+                                <AppointmentDetailsSection appointment={appointment} displayMode={displayMode} cardContainerRef={cardContainerRef} />
                                 {/* Purpose */}
-                                {renderPurposeSection(appointment, displayMode)}
+                                <PurposeSection appointment={appointment} />
                                 {/* Secretariat Notes */}
-                                {renderSecretariatNotesSection(appointment, displayMode)}
+                                <SecretariatNotesSection appointment={appointment} />
                                 {/* Attachments Section */}
-                                {renderAttachmentsSection(appointment, displayMode)}
+                                <AttachmentsSection appointment={appointment} attachments={attachments} />
                             </>
                         )
                     }

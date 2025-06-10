@@ -20,6 +20,13 @@ import AppointmentCardSection from "./AppointmentCardSection"
 import GridItemIconText from "./GridItemIconText"
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
+import { 
+    DignitariesSection,
+    ContactsSection,
+    PurposeSection,
+    SecretariatNotesSection,
+    AttachmentsSection
+} from './appointment-sections'
 
 type CalendarEventCardDisplayMode = 'regular' | 'calendar'
 
@@ -40,6 +47,8 @@ export const CalendarEventCard: React.FC<{
     
     // Create a component-specific logger
     const logger = createDebugLogger(`CalendarEventCard:${calendarEvent.id}`)
+
+    // No longer need render utils - using components directly
 
     const handleEditCalendarEvent = () => {
         // TODO: Add calendar event edit route when available
@@ -271,100 +280,15 @@ export const CalendarEventCard: React.FC<{
                                 </IconButton>
                             </Box>
                         </Grid>
-
-                        {/* Purpose */}
-                        <Grid item xs={12}>
-                            <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row' }}>
-                                <Box component="span" sx={{ 
-                                    width: isMobile ? '100%' : '150px', 
-                                    fontWeight: 'medium',
-                                    mb: isMobile ? 0.5 : 0
-                                }}>
-                                    Purpose:
-                                </Box>
-                                <Typography component="span" sx={{ 
-                                    color: theme.palette.text.primary, 
-                                    whiteSpace: 'pre-line' as const,
-                                    wordBreak: 'break-word',
-                                    overflowWrap: 'break-word'
-                                }}>
-                                    {appointment.purpose || 'N/A'}
-                                </Typography>
-                            </Box>
-                        </Grid>
-
-                        {/* Dignitary Names for this appointment */}
-                        {appointment.appointment_dignitaries && appointment.appointment_dignitaries.length > 0 && (
-                            <Grid item xs={12}>
-                                <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row' }}>
-                                    <Box component="span" sx={{ 
-                                        width: isMobile ? '100%' : '150px', 
-                                        fontWeight: 'medium',
-                                        mb: isMobile ? 0.5 : 0
-                                    }}>
-                                        Dignitaries:
-                                    </Box>
-                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                                        {appointment.appointment_dignitaries.map((appointmentDignitary, digIndex) => {
-                                            const dig = appointmentDignitary.dignitary
-                                            const formattedName = formatHonorificTitle(dig.honorific_title) + ' ' + dig.first_name + ' ' + dig.last_name
-                                            return (
-                                                <Typography key={digIndex} sx={{ 
-                                                    color: theme.palette.text.primary 
-                                                }}>
-                                                    • {formattedName}
-                                                </Typography>
-                                            )
-                                        })}
-                                    </Box>
-                                </Box>
-                            </Grid>
-                        )}
-
-                        {/* Type */}
-                        {appointment.appointment_type && (
-                            <Grid item xs={12}>
-                                <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row' }}>
-                                    <Box component="span" sx={{ 
-                                        width: isMobile ? '100%' : '150px', 
-                                        fontWeight: 'medium',
-                                        mb: isMobile ? 0.5 : 0
-                                    }}>
-                                        Type:
-                                    </Box>
-                                    <Typography component="span" sx={{ 
-                                        color: theme.palette.text.primary 
-                                    }}>
-                                        {appointment.appointment_type}
-                                    </Typography>
-                                </Box>
-                            </Grid>
-                        )}
-
-                        {/* Requester Notes */}
-                        {appointment.requester_notes_to_secretariat && (
-                            <Grid item xs={12}>
-                                <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row' }}>
-                                    <Box component="span" sx={{ 
-                                        width: isMobile ? '100%' : '150px', 
-                                        fontWeight: 'medium',
-                                        mb: isMobile ? 0.5 : 0
-                                    }}>
-                                        Note to Secretariat:
-                                    </Box>
-                                    <Typography component="span" sx={{ 
-                                        color: theme.palette.text.primary, 
-                                        whiteSpace: 'pre-line' as const,
-                                        wordBreak: 'break-word',
-                                        overflowWrap: 'break-word'
-                                    }}>
-                                        {appointment.requester_notes_to_secretariat}
-                                    </Typography>
-                                </Box>
-                            </Grid>
-                        )}
                     </Grid>
                 </AppointmentCardSection>
+
+                {/* Detailed sections using components */}
+                <DignitariesSection appointment={appointment} cardContainerRef={cardContainerRef} />
+                <ContactsSection appointment={appointment} cardContainerRef={cardContainerRef} />
+                <PurposeSection appointment={appointment} />
+                <SecretariatNotesSection appointment={appointment} />
+                <AttachmentsSection appointment={appointment} attachments={appointment.attachments || []} />
             </Box>
         )
     }
