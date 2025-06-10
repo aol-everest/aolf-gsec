@@ -669,6 +669,7 @@ const AdminAppointmentSchedule: React.FC = () => {
                 convertAppointmentSummaryToAppointment={convertAppointmentSummaryToAppointment}
                 showCloseButton={true}
                 onClose={() => setExpandedCalendarEvent(null)}
+                displayMode="calendar"
               />
             </Box>
           </>

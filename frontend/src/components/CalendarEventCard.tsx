@@ -1,4 +1,4 @@
-import { Typography, Box, IconButton, Grid, CardContent, Card, useMediaQuery, useTheme, Collapse } from "@mui/material"
+import { Typography, Box, IconButton, Grid, CardContent, Card, useMediaQuery, useTheme, Collapse, Button } from "@mui/material"
 import { formatDate, formatDateWithTimezone } from "../utils/dateUtils"
 import { formatHonorificTitle } from "../utils/formattingUtils"
 import { CalendarEventWithAppointments, AppointmentSummary, Appointment } from "../models/types"
@@ -10,7 +10,9 @@ import {
     CloseIconFilledCircleV2,
     CalendarIconV2,
     LocationThinIconV2,
-    ClockSquareCircleIconV2
+    ClockSquareCircleIconV2,
+    PeopleMenuIconV2,
+    ListIconV2
 } from "./iconsv2"
 import { createDebugLogger } from '../utils/debugUtils'
 import { AppointmentStatusChip } from "./AppointmentStatusChip"
@@ -19,16 +21,22 @@ import GridItemIconText from "./GridItemIconText"
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 
+type CalendarEventCardDisplayMode = 'regular' | 'calendar'
+
 export const CalendarEventCard: React.FC<{ 
     calendarEvent: CalendarEventWithAppointments,
     convertAppointmentSummaryToAppointment: (summary: AppointmentSummary, event: CalendarEventWithAppointments) => Appointment,
     showCloseButton?: boolean,
-    onClose?: () => void
-}> = ({ calendarEvent, convertAppointmentSummaryToAppointment, showCloseButton = false, onClose }) => {
+    onClose?: () => void,
+    displayMode?: CalendarEventCardDisplayMode
+}> = ({ calendarEvent, convertAppointmentSummaryToAppointment, showCloseButton = false, onClose, displayMode = 'regular' }) => {
     const theme = useTheme()
     const navigate = useNavigate()
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+    const [isSummaryExpanded, setIsSummaryExpanded] = useState(true)
     const [isDetailsExpanded, setIsDetailsExpanded] = useState(false)
+    const [showAllDignitaries, setShowAllDignitaries] = useState(false)
+    const [showAllPurposes, setShowAllPurposes] = useState(false)
     const cardContainerRef = useRef<HTMLDivElement>(null)
     
     // Create a component-specific logger
@@ -50,14 +58,27 @@ export const CalendarEventCard: React.FC<{
     // Get all dignitary names from all appointments
     const getAllDignitaryNames = () => {
         const names: string[] = []
-        calendarEvent.appointments?.forEach((appointmentSummary, appointmentIndex) => {
+        calendarEvent.appointments?.forEach((appointmentSummary) => {
             appointmentSummary.appointment_dignitaries?.forEach((appointmentDignitary) => {
                 const dig = appointmentDignitary.dignitary
                 const formattedName = formatHonorificTitle(dig.honorific_title) + ' ' + dig.first_name + ' ' + dig.last_name
-                names.push(`${appointmentIndex + 1}. ${formattedName}`)
+                if (!names.includes(formattedName)) {
+                    names.push(formattedName)
+                }
             })
         })
         return names
+    }
+
+    // Get all purposes from appointments
+    const getAllPurposes = () => {
+        const purposes: string[] = []
+        calendarEvent.appointments?.forEach((appointmentSummary) => {
+            if (appointmentSummary.purpose && !purposes.includes(appointmentSummary.purpose)) {
+                purposes.push(appointmentSummary.purpose)
+            }
+        })
+        return purposes
     }
 
     const renderCalendarEventHeader = () => {
@@ -108,13 +129,23 @@ export const CalendarEventCard: React.FC<{
         )
     }
 
-    const renderCalendarEventDetails = () => {
+    const renderCalendarEventDetails = (displayMode: CalendarEventCardDisplayMode) => {
         const locationName = calendarEvent.location ? 
             (calendarEvent.location.name + ' (' + calendarEvent.location.city + ', ' + calendarEvent.location.state + ')') 
             : 'N/A'
         const fullLocationName = calendarEvent.meeting_place ? 
             calendarEvent.meeting_place.name + ' @ ' + locationName 
             : locationName
+
+        const dignitaryNames = getAllDignitaryNames()
+        const purposes = getAllPurposes()
+
+        // For dignitary display - show only first line if more than one line
+        const dignitaryText = dignitaryNames.join(', ')
+        const shouldShowDignitaryMore = dignitaryText.length > 60 && !showAllDignitaries
+        const displayedDignitaryText = shouldShowDignitaryMore ? 
+            dignitaryNames.slice(0, Math.min(2, dignitaryNames.length)).join(', ') : 
+            dignitaryText
 
         return (
             <Grid container spacing={1}>
@@ -140,61 +171,110 @@ export const CalendarEventCard: React.FC<{
                     text={fullLocationName} 
                     theme={theme} 
                 />
+
+                {/* Dignitaries - comma separated with more functionality */}
+                {dignitaryNames.length > 0 && (
+                    <Grid item xs={12}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <PeopleMenuIconV2 sx={{ width: 22, height: 22, color: theme.palette.secondary.dark }} />
+                                <Typography sx={{ color: theme.palette.text.primary }}>
+                                    {displayedDignitaryText}
+                                </Typography>
+                            </Box>
+                            {shouldShowDignitaryMore && (
+                                <Button 
+                                    size="small" 
+                                    onClick={() => setShowAllDignitaries(true)}
+                                    sx={{ 
+                                        minWidth: 'auto', 
+                                        p: 0.5, 
+                                        fontSize: '0.75rem',
+                                        textTransform: 'none'
+                                    }}
+                                >
+                                    more
+                                </Button>
+                            )}
+                            {showAllDignitaries && dignitaryNames.length > 2 && (
+                                <Button 
+                                    size="small" 
+                                    onClick={() => setShowAllDignitaries(false)}
+                                    sx={{ 
+                                        minWidth: 'auto', 
+                                        p: 0.5, 
+                                        fontSize: '0.75rem',
+                                        textTransform: 'none'
+                                    }}
+                                >
+                                    less
+                                </Button>
+                            )}
+                        </Box>
+                    </Grid>
+                )}
+
+                {/* Purposes - newline separated with more functionality */}
+                {purposes.length > 0 && (
+                    <Grid item xs={12}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                            {(showAllPurposes ? purposes : purposes.slice(0, 1)).map((purpose, index) => (
+                                <GridItemIconText 
+                                    key={index}
+                                    containerRef={cardContainerRef} 
+                                    icon={<ListIconV2 sx={{ width: 22, height: 22 }} />} 
+                                    text={purpose} 
+                                    theme={theme} 
+                                />
+                            ))}
+                            {purposes.length > 1 && (
+                                <Box sx={{ ml: 3 }}>
+                                    {!showAllPurposes ? (
+                                        <Button 
+                                            size="small" 
+                                            onClick={() => setShowAllPurposes(true)}
+                                            sx={{ 
+                                                minWidth: 'auto', 
+                                                p: 0.5, 
+                                                fontSize: '0.75rem',
+                                                textTransform: 'none'
+                                            }}
+                                        >
+                                            more ({purposes.length - 1} more)
+                                        </Button>
+                                    ) : (
+                                        <Button 
+                                            size="small" 
+                                            onClick={() => setShowAllPurposes(false)}
+                                            sx={{ 
+                                                minWidth: 'auto', 
+                                                p: 0.5, 
+                                                fontSize: '0.75rem',
+                                                textTransform: 'none'
+                                            }}
+                                        >
+                                            less
+                                        </Button>
+                                    )}
+                                </Box>
+                            )}
+                        </Box>
+                    </Grid>
+                )}
             </Grid>
         )
     }
 
-    const renderSummarySection = () => {
-        const dignitaryNames = getAllDignitaryNames()
-        const appointmentCount = calendarEvent.appointments?.length || 0
+    const renderAppointmentsSection = (displayMode: CalendarEventCardDisplayMode) => {
+        if (!calendarEvent.appointments || calendarEvent.appointments.length === 0) {
+            return renderNoAppointmentsSection()
+        }
 
         return (
-            <AppointmentCardSection isMobile={isMobile} theme={theme} header="Summary">
-                <Grid container spacing={2}>
-                    {dignitaryNames.length > 0 && (
-                        <Grid item xs={12}>
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                                <Typography sx={{ fontWeight: 500, mb: 1 }}>Dignitaries:</Typography>
-                                {dignitaryNames.map((name, index) => (
-                                    <Typography key={index} sx={{ 
-                                        color: theme.palette.text.primary,
-                                        pl: 1
-                                    }}>
-                                        • {name}
-                                    </Typography>
-                                ))}
-                            </Box>
-                        </Grid>
-                    )}
-                    
-                    {calendarEvent.description && (
-                        <Grid item xs={12}>
-                            <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row' }}>
-                                <Box component="span" sx={{ 
-                                    width: isMobile ? '100%' : '150px', 
-                                    fontWeight: 'medium',
-                                    mb: isMobile ? 0.5 : 0
-                                }}>
-                                    Description:
-                                </Box>
-                                <Typography component="span" sx={{ 
-                                    color: theme.palette.text.primary, 
-                                    whiteSpace: 'pre-line' as const,
-                                    wordBreak: 'break-word',
-                                    overflowWrap: 'break-word'
-                                }}>
-                                    {calendarEvent.description}
-                                </Typography>
-                            </Box>
-                        </Grid>
-                    )}
-
-                    <Grid item xs={12}>
-                        <Typography sx={{ fontWeight: 500, color: theme.palette.text.secondary }}>
-                            Total: {appointmentCount} Appointment{appointmentCount !== 1 ? 's' : ''}
-                        </Typography>
-                    </Grid>
-                </Grid>
+            <AppointmentCardSection isMobile={isMobile} theme={theme} header="Appointments" headerCountBadge={calendarEvent.appointments.length}>
+                {calendarEvent.appointments.map((appointmentSummary, index) => 
+                    renderAppointmentSection(appointmentSummary, index)
+                )}
             </AppointmentCardSection>
         )
     }
@@ -412,62 +492,81 @@ export const CalendarEventCard: React.FC<{
                     {/* Header */}
                     {renderCalendarEventHeader()}
 
-                    {/* Calendar Event Details */}
-                    <AppointmentCardSection isMobile={isMobile} theme={theme} header="Event Details">
-                        {renderCalendarEventDetails()}
-                    </AppointmentCardSection>
-
-                    {/* Summary Section (always visible if there are appointments) */}
-                    {calendarEvent.appointments && calendarEvent.appointments.length > 0 && renderSummarySection()}
+                    {/* Calendar Event Summary */}
+                    <Box sx={{ 
+                        display: isSummaryExpanded ? 'block' : 'none'
+                    }}>
+                        <Box sx={{
+                            maxHeight: isMobile ? '400px' : '350px',
+                            overflowY: 'auto',
+                            pr: 1,
+                            mr: -1,
+                            '&::-webkit-scrollbar': {
+                                width: '8px',
+                            },
+                            '&::-webkit-scrollbar-track': {
+                                backgroundColor: 'transparent',
+                            },
+                            '&::-webkit-scrollbar-thumb': {
+                                backgroundColor: theme.palette.grey[300],
+                                borderRadius: '4px',
+                                '&:hover': {
+                                    backgroundColor: theme.palette.grey[400],
+                                },
+                            },
+                        }}>
+                            {renderCalendarEventDetails(displayMode)}
+                        </Box>
+                    </Box>
 
                     {/* Show/Hide Details Toggle */}
-                    {calendarEvent.appointments && calendarEvent.appointments.length > 0 ? (
-                        <Box>
-                            <Box sx={{ 
-                                display: 'flex', 
-                                justifyContent: 'space-between', 
-                                alignItems: 'center',
-                                p: 0,
-                                cursor: 'pointer',
-                                borderRadius: '8px',
-                                mb: 1
-                            }} onClick={() => setIsDetailsExpanded(!isDetailsExpanded)}>
-                                <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-                                    {isDetailsExpanded ? 'Hide Details' : 'Show Details'}
-                                </Typography>
-                                {isDetailsExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                            </Box>
-                            <Collapse in={isDetailsExpanded}>
-                                <Box sx={{
-                                    maxHeight: isMobile ? '400px' : '350px',
-                                    overflowY: 'auto',
-                                    pr: 1,
-                                    mr: -1,
-                                    '&::-webkit-scrollbar': {
-                                        width: '8px',
-                                    },
-                                    '&::-webkit-scrollbar-track': {
-                                        backgroundColor: 'transparent',
-                                    },
-                                    '&::-webkit-scrollbar-thumb': {
-                                        backgroundColor: theme.palette.grey[300],
-                                        borderRadius: '4px',
-                                        '&:hover': {
-                                            backgroundColor: theme.palette.grey[400],
-                                        },
-                                    },
-                                }}>
-                                    {/* Individual Appointments */}
-                                    {calendarEvent.appointments?.map((appointmentSummary, index) => 
-                                        renderAppointmentSection(appointmentSummary, index)
-                                    )}
-                                </Box>
-                            </Collapse>
+                    <Box>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center',
+                            p: 0,
+                            cursor: 'pointer',
+                            borderRadius: '8px',
+                            mb: 1
+                        }} onClick={() => {
+                            setIsDetailsExpanded(!isDetailsExpanded)
+                            // Collapse summary when details expand (both mobile and desktop)
+                            if (!isDetailsExpanded) {
+                                setIsSummaryExpanded(false)
+                            } else {
+                                setIsSummaryExpanded(true)
+                            }
+                        }}>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                                {isDetailsExpanded ? 'Hide Details' : 'Show Details'}
+                            </Typography>
+                            {isDetailsExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                         </Box>
-                    ) : (
-                        /* Calendar event without appointments */
-                        renderNoAppointmentsSection()
-                    )}
+                        <Collapse in={isDetailsExpanded}>
+                            <Box sx={{
+                                maxHeight: isMobile ? '400px' : '350px',
+                                overflowY: 'auto',
+                                pr: 1,
+                                mr: -1,
+                                '&::-webkit-scrollbar': {
+                                    width: '8px',
+                                },
+                                '&::-webkit-scrollbar-track': {
+                                    backgroundColor: 'transparent',
+                                },
+                                '&::-webkit-scrollbar-thumb': {
+                                    backgroundColor: theme.palette.grey[300],
+                                    borderRadius: '4px',
+                                    '&:hover': {
+                                        backgroundColor: theme.palette.grey[400],
+                                    },
+                                },
+                            }}>
+                                {renderAppointmentsSection(displayMode)}
+                            </Box>
+                        </Collapse>
+                    </Box>
                 </Box>
 
                 {/* Footer with update information */}
