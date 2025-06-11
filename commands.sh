@@ -77,6 +77,12 @@ python3 -c "import secrets; print(secrets.token_urlsafe(32))"
 
 # Alembic Commands -------------------------------------------------------------------------------
 
+# Generate the encoded password
+python3 -c "import urllib.parse; print(urllib.parse.quote('your|actual|password', safe=''))"
+
+# Set the database URL
+export DATABASE_URL="postgresql://aolf_gsec_app_user:ENCODED_PASSWORD_HERE@aolf-gsec-db-uat.cxg084kkue8o.us-east-2.rds.amazonaws.com:5432/aolf_gsec"
+
 # Initialize Alembic (first time only)
 cd backend
 alembic init alembic
