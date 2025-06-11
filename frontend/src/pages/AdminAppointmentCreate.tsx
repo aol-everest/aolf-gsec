@@ -1,31 +1,20 @@
 import React from 'react';
-import { AdminAppointmentCreateForm } from '../components/AdminAppointmentCreateForm';
-import { Container, Typography, Box, Paper } from '@mui/material';
+import { AdminAppointmentCreateSimple } from '../components/AdminAppointmentCreateSimple';
+import { Container, Typography, Box } from '@mui/material';
 import Layout from '../components/Layout';
 
 const AdminAppointmentCreate: React.FC = () => {
   return (
     <Layout>
-      <Container>
-        <Box
-          sx={{
-            minHeight: '100vh',
-          }}
-        >
+      <Container maxWidth="lg">
+        <Box sx={{ py: 3 }}>
           <Typography variant="h1" component="h1" gutterBottom>
             Create Appointment
           </Typography>
-          <Paper 
-            elevation={0}
-            sx={{ 
-              p: 4,
-              // borderRadius: 2,
-              // backgroundColor: 'rgba(255, 255, 255, 0.9)',
-              // boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-            }}
-          >
-            <AdminAppointmentCreateForm />
-          </Paper>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+            Create a new appointment or calendar event. The system will check for time conflicts and guide you through the process.
+          </Typography>
+          <AdminAppointmentCreateSimple />
         </Box>
       </Container>
     </Layout>
