@@ -123,6 +123,7 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
   const watchEventType = watch('eventType');
   const watchDate = watch('appointment_date');
   const watchStatus = watch('status');
+  const watchNumberOfDignitaries = watch('numberOfDignitaries');
 
   // Fetch event type options
   const { data: eventTypeOptions = [] } = useQuery<string[]>({
@@ -396,7 +397,7 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
                   onDignitaryCreate={handleDignitaryCreate}
                   countries={countries}
                   isLoadingCountries={false}
-                  maxDignitaries={getValues('numberOfDignitaries') || maxAttendeesFromConfig}
+                  maxDignitaries={watchNumberOfDignitaries || maxAttendeesFromConfig}
                   required={true}
                   title="Select Dignitaries"
                   description="Select existing dignitaries or create new ones for this appointment."
