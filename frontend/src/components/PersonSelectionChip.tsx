@@ -7,6 +7,7 @@ interface PersonSelectionChipProps {
   lastName: string;
   displayName: string;
   onDelete: () => void;
+  maxDisplayNameLength?: number;
 }
 
 export const PersonSelectionChip: React.FC<PersonSelectionChipProps> = ({
@@ -15,11 +16,16 @@ export const PersonSelectionChip: React.FC<PersonSelectionChipProps> = ({
   lastName,
   displayName,
   onDelete,
+  maxDisplayNameLength = 25,
 }) => {
+  const truncatedDisplayName = displayName.length > maxDisplayNameLength 
+    ? `${displayName.substring(0, maxDisplayNameLength)}...`
+    : displayName;
+
   return (
     <Chip
       key={id}
-      label={displayName}
+      label={truncatedDisplayName}
       onDelete={onDelete}
       variant="outlined"
       avatar={
@@ -38,10 +44,12 @@ export const PersonSelectionChip: React.FC<PersonSelectionChipProps> = ({
         height: '42px',
         borderRadius: '56px',
         border: '1px solid #E9E9E9',
-        background: 'linear-gradient(135deg, #F9F9F9 0%, #E1E1E1 100%)',
+        // background: 'linear-gradient(135deg, #F9F9F9 0%, #E1E1E1 100%)',
+        background: '#F7F7F7',
         fontFamily: 'Work Sans',
         fontWeight: 400,
         color: '#6F7283',
+        // color: '#888',
         pl: 1,
         pr: 1.5,
         '& .MuiChip-label': {
@@ -55,6 +63,12 @@ export const PersonSelectionChip: React.FC<PersonSelectionChipProps> = ({
           marginRight: '4px',
           height: '28px',
           width: '28px',
+          color: '#6F7283',
+          // color: 'white',
+          // bgcolor: '#F7F7F7',
+          background: 'linear-gradient(135deg, #F9F9F9 0%, #E5E5E5 100%)',
+          // border: '1px solid linear-gradient(56deg, #F9F9F9 0%, #E5E5E5 100%)',
+          border: '1px solid #E5E5E5',
         },
         '& .MuiChip-deleteIcon': {
           color: '#6F7283',
