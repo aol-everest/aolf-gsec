@@ -19,8 +19,6 @@ import {
   FormControlLabel,
   Radio,
   FormLabel,
-  Chip,
-  Avatar,
   alpha,
 } from '@mui/material';
 import { Controller, Control, useForm } from 'react-hook-form';
@@ -36,6 +34,7 @@ import AddIcon from '@mui/icons-material/LibraryAdd';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useApi } from '../hooks/useApi';
+import { PersonSelectionChip } from './PersonSelectionChip';
 
 interface ValidationErrors {
   selectedDignitaryId?: string;
@@ -292,60 +291,13 @@ export const DignitarySelector: React.FC<DignitarySelectorProps> = ({
           </Typography>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
             {selectedDignitaries.map((dignitary, index) => (
-              <Chip
+              <PersonSelectionChip
                 key={dignitary.id}
-                label={`${formatHonorificTitle(dignitary.honorific_title || '')} ${dignitary.first_name} ${dignitary.last_name}`}
+                id={dignitary.id}
+                firstName={dignitary.first_name}
+                lastName={dignitary.last_name}
+                displayName={`${formatHonorificTitle(dignitary.honorific_title || '')} ${dignitary.first_name} ${dignitary.last_name}`}
                 onDelete={() => onDignitaryRemove(index)}
-                variant="outlined"
-                avatar={
-                  <Avatar sx={{ 
-                    width: 28,
-                    height: 28,
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    bgcolor: '#D7D7D7',
-                    color: 'white',
-                  }}>
-                    {dignitary.first_name[0]}{dignitary.last_name[0]}
-                  </Avatar>
-                }
-                sx={{
-                  height: '42px',
-                  borderRadius: '56px',
-                  border: '1px solid #E9E9E9',
-                  backgroundColor: '#F7F7F7',
-                  fontFamily: 'Work Sans',
-                  fontWeight: 400,
-                  color: '#6F7283',
-                  pl: 1,
-                  pr: 1.5,
-                  '& .MuiChip-label': {
-                    fontWeight: 600,
-                    fontSize: '15px',
-                    lineHeight: '22px',
-                    px: 1,
-                  },
-                  '& .MuiChip-avatar': {
-                    marginLeft: '0px',
-                    marginRight: '4px',
-                    height: '28px',
-                    width: '28px',
-                  },
-                  '& .MuiChip-deleteIcon': {
-                    color: '#6F7283',
-                    marginLeft: '4px',
-                    marginRight: '0px',
-                    fontSize: '20px',
-                    '&:hover': {
-                      color: '#5A5D6B',
-                      backgroundColor: 'rgba(111, 114, 131, 0.1)',
-                    },
-                  },
-                  '&:hover': {
-                    backgroundColor: '#EEEEEE',
-                    boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.05)',
-                  },
-                }}
               />
             ))}
           </Box>
