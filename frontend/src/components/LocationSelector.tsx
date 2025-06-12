@@ -44,7 +44,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
     queryKey: ['meeting-places', watchLocationId],
     queryFn: async () => {
       if (!watchLocationId) return [];
-      const { data } = await api.get<MeetingPlace[]>(`/admin/locations/${watchLocationId}/meeting-places`);
+      const { data } = await api.get<MeetingPlace[]>(`/admin/locations/${watchLocationId}/meeting_places`);
       return data;
     },
     enabled: !!watchLocationId,

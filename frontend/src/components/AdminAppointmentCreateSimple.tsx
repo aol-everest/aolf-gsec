@@ -453,6 +453,27 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
                   </Grid>
                 )}
 
+                {/* Instructions (for events) */}
+                {isCalendarEventMode && (
+                  <Grid item xs={12} md={6}>
+                    <Controller
+                      name="instructions"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          fullWidth
+                          multiline
+                          rows={4}
+                          label="Instructions for Attendees"
+                          error={!!validationErrors.instructions}
+                          helperText={validationErrors.instructions}
+                        />
+                      )}
+                    />
+                  </Grid>
+                )}
+
                 {/* Max Capacity (for darshan/events) */}
                 {isCalendarEventMode && (
                   <Grid item xs={12} md={4}>
@@ -484,27 +505,6 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
                         <FormControlLabel
                           control={<Switch checked={field.value} onChange={(_, checked) => field.onChange(checked)} />}
                           label="Open for Booking"
-                        />
-                      )}
-                    />
-                  </Grid>
-                )}
-
-                {/* Instructions (for events) */}
-                {isCalendarEventMode && (
-                  <Grid item xs={12}>
-                    <Controller
-                      name="instructions"
-                      control={control}
-                      render={({ field }) => (
-                        <TextField
-                          {...field}
-                          fullWidth
-                          multiline
-                          rows={2}
-                          label="Instructions for Attendees"
-                          error={!!validationErrors.instructions}
-                          helperText={validationErrors.instructions}
                         />
                       )}
                     />
