@@ -55,8 +55,6 @@ interface AppointmentFormData {
   instructions: string;
   description: string;
   purpose: string;
-  requester_notes_to_secretariat: string;
-  secretariat_notes_to_requester: string;
   secretariat_meeting_notes: string;
   secretariat_follow_up_actions: string;
 }
@@ -116,8 +114,6 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
       instructions: '',
       description: '',
       purpose: '',
-      requester_notes_to_secretariat: '',
-      secretariat_notes_to_requester: '',
       secretariat_meeting_notes: '',
       secretariat_follow_up_actions: '',
     },
@@ -125,6 +121,7 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
 
   const watchEventType = watch('eventType');
   const watchDate = watch('appointment_date');
+  const watchStatus = watch('status');
 
   // Fetch event type options
   const { data: eventTypeOptions = [] } = useQuery<string[]>({
@@ -166,7 +163,7 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
   const { data: countries = [] } = useQuery<Array<{ iso2_code: string; name: string }>>({
     queryKey: ['countries'],
     queryFn: async () => {
-      const { data } = await api.get<Array<{ iso2_code: string; name: string }>>('/location/countries');
+      const { data } = await api.get<Array<{ iso2_code: string; name: string }>>('/countries/all');
       return data;
     },
   });
@@ -198,7 +195,12 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
 
   const { values: allSubStatusOptions = [] } = useEnums('appointmentSubStatus');
 
-
+  // Set default status to APPROVED when statusMap is loaded
+  useEffect(() => {
+    if (statusMap && statusMap['APPROVED'] && !getValues('status')) {
+      setValue('status', statusMap['APPROVED']);
+    }
+  }, [statusMap, setValue, getValues]);
 
   // Watch for date changes and fetch time slot data
   useEffect(() => {
@@ -211,6 +213,21 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
       fetchTimeSlotData(watchDate, getValues('location_id') || undefined);
     }
   }, [watchDate, fetchTimeSlotData, getValues, timeSlotDetailsMap]);
+
+  // Auto-default sub-status when status changes
+  useEffect(() => {
+    if (watchStatus && statusSubStatusMapping && statusSubStatusMapping[watchStatus]) {
+      const { default_sub_status, valid_sub_statuses } = statusSubStatusMapping[watchStatus];
+      
+      // Only set default if current sub_status is not valid for the new status
+      const currentSubStatus = getValues('sub_status');
+      
+      if (!currentSubStatus || !valid_sub_statuses.includes(currentSubStatus)) {
+        console.log(`Setting sub_status to default: ${default_sub_status}`);
+        setValue('sub_status', default_sub_status);
+      }
+    }
+  }, [watchStatus, statusSubStatusMapping, getValues, setValue]);
 
   // Handle event type changes
   const handleEventTypeChange = (eventType: string) => {
@@ -313,7 +330,6 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
           purpose: data.purpose || '',
           location_id: data.location_id,
           meeting_place_id: data.meeting_place_id,
-          requester_notes_to_secretariat: data.requester_notes_to_secretariat,
           appointment_date: data.appointment_date,
           appointment_time: data.appointment_time,
           duration: data.duration || 15,
@@ -322,7 +338,6 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
           ...(data.status ? { status: data.status } : {}),
           ...(data.sub_status ? { sub_status: data.sub_status } : {}),
           ...(data.appointment_type ? { appointment_type: data.appointment_type } : {}),
-          ...(data.secretariat_notes_to_requester ? { secretariat_notes_to_requester: data.secretariat_notes_to_requester } : {}),
           ...(data.secretariat_meeting_notes ? { secretariat_meeting_notes: data.secretariat_meeting_notes } : {}),
           ...(data.secretariat_follow_up_actions ? { secretariat_follow_up_actions: data.secretariat_follow_up_actions } : {}),
         };
@@ -550,26 +565,6 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
                       allSubStatusOptions={allSubStatusOptions}
                       statusSubStatusMapping={statusSubStatusMapping}
                     />
-
-                    <Grid item xs={12}>
-                      <TextField
-                        fullWidth
-                        multiline
-                        rows={3}
-                        label="Requester Notes to Secretariat"
-                        {...control.register?.('requester_notes_to_secretariat')}
-                      />
-                    </Grid>
-
-                    <Grid item xs={12}>
-                      <TextField
-                        fullWidth
-                        multiline
-                        rows={3}
-                        label="Secretariat Notes to Requester"
-                        {...control.register?.('secretariat_notes_to_requester')}
-                      />
-                    </Grid>
 
                     <Grid item xs={12}>
                       <TextField
