@@ -126,39 +126,11 @@ async def get_event_type_configurations(
     current_user: models.User = Depends(get_current_user)
 ):
     """Get event type configurations for UI display"""
+    from models.enums import EVENT_TYPE_CONFIGS
     
-    # Define event type configurations with descriptions
-    event_type_configs = [
-        {
-            "event_type": models.EventType.DIGNITARY_APPOINTMENT.value,
-            "display_name": "Dignitary Appointment",
-            "description": "Meeting with dignitaries, VIPs, or important guests"
-        },
-        {
-            "event_type": models.EventType.DARSHAN.value,
-            "display_name": "Darshan",
-            "description": "Darshan line for small or large group of people"
-        },
-        {
-            "event_type": models.EventType.VOLUNTEER_MEETING.value,
-            "display_name": "Teacher/Volunteer Meeting",
-            "description": "Meetings with teachers and/or volunteers"
-        },
-        {
-            "event_type": models.EventType.PROJECT_TEAM_MEETING.value,
-            "display_name": "Project/Team Meeting",
-            "description": "Project teams, working groups, and organizational initiatives"
-        },
-        {
-            "event_type": models.EventType.PRIVATE_EVENT.value,
-            "display_name": "Private Event",
-            "description": "Pre-events, private events, or special events with limited attendance"
-        },
-        {
-            "event_type": models.EventType.OTHER.value,
-            "display_name": "Other (placeholder)",
-            "description": "General placeholder for other types of events or calendar blocks"
-        }
-    ]
+    # Convert configurations to response format
+    configurations = []
+    for config in EVENT_TYPE_CONFIGS.values():
+        configurations.append(vars(config))
     
-    return event_type_configs
+    return configurations

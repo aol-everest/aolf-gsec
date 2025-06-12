@@ -143,10 +143,10 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
   });
 
   // Fetch event type configurations
-  const { data: eventTypeConfigs = [] } = useQuery<Array<{ event_type: string; display_name: string; description: string }>>({
+  const { data: eventTypeConfigs = [] } = useQuery<Array<{ event_type: string; display_name: string; description: string; max_attendees: number }>>({
     queryKey: ['event-type-configurations'],
     queryFn: async () => {
-      const { data } = await api.get<Array<{ event_type: string; display_name: string; description: string }>>('/event-types/configurations');
+      const { data } = await api.get<Array<{ event_type: string; display_name: string; description: string; max_attendees: number }>>('/event-types/configurations');
       return data;
     },
   });
@@ -361,6 +361,10 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
 
   const isDignitary = eventTypeMap && watchEventType === eventTypeMap['DIGNITARY_APPOINTMENT'];
 
+  // Get max attendees from event type configuration
+  const selectedEventTypeConfig = eventTypeConfigs.find(config => config.event_type === watchEventType);
+  const maxAttendeesFromConfig = selectedEventTypeConfig?.max_attendees || 8;
+
   return (
     <Box>
       <form onSubmit={handleSubmit(onSubmit)}>
@@ -392,7 +396,7 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
                   onDignitaryCreate={handleDignitaryCreate}
                   countries={countries}
                   isLoadingCountries={false}
-                  maxDignitaries={getValues('numberOfDignitaries') || 8}
+                  maxDignitaries={getValues('numberOfDignitaries') || maxAttendeesFromConfig}
                   required={true}
                   title="Select Dignitaries"
                   description="Select existing dignitaries or create new ones for this appointment."

@@ -20,6 +20,7 @@ interface EventTypeConfig {
   event_type: string;
   display_name: string;
   description: string;
+  max_attendees: number;
 }
 
 interface EventTypeSelectorProps {
@@ -31,6 +32,7 @@ interface EventTypeSelectorProps {
   showDignitaryCount?: boolean;
   watchEventType?: string;
   onEventTypeChange?: (eventType: string) => void;
+  maxDignitaries?: number;
 }
 
 export const EventTypeSelector: React.FC<EventTypeSelectorProps> = ({
@@ -42,11 +44,15 @@ export const EventTypeSelector: React.FC<EventTypeSelectorProps> = ({
   showDignitaryCount = true,
   watchEventType,
   onEventTypeChange,
+  maxDignitaries = 8, // Default fallback
 }) => {
   const isDignitary = eventTypeMap && watchEventType === eventTypeMap['DIGNITARY_APPOINTMENT'];
 
   // Get the description for the selected event type
   const selectedEventTypeConfig = eventTypeConfigs?.find(config => config.event_type === watchEventType);
+  
+  // Use max_attendees from event type config if available, otherwise fall back to prop
+  const effectiveMaxDignitaries = selectedEventTypeConfig?.max_attendees || maxDignitaries;
 
   return (
     <Grid container spacing={3}>
@@ -119,8 +125,8 @@ export const EventTypeSelector: React.FC<EventTypeSelectorProps> = ({
                 message: 'At least one dignitary is required for this event type'
               },
               max: {
-                value: 8,
-                message: 'Maximum 8 dignitaries allowed'
+                value: effectiveMaxDignitaries,
+                message: `Maximum ${effectiveMaxDignitaries} dignitaries allowed`
               }
             }}
             render={({ field }) => (
@@ -128,13 +134,13 @@ export const EventTypeSelector: React.FC<EventTypeSelectorProps> = ({
                 value={field.value || 1}
                 onChange={field.onChange}
                 min={1}
-                max={8}
+                max={effectiveMaxDignitaries}
                 increment={1}
                 label="Number of Dignitaries"
                 error={!!validationErrors.numberOfDignitaries}
                 helperText={
                   validationErrors.numberOfDignitaries || 
-                  "Specify between 1 and 8 dignitaries."
+                  `Specify between 1 and ${effectiveMaxDignitaries} dignitaries.`
                 }
                 required
               />

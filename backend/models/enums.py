@@ -231,6 +231,22 @@ REQUEST_TYPE_CONFIGS: Dict[RequestType, RequestTypeConfig] = {
     )
 }
 
+# ============================================================================
+# EVENT TYPE CONFIGURATION
+# ============================================================================
+
+@dataclass
+class EventTypeConfig:
+    """Configuration for event types including UI display elements"""
+    event_type: 'EventType'
+    display_name: str
+    description: str
+    max_attendees: int
+
+# Event type configurations - centralized configuration for UI behavior
+# This will be populated after EventType enum is defined
+EVENT_TYPE_CONFIGS: Dict['EventType', EventTypeConfig] = {}
+
 
 class RoleInTeamProject(str, enum.Enum):
     """Role in project team enum for different appointment categories"""
@@ -428,6 +444,47 @@ class EventType(str, enum.Enum):
 
     def __str__(self):
         return self.value
+
+
+# Populate EVENT_TYPE_CONFIGS now that EventType is defined
+EVENT_TYPE_CONFIGS.update({
+    EventType.DIGNITARY_APPOINTMENT: EventTypeConfig(
+        event_type=EventType.DIGNITARY_APPOINTMENT,
+        display_name="Dignitary Appointment",
+        description="Meeting with dignitaries, VIPs, or important guests",
+        max_attendees=8
+    ),
+    EventType.DARSHAN: EventTypeConfig(
+        event_type=EventType.DARSHAN,
+        display_name="Darshan",
+        description="Darshan line for small or large group of people",
+        max_attendees=50
+    ),
+    EventType.VOLUNTEER_MEETING: EventTypeConfig(
+        event_type=EventType.VOLUNTEER_MEETING,
+        display_name="Teacher/Volunteer Meeting",
+        description="Meetings with teachers and/or volunteers",
+        max_attendees=15
+    ),
+    EventType.PROJECT_TEAM_MEETING: EventTypeConfig(
+        event_type=EventType.PROJECT_TEAM_MEETING,
+        display_name="Project/Team Meeting",
+        description="Project teams, working groups, and organizational initiatives",
+        max_attendees=15
+    ),
+    EventType.PRIVATE_EVENT: EventTypeConfig(
+        event_type=EventType.PRIVATE_EVENT,
+        display_name="Private Event",
+        description="Pre-events, private events, or special events with limited attendance",
+        max_attendees=25
+    ),
+    EventType.OTHER: EventTypeConfig(
+        event_type=EventType.OTHER,
+        display_name="Other (placeholder)",
+        description="General placeholder for other types of events or calendar blocks",
+        max_attendees=10
+    )
+})
 
 
 class EventStatus(str, enum.Enum):
