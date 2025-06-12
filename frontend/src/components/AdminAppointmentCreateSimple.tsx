@@ -142,6 +142,15 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
     },
   });
 
+  // Fetch event type configurations
+  const { data: eventTypeConfigs = [] } = useQuery<Array<{ event_type: string; display_name: string; description: string }>>({
+    queryKey: ['event-type-configurations'],
+    queryFn: async () => {
+      const { data } = await api.get<Array<{ event_type: string; display_name: string; description: string }>>('/event-types/configurations');
+      return data;
+    },
+  });
+
   // Fetch locations
   const { data: locations = [] } = useQuery<Location[]>({
     queryKey: ['locations'],
@@ -364,6 +373,7 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
                 validationErrors={validationErrors}
                 eventTypeOptions={eventTypeOptions}
                 eventTypeMap={eventTypeMap}
+                eventTypeConfigs={eventTypeConfigs}
                 watchEventType={watchEventType}
                 onEventTypeChange={handleEventTypeChange}
               />

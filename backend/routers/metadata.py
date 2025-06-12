@@ -118,3 +118,47 @@ async def get_request_type_configurations(
         ))
     
     return configurations
+
+
+# Event Type Configuration endpoints  
+@router.get("/event-types/configurations")
+async def get_event_type_configurations(
+    current_user: models.User = Depends(get_current_user)
+):
+    """Get event type configurations for UI display"""
+    
+    # Define event type configurations with descriptions
+    event_type_configs = [
+        {
+            "event_type": models.EventType.DIGNITARY_APPOINTMENT.value,
+            "display_name": "Dignitary Appointment",
+            "description": "Meeting with dignitaries, VIPs, or important guests"
+        },
+        {
+            "event_type": models.EventType.DARSHAN.value,
+            "display_name": "Darshan",
+            "description": "Darshan line for small or large group of people"
+        },
+        {
+            "event_type": models.EventType.VOLUNTEER_MEETING.value,
+            "display_name": "Teacher/Volunteer Meeting",
+            "description": "Meetings with teachers and/or volunteers"
+        },
+        {
+            "event_type": models.EventType.PROJECT_TEAM_MEETING.value,
+            "display_name": "Project/Team Meeting",
+            "description": "Project teams, working groups, and organizational initiatives"
+        },
+        {
+            "event_type": models.EventType.PRIVATE_EVENT.value,
+            "display_name": "Private Event",
+            "description": "Pre-events, private events, or special events with limited attendance"
+        },
+        {
+            "event_type": models.EventType.OTHER.value,
+            "display_name": "Other (placeholder)",
+            "description": "General placeholder for other types of events or calendar blocks"
+        }
+    ]
+    
+    return event_type_configs

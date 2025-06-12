@@ -16,11 +16,18 @@ interface ValidationErrors {
   numberOfDignitaries?: string;
 }
 
+interface EventTypeConfig {
+  event_type: string;
+  display_name: string;
+  description: string;
+}
+
 interface EventTypeSelectorProps {
   control: Control<any>;
   validationErrors: ValidationErrors;
   eventTypeOptions: string[];
   eventTypeMap: Record<string, string> | undefined;
+  eventTypeConfigs?: EventTypeConfig[];
   showDignitaryCount?: boolean;
   watchEventType?: string;
   onEventTypeChange?: (eventType: string) => void;
@@ -31,11 +38,15 @@ export const EventTypeSelector: React.FC<EventTypeSelectorProps> = ({
   validationErrors,
   eventTypeOptions,
   eventTypeMap,
+  eventTypeConfigs,
   showDignitaryCount = true,
   watchEventType,
   onEventTypeChange,
 }) => {
   const isDignitary = eventTypeMap && watchEventType === eventTypeMap['DIGNITARY_APPOINTMENT'];
+
+  // Get the description for the selected event type
+  const selectedEventTypeConfig = eventTypeConfigs?.find(config => config.event_type === watchEventType);
 
   return (
     <Grid container spacing={3}>
@@ -69,11 +80,23 @@ export const EventTypeSelector: React.FC<EventTypeSelectorProps> = ({
                 <MenuItem value="">
                   <em>Select an event type</em>
                 </MenuItem>
-                {eventTypeOptions.map((eventType) => (
-                  <MenuItem key={eventType} value={eventType}>
-                    {eventType}
-                  </MenuItem>
-                ))}
+                {eventTypeOptions.map((eventType) => {
+                  const config = eventTypeConfigs?.find(c => c.event_type === eventType);
+                  return (
+                    <MenuItem key={eventType} value={eventType}>
+                      <div>
+                        <Typography variant="body1">
+                          {config?.display_name || eventType}
+                        </Typography>
+                        {config?.description && (
+                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                            {config.description}
+                          </Typography>
+                        )}
+                      </div>
+                    </MenuItem>
+                  );
+                })}
               </Select>
               {validationErrors.eventType && (
                 <FormHelperText>{validationErrors.eventType}</FormHelperText>
@@ -119,6 +142,19 @@ export const EventTypeSelector: React.FC<EventTypeSelectorProps> = ({
           />
         </Grid>
       )}
+
+      {/* Show selected event type description */}
+      {selectedEventTypeConfig && (
+        <Grid item xs={12} md={12}>
+          <Typography variant="h3" gutterBottom color="primary">
+            {selectedEventTypeConfig.display_name}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {selectedEventTypeConfig.description}
+          </Typography>
+        </Grid>
+      )}
+
     </Grid>
   );
 };
