@@ -297,33 +297,53 @@ export const DignitarySelector: React.FC<DignitarySelectorProps> = ({
                 label={`${formatHonorificTitle(dignitary.honorific_title || '')} ${dignitary.first_name} ${dignitary.last_name}`}
                 onDelete={() => onDignitaryRemove(index)}
                 variant="outlined"
-                color="primary"
                 avatar={
                   <Avatar sx={{ 
-                    bgcolor: 'primary.main', 
-                    color: 'white', 
+                    width: 28,
+                    height: 28,
                     fontSize: '0.75rem',
+                    fontWeight: 600,
+                    bgcolor: '#D7D7D7',
+                    color: 'white',
                   }}>
                     {dignitary.first_name[0]}{dignitary.last_name[0]}
                   </Avatar>
                 }
                 sx={{
-                  borderColor: (theme) => alpha(theme.palette.primary.main, 0.1),
-                  borderWidth: '2px',
-                  '& .MuiChip-avatar': {
-                    color: 'primary.main',
-                    bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
-                    border: '1.5px solid',
-                    borderColor: (theme) => alpha(theme.palette.primary.main, 0.2),
-                  },
+                  height: '42px',
+                  borderRadius: '56px',
+                  border: '1px solid #E9E9E9',
+                  backgroundColor: '#F7F7F7',
+                  fontFamily: 'Work Sans',
+                  fontWeight: 400,
+                  color: '#6F7283',
+                  pl: 1,
+                  pr: 1.5,
                   '& .MuiChip-label': {
-                    fontWeight: 500,
+                    fontWeight: 600,
+                    fontSize: '15px',
+                    lineHeight: '22px',
+                    px: 1,
+                  },
+                  '& .MuiChip-avatar': {
+                    marginLeft: '0px',
+                    marginRight: '4px',
+                    height: '28px',
+                    width: '28px',
                   },
                   '& .MuiChip-deleteIcon': {
-                    color: 'primary.main',
+                    color: '#6F7283',
+                    marginLeft: '4px',
+                    marginRight: '0px',
+                    fontSize: '20px',
                     '&:hover': {
-                      color: (theme) => alpha(theme.palette.primary.main, 0.56),
+                      color: '#5A5D6B',
+                      backgroundColor: 'rgba(111, 114, 131, 0.1)',
                     },
+                  },
+                  '&:hover': {
+                    backgroundColor: '#EEEEEE',
+                    boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.05)',
                   },
                 }}
               />
