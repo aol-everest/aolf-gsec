@@ -210,7 +210,7 @@ export const DignitarySelector: React.FC<DignitarySelectorProps> = ({
 
   const dignitaryForm = useForm<DignitaryFormData>({
     defaultValues: {
-      isExistingDignitary: false,
+      isExistingDignitary: true,
       selectedDignitaryId: undefined,
       dignitaryHonorificTitle: '(Not Applicable)',
       dignitaryFirstName: '',
