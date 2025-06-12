@@ -9,6 +9,8 @@ import {
   Alert,
   CircularProgress,
   Divider,
+  Switch,
+  FormControlLabel,
 } from '@mui/material';
 import { useForm } from 'react-hook-form';
 import { useApi } from '../hooks/useApi';
@@ -34,6 +36,7 @@ import TimeSlotSelector from './TimeSlotSelector';
 import LocationSelector from './LocationSelector';
 import StatusSelector from './StatusSelector';
 import useTimeSlots from '../hooks/useTimeSlots';
+import { Controller } from 'react-hook-form';
 
 interface AppointmentFormData {
   eventType: string;
@@ -46,6 +49,11 @@ interface AppointmentFormData {
   status: string;
   sub_status: string;
   appointment_type: string | null;
+  title: string;
+  max_capacity: number;
+  is_open_for_booking: boolean;
+  instructions: string;
+  description: string;
   purpose: string;
   requester_notes_to_secretariat: string;
   secretariat_notes_to_requester: string;
@@ -69,6 +77,11 @@ interface ValidationErrors {
   sub_status?: string;
   appointment_type?: string;
   purpose?: string;
+  title?: string;
+  max_capacity?: string;
+  is_open_for_booking?: string;
+  instructions?: string;
+  description?: string;
 }
 
 export const AdminAppointmentCreateSimple: React.FC = () => {
@@ -97,6 +110,11 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
       status: '',
       sub_status: '',
       appointment_type: null,
+      title: '',
+      max_capacity: 1,
+      is_open_for_booking: true,
+      instructions: '',
+      description: '',
       purpose: '',
       requester_notes_to_secretariat: '',
       secretariat_notes_to_requester: '',
@@ -267,12 +285,16 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
         // Create calendar event
         const eventData = {
           event_type: data.eventType,
-          title: data.purpose || 'Untitled Event',
-          description: data.purpose || '',
+          title: data.title,
+          description: data.description,
           start_date: data.appointment_date,
           start_time: data.appointment_time,
           duration: data.duration || 15,
           location_id: data.location_id,
+          meeting_place_id: data.meeting_place_id,
+          max_capacity: data.max_capacity,
+          is_open_for_booking: data.is_open_for_booking,
+          instructions: data.instructions,
           status: data.status || 'CONFIRMED',
           notes: data.secretariat_meeting_notes || '',
         };
@@ -287,6 +309,7 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
 
         const appointmentData = {
           dignitary_ids: selectedDignitaries.map(d => d.id),
+          title: data.title,
           purpose: data.purpose || '',
           location_id: data.location_id,
           meeting_place_id: data.meeting_place_id,
@@ -390,18 +413,125 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
               </Typography>
               
               <Grid container spacing={3}>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    multiline
-                    rows={4}
-                    label={isCalendarEventMode ? 'Event Description' : 'Purpose of Meeting'}
-                    {...control.register?.('purpose')}
-                    error={!!validationErrors.purpose}
-                    helperText={validationErrors.purpose}
-                    required
+                {/* Title (required) */}
+                <Grid item xs={12} md={12}>
+                  <Controller
+                    name="title"
+                    control={control}
+                    rules={{ required: 'Title is required' }}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        label="Title"
+                        required
+                        error={!!validationErrors.title}
+                        helperText={validationErrors.title}
+                      />
+                    )}
                   />
                 </Grid>
+
+                {/* Description (for events) */}
+                {isCalendarEventMode && (
+                  <Grid item xs={12} md={6}>
+                    <Controller
+                      name="description"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          fullWidth
+                          multiline
+                          rows={4}
+                          label="Event Description"
+                          error={!!validationErrors.description}
+                          helperText={validationErrors.description}
+                        />
+                      )}
+                    />
+                  </Grid>
+                )}
+
+                {/* Max Capacity (for darshan/events) */}
+                {isCalendarEventMode && (
+                  <Grid item xs={12} md={4}>
+                    <Controller
+                      name="max_capacity"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          fullWidth
+                          type="number"
+                          label="Max Capacity"
+                          inputProps={{ min: 1 }}
+                          error={!!validationErrors.max_capacity}
+                          helperText={validationErrors.max_capacity}
+                        />
+                      )}
+                    />
+                  </Grid>
+                )}
+
+                {/* Is Open for Booking (for events) */}
+                {isCalendarEventMode && (
+                  <Grid item xs={12} md={4}>
+                    <Controller
+                      name="is_open_for_booking"
+                      control={control}
+                      render={({ field }) => (
+                        <FormControlLabel
+                          control={<Switch checked={field.value} onChange={(_, checked) => field.onChange(checked)} />}
+                          label="Open for Booking"
+                        />
+                      )}
+                    />
+                  </Grid>
+                )}
+
+                {/* Instructions (for events) */}
+                {isCalendarEventMode && (
+                  <Grid item xs={12}>
+                    <Controller
+                      name="instructions"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          fullWidth
+                          multiline
+                          rows={2}
+                          label="Instructions for Attendees"
+                          error={!!validationErrors.instructions}
+                          helperText={validationErrors.instructions}
+                        />
+                      )}
+                    />
+                  </Grid>
+                )}
+
+                {/* Purpose (for appointments) */}
+                {!isCalendarEventMode && (
+                  <Grid item xs={12}>
+                    <Controller
+                      name="purpose"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          fullWidth
+                          multiline
+                          rows={4}
+                          label="Purpose of Meeting"
+                          error={!!validationErrors.purpose}
+                          helperText={validationErrors.purpose}
+                          required
+                        />
+                      )}
+                    />
+                  </Grid>
+                )}
 
                 {!isCalendarEventMode && (
                   <>
