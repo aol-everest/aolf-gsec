@@ -1984,76 +1984,26 @@ export const AppointmentRequestForm: React.FC = () => {
                       <Typography variant="subtitle1" gutterBottom>
                         Selected {selectedRequestTypeConfig?.attendee_label_plural || 'Attendees'} ({selectedUserContacts.length} of {requiredDignitariesCount})
                       </Typography>
-                      <List>
-                        {selectedUserContacts.map((contact, index) => (
-                          <ListItem 
-                            key={contact.id}
-                            component={Paper}
-                            elevation={1}
-                            sx={{ 
-                              mb: 1,
-                              borderRadius: 1,
-                              border: '1px solid',
-                              borderColor: 'divider',
-                            }}
-                          >
-                            <ListItemText
-                              primary={`${contact.first_name} ${contact.last_name}`}
-                              secondary={
-                                <>
-                                  {contact.email && (
-                                    <Typography component="span" variant="body2">
-                                      Email: {contact.email}
-                                    </Typography>
-                                  )}
-                                  {contact.phone && (
-                                    <>
-                                      <br />
-                                      <Typography component="span" variant="body2">
-                                        Phone: {contact.phone}
-                                      </Typography>
-                                    </>
-                                  )}
-                                  {contact.relationship_to_owner && selectedRequestTypeConfig?.attendee_type === 'personal' && (
-                                    <>
-                                      <br />
-                                      <Typography component="span" variant="body2" color="text.secondary">
-                                        Relationship: {contact.relationship_to_owner}
-                                      </Typography>
-                                    </>
-                                  )}
-                                  {contact.notes && (
-                                    <>
-                                      <br />
-                                      <Typography component="span" variant="body2" color="text.secondary">
-                                        Notes: {contact.notes}
-                                      </Typography>
-                                    </>
-                                  )}
-                                </>
-                              }
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                        {selectedUserContacts.map((contact, index) => {
+                          const displayName = `${contact.first_name} ${contact.last_name}`;
+                          const additionalInfo = contact.relationship_to_owner;
+                          const fullDisplayName = additionalInfo ? `${displayName} - ${additionalInfo}` : displayName;
+                          
+                          return (
+                            <PersonSelectionChip
+                              key={contact.id}
+                              id={contact.id}
+                              firstName={contact.first_name}
+                              lastName={contact.last_name}
+                              displayName={fullDisplayName}
+                              onDelete={() => removeContactFromList(contact.id)}
+                              onEdit={() => editContactInList(contact)}
+                              editIcon={<EditIcon />}
                             />
-                            <ListItemSecondaryAction>
-                              <Box sx={{ display: 'flex', gap: 1 }}>
-                                <IconButton 
-                                  size="small"
-                                  aria-label="edit"
-                                  onClick={() => editContactInList(contact)}
-                                >
-                                  <EditIcon />
-                                </IconButton>
-                                <IconButton 
-                                  size="small"
-                                  aria-label="delete"
-                                  onClick={() => removeContactFromList(contact.id)}
-                                >
-                                  <DeleteIcon />
-                                </IconButton>
-                              </Box>
-                            </ListItemSecondaryAction>
-                          </ListItem>
-                        ))}
-                      </List>
+                          );
+                        })}
+                      </Box>
                     </Grid>
                   )}
 
@@ -2087,7 +2037,10 @@ export const AppointmentRequestForm: React.FC = () => {
                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                           <Typography variant="subtitle1">
                             {editingContactId 
-                              ? `Edit ${selectedRequestTypeConfig?.attendee_label_singular || 'Contact'}`
+                              ? `Editing Contact: ${(() => {
+                                  const contact = selectedUserContacts.find(c => c.id === editingContactId);
+                                  return contact ? `${contact.first_name} ${contact.last_name}` : '';
+                                })()}`
                               : `Add a ${selectedRequestTypeConfig?.attendee_label_singular || 'Contact'}`
                             }
                           </Typography>
