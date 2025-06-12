@@ -287,7 +287,7 @@ export const DignitarySelector: React.FC<DignitarySelectorProps> = ({
             <Card key={dignitary.id} variant="outlined" sx={{ mb: 2 }}>
               <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Box>
-                  <Typography variant="subtitle2">
+                  <Typography variant="subtitle1">
                     {formatHonorificTitle(dignitary.honorific_title || '')} {dignitary.first_name} {dignitary.last_name}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
@@ -316,14 +316,14 @@ export const DignitarySelector: React.FC<DignitarySelectorProps> = ({
       {selectedDignitaries.length < maxDignitaries && (
         <Grid item xs={12}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Button
-              variant="outlined"
+            <PrimaryButton
+              size="small"
               startIcon={<AddIcon />}
               onClick={() => setShowAddForm(!showAddForm)}
               sx={{ textTransform: 'none' }}
             >
-              {showAddForm ? 'Cancel' : 'Add Dignitary'}
-            </Button>
+              {showAddForm ? 'Cancel' : `Add Dignitary  ${selectedDignitaries.length + 1} of ${maxDignitaries}`}
+            </PrimaryButton>
             {showAddForm && (
               <IconButton onClick={() => setShowAddForm(false)}>
                 <ExpandLessIcon />
@@ -731,10 +731,14 @@ export const DignitarySelector: React.FC<DignitarySelectorProps> = ({
                   <Grid item xs={12}>
                     <Divider sx={{ my: 2 }} />
                     <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-                      <SecondaryButton onClick={() => setShowAddForm(false)}>
+                      <SecondaryButton 
+                        size="small" 
+                        onClick={() => setShowAddForm(false)}
+                      >
                         Cancel
                       </SecondaryButton>
                       <PrimaryButton
+                        size="small"
                         type="button"
                         onClick={dignitaryForm.handleSubmit(
                           watchIsExisting ? handleAddExistingDignitary : handleCreateNewDignitary
