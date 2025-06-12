@@ -193,6 +193,10 @@ interface StatusSubStatusMapping {
   }
 }
 
+interface EnumMap {
+  [key: string]: string;
+}
+
 interface StatusMap {   
   [key: string]: string;
 }
@@ -429,6 +433,7 @@ export type {
   AppointmentDignitary, 
   AppointmentContact,
   AdminAppointmentUpdate,
+  EnumMap,
   StatusSubStatusMapping, 
   StatusMap, 
   SubStatusMap, 

@@ -26,7 +26,8 @@ import {
   StatusSubStatusMapping,
   EventTypeMap,
   CalendarEvent,
-  Appointment
+  Appointment,
+  EnumMap
 } from '../models/types';
 import { PrimaryButton } from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
@@ -180,18 +181,18 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
   });
 
   // Fetch status-related data
-  const { data: statusMap = {} } = useQuery<StatusMap>({
+  const { data: statusMap = {} } = useQuery<EnumMap>({
     queryKey: ['status-map'],
     queryFn: async () => {
-      const { data } = await api.get<StatusMap>('/appointments/status-options-map');
+      const { data } = await api.get<EnumMap>('/appointments/status-options-map');
       return data;
     },
   });
 
-  const { data: subStatusMap = {} } = useQuery<SubStatusMap>({
+  const { data: subStatusMap = {} } = useQuery<EnumMap>({
     queryKey: ['sub-status-map'],
     queryFn: async () => {
-      const { data } = await api.get<SubStatusMap>('/appointments/sub-status-options-map');
+      const { data } = await api.get<EnumMap>('/appointments/sub-status-options-map');
       return data;
     },
   });
@@ -205,6 +206,14 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
   });
 
   const { values: allSubStatusOptions = [] } = useEnums('appointmentSubStatus');
+
+  const { data: eventStatusMap = {} } = useQuery<EnumMap>({
+    queryKey: ['event-status-map'],
+    queryFn: async () => {
+      const { data } = await api.get<EnumMap>('/calendar/event-status-options-map');
+      return data;
+    },
+  });
 
   // Set default status to APPROVED when statusMap is loaded
   useEffect(() => {
@@ -323,7 +332,7 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
           max_capacity: data.max_capacity,
           is_open_for_booking: data.is_open_for_booking,
           instructions: data.instructions,
-          status: data.status || 'CONFIRMED',
+          status: eventStatusMap['CONFIRMED'],
           notes: data.secretariat_meeting_notes || '',
         };
         
