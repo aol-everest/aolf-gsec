@@ -37,6 +37,7 @@ import LocationSelector from './LocationSelector';
 import StatusSelector from './StatusSelector';
 import useTimeSlots from '../hooks/useTimeSlots';
 import { Controller } from 'react-hook-form';
+import NumberInput from './NumberInput';
 
 interface AppointmentFormData {
   eventType: string;
@@ -109,7 +110,7 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
       sub_status: '',
       appointment_type: null,
       title: '',
-      max_capacity: 1,
+      max_capacity: 10,
       is_open_for_booking: true,
       instructions: '',
       description: '',
@@ -496,12 +497,13 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
                       name="max_capacity"
                       control={control}
                       render={({ field }) => (
-                        <TextField
-                          {...field}
-                          fullWidth
-                          type="number"
+                        <NumberInput
+                          value={field.value || 10}
+                          onChange={field.onChange}
+                          min={1}
+                          max={500}
+                          increment={10}
                           label="Max Capacity"
-                          inputProps={{ min: 1 }}
                           error={!!validationErrors.max_capacity}
                           helperText={validationErrors.max_capacity}
                         />

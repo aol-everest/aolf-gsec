@@ -41,6 +41,7 @@ import { useAuth } from '../contexts/AuthContext';
 import LocationAutocomplete from './LocationAutocomplete';
 import { useNavigate } from 'react-router-dom';
 import { formatHonorificTitle } from '../utils/formattingUtils';
+import NumberInput from './NumberInput';
 import { useTheme } from '@mui/material/styles';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../hooks/useApi';
@@ -1313,19 +1314,10 @@ export const AppointmentRequestForm: React.FC = () => {
               </Grid>
 
               <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  type="number"
-                  label={selectedRequestTypeConfig ? 
-                    `Number of ${selectedRequestTypeConfig.attendee_label_plural}` : 
-                    "Number of Attendees"
-                  }
-                  InputLabelProps={{ shrink: true }}
-                  inputProps={{ 
-                    min: 1, 
-                    max: selectedRequestTypeConfig?.max_attendees || 15 
-                  }}
-                  {...pocForm.register('numberOfAttendees', { 
+                <Controller
+                  name="numberOfAttendees"
+                  control={pocForm.control}
+                  rules={{
                     required: `Number of ${selectedRequestTypeConfig?.attendee_label_plural?.toLowerCase() || 'attendees'} is required`,
                     min: {
                       value: 1,
@@ -1334,12 +1326,24 @@ export const AppointmentRequestForm: React.FC = () => {
                     max: {
                       value: selectedRequestTypeConfig?.max_attendees || 15,
                       message: `Maximum ${selectedRequestTypeConfig?.max_attendees || 15} ${selectedRequestTypeConfig?.attendee_label_plural?.toLowerCase() || 'attendees'} allowed`
-                    },
-                    valueAsNumber: true
-                  })}
-                  error={!!pocForm.formState.errors.numberOfAttendees}
-                  helperText={pocForm.formState.errors.numberOfAttendees?.message}
-                  required
+                    }
+                  }}
+                  render={({ field }) => (
+                    <NumberInput
+                      value={field.value || 1}
+                      onChange={field.onChange}
+                      min={1}
+                      max={selectedRequestTypeConfig?.max_attendees || 15}
+                      increment={1}
+                      label={selectedRequestTypeConfig ? 
+                        `Number of ${selectedRequestTypeConfig.attendee_label_plural}` : 
+                        "Number of Attendees"
+                      }
+                      error={!!pocForm.formState.errors.numberOfAttendees}
+                      helperText={pocForm.formState.errors.numberOfAttendees?.message}
+                      required
+                    />
+                  )}
                 />
               </Grid>
             </Grid>

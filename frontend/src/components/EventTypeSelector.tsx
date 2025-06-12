@@ -6,11 +6,10 @@ import {
   Select,
   MenuItem,
   FormHelperText,
-  TextField,
   Typography,
-  Box,
 } from '@mui/material';
 import { Controller, Control } from 'react-hook-form';
+import NumberInput from './NumberInput';
 
 interface ValidationErrors {
   eventType?: string;
@@ -102,21 +101,19 @@ export const EventTypeSelector: React.FC<EventTypeSelectorProps> = ({
               }
             }}
             render={({ field }) => (
-              <TextField
-                {...field}
-                fullWidth
-                type="number"
+              <NumberInput
+                value={field.value || 1}
+                onChange={field.onChange}
+                min={1}
+                max={8}
+                increment={1}
                 label="Number of Dignitaries"
-                InputLabelProps={{ shrink: true }}
-                inputProps={{ min: 1, max: 8 }}
                 error={!!validationErrors.numberOfDignitaries}
                 helperText={
                   validationErrors.numberOfDignitaries || 
                   "Specify between 1 and 8 dignitaries."
                 }
                 required
-                onChange={(e) => field.onChange(parseInt(e.target.value, 10) || 0)}
-                value={field.value || ''}
               />
             )}
           />
