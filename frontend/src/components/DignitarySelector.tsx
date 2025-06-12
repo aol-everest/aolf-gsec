@@ -19,6 +19,9 @@ import {
   FormControlLabel,
   Radio,
   FormLabel,
+  Chip,
+  Avatar,
+  alpha,
 } from '@mui/material';
 import { Controller, Control, useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
@@ -280,35 +283,52 @@ export const DignitarySelector: React.FC<DignitarySelectorProps> = ({
       {/* Selected Dignitaries Display */}
       {selectedDignitaries.length > 0 && (
         <Grid item xs={12}>
-          <Typography variant="subtitle1" gutterBottom>
+          <Typography 
+            variant="subtitle1" 
+            gutterBottom
+            sx={{ mb: 2 }}
+          >
             Selected Dignitaries ({selectedDignitaries.length}/{maxDignitaries})
           </Typography>
-          {selectedDignitaries.map((dignitary, index) => (
-            <Card key={dignitary.id} variant="outlined" sx={{ mb: 2 }}>
-              <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Box>
-                  <Typography variant="subtitle1">
-                    {formatHonorificTitle(dignitary.honorific_title || '')} {dignitary.first_name} {dignitary.last_name}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {dignitary.email} • {dignitary.organization}
-                  </Typography>
-                  {dignitary.title_in_organization && (
-                    <Typography variant="body2" color="text.secondary">
-                      {dignitary.title_in_organization}
-                    </Typography>
-                  )}
-                </Box>
-                <IconButton
-                  onClick={() => onDignitaryRemove(index)}
-                  color="error"
-                  size="small"
-                >
-                  <TrashIconV2 />
-                </IconButton>
-              </CardContent>
-            </Card>
-          ))}
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+            {selectedDignitaries.map((dignitary, index) => (
+              <Chip
+                key={dignitary.id}
+                label={`${formatHonorificTitle(dignitary.honorific_title || '')} ${dignitary.first_name} ${dignitary.last_name}`}
+                onDelete={() => onDignitaryRemove(index)}
+                variant="outlined"
+                color="primary"
+                avatar={
+                  <Avatar sx={{ 
+                    bgcolor: 'primary.main', 
+                    color: 'white', 
+                    fontSize: '0.75rem',
+                  }}>
+                    {dignitary.first_name[0]}{dignitary.last_name[0]}
+                  </Avatar>
+                }
+                sx={{
+                  borderColor: (theme) => alpha(theme.palette.primary.main, 0.1),
+                  borderWidth: '2px',
+                  '& .MuiChip-avatar': {
+                    color: 'primary.main',
+                    bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
+                    border: '1.5px solid',
+                    borderColor: (theme) => alpha(theme.palette.primary.main, 0.2),
+                  },
+                  '& .MuiChip-label': {
+                    fontWeight: 500,
+                  },
+                  '& .MuiChip-deleteIcon': {
+                    color: 'primary.main',
+                    '&:hover': {
+                      color: (theme) => alpha(theme.palette.primary.main, 0.56),
+                    },
+                  },
+                }}
+              />
+            ))}
+          </Box>
         </Grid>
       )}
 
