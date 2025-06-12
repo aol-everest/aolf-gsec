@@ -57,6 +57,7 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
 import { AppointmentStatusChip } from './AppointmentStatusChip';
+import { PersonSelectionChip } from './PersonSelectionChip';
 
 // Remove the hardcoded enum and add a state for time of day options
 // const AppointmentTimeOfDay = {
@@ -1372,72 +1373,32 @@ export const AppointmentRequestForm: React.FC = () => {
                   {/* List of selected dignitaries */}
                   {selectedDignitaries.length > 0 && (
                 <Grid item xs={12}>
-                  <Typography variant="subtitle1" gutterBottom>
+                  <Typography variant="subtitle1" gutterBottom sx={{ mb: 2 }}>
                     Selected Dignitaries ({selectedDignitaries.length} of {requiredDignitariesCount})
                   </Typography>
-                  <List>
-                    {selectedDignitaries.map((dignitary, index) => (
-                      <ListItem 
-                        key={index}
-                        component={Paper}
-                        elevation={1}
-                        sx={{ 
-                          mb: 1,
-                          borderRadius: 1,
-                          border: '1px solid',
-                          borderColor: 'divider',
-                        }}
-                      >
-                        <ListItemText
-                          primary={`${formatHonorificTitle(dignitary.honorific_title || '')} ${dignitary.first_name} ${dignitary.last_name}`}
-                          secondary={
-                            <>
-                              <Typography component="span" variant="body2">
-                                {dignitary.title_in_organization}, {dignitary.organization}
-                              </Typography>
-                              <br />
-                              <Typography component="span" variant="body2" color="text.secondary">
-                                Relationship: {dignitary.relationship_type || dignitary.poc_relationship_type}
-                              </Typography>
-                              {dignitary.bio_summary && (
-                                <Typography component="div" variant="body2" sx={{whiteSpace: 'pre-line'}} mt={1}>
-                                  <strong>Bio:</strong> {dignitary.bio_summary}
-                                </Typography>
-                              )}
-                              {dignitary.isNew && (
-                                <Chip 
-                                  size="small" 
-                                  label="New" 
-                                  color="primary" 
-                                  sx={{ ml: 1 }} 
-                                />
-                              )}
-                            </>
-                          }
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                    {selectedDignitaries.map((dignitary, index) => {
+                      const displayName = `${formatHonorificTitle(dignitary.honorific_title || '')} ${dignitary.first_name} ${dignitary.last_name}`;
+                      const titleCompany = [dignitary.title_in_organization, dignitary.organization].filter(Boolean).join(', ');
+                      const fullDisplayName = titleCompany ? `${displayName} - ${titleCompany}` : displayName;
+                      
+                      return (
+                        <PersonSelectionChip
+                          key={index}
+                          id={dignitary.id}
+                          firstName={dignitary.first_name}
+                          lastName={dignitary.last_name}
+                          displayName={fullDisplayName}
+                          onDelete={() => removeDignitaryFromList(index)}
+                          onEdit={() => {
+                            editDignitaryInList(index);
+                            setIsDignitaryFormExpanded(true);
+                          }}
+                          editIcon={<EditIcon />}
                         />
-                        <ListItemSecondaryAction>
-                          <IconButton 
-                            edge="end" 
-                            aria-label="edit"
-                            onClick={() => {
-                              editDignitaryInList(index);
-                              setIsDignitaryFormExpanded(true);
-                            }}
-                            sx={{ mr: 1 }}
-                          >
-                            <EditIcon />
-                          </IconButton>
-                          <IconButton 
-                            edge="end" 
-                            aria-label="delete"
-                            onClick={() => removeDignitaryFromList(index)}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </ListItemSecondaryAction>
-                      </ListItem>
-                    ))}
-                  </List>
+                      );
+                    })}
+                  </Box>
                 </Grid>
               )}
 
