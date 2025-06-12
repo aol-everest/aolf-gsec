@@ -333,7 +333,7 @@ export const DignitarySelector: React.FC<DignitarySelectorProps> = ({
 
           <Collapse in={showAddForm}>
             <Card variant="outlined" sx={{ p: 3 }}>
-              <form onSubmit={dignitaryForm.handleSubmit(watchIsExisting ? handleAddExistingDignitary : handleCreateNewDignitary)}>
+              <Box>
                 <Grid container spacing={3}>
                   {/* Existing vs New Toggle */}
                   <Grid item xs={12}>
@@ -734,13 +734,18 @@ export const DignitarySelector: React.FC<DignitarySelectorProps> = ({
                       <SecondaryButton onClick={() => setShowAddForm(false)}>
                         Cancel
                       </SecondaryButton>
-                      <PrimaryButton type="submit">
+                      <PrimaryButton
+                        type="button"
+                        onClick={dignitaryForm.handleSubmit(
+                          watchIsExisting ? handleAddExistingDignitary : handleCreateNewDignitary
+                        )}
+                      >
                         {watchIsExisting ? 'Add Selected' : 'Create & Add'}
                       </PrimaryButton>
                     </Box>
                   </Grid>
                 </Grid>
-              </form>
+              </Box>
             </Card>
           </Collapse>
         </Grid>
