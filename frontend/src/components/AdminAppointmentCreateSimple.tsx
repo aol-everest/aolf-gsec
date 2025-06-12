@@ -396,6 +396,7 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
                   required={true}
                   title="Select Dignitaries"
                   description="Select existing dignitaries or create new ones for this appointment."
+                  mode="admin"
                 />
               </Paper>
             </Grid>
