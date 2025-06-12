@@ -1,6 +1,5 @@
 import React from 'react';
 import { Chip, Avatar, IconButton, Box } from '@mui/material';
-import { cursorTo } from 'readline';
 
 interface PersonSelectionChipProps {
   id: string | number;
@@ -84,6 +83,7 @@ export const PersonSelectionChip: React.FC<PersonSelectionChipProps> = ({
           pl: 1,
           pr: 1,
           gap: 1,
+          mr: 2
         }}
       >
         <Avatar sx={AVATAR_STYLES}>
