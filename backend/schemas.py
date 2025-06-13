@@ -944,6 +944,11 @@ class AppointmentCreateEnhanced(BaseModel):
     request_type: Optional[RequestType] = None
     event_type: Optional[EventType] = None
     
+    # Admin-only fields for setting status and sub_status
+    status: Optional[AppointmentStatus] = None
+    sub_status: Optional[AppointmentSubStatus] = None
+    appointment_type: Optional[AppointmentType] = None
+    
     # Option 1: Link to existing calendar event (ADMIN/SECRETARIAT ONLY)
     calendar_event_id: Optional[int] = None
     
@@ -960,6 +965,10 @@ class AppointmentCreateEnhanced(BaseModel):
     duration: Optional[int] = 15
     max_capacity: Optional[int] = None  # For calendar event creation
     is_open_for_booking: Optional[bool] = None  # For calendar event creation
+    
+    # Admin fields for secretariat notes
+    secretariat_meeting_notes: Optional[str] = None
+    secretariat_follow_up_actions: Optional[str] = None
     
     # For dignitary appointments - if present, create AppointmentDignitary records
     dignitary_ids: Optional[List[int]] = None  # All dignitaries for this appointment

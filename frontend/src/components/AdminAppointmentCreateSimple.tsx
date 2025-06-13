@@ -347,7 +347,7 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
         const appointmentData = {
           dignitary_ids: selectedDignitaries.map(d => d.id),
           title: data.title,
-          purpose: data.purpose || '',
+          purpose: data.title || data.purpose || '',
           location_id: data.location_id,
           meeting_place_id: data.meeting_place_id,
           appointment_date: data.appointment_date,
