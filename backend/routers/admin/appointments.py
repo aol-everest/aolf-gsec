@@ -329,7 +329,7 @@ def prepare_enhanced_admin_appointment_response(appointment: models.Appointment,
         'appointment_contacts': appointment_contacts if appointment_contacts else None,
         'appointment_dignitaries': appointment_dignitaries if appointment_dignitaries else None,
         # Legacy compatibility
-        'appointment_date': appointment.calendar_event.start_date if appointment.calendar_event else appointment.preferred_date,
+        'appointment_date': appointment.calendar_event.start_date if appointment.calendar_event else None,
         'appointment_time': appointment.calendar_event.start_time if appointment.calendar_event else None,
     })
     
@@ -441,7 +441,7 @@ async def bulk_update_appointments(
                 )
                 
                 # Exclude DIGNITARY and PROJECT_TEAM_MEETING types
-                if appointment.request_type in ['DIGNITARY', 'PROJECT_TEAM_MEETING']:
+                if appointment.request_type in [models.RequestType.DIGNITARY, models.RequestType.PROJECT_TEAM_MEETING]:
                     logger.warning(f"Skipping appointment {appointment_id}: {appointment.request_type} type not allowed in bulk update")
                     failed_count += 1
                     continue
@@ -524,7 +524,7 @@ async def bulk_approve_and_schedule_appointments(
                 )
                 
                 # Exclude DIGNITARY and PROJECT_TEAM_MEETING types
-                if appointment.request_type in ['DIGNITARY', 'PROJECT_TEAM_MEETING']:
+                if appointment.request_type in [models.RequestType.DIGNITARY, models.RequestType.PROJECT_TEAM_MEETING]:
                     logger.warning(f"Skipping appointment {appointment_id}: {appointment.request_type} type not allowed in bulk approval")
                     failed_count += 1
                     continue
@@ -539,9 +539,7 @@ async def bulk_approve_and_schedule_appointments(
                 appointment.calendar_event_id = bulk_approve.calendar_event_id
                 appointment.last_updated_by = current_user.id
                 
-                # Set appointment date/time from calendar event
-                appointment.appointment_date = calendar_event.start_date
-                appointment.appointment_time = calendar_event.start_time
+                # Update appointment details from calendar event
                 appointment.duration = calendar_event.duration
                 appointment.location_id = calendar_event.location_id
                 appointment.meeting_place_id = calendar_event.meeting_place_id
@@ -566,9 +564,7 @@ async def bulk_approve_and_schedule_appointments(
                     update_data = {
                         'status': appointment.status,
                         'sub_status': appointment.sub_status,
-                        'calendar_event_id': appointment.calendar_event_id,
-                        'appointment_date': appointment.appointment_date,
-                        'appointment_time': appointment.appointment_time
+                        'calendar_event_id': appointment.calendar_event_id
                     }
                     notify_appointment_update(db, appointment, old_data, update_data)
                 except Exception as e:
@@ -619,9 +615,25 @@ async def get_all_appointments(
     
     # Apply start and end date filters if provided
     if start_date:
-        query = query.filter(or_(models.Appointment.preferred_date >= start_date, models.Appointment.appointment_date >= start_date))
+        query = query.filter(or_(
+            models.Appointment.preferred_date >= start_date,
+            and_(
+                models.Appointment.calendar_event_id.isnot(None),
+                models.CalendarEvent.start_date >= start_date
+            )
+        ))
     if end_date:
-        query = query.filter(or_(models.Appointment.preferred_date <= end_date, models.Appointment.appointment_date <= end_date))
+        query = query.filter(or_(
+            models.Appointment.preferred_date <= end_date,
+            and_(
+                models.Appointment.calendar_event_id.isnot(None),
+                models.CalendarEvent.start_date <= end_date
+            )
+        ))
+
+    # Add left join for calendar events to support filtering by calendar event dates (for all users)
+    if start_date or end_date:
+        query = query.outerjoin(models.CalendarEvent, models.Appointment.calendar_event_id == models.CalendarEvent.id)
 
     # ADMIN role has full access to all appointments
     if current_user.role != models.UserRole.ADMIN:
@@ -663,12 +675,13 @@ async def get_all_appointments(
         # Join to locations table and apply the country and location filters
         query = query.join(models.Location)
         query = query.filter(or_(*access_filters))
-
+    
     # Add options to eagerly load appointment_dignitaries and their associated dignitaries
     query = query.options(
         joinedload(models.Appointment.appointment_dignitaries).joinedload(models.AppointmentDignitary.dignitary),
         joinedload(models.Appointment.requester),
-        joinedload(models.Appointment.appointment_contacts).joinedload(models.AppointmentContact.contact)
+        joinedload(models.Appointment.appointment_contacts).joinedload(models.AppointmentContact.contact),
+        joinedload(models.Appointment.calendar_event)
     )
 
     appointments = query.all()
@@ -683,12 +696,21 @@ async def get_upcoming_appointments(
     status: Optional[str] = None,
     request_type: Optional[str] = None
 ):
-    """Get all upcoming appointments (future appointment_date, not NULL) with access control restrictions and optional filters"""
-    # Start with the filter for upcoming appointments
+    """Get all upcoming appointments (future calendar event date or preferred date) with access control restrictions and optional filters"""
+    # Start with the filter for upcoming appointments - use only calendar events and preferred dates
     upcoming_filter = and_(
         or_(
-            models.Appointment.appointment_date == None,
-            models.Appointment.appointment_date >= date.today()-timedelta(days=1),
+            # Calendar event dates (confirmed appointments)
+            and_(
+                models.Appointment.calendar_event_id.isnot(None),
+                models.CalendarEvent.start_date >= date.today()-timedelta(days=1)
+            ),
+            # Pending appointments with preferred dates
+            and_(
+                models.Appointment.calendar_event_id.is_(None),
+                models.Appointment.preferred_date.isnot(None),
+                models.Appointment.preferred_date >= date.today()-timedelta(days=1)
+            )
         ),
         models.Appointment.status.notin_([
             models.AppointmentStatus.CANCELLED, 
@@ -697,8 +719,11 @@ async def get_upcoming_appointments(
         ])
     )
     
-    # Base query with upcoming filter
-    query = db.query(models.Appointment).filter(upcoming_filter)
+    # Base query with upcoming filter - add join for calendar events
+    query = db.query(models.Appointment).outerjoin(
+        models.CalendarEvent, 
+        models.Appointment.calendar_event_id == models.CalendarEvent.id
+    ).filter(upcoming_filter)
     
     # Apply status filter if provided
     if status:
@@ -749,14 +774,18 @@ async def get_upcoming_appointments(
         query = query.join(models.Location)
         query = query.filter(or_(*access_filters))
 
-    # Add sorting
-    query = query.order_by(models.Appointment.appointment_date.asc())
+    # Add sorting - prioritize calendar event dates, then preferred dates
+    query = query.order_by(
+        models.CalendarEvent.start_date.asc().nulls_last(),
+        models.Appointment.preferred_date.asc().nulls_last()
+    )
 
     # Add options to eagerly load appointment_dignitaries and their associated dignitaries
     query = query.options(
         joinedload(models.Appointment.appointment_dignitaries).joinedload(models.AppointmentDignitary.dignitary),
         joinedload(models.Appointment.requester),
-        joinedload(models.Appointment.appointment_contacts).joinedload(models.AppointmentContact.contact)
+        joinedload(models.Appointment.appointment_contacts).joinedload(models.AppointmentContact.contact),
+        joinedload(models.Appointment.calendar_event)
     )
     
     appointments = query.all()

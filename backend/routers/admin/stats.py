@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import Optional, List
 from datetime import datetime, timedelta, date
 from sqlalchemy import or_, and_
@@ -27,6 +27,8 @@ async def get_appointment_time_slots(
     Get aggregated information about appointment time slots for a date range.
     Returns the count of appointments per date and per time slot, including
     the total number of people (dignitaries) for each time slot.
+    
+    Updated to use calendar_event.start_date and start_time instead of the deprecated appointment fields.
     """
     # Calculate date range
     date_range = end_date - start_date
@@ -37,8 +39,12 @@ async def get_appointment_time_slots(
         )
     
     # Build query for appointments in the date range
-    query = db.query(models.Appointment).filter(
-        models.Appointment.appointment_date.between(start_date, end_date),
+    # Join with calendar_events to get the actual scheduled date/time
+    query = db.query(models.Appointment).join(
+        models.CalendarEvent,
+        models.Appointment.calendar_event_id == models.CalendarEvent.id
+    ).filter(
+        models.CalendarEvent.start_date.between(start_date, end_date),
         or_(
             and_(
                 models.Appointment.status == models.AppointmentStatus.APPROVED,
@@ -46,6 +52,8 @@ async def get_appointment_time_slots(
             ),
             models.Appointment.status == models.AppointmentStatus.COMPLETED,
         ),
+    ).options(
+        joinedload(models.Appointment.calendar_event)
     )
     
     # Add location filter if provided
@@ -63,8 +71,10 @@ async def get_appointment_time_slots(
         current_date += timedelta(days=1)
     
     for appointment in appointments:
-        if appointment.appointment_date in date_to_appointments:
-            date_to_appointments[appointment.appointment_date].append(appointment)
+        # Use calendar_event.start_date instead of deprecated appointment_date
+        appointment_date = appointment.calendar_event.start_date if appointment.calendar_event else None
+        if appointment_date and appointment_date in date_to_appointments:
+            date_to_appointments[appointment_date].append(appointment)
     
     # Build the response
     result = []
@@ -72,19 +82,21 @@ async def get_appointment_time_slots(
         # Group appointments by time slot
         time_slots = {}
         for appointment in appointments_list:
-            time_key = appointment.appointment_time
-            if time_key not in time_slots:
-                time_slots[time_key] = {
-                    "appointment_count": 0,
-                    "people_count": 0
-                }
-            
-            time_slots[time_key]["appointment_count"] += 1
-            # Count dignitaries for this appointment
-            dignitary_count = db.query(models.AppointmentDignitary).filter(
-                models.AppointmentDignitary.appointment_id == appointment.id
-            ).count()
-            time_slots[time_key]["people_count"] += dignitary_count
+            # Use calendar_event.start_time instead of deprecated appointment_time
+            time_key = appointment.calendar_event.start_time if appointment.calendar_event else None
+            if time_key:
+                if time_key not in time_slots:
+                    time_slots[time_key] = {
+                        "appointment_count": 0,
+                        "people_count": 0
+                    }
+                
+                time_slots[time_key]["appointment_count"] += 1
+                # Count dignitaries for this appointment
+                dignitary_count = db.query(models.AppointmentDignitary).filter(
+                    models.AppointmentDignitary.appointment_id == appointment.id
+                ).count()
+                time_slots[time_key]["people_count"] += dignitary_count
         
         result.append({
             "date": date_obj,
@@ -107,6 +119,8 @@ async def get_appointment_time_slots_combined(
     """
     Get comprehensive information about appointment time slots in a single call.
     Returns a combined structure with both appointment counts and IDs for each time slot.
+    
+    Updated to use calendar_event.start_date and start_time instead of deprecated appointment fields.
     """
     # Calculate date range
     date_range = end_date - start_date
@@ -117,8 +131,12 @@ async def get_appointment_time_slots_combined(
         )
     
     # Build query for appointments in the date range
-    query = db.query(models.Appointment).filter(
-        models.Appointment.appointment_date.between(start_date, end_date),
+    # Join with calendar_events to get the actual scheduled date/time
+    query = db.query(models.Appointment).join(
+        models.CalendarEvent,
+        models.Appointment.calendar_event_id == models.CalendarEvent.id
+    ).filter(
+        models.CalendarEvent.start_date.between(start_date, end_date),
         or_(
             and_(
                 models.Appointment.status == models.AppointmentStatus.APPROVED,
@@ -126,6 +144,8 @@ async def get_appointment_time_slots_combined(
             ),
             models.Appointment.status == models.AppointmentStatus.COMPLETED,
         ),
+    ).options(
+        joinedload(models.Appointment.calendar_event)
     )
     
     # Add location filter if provided
@@ -148,24 +168,28 @@ async def get_appointment_time_slots_combined(
     
     # Process each appointment
     for appointment in appointments:
-        date_str = appointment.appointment_date.isoformat()
-        if date_str in result:
-            time_key = appointment.appointment_time
-            
-            # Increment the total appointment count for this date
-            result[date_str]["appointment_count"] += 1
-            
-            # Initialize the time slot if not already present
-            if time_key not in result[date_str]["time_slots"]:
-                result[date_str]["time_slots"][time_key] = {}
-            
-            # Count dignitaries for this appointment
-            dignitary_count = db.query(models.AppointmentDignitary).filter(
-                models.AppointmentDignitary.appointment_id == appointment.id
-            ).count()
-            
-            # Add the appointment ID with its people count
-            result[date_str]["time_slots"][time_key][str(appointment.id)] = dignitary_count
+        # Use calendar_event.start_date instead of deprecated appointment_date
+        appointment_date = appointment.calendar_event.start_date if appointment.calendar_event else None
+        if appointment_date:
+            date_str = appointment_date.isoformat()
+            if date_str in result:
+                # Use calendar_event.start_time instead of deprecated appointment_time
+                time_key = appointment.calendar_event.start_time if appointment.calendar_event else None
+                if time_key:
+                    # Increment the total appointment count for this date
+                    result[date_str]["appointment_count"] += 1
+                    
+                    # Initialize the time slot if not already present
+                    if time_key not in result[date_str]["time_slots"]:
+                        result[date_str]["time_slots"][time_key] = {}
+                    
+                    # Count dignitaries for this appointment
+                    dignitary_count = db.query(models.AppointmentDignitary).filter(
+                        models.AppointmentDignitary.appointment_id == appointment.id
+                    ).count()
+                    
+                    # Add the appointment ID with its people count
+                    result[date_str]["time_slots"][time_key][str(appointment.id)] = dignitary_count
     
     # logger.info(f"Result: {result}")
 

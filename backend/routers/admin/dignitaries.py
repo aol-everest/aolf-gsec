@@ -103,11 +103,17 @@ async def get_all_dignitaries(
     ).join(
         models.Location,
         models.Appointment.location_id == models.Location.id
+    ).outerjoin(
+        models.CalendarEvent,
+        models.Appointment.calendar_event_id == models.CalendarEvent.id
     ).filter(
         or_(*location_filters),
         or_(
             models.Appointment.preferred_date >= thirty_days_ago,
-            models.Appointment.appointment_date >= thirty_days_ago
+            and_(
+                models.Appointment.calendar_event_id.isnot(None),
+                models.CalendarEvent.start_date >= thirty_days_ago
+            )
         )
     ).distinct()
     
