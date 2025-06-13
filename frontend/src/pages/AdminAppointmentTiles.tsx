@@ -72,6 +72,7 @@ import { getStatusColor, getStatusTheme } from '../utils/formattingUtils';
 import CalendarEventScheduleCard from '../components/CalendarEventScheduleCard';
 import { format, addDays, subDays } from 'date-fns';
 import { SecondaryButton } from '../components/SecondaryButton';
+import { StatusActionButton } from '../components/StatusActionButton';
 
 import { Appointment, AppointmentDignitary, CalendarEventWithAppointments, AppointmentSummary, EventTypeMap } from '../models/types';
 import { AppointmentCard } from '../components/AppointmentCard';
@@ -1239,15 +1240,8 @@ const AdminAppointmentTiles: React.FC = () => {
     } as Appointment;
   };
 
-  // Custom styled status button component
-  const StatusActionButton: React.FC<{ 
-    status: string; 
-    count: number; 
-    onClick: () => void;
-  }> = ({ status, count, onClick }) => {
-    const theme = useTheme();
-    const statusTheme = getStatusTheme(status, theme);
-    
+  // Helper function to render status action buttons with business logic
+  const renderStatusActionButton = (status: string) => {
     const isCompleted = statusMap && status === statusMap['COMPLETED'];
     const hasRestricted = hasRestrictedAppointments();
     
@@ -1259,35 +1253,13 @@ const AdminAppointmentTiles: React.FC = () => {
     // Get count based on whether we have restricted appointments
     const appointmentCount = isCompleted ? getAllSelectedAppointments().length : getEligibleSelectedAppointments(status).length;
     
-    // Don't show button if no appointments
-    if (appointmentCount === 0) return null;
-    
     return (
-      <Button
-        onClick={onClick}
-        variant="outlined"
-        size="small"
-        sx={{
-          cursor: 'pointer',
-          bgcolor: statusTheme.light,
-          color: statusTheme.main,
-          // border: `1px solid ${statusTheme.main}`,
-          border: `1px solid rgba(61, 139, 232, 0.2)`,
-          borderRadius: '13px',
-          px: 1.5,
-          py: 0.5,
-          fontSize: '0.81rem',
-          fontWeight: '500',
-          textTransform: 'none',
-          '&:hover': {
-            bgcolor: statusTheme.main,
-            color: 'white',
-            opacity: 0.9,
-          },
-        }}
-      >
-        Mark as {status} ({appointmentCount})
-      </Button>
+      <StatusActionButton
+        key={status}
+        status={status}
+        count={appointmentCount}
+        onClick={() => handleBulkStatusUpdate(status)}
+      />
     );
   };
 
@@ -1746,14 +1718,7 @@ const AdminAppointmentTiles: React.FC = () => {
                         {selectedAppointmentIds.length} appointment{selectedAppointmentIds.length === 1 ? '' : 's'} selected
                       </Typography> */}
                       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                        {statusOptions.map((status) => (
-                          <StatusActionButton
-                            key={status}
-                            status={status}
-                            count={selectedAppointmentIds.length}
-                            onClick={() => handleBulkStatusUpdate(status)}
-                          />
-                        ))}
+                        {statusOptions.map(renderStatusActionButton)}
                       </Box>
                     </Box>
                   )}
