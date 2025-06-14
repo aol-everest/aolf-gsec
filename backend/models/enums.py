@@ -372,6 +372,7 @@ class RelationshipType(str, enum.Enum):
 
 class PersonRelationshipType(str, enum.Enum):
     """Person relationship type for appointment users"""
+    SELF = "Self"
     FAMILY = "Family"
     FRIEND = "Friend"
     PROFESSIONAL = "Professional"

@@ -141,7 +141,7 @@ interface SelectedDignitary extends PartialDignitary {
 interface PersonalAttendeeFormData {
   firstName: string;
   lastName: string;
-  email: string;
+  email: string; // Now required
   phone: string;
   relationshipToRequester: string;
   roleInTeamProject: string;
@@ -211,6 +211,10 @@ export const AppointmentRequestForm: React.FC = () => {
   const [contactFormMode, setContactFormMode] = useState<'select' | 'create'>('select');
   const [editingContactId, setEditingContactId] = useState<number | null>(null);
   
+  // State for self-attendance feature
+  const [isUserAttending, setIsUserAttending] = useState(false);
+  const [emailValidationWarnings, setEmailValidationWarnings] = useState<string[]>([]);
+  
   // Add a state to track if the selected dignitary has been modified
   const [isDignitaryModified, setIsDignitaryModified] = useState(false);
 
@@ -231,6 +235,15 @@ export const AppointmentRequestForm: React.FC = () => {
     queryKey: ['status-options'],
     queryFn: async () => {
       const { data } = await api.get<string[]>('/appointments/status-options');
+      return data;
+    },
+  });
+
+  // Fetch relationship type map
+  const { data: relationshipTypeMap = {} } = useQuery<Record<string, string>>({
+    queryKey: ['person-relationship-type-map'],
+    queryFn: async () => {
+      const { data } = await api.get<Record<string, string>>('/appointments/person-relationship-type-options-map');
       return data;
     },
   });
@@ -387,6 +400,16 @@ export const AppointmentRequestForm: React.FC = () => {
       }
     }
   }, [isContactFormExpanded, userContacts, selectedUserContacts, contactFormMode]);
+
+  // Check if user is already attending when contacts change
+  useEffect(() => {
+    const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
+    const userIsInContacts = selectedUserContacts.some(contact => 
+      contact.relationship_to_owner === relationshipTypeMap['SELF'] || 
+      (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName)
+    );
+    setIsUserAttending(userIsInContacts);
+  }, [selectedUserContacts]);
 
   // Function to populate dignitary form fields
   const populateDignitaryForm = (dignitary: Dignitary) => {
@@ -955,6 +978,95 @@ export const AppointmentRequestForm: React.FC = () => {
       roleInTeamProjectOther: '',
       comments: '',
     });
+    setEmailValidationWarnings([]); // Clear email warnings
+  };
+
+  // Email validation helper function
+  const validateEmailForDuplicates = (email: string, excludeContactId?: number): string[] => {
+    const warnings: string[] = [];
+    
+    if (!email || !email.trim()) {
+      return warnings;
+    }
+    
+    const normalizedEmail = email.toLowerCase().trim();
+    const userEmail = userInfo?.email?.toLowerCase().trim();
+    
+    // Check if email matches user's email
+    if (normalizedEmail === userEmail) {
+      warnings.push("This email matches your account email. We recommend entering a valid email for all adults.");
+    }
+    
+    // Check for duplicates in selected contacts
+    const duplicateContacts = selectedUserContacts.filter(contact => 
+      contact.id !== excludeContactId && 
+      contact.email?.toLowerCase().trim() === normalizedEmail
+    );
+    
+    if (duplicateContacts.length > 0) {
+      warnings.push("This email is already used by another contact in this appointment.");
+    }
+    
+    return warnings;
+  };
+
+  // Create self-contact function
+  const createSelfContact = async (): Promise<UserContact | null> => {
+    try {
+      if (!userInfo?.email) {
+        enqueueSnackbar('User email not available for self-contact creation', { variant: 'error' });
+        return null;
+      }
+
+      // Check if self-contact already exists
+      const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
+      const existingSelfContact = userContacts.find(contact => 
+        contact.relationship_to_owner === relationshipTypeMap['SELF'] || 
+        (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName)
+      );
+
+      if (existingSelfContact) {
+        return existingSelfContact;
+      }
+
+      const selfContactData: UserContactCreateData = {
+        first_name: relationshipTypeMap['SELF'] || 'Self',
+        last_name: relationshipTypeMap['SELF'] || 'Self',
+        email: userInfo.email,
+        relationship_to_owner: relationshipTypeMap['SELF'],
+        notes: 'Auto-created self-contact for appointment attendance'
+      };
+
+      const newSelfContact = await createUserContactMutation.mutateAsync(selfContactData);
+      return newSelfContact;
+    } catch (error) {
+      console.error('Error creating self-contact:', error);
+      enqueueSnackbar('Failed to create contact', { variant: 'error' });
+      return null;
+    }
+  };
+
+  // Handle self-attendance toggle
+  const handleSelfAttendanceChange = async (attending: boolean) => {
+    setIsUserAttending(attending);
+    
+    if (attending) {
+      // Add self to contacts
+      const selfContact = await createSelfContact();
+      if (selfContact) {
+        addContactToList(selfContact);
+      }
+    } else {
+      // Remove self from contacts
+      const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
+      const selfContact = selectedUserContacts.find(contact => 
+        contact.relationship_to_owner === relationshipTypeMap['SELF'] || 
+        (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName)
+      );
+      if (selfContact) {
+        removeContactFromList(selfContact.id);
+      }
+    }
   };
 
   // Contact management functions
@@ -1358,8 +1470,8 @@ export const AppointmentRequestForm: React.FC = () => {
                       max={selectedRequestTypeConfig?.max_attendees || 15}
                       increment={1}
                       label={selectedRequestTypeConfig ? 
-                        `Number of ${selectedRequestTypeConfig.attendee_label_plural}` : 
-                        "Number of Attendees"
+                        `Number of ${selectedRequestTypeConfig.attendee_label_plural} (including yourself if attending)` : 
+                        "Number of Attendees (including yourself if attending)"
                       }
                       error={!!pocForm.formState.errors.numberOfAttendees}
                       helperText={pocForm.formState.errors.numberOfAttendees?.message}
@@ -1999,6 +2111,29 @@ export const AppointmentRequestForm: React.FC = () => {
               ) : (
                 /* Contact management for non-dignitary requests */
                 <>
+                  {/* Self-attendance option */}
+                  <Grid item xs={12}>
+                    <FormControl component="fieldset" sx={{ mb: 2 }}>
+                      <FormLabel component="legend">Are you attending this appointment?</FormLabel>
+                      <RadioGroup
+                        row
+                        value={isUserAttending.toString()}
+                        onChange={(e) => handleSelfAttendanceChange(e.target.value === 'true')}
+                      >
+                        <FormControlLabel 
+                          value="true" 
+                          control={<Radio />} 
+                          label="Yes, I am attending" 
+                        />
+                        <FormControlLabel 
+                          value="false" 
+                          control={<Radio />} 
+                          label="No, I am not attending" 
+                        />
+                      </RadioGroup>
+                    </FormControl>
+                  </Grid>
+
                   {/* List of selected contacts */}
                   {selectedUserContacts.length > 0 && (
                     <Grid item xs={12}>
@@ -2007,9 +2142,18 @@ export const AppointmentRequestForm: React.FC = () => {
                       </Typography>
                       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
                         {selectedUserContacts.map((contact, index) => {
-                          const displayName = `${contact.first_name} ${contact.last_name}`;
-                          const additionalInfo = contact.relationship_to_owner;
-                          const fullDisplayName = additionalInfo ? `${displayName} - ${additionalInfo}` : displayName;
+                          const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
+                          const isSelfContact = contact.relationship_to_owner === relationshipTypeMap['SELF'] || 
+                                               (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName);
+                          
+                          let fullDisplayName;
+                          if (isSelfContact) {
+                            fullDisplayName = selfDisplayName; // Just show "Self" for self-contacts
+                          } else {
+                            const displayName = `${contact.first_name} ${contact.last_name}`;
+                            const additionalInfo = contact.relationship_to_owner;
+                            fullDisplayName = additionalInfo ? `${displayName} - ${additionalInfo}` : displayName;
+                          }
                           
                           return (
                             <PersonSelectionChip
@@ -2171,10 +2315,38 @@ export const AppointmentRequestForm: React.FC = () => {
                               label="Email"
                               type="email"
                               InputLabelProps={{ shrink: true }}
-                              {...personalAttendeeForm.register('email')}
+                              {...personalAttendeeForm.register('email', { 
+                                required: 'Email is required',
+                                pattern: {
+                                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                                  message: 'Please enter a valid email address'
+                                }
+                              })}
                               error={!!personalAttendeeForm.formState.errors.email}
                               helperText={personalAttendeeForm.formState.errors.email?.message}
+                              onChange={(e) => {
+                                personalAttendeeForm.setValue('email', e.target.value);
+                                // Validate for duplicates and show warnings
+                                const warnings = validateEmailForDuplicates(e.target.value, editingContactId || undefined);
+                                setEmailValidationWarnings(warnings);
+                              }}
+                              required
                             />
+                            {/* Show email validation warnings */}
+                            {emailValidationWarnings.length > 0 && (
+                              <Box sx={{ mt: 1 }}>
+                                {emailValidationWarnings.map((warning, index) => (
+                                  <Typography 
+                                    key={index}
+                                    variant="caption" 
+                                    color="warning.main"
+                                    sx={{ display: 'block', fontSize: '0.75rem' }}
+                                  >
+                                    ⚠️ {warning}
+                                  </Typography>
+                                ))}
+                              </Box>
+                            )}
                           </Grid>
                           
                           <Grid item xs={12} md={6}>
