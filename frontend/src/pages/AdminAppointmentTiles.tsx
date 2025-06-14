@@ -1989,66 +1989,33 @@ const AdminAppointmentTiles: React.FC = () => {
                   </Typography>
                 </Paper>
               ) : (
-                <List sx={{ maxHeight: 300, overflow: 'auto' }}>
+                <Box sx={{ maxHeight: 300, overflow: 'auto', p: 1 }}>
                   {calendarEventsForDate.map((event) => {
                     const isSelected = calendarEventSelectionDialog.selectedCalendarEventId === event.id;
                     
                     return (
-                      <ListItem key={event.id} disablePadding>
-                        <ListItemButton 
-                          onClick={() => {
+                      <Box key={event.id} sx={{ mb: 1 }}>
+                        <CalendarEventScheduleCard
+                          calendarEvent={event}
+                          daysToShow={1}
+                          isMobile={false}
+                          onCalendarEventClick={() => {
                             setCalendarEventSelectionDialog(prev => ({
                               ...prev,
                               selectedCalendarEventId: event.id
                             }));
                           }}
-                          sx={{
-                            position: 'relative',
-                            borderRadius: 1,
-                            mb: 1,
-                            '&:hover': {
-                              backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                            },
-                            ...(isSelected && {
-                              backgroundColor: 'rgba(218, 165, 32, 0.08)', // Light mustard background
-                              '&:hover': {
-                                backgroundColor: 'rgba(218, 165, 32, 0.12)',
-                              },
-                            }),
-                          }}
-                        >
-                          {/* Mustard yellow selection bar */}
-                          {isSelected && (
-                            <Box
-                              sx={{
-                                position: 'absolute',
-                                left: 0,
-                                top: 0,
-                                bottom: 0,
-                                width: 4,
-                                backgroundColor: '#DAA520', // Mustard yellow
-                                borderRadius: '0 2px 2px 0',
-                              }}
-                            />
-                          )}
-                          
-                          <Box sx={{ flexGrow: 1, pl: isSelected ? 1 : 0 }}>
-                            <CalendarEventScheduleCard
-                              calendarEvent={event}
-                              daysToShow={1}
-                              isMobile={false}
-                              onCalendarEventClick={() => {}} // Disabled in selection mode
-                              onAppointmentCompletion={() => {}} // Disabled in selection mode
-                              isAppointmentInPast={() => false} // Not relevant in selection mode
-                              convertAppointmentSummaryToAppointment={convertAppointmentSummaryToAppointment}
-                              statusMap={{}}
-                            />
-                          </Box>
-                        </ListItemButton>
-                      </ListItem>
+                          onAppointmentCompletion={() => {}} // Disabled in selection mode
+                          isAppointmentInPast={() => false} // Not relevant in selection mode
+                          convertAppointmentSummaryToAppointment={convertAppointmentSummaryToAppointment}
+                          statusMap={{}}
+                          isSelectable={true}
+                          isSelected={isSelected}
+                        />
+                      </Box>
                     );
                   })}
-                </List>
+                </Box>
               )}
             </Box>
 

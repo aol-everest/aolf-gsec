@@ -35,6 +35,11 @@ interface CalendarEventScheduleCardProps {
   isAppointmentInPast: (appointment: Appointment) => boolean;
   convertAppointmentSummaryToAppointment: (summary: any, event: CalendarEventWithAppointments) => Appointment;
   statusMap: any;
+  // Selection props
+  isSelectable?: boolean;
+  isSelected?: boolean;
+  selectionBarColor?: string;
+  selectionBorderColor?: string;
 }
 
 const CalendarEventScheduleCard: React.FC<CalendarEventScheduleCardProps> = ({
@@ -46,6 +51,11 @@ const CalendarEventScheduleCard: React.FC<CalendarEventScheduleCardProps> = ({
   isAppointmentInPast,
   convertAppointmentSummaryToAppointment,
   statusMap,
+  // Selection props with defaults
+  isSelectable = false,
+  isSelected = false,
+  selectionBarColor = '#DAA520', // Mustard yellow
+  selectionBorderColor = 'rgba(218, 165, 32, 0.3)', // Light mustard
   }) => {
     const theme = useTheme();
     const cardContainerRef = useRef<HTMLDivElement>(null);
@@ -124,6 +134,8 @@ const CalendarEventScheduleCard: React.FC<CalendarEventScheduleCardProps> = ({
       sx={{
         p: isMobile ? 1.5 : 2,
         borderRadius: 2,
+        // borderTopLeftRadius: isSelectable ? 0 : 2,
+        // borderBottomLeftRadius: isSelectable ? 0 : 2,
         position: 'relative',
         cursor: 'pointer',
         '&:hover': {
@@ -132,7 +144,31 @@ const CalendarEventScheduleCard: React.FC<CalendarEventScheduleCardProps> = ({
           transition: 'all 0.2s ease-in-out',
         },
         ml: 1,
-        mr: 1
+        mr: 1,
+        // Selection styling
+        ...(isSelectable && {
+          border: isSelected ? `2px solid ${selectionBorderColor}` : '2px solid transparent',
+          transition: 'all 0.2s ease-in-out',
+          '&:hover': {
+            boxShadow: 1,
+            transform: 'translateY(-1px)',
+            border: isSelected ? `2px solid ${selectionBorderColor}` : `2px solid ${selectionBorderColor}`,
+          },
+        }),
+        // Selection bar
+        ...(isSelectable && isSelected && {
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 6,
+            backgroundColor: selectionBarColor,
+            borderRadius: '2px 0 0 2px',
+            zIndex: 1,
+          },
+        }),
       }}
       onClick={(e) => {
         onCalendarEventClick(calendarEvent, e);
