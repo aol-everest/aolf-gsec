@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, and_, false
 from typing import List, Optional
 from datetime import datetime, timedelta
+from pydantic import BaseModel
 import logging
 
 # Import our dependencies
@@ -145,14 +146,46 @@ async def get_usher_appointments(
                 }
                 appointment_contacts_usher.append(schemas.AppointmentContactUsherView(**contact_usher_data))
 
+        # Convert appointment_dignitaries to proper usher view format
+        appointment_dignitaries_usher = []
+        if appointment.appointment_dignitaries:
+            for ad in appointment.appointment_dignitaries:
+                # Create DignitaryUsherView object from the dignitary
+                dignitary_usher_view = schemas.DignitaryUsherView(
+                    id=ad.dignitary.id,
+                    honorific_title=ad.dignitary.honorific_title,
+                    first_name=ad.dignitary.first_name,
+                    last_name=ad.dignitary.last_name
+                )
+                
+                # Create AppointmentDignitaryUsherView object
+                dignitary_usher_data = {
+                    'id': ad.id,
+                    'appointment_id': ad.appointment_id,
+                    'dignitary_id': ad.dignitary_id,
+                    'created_at': ad.created_at,
+                    'attendance_status': ad.attendance_status,
+                    'dignitary': dignitary_usher_view
+                }
+                appointment_dignitaries_usher.append(schemas.AppointmentDignitaryUsherView(**dignitary_usher_data))
+
         # Create usher view with calendar event data
+        # Convert requester to RequesterUsherView if present
+        requester_usher_view = None
+        if appointment.requester:
+            requester_usher_view = schemas.RequesterUsherView(
+                first_name=appointment.requester.first_name,
+                last_name=appointment.requester.last_name,
+                phone_number=appointment.requester.phone_number
+            )
+
         usher_appointment = schemas.AppointmentUsherView(
             id=appointment.id,
             appointment_date=appointment_date,
             appointment_time=appointment_time,
-            requester=appointment.requester,
+            requester=requester_usher_view,
             location=location,
-            appointment_dignitaries=appointment.appointment_dignitaries,
+            appointment_dignitaries=appointment_dignitaries_usher,
             appointment_contacts=appointment_contacts_usher
         )
         usher_appointments.append(usher_appointment)
@@ -206,6 +239,71 @@ async def update_dignitary_checkin(
     
     return appointment_dignitary
 
+class ContactAttendanceStatusUpdate(BaseModel):
+    appointment_contact_id: int
+    attendance_status: models.AttendanceStatus
+
+@router.patch("/contacts/checkin", response_model=schemas.AppointmentContactUsherView)
+@requires_any_role([models.UserRole.USHER, models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
+async def update_contact_checkin(
+    data: ContactAttendanceStatusUpdate,
+    current_user: models.User = Depends(get_current_user_for_write),
+    db: Session = Depends(get_db)
+):
+    """
+    Update the attendance status of a contact for an appointment.
+    Only users with appropriate access to the appointment's location can update the status.
+    """
+    if data.attendance_status not in [models.AttendanceStatus.CHECKED_IN, models.AttendanceStatus.PENDING]:
+        logger.error(f"Invalid attendance status: {data.attendance_status}")
+        raise HTTPException(status_code=400, detail="Usher can only check in or mark contacts as pending")
+    
+    # Check if the appointment contact exists
+    appointment_contact = db.query(models.AppointmentContact).filter(
+        models.AppointmentContact.id == data.appointment_contact_id
+    ).first()
+    
+    if not appointment_contact:
+        raise HTTPException(status_code=404, detail="Appointment contact not found")
+    
+    # Import access control function
+    from dependencies.access_control import admin_get_appointment
+    
+    # Verify user has access to update this appointment's contact
+    if current_user.role != models.UserRole.ADMIN:
+        # For non-admin roles, check location-based access
+        appointment = admin_get_appointment(
+            db=db,
+            appointment_id=appointment_contact.appointment_id,
+            current_user=current_user,
+            required_access_level=models.AccessLevel.READ_WRITE
+        )
+
+        if not appointment:
+            raise HTTPException(status_code=404, detail="Unauthorized to update this appointment")
+
+    # Update the attendance status
+    appointment_contact.attendance_status = data.attendance_status
+    if data.attendance_status == models.AttendanceStatus.CHECKED_IN:
+        appointment_contact.checked_in_at = datetime.utcnow()
+        appointment_contact.checked_in_by = current_user.id
+    else:
+        appointment_contact.checked_in_at = None
+        appointment_contact.checked_in_by = None
+    appointment_contact.updated_by = current_user.id
+    db.commit()
+    db.refresh(appointment_contact)
+    
+    # Return contact data in AppointmentContactUsherView format (limited data for ushers)
+    contact_data = {
+        'id': appointment_contact.id,
+        'created_at': appointment_contact.created_at,
+        'attendance_status': appointment_contact.attendance_status,
+        'checked_in_at': appointment_contact.checked_in_at,
+        **{k: v for k, v in appointment_contact.contact.__dict__.items() if k in ['first_name', 'last_name']}  # Ushers only get names
+    }
+    return schemas.AppointmentContactUsherView(**contact_data)
+
 @router.patch("/appointment-contacts/{appointment_contact_id}/check-in", response_model=schemas.AppointmentContactUsherView)
 @requires_any_role([models.UserRole.USHER, models.UserRole.SECRETARIAT, models.UserRole.ADMIN])
 async def check_in_appointment_contact(
@@ -244,6 +342,7 @@ async def check_in_appointment_contact(
     # Update the attendance status
     appointment_contact.attendance_status = models.AttendanceStatus.CHECKED_IN
     appointment_contact.checked_in_at = datetime.utcnow()
+    appointment_contact.checked_in_by = current_user.id
     appointment_contact.updated_by = current_user.id
     db.commit()
     db.refresh(appointment_contact)

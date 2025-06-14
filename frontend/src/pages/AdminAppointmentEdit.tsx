@@ -62,6 +62,7 @@ import { formatHonorificTitle } from '../utils/formattingUtils';
 import { formatDate, formatDateWithTimezone, parseUTCDate } from '../utils/dateUtils';
 import AdminAppointmentEditCard from '../components/AdminAppointmentEditCard';
 import AppointmentDignitaryDisplay from '../components/AppointmentDignitaryDisplay';
+import AppointmentContactDisplay from '../components/AppointmentContactDisplay';
 import { StatusMap, SubStatusMap, StatusSubStatusMapping, AppointmentTimeSlotDetailsMap } from '../models/types';
 import { SecondaryButton } from '../components/SecondaryButton';
 import { PrimaryButton } from '../components/PrimaryButton';
@@ -728,10 +729,18 @@ const AdminAppointmentEdit: React.FC = () => {
             
             <form onSubmit={handleSubmit(onSubmit)}>
               <Grid container spacing={2}>
-                {/* Dignitary Information (Read-only) */}
-                <Grid item xs={12} sx={{ pb: 1 }}>
-                  <AppointmentDignitaryDisplay appointment={appointment} />
-                </Grid>
+                {/* Attendee Information (Read-only) - Show both dignitaries and contacts */}
+                {appointment.appointment_dignitaries && appointment.appointment_dignitaries.length > 0 && (
+                  <Grid item xs={12} sx={{ pb: 1 }}>
+                    <AppointmentDignitaryDisplay appointment={appointment} />
+                  </Grid>
+                )}
+                
+                {appointment.appointment_contacts && appointment.appointment_contacts.length > 0 && (
+                  <Grid item xs={12} sx={{ pb: 1 }}>
+                    <AppointmentContactDisplay appointment={appointment} />
+                  </Grid>
+                )}
 
                 {/* AdminAppointmentEditCard Component */}
                 <Grid item xs={12}>

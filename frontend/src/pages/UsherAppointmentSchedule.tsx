@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Container,
   Typography,
@@ -11,9 +11,12 @@ import {
   Alert,
   Chip,
   Stack,
-  Divider,
   IconButton,
   Collapse,
+  TextField,
+  InputAdornment,
+  Button,
+  Autocomplete,
 } from '@mui/material';
 import { format, addDays, parseISO, isToday, isTomorrow, isYesterday } from 'date-fns';
 import Layout from '../components/Layout';
@@ -30,9 +33,12 @@ import UndoIcon from '@mui/icons-material/Undo';
 import { formatTime } from '../utils/dateUtils';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
-import ContactPhoneIcon from '@mui/icons-material/ContactPhone';
+import SearchIcon from '@mui/icons-material/Search';
+import ClearIcon from '@mui/icons-material/Clear';
+import GroupIcon from '@mui/icons-material/Group';
 import PersonIcon from '@mui/icons-material/Person';
-import { UserIconSquareCircleV2, CirclePhoneFlipIconV2, CheckSquareCircleFilledIconV2 } from '../components/iconsv2';
+import { UserIconSquareCircleV2, CirclePhoneFlipIconV2, CheckSquareCircleFilledIconV2, CloseIconFilledCircleV2 } from '../components/iconsv2';
+import { IconTab, TabOption } from '../components/IconTab';
 
 // Define interfaces for the USHER view
 interface DignitaryUsherView {
@@ -48,6 +54,15 @@ interface RequesterUsherView {
   phone_number?: string;
 }
 
+interface AppointmentContactUsherView {
+  id: number;
+  first_name: string;
+  last_name: string;
+  attendance_status: string;
+  checked_in_at?: string;
+  created_at: string;
+}
+
 // Include attendance status in the interface
 interface AppointmentDignitaryUsherView {
   id: number;
@@ -59,8 +74,8 @@ interface UsherAppointmentSchedule {
   id: number;
   appointment_date?: string;
   appointment_time?: string;
-  dignitary?: DignitaryUsherView; // Keep for backward compatibility
   appointment_dignitaries?: AppointmentDignitaryUsherView[];
+  appointment_contacts?: AppointmentContactUsherView[];
   requester?: RequesterUsherView;
   location?: {
     name: string;
@@ -89,18 +104,51 @@ type DignitaryByTimeSlot = {
   }
 };
 
+// Type for grouped contacts by time slot
+type ContactByTimeSlot = {
+  [timeSlot: string]: {
+    [contactId: number]: {
+      appointmentContactIds: number[];
+      contact: AppointmentContactUsherView;
+      status: string;
+      locations: Set<string>;
+      appointmentIds: Set<number>;
+      requester: RequesterUsherView | null;
+    }
+  }
+};
+
+// Tab types
+type TabType = 'dignitaries' | 'contacts';
+
 const UsherAppointmentSchedule: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [expandedPOCs, setExpandedPOCs] = useState<Record<string, boolean>>({});
+  const [activeTab, setActiveTab] = useState<TabType>('dignitaries');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const theme = useTheme();
   const api = useApi();
   const { enqueueSnackbar } = useSnackbar();
   const today = new Date();
   const queryClient = useQueryClient();
 
+  // Define tab options for the reusable component
+  const tabOptions: TabOption[] = [
+    {
+      key: 'dignitaries',
+      label: 'Dignitaries',
+      icon: <PersonIcon sx={{ width: '20px', height: '20px' }} />
+    },
+    {
+      key: 'contacts',
+      label: 'Other Appts',
+      icon: <GroupIcon sx={{ width: '20px', height: '20px' }} />
+    }
+  ];
+
   // Handle expanding/collapsing POC details
-  const togglePOCDetails = (timeSlot: string, dignitaryId: string) => {
-    const key = `${timeSlot}-${dignitaryId}`;
+  const togglePOCDetails = (timeSlot: string, entityId: string) => {
+    const key = `${timeSlot}-${entityId}`;
     setExpandedPOCs(prev => ({
       ...prev,
       [key]: !prev[key]
@@ -108,8 +156,8 @@ const UsherAppointmentSchedule: React.FC = () => {
   };
   
   // Check if POC details are expanded
-  const isPOCExpanded = (timeSlot: string, dignitaryId: string) => {
-    const key = `${timeSlot}-${dignitaryId}`;
+  const isPOCExpanded = (timeSlot: string, entityId: string) => {
+    const key = `${timeSlot}-${entityId}`;
     return !!expandedPOCs[key];
   };
 
@@ -135,7 +183,7 @@ const UsherAppointmentSchedule: React.FC = () => {
     if (!selectedDate) {
       setSelectedDate(format(today, 'yyyy-MM-dd'));
     }
-  }, []);
+  }, [selectedDate, today]);
 
   // Get appointments for USHER view
   const { data: appointments, isLoading, error } = useQuery({
@@ -157,8 +205,8 @@ const UsherAppointmentSchedule: React.FC = () => {
     staleTime: 0,
   });
 
-  // Update attendance status mutation
-  const updateAttendanceStatusMutation = useMutation({
+  // Update dignitary attendance status mutation
+  const updateDignitaryAttendanceStatusMutation = useMutation({
     mutationFn: async ({ appointmentDignitaryId, status }: { appointmentDignitaryId: number, status: string }) => {
       const response = await api.patch('/usher/dignitaries/checkin', {
         appointment_dignitary_id: appointmentDignitaryId,
@@ -170,13 +218,147 @@ const UsherAppointmentSchedule: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['usher-appointments', selectedDate] });
     },
     onError: (error) => {
-      console.error('Error updating attendance status:', error);
-      enqueueSnackbar('Failed to update attendance status', { variant: 'error' });
+      console.error('Error updating dignitary attendance status:', error);
+      enqueueSnackbar('Failed to update dignitary attendance status', { variant: 'error' });
     }
   });
 
+  // Update contact attendance status mutation
+  const updateContactAttendanceStatusMutation = useMutation({
+    mutationFn: async ({ appointmentContactId, status }: { appointmentContactId: number, status: string }) => {
+      const response = await api.patch('/usher/contacts/checkin', {
+        appointment_contact_id: appointmentContactId,
+        attendance_status: status
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['usher-appointments', selectedDate] });
+    },
+    onError: (error) => {
+      console.error('Error updating contact attendance status:', error);
+      enqueueSnackbar('Failed to update contact attendance status', { variant: 'error' });
+    }
+  });
+
+  // Bulk check-in mutations
+  const bulkCheckInAllMutation = useMutation({
+    mutationFn: async (appointmentId: number) => {
+      const response = await api.post(`/usher/appointments/${appointmentId}/check-in-all`);
+      return response.data;
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['usher-appointments', selectedDate] });
+      enqueueSnackbar(`Checked in ${data.total_checked_in} attendees`, { variant: 'success' });
+    },
+    onError: (error) => {
+      console.error('Error in bulk check-in:', error);
+      enqueueSnackbar('Failed to check in all attendees', { variant: 'error' });
+    }
+  });
+
+  // Filter appointments based on search query
+  const filteredAppointments = useMemo(() => {
+    if (!appointments || !searchQuery.trim()) {
+      return appointments || [];
+    }
+
+    const query = searchQuery.toLowerCase().trim();
+    
+    return appointments.filter(appointment => {
+      // Search in appointment dignitaries
+      const dignitaryMatch = appointment.appointment_dignitaries?.some(appointmentDignitary => {
+        const dignitary = appointmentDignitary.dignitary;
+        
+        // Check individual fields
+        const individualFieldMatch = (
+          dignitary.first_name?.toLowerCase().includes(query) ||
+          dignitary.last_name?.toLowerCase().includes(query) ||
+          formatHonorificTitle(dignitary.honorific_title || '').toLowerCase().includes(query)
+        );
+        
+        // Check full name combinations
+        const fullNameWithTitle = `${formatHonorificTitle(dignitary.honorific_title || '')} ${dignitary.first_name || ''} ${dignitary.last_name || ''}`.trim().toLowerCase();
+        const fullNameWithoutTitle = `${dignitary.first_name || ''} ${dignitary.last_name || ''}`.trim().toLowerCase();
+        
+        const fullNameMatch = (
+          fullNameWithTitle.includes(query) ||
+          fullNameWithoutTitle.includes(query)
+        );
+        
+        return individualFieldMatch || fullNameMatch;
+      });
+
+      // Search in appointment contacts
+      const contactMatch = appointment.appointment_contacts?.some(contact => {
+        // Check individual fields
+        const individualFieldMatch = (
+          contact.first_name?.toLowerCase().includes(query) ||
+          contact.last_name?.toLowerCase().includes(query)
+        );
+        
+        // Check full name
+        const fullName = `${contact.first_name || ''} ${contact.last_name || ''}`.trim().toLowerCase();
+        const fullNameMatch = fullName.includes(query);
+        
+        return individualFieldMatch || fullNameMatch;
+      });
+
+      // Search in requester info
+      const requesterMatch = appointment.requester && (
+        // Check individual fields
+        appointment.requester.first_name?.toLowerCase().includes(query) ||
+        appointment.requester.last_name?.toLowerCase().includes(query) ||
+        appointment.requester.phone_number?.includes(query) ||
+        // Check full name
+        `${appointment.requester.first_name || ''} ${appointment.requester.last_name || ''}`.trim().toLowerCase().includes(query)
+      );
+
+      // Search in location
+      const locationMatch = appointment.location?.name?.toLowerCase().includes(query);
+
+      // Search in time
+      const timeMatch = appointment.appointment_time && formatTime(appointment.appointment_time).toLowerCase().includes(query);
+
+      return dignitaryMatch || contactMatch || requesterMatch || locationMatch || timeMatch;
+    });
+  }, [appointments, searchQuery]);
+
+  // Extract unique names for typeahead suggestions
+  const searchSuggestions = useMemo(() => {
+    if (!appointments) return [];
+    
+    const suggestions = new Set<string>();
+    
+    appointments.forEach(appointment => {
+      // Add dignitary names
+      appointment.appointment_dignitaries?.forEach(appointmentDignitary => {
+        const dignitary = appointmentDignitary.dignitary;
+        if (dignitary.first_name && dignitary.last_name) {
+          const fullName = `${formatHonorificTitle(dignitary.honorific_title || '')} ${dignitary.first_name} ${dignitary.last_name}`.trim();
+          suggestions.add(fullName);
+          suggestions.add(`${dignitary.first_name} ${dignitary.last_name}`);
+        }
+      });
+      
+      // Add contact names
+      appointment.appointment_contacts?.forEach(contact => {
+        if (contact.first_name && contact.last_name) {
+          suggestions.add(`${contact.first_name} ${contact.last_name}`);
+        }
+      });
+      
+      // Add requester names
+      if (appointment.requester?.first_name && appointment.requester?.last_name) {
+        suggestions.add(`${appointment.requester.first_name} ${appointment.requester.last_name}`);
+      }
+    });
+    
+    return Array.from(suggestions).sort();
+  }, [appointments]);
+
   // Group appointments by date
-  const groupedAppointments = appointments?.reduce((acc, appointment) => {
+  const groupedAppointments = filteredAppointments?.reduce((acc, appointment) => {
     if (!appointment.appointment_date) return acc;
     
     if (!acc[appointment.appointment_date]) {
@@ -234,13 +416,65 @@ const UsherAppointmentSchedule: React.FC = () => {
     }, {} as DignitaryByTimeSlot);
   };
 
+  // Group contacts by time slot
+  const groupContactsByTimeSlot = (dayAppointments: UsherAppointmentSchedule[]): ContactByTimeSlot => {
+    return dayAppointments.reduce((acc, appointment) => {
+      const time = appointment.appointment_time || 'No time specified';
+      
+      if (!acc[time]) {
+        acc[time] = {};
+      }
+      
+      // Process each contact in the appointment
+      if (appointment.appointment_contacts && appointment.appointment_contacts.length > 0) {
+        appointment.appointment_contacts.forEach(appointmentContact => {
+          const contactId = appointmentContact.id;
+          
+          if (!acc[time][contactId]) {
+            // First time seeing this contact at this time slot
+            acc[time][contactId] = {
+              appointmentContactIds: [appointmentContact.id],
+              contact: appointmentContact,
+              status: appointmentContact.attendance_status,
+              locations: new Set([appointment.location?.name || 'Location not specified']),
+              appointmentIds: new Set([appointment.id]),
+              requester: appointment.requester || null
+            };
+          } else {
+            // Contact already exists in this time slot, add this appointment
+            acc[time][contactId].appointmentContactIds.push(appointmentContact.id);
+            
+            // Update status if any appointment has checked in the contact
+            if (appointmentContact.attendance_status === AttendanceStatus.CHECKED_IN) {
+              acc[time][contactId].status = AttendanceStatus.CHECKED_IN;
+            }
+            
+            // Add location if not already in the set
+            if (appointment.location?.name) {
+              acc[time][contactId].locations.add(appointment.location.name);
+            }
+            
+            acc[time][contactId].appointmentIds.add(appointment.id);
+          }
+        });
+      }
+      
+      return acc;
+    }, {} as ContactByTimeSlot);
+  };
+
   // Handle date change
   const handleDateChange = (date: string) => {
     setSelectedDate(date);
   };
 
-  // Handle check-in/undo check-in for a dignitary across all their appointment_dignitary records
-  const handleAttendanceStatusChange = async (
+  // Handle tab change
+  const handleTabChange = (tabKey: string) => {
+    setActiveTab(tabKey as TabType);
+  };
+
+  // Handle dignitary check-in/undo check-in
+  const handleDignitaryAttendanceStatusChange = async (
     timeSlot: string, 
     dignitaryId: number, 
     currentStatus: string, 
@@ -252,7 +486,7 @@ const UsherAppointmentSchedule: React.FC = () => {
     
     // Create an array of promises for all appointment_dignitary updates
     const updatePromises = appointmentDignitaryIds.map(id => 
-      updateAttendanceStatusMutation.mutateAsync({ 
+      updateDignitaryAttendanceStatusMutation.mutateAsync({ 
         appointmentDignitaryId: id, 
         status: newStatus 
       })
@@ -267,8 +501,50 @@ const UsherAppointmentSchedule: React.FC = () => {
       enqueueSnackbar(`Dignitary ${action} successfully`, { variant: 'success' });
     } catch (error) {
       console.error('Error updating some attendance statuses:', error);
-      // We still consider the dignitary checked in even if some updates failed
       enqueueSnackbar('Not all appointment records were updated, but dignitary status was changed', { variant: 'warning' });
+    }
+  };
+
+  // Handle contact check-in/undo check-in
+  const handleContactAttendanceStatusChange = async (
+    timeSlot: string, 
+    contactId: number, 
+    currentStatus: string, 
+    appointmentContactIds: number[]
+  ) => {
+    const newStatus = currentStatus === AttendanceStatus.CHECKED_IN 
+      ? AttendanceStatus.PENDING 
+      : AttendanceStatus.CHECKED_IN;
+    
+    // Create an array of promises for all appointment_contact updates
+    const updatePromises = appointmentContactIds.map(id => 
+      updateContactAttendanceStatusMutation.mutateAsync({ 
+        appointmentContactId: id, 
+        status: newStatus 
+      })
+    );
+
+    try {
+      // Wait for all updates to complete
+      await Promise.allSettled(updatePromises);
+      
+      // Show success message
+      const action = newStatus === AttendanceStatus.CHECKED_IN ? 'checked in' : 'marked as pending';
+      enqueueSnackbar(`Contact ${action} successfully`, { variant: 'success' });
+    } catch (error) {
+      console.error('Error updating some contact attendance statuses:', error);
+      enqueueSnackbar('Not all contact records were updated, but contact status was changed', { variant: 'warning' });
+    }
+  };
+
+  // Handle bulk check-in for all attendees in an appointment
+  const handleBulkCheckIn = async (appointmentIds: Set<number>) => {
+    try {
+      const appointmentIdArray = Array.from(appointmentIds);
+      const promises = appointmentIdArray.map(id => bulkCheckInAllMutation.mutateAsync(id));
+      await Promise.allSettled(promises);
+    } catch (error) {
+      console.error('Error in bulk check-in:', error);
     }
   };
 
@@ -284,18 +560,21 @@ const UsherAppointmentSchedule: React.FC = () => {
   // Render check-in button based on attendance status
   const renderCheckinButton = (
     timeSlot: string,
-    dignitaryId: number, 
+    entityId: number, 
     status: string, 
-    appointmentDignitaryIds: number[]
+    entityIds: number[],
+    isContact: boolean = false
   ) => {
-    
     const isCheckedIn = status === AttendanceStatus.CHECKED_IN;
     
     return isCheckedIn ? (
       <SecondaryButton
         size="small"
         startIcon={<UndoIcon />}
-        onClick={() => handleAttendanceStatusChange(timeSlot, dignitaryId, status, appointmentDignitaryIds)}
+        onClick={() => isContact 
+          ? handleContactAttendanceStatusChange(timeSlot, entityId, status, entityIds)
+          : handleDignitaryAttendanceStatusChange(timeSlot, entityId, status, entityIds)
+        }
         sx={{ ml: 1 }}
       >
         Undo Check-in
@@ -304,12 +583,20 @@ const UsherAppointmentSchedule: React.FC = () => {
       <PrimaryButton
         size="small"
         startIcon={<CheckCircleIcon />}
-        onClick={() => handleAttendanceStatusChange(timeSlot, dignitaryId, status, appointmentDignitaryIds)}
+        onClick={() => isContact 
+          ? handleContactAttendanceStatusChange(timeSlot, entityId, status, entityIds)
+          : handleDignitaryAttendanceStatusChange(timeSlot, entityId, status, entityIds)
+        }
         sx={{ ml: 1 }}
       >
         Check-in
       </PrimaryButton>
     );
+  };
+
+  // Clear search
+  const clearSearch = () => {
+    setSearchQuery('');
   };
 
   if (isLoading) {
@@ -351,6 +638,7 @@ const UsherAppointmentSchedule: React.FC = () => {
             </Typography>
           </Box>
 
+          {/* Date filters */}
           <Box sx={{ 
             display: 'flex', 
             justifyContent: 'space-between', 
@@ -376,6 +664,97 @@ const UsherAppointmentSchedule: React.FC = () => {
             </Stack>
           </Box>
 
+          {/* Search and Tabs */}
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: { xs: 'column', sm: 'column', md: 'row' },
+            justifyContent: 'space-between', 
+            alignItems: { xs: 'stretch', sm: 'stretch', md: 'center' },
+            mb: 4,
+            gap: 2
+          }}>
+            {/* Search Input */}
+            <Box sx={{ 
+                flexGrow: 1, 
+                maxWidth: { xs: '100%', md: '400px' }, 
+                width: { xs: '100%', md: 'auto' },
+            }}>
+              <Autocomplete
+                freeSolo
+                options={searchSuggestions}
+                inputValue={searchQuery}
+                onInputChange={(event, newInputValue) => {
+                  setSearchQuery(newInputValue || '');
+                }}
+                onChange={(event, newValue) => {
+                  // Handle selection from dropdown
+                  if (newValue) {
+                    setSearchQuery(newValue as string);
+                  }
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Search appointments, names, or phone numbers..."
+                    fullWidth
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: '#FFFFFF',
+                        '& fieldset': {
+                          borderColor: '#E0E0E0',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: '#BDBDBD',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#3D8BE8',
+                        },
+                      },
+                    }}
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon />
+                        </InputAdornment>
+                      ),
+                      endAdornment: (
+                        <>
+                          {searchQuery && (
+                            <InputAdornment position="end">
+                              <IconButton onClick={clearSearch} size="small">
+                                <CloseIconFilledCircleV2 sx={{ color: 'text.secondary', width: '1.2rem', height: '1.2rem' }} />
+                              </IconButton>
+                            </InputAdornment>
+                          )}
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
+                    }}
+                  />
+                )}
+                filterOptions={(options, { inputValue }) => {
+                  // Custom filtering to show suggestions that contain the input value
+                  const filtered = options.filter(option =>
+                    option.toLowerCase().includes(inputValue.toLowerCase())
+                  );
+                  return filtered.slice(0, 10); // Limit to 10 suggestions
+                }}
+                noOptionsText="No matching suggestions"
+              />
+            </Box>
+
+            {/* Custom Tabs */}
+            <Box sx={{ width: { xs: '100%', md: 'auto' } }}>
+              <IconTab
+                tabs={tabOptions}
+                activeTab={activeTab}
+                onTabChange={handleTabChange}
+                autoWidth={true}
+              />
+            </Box>
+          </Box>
+
           {Object.keys(groupedAppointments).length === 0 ? (
             <Paper 
               sx={{ 
@@ -386,56 +765,126 @@ const UsherAppointmentSchedule: React.FC = () => {
               }}
             >
               <Typography variant="h6" color="text.secondary">
-                No appointments found for {selectedDate ? getDateLabel(selectedDate) : 'the selected date'}
+                {searchQuery ? 'No appointments found matching your search' : `No appointments found for ${selectedDate ? getDateLabel(selectedDate) : 'the selected date'}`}
               </Typography>
+              {searchQuery && (
+                <Button onClick={clearSearch} sx={{ mt: 2 }}>
+                  Clear Search
+                </Button>
+              )}
             </Paper>
           ) : (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {Object.keys(groupedAppointments).sort().map((date) => {
                 const dignitariesByTimeSlot = groupDignitariesByTimeSlot(groupedAppointments[date]);
+                const contactsByTimeSlot = groupContactsByTimeSlot(groupedAppointments[date]);
+                
+                const timeSlots = activeTab === 'dignitaries' 
+                  ? Object.keys(dignitariesByTimeSlot)
+                  : Object.keys(contactsByTimeSlot);
+
+                if (timeSlots.length === 0) {
+                  return null;
+                }
                 
                 return (
                   <Box key={date} sx={{ mb: 4 }}>
                     <Grid container spacing={2}>
-                      {Object.entries(dignitariesByTimeSlot)
-                        .sort(([timeA], [timeB]) => timeA.localeCompare(timeB))
-                        .map(([time, dignitaries]) => (
-                          <>
-                            <Grid item xs={12} sm={12} md={12}>
-                              <Chip
-                                label={formatTime(time)}
-                                sx={{ fontSize: '1.1rem', fontWeight: 'bold' }}
-                              />
-                            </Grid>
-                    
-                            <Grid item xs={12} key={`${date}-${time}`}>
-                              <Paper
-                                elevation={2}
-                                sx={{ 
-                                  borderRadius: 2,
-                                  overflow: 'hidden',
-                                }}
-                              >
-                                <Box sx={{ 
-                                  p: 2,
-                                  border: '1px solid',
-                                  borderColor: 'rgba(0, 0, 0, 0.05)',
-                                  borderRadius: 2,
-                                }}>
-                                  <Box sx={{ mt: 0 }}>
-                                    <Typography variant="h5" color="text.secondary">
-                                      Dignitaries:
-                                    </Typography>
+                      {timeSlots
+                        .sort((timeA, timeB) => timeA.localeCompare(timeB))
+                        .map((time) => {
+                          const entities = activeTab === 'dignitaries' 
+                            ? dignitariesByTimeSlot[time]
+                            : contactsByTimeSlot[time];
+
+                          if (!entities || Object.keys(entities).length === 0) {
+                            return null;
+                          }
+
+                          return (
+                            <React.Fragment key={`${date}-${time}`}>
+                              <Grid item xs={12} sm={12} md={12}>
+                                <Chip
+                                  label={formatTime(time)}
+                                  sx={{ fontSize: '1.1rem', fontWeight: 'bold' }}
+                                />
+                              </Grid>
+                      
+                              <Grid item xs={12}>
+                                <Paper
+                                  elevation={2}
+                                  sx={{ 
+                                    borderRadius: 2,
+                                    overflow: 'hidden',
+                                  }}
+                                >
+                                  <Box sx={{ 
+                                    p: 2,
+                                    border: '1px solid',
+                                    borderColor: 'rgba(0, 0, 0, 0.05)',
+                                    borderRadius: 2,
+                                  }}>
+                                    <Box sx={{ 
+                                      display: 'flex', 
+                                      justifyContent: 'space-between', 
+                                      alignItems: 'center',
+                                      mb: 2
+                                    }}>
+                                      <Typography variant="h5" color="text.secondary">
+                                        {activeTab === 'dignitaries' ? 'Dignitaries:' : 'Contacts:'}
+                                      </Typography>
+                                      
+                                      {/* Bulk Check-in Button */}
+                                      {(() => {
+                                        // Check if all entities in this time slot are already checked in
+                                        const allCheckedIn = Object.values(entities).every(entity => 
+                                          entity.status === AttendanceStatus.CHECKED_IN
+                                        );
+                                        
+                                        return (
+                                          <PrimaryButton
+                                            size="small"
+                                            startIcon={<CheckCircleIcon />}
+                                            disabled={allCheckedIn}
+                                            onClick={() => {
+                                              const appointmentIds = new Set<number>();
+                                              Object.values(entities).forEach(entity => {
+                                                entity.appointmentIds.forEach((id: number) => appointmentIds.add(id));
+                                              });
+                                              handleBulkCheckIn(appointmentIds);
+                                            }}
+                                            sx={{
+                                              ...(allCheckedIn && {
+                                                backgroundColor: theme.palette.action.disabledBackground,
+                                                color: theme.palette.action.disabled,
+                                                '&:hover': {
+                                                  backgroundColor: theme.palette.action.disabledBackground,
+                                                }
+                                              })
+                                            }}
+                                          >
+                                            {allCheckedIn ? 'All Checked In' : 'Check-in All'}
+                                          </PrimaryButton>
+                                        );
+                                      })()}
+                                    </Box>
                                     
-                                    {Object.entries(dignitaries).map(([dignitaryId, data]) => {
-                                      const { dignitary, status, appointmentDignitaryIds, locations, requester } = data;
+                                    {Object.entries(entities).map(([entityId, data]) => {
+                                      const isContact = activeTab === 'contacts';
+                                      const entity = isContact 
+                                        ? (data as any).contact 
+                                        : (data as any).dignitary;
+                                      const entityIds = isContact 
+                                        ? (data as any).appointmentContactIds 
+                                        : (data as any).appointmentDignitaryIds;
+                                      const { status, requester } = data;
                                       const isCheckedIn = status === AttendanceStatus.CHECKED_IN;
-                                      const isPOCDetailsExpanded = isPOCExpanded(time, dignitaryId);
+                                      const isPOCDetailsExpanded = isPOCExpanded(time, entityId);
                                       const hasPOC = !!requester;
                                       
                                       return (
                                         <Box 
-                                          key={dignitaryId} 
+                                          key={entityId} 
                                           sx={{ 
                                             p: 1.3,
                                             mt: 1,
@@ -447,26 +896,26 @@ const UsherAppointmentSchedule: React.FC = () => {
                                             }
                                           }}
                                         >
-                                          {/* Main dignitary info with responsive layout */}
+                                          {/* Main entity info with responsive layout */}
                                           <Box sx={{ 
                                             display: 'flex', 
                                             flexDirection: { xs: 'column', sm: 'row' },
                                             justifyContent: 'space-between', 
                                             alignItems: { xs: 'flex-start', sm: 'center' },
                                           }}>
-                                            {/* Dignitary name and POC toggle */}
+                                            {/* Entity name and POC toggle */}
                                             <Box sx={{ flexGrow: 1, width: { xs: '100%', sm: 'auto', md: 'auto' } }}>
                                               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                                 <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', fontWeight: '500', color: theme.palette.text.primary }}>
                                                   {isCheckedIn && (
                                                     <CheckSquareCircleFilledIconV2 sx={{ color: 'success.main', mr: 1 }} />
                                                   )}
-                                                  {formatHonorificTitle(dignitary.honorific_title || '')} {dignitary.first_name} {dignitary.last_name}
+                                                  {isContact 
+                                                    ? `${entity.first_name} ${entity.last_name}`
+                                                    : `${formatHonorificTitle(entity.honorific_title || '')} ${entity.first_name} ${entity.last_name}`
+                                                  }
                                                 </Typography>                                                
                                               </Box>
-                                              {/* <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                                                <strong>Location{locations.size > 1 ? 's' : ''}:</strong> {Array.from(locations).join(', ')}
-                                              </Typography> */}
                                             </Box>
                                             
                                             {/* Check-in button and status */}
@@ -482,13 +931,13 @@ const UsherAppointmentSchedule: React.FC = () => {
                                                 <IconButton
                                                   size="small"
                                                   color="primary"
-                                                  onClick={() => togglePOCDetails(time, dignitaryId)}
+                                                  onClick={() => togglePOCDetails(time, entityId)}
                                                   sx={{ ml: 1 }}
                                                 >
                                                   {isPOCDetailsExpanded ? <RemoveIcon fontSize="small" /> : <AddIcon fontSize="small" />}
                                                 </IconButton>
                                               )}
-                                              {renderCheckinButton(time, parseInt(dignitaryId), status, appointmentDignitaryIds)}
+                                              {renderCheckinButton(time, parseInt(entityId), status, entityIds, isContact)}
                                             </Box>
                                           </Box>
                                           
@@ -531,11 +980,11 @@ const UsherAppointmentSchedule: React.FC = () => {
                                       );
                                     })}
                                   </Box>
-                                </Box>
-                              </Paper>
-                            </Grid>
-                          </>
-                        ))}
+                                </Paper>
+                              </Grid>
+                            </React.Fragment>
+                          );
+                        })}
                     </Grid>
                   </Box>
                 );
