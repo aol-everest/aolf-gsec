@@ -11,6 +11,8 @@ import { useTheme } from '@mui/material/styles';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Appointment, AppointmentContact } from '../models/types';
+import { useQuery } from '@tanstack/react-query';
+import { useApi } from '../hooks/useApi';
 
 interface AppointmentContactDisplayProps {
   appointment: Appointment;
@@ -26,6 +28,24 @@ const AppointmentContactDisplay: React.FC<AppointmentContactDisplayProps> = ({
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const isMediumScreen = useMediaQuery(theme.breakpoints.between('sm', 'md'));
   const isLargeScreen = useMediaQuery(theme.breakpoints.up('md'));
+  const api = useApi();
+
+  // Fetch relationship type map from the API
+  const { data: relationshipTypeMap = {} } = useQuery<Record<string, string>>({
+    queryKey: ['relationship-type-map'],
+    queryFn: async () => {
+      const { data } = await api.get<Record<string, string>>('/user-contacts/relationship-type-options-map');
+      return data;
+    },
+  });
+
+  // Helper function to get display name for contact
+  const getContactDisplayName = (contact: any) => {
+    const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
+    const isSelfContact = contact.relationship_to_owner === relationshipTypeMap['SELF'] ||
+      (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName);
+    return isSelfContact ? selfDisplayName : `${contact.first_name} ${contact.last_name}`;
+  };
   
   // Check if appointment has appointment_contacts array
   if (appointment.appointment_contacts && appointment.appointment_contacts.length > 0) {
@@ -68,7 +88,7 @@ const AppointmentContactDisplay: React.FC<AppointmentContactDisplayProps> = ({
                   }}
                 >
                   <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
-                    {contact.first_name} {contact.last_name}
+                    {getContactDisplayName(contact)}
                   </Typography>
                   <Typography color="text.secondary" variant="body2" sx={{ mt: 1 }}>
                     {contact.email && contact.email} {contact.phone && `| ${contact.phone}`}<br />
@@ -108,7 +128,7 @@ const AppointmentContactDisplay: React.FC<AppointmentContactDisplayProps> = ({
                       }}
                     >
                       <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
-                        {contact.first_name} {contact.last_name}
+                        {getContactDisplayName(contact)}
                       </Typography>
                       <Typography color="text.secondary" variant="body2" sx={{ mt: 1 }}>
                         {contact.email && <>{contact.email}<br /></>}

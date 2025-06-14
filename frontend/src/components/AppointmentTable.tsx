@@ -48,9 +48,12 @@ interface AppointmentTableProps {
 const columnHelper = createColumnHelper<Appointment>();
 
 // Custom filter function for searching across all fields
-const globalFilterFn: FilterFn<Appointment> = (row, columnId, value) => {
+const globalFilterFn: FilterFn<Appointment> = (row, columnId, value, addMeta) => {
   const appointment = row.original;
   const searchValue = String(value).toLowerCase();
+
+  // Get relationship type map from table meta if available
+  const relationshipTypeMap = (addMeta as any)?.relationshipTypeMap || {};
 
   // Search in basic appointment fields
   const basicFields = [
@@ -67,10 +70,14 @@ const globalFilterFn: FilterFn<Appointment> = (row, columnId, value) => {
     `${formatHonorificTitle(ad.dignitary.honorific_title)} ${ad.dignitary.first_name} ${ad.dignitary.last_name}`
   );
 
-  // Search in contacts
-  const contactNames = (appointment.appointment_contacts || []).map(ac =>
-    `${ac.contact.first_name} ${ac.contact.last_name}`
-  );
+  // Search in contacts with proper self-contact handling
+  const contactNames = (appointment.appointment_contacts || []).map(ac => {
+    const contact = ac.contact;
+    const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
+    const isSelfContact = contact.relationship_to_owner === relationshipTypeMap['SELF'] ||
+      (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName);
+    return isSelfContact ? selfDisplayName : `${contact.first_name} ${contact.last_name}`;
+  });
 
   const allSearchableText = [
     ...basicFields,
@@ -82,7 +89,7 @@ const globalFilterFn: FilterFn<Appointment> = (row, columnId, value) => {
 };
 
 // Helper function to get attendees info (simplified for table display)
-const getAttendeesInfo = (appointment: Appointment) => {
+const getAttendeesInfo = (appointment: Appointment, relationshipTypeMap: Record<string, string> = {}) => {
   const dignitaries = appointment.appointment_dignitaries || [];
   const contacts = appointment.appointment_contacts || [];
   
@@ -90,9 +97,13 @@ const getAttendeesInfo = (appointment: Appointment) => {
     `${formatHonorificTitle(ad.dignitary.honorific_title)} ${ad.dignitary.first_name} ${ad.dignitary.last_name}`
   );
   
-  const contactNames = contacts.map((ac: AppointmentContact) => 
-    `${ac.contact.first_name} ${ac.contact.last_name}`
-  );
+  const contactNames = contacts.map((ac: AppointmentContact) => {
+    const contact = ac.contact;
+    const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
+    const isSelfContact = contact.relationship_to_owner === relationshipTypeMap['SELF'] ||
+      (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName);
+    return isSelfContact ? selfDisplayName : `${contact.first_name} ${contact.last_name}`;
+  });
   
   const allNames = [...dignitaryNames, ...contactNames];
   const totalCount = allNames.length;
@@ -155,6 +166,15 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
     queryKey: ['status-map'],
     queryFn: async () => {
       const { data } = await api.get<StatusMap>('/appointments/status-options-map');
+      return data;
+    },
+  });
+
+  // Fetch relationship type map from the API
+  const { data: relationshipTypeMap = {} } = useQuery<Record<string, string>>({
+    queryKey: ['relationship-type-map'],
+    queryFn: async () => {
+      const { data } = await api.get<Record<string, string>>('/user-contacts/relationship-type-options-map');
       return data;
     },
   });
@@ -264,7 +284,7 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
         maxSize: 100,
       }),
 
-      columnHelper.accessor((row) => getAttendeesInfo(row), {
+      columnHelper.accessor((row) => getAttendeesInfo(row, relationshipTypeMap), {
         id: 'dignitary',
         header: 'Attendees',
         cell: (info) => (
@@ -414,7 +434,7 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
         enableSorting: false,
       }),
     ],
-    [onEdit, statusMap]
+    [onEdit, statusMap, relationshipTypeMap]
   );
 
   // Create table instance
@@ -434,6 +454,9 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
     globalFilterFn,
     getRowId: (row) => row.id.toString(),
     debugTable: false,
+    meta: {
+      relationshipTypeMap,
+    },
   });
 
   if (appointments.length === 0) {

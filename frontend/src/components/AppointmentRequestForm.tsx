@@ -1082,7 +1082,11 @@ export const AppointmentRequestForm: React.FC = () => {
     }
     
     setSelectedUserContacts(prev => [...prev, contact]);
-    enqueueSnackbar(`${contact.first_name} ${contact.last_name} added to appointment`, { variant: 'success' });
+    const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
+    const isSelfContact = contact.relationship_to_owner === relationshipTypeMap['SELF'] ||
+      (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName);
+    const displayName = isSelfContact ? selfDisplayName : `${contact.first_name} ${contact.last_name}`;
+    enqueueSnackbar(`${displayName} added to appointment`, { variant: 'success' });
   };
 
   const removeContactFromList = (contactId: number) => {
@@ -2204,7 +2208,11 @@ export const AppointmentRequestForm: React.FC = () => {
                             {editingContactId 
                               ? `Editing Contact: ${(() => {
                                   const contact = selectedUserContacts.find(c => c.id === editingContactId);
-                                  return contact ? `${contact.first_name} ${contact.last_name}` : '';
+                                  if (!contact) return '';
+                                  const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
+                                  const isSelfContact = contact.relationship_to_owner === relationshipTypeMap['SELF'] ||
+                                    (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName);
+                                  return isSelfContact ? selfDisplayName : `${contact.first_name} ${contact.last_name}`;
                                 })()}`
                               : `Add a ${selectedRequestTypeConfig?.attendee_label_singular || 'Contact'}`
                             }
@@ -2265,7 +2273,12 @@ export const AppointmentRequestForm: React.FC = () => {
                                   <MenuItem key={contact.id} value={contact.id}>
                                     <Box>
                                       <Typography variant="body1">
-                                        {contact.first_name} {contact.last_name}
+                                        {(() => {
+                                          const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
+                                          const isSelfContact = contact.relationship_to_owner === relationshipTypeMap['SELF'] ||
+                                            (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName);
+                                          return isSelfContact ? selfDisplayName : `${contact.first_name} ${contact.last_name}`;
+                                        })()}
                                       </Typography>
                                       <Typography variant="body2" color="text.secondary">
                                         {[
@@ -2785,9 +2798,12 @@ export const AppointmentRequestForm: React.FC = () => {
                     ? selectedDignitaries.map(d => 
                         `${formatHonorificTitle(d.honorific_title || '')} ${d.first_name} ${d.last_name}`
                       ).join(', ')
-                    : selectedUserContacts.map(c => 
-                        `${c.first_name} ${c.last_name}`
-                      ).join(', ')
+                    : selectedUserContacts.map(c => {
+                        const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
+                        const isSelfContact = c.relationship_to_owner === relationshipTypeMap['SELF'] ||
+                          (c.first_name === selfDisplayName && c.last_name === selfDisplayName);
+                        return isSelfContact ? selfDisplayName : `${c.first_name} ${c.last_name}`;
+                      }).join(', ')
                 }
               </Typography>
             </Grid>

@@ -5,6 +5,8 @@ import AppointmentCardSection from '../AppointmentCardSection';
 import GridItemIconText from '../GridItemIconText';
 import { MailIconV2, PhoneIconV2 } from '../iconsv2';
 import { useTheme, useMediaQuery } from '@mui/material';
+import { useQuery } from '@tanstack/react-query';
+import { useApi } from '../../hooks/useApi';
 
 interface ContactsSectionProps {
     appointment: Appointment;
@@ -17,10 +19,28 @@ export const ContactsSection: React.FC<ContactsSectionProps> = memo(({
 }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const api = useApi();
+
+    // Fetch relationship type map from the API
+    const { data: relationshipTypeMap = {} } = useQuery<Record<string, string>>({
+        queryKey: ['relationship-type-map'],
+        queryFn: async () => {
+            const { data } = await api.get<Record<string, string>>('/user-contacts/relationship-type-options-map');
+            return data;
+        },
+    });
 
     if (!appointment.appointment_contacts || appointment.appointment_contacts.length === 0) {
         return null;
     }
+
+    // Helper function to get display name for contact
+    const getContactDisplayName = (contact: any) => {
+        const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
+        const isSelfContact = contact.relationship_to_owner === relationshipTypeMap['SELF'] ||
+            (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName);
+        return isSelfContact ? selfDisplayName : `${contact.first_name} ${contact.last_name}`;
+    };
 
     return (
         <AppointmentCardSection 
@@ -61,7 +81,7 @@ export const ContactsSection: React.FC<ContactsSectionProps> = memo(({
                                 m: 0,
                                 color: theme.palette.text.primary
                             }}>
-                                {index + 1}. {contact.first_name} {contact.last_name}
+                                {index + 1}. {getContactDisplayName(contact)}
                             </Typography>
                         </Box>
                         <Box sx={{ 

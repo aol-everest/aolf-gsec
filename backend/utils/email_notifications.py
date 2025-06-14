@@ -1,4 +1,5 @@
 from typing import List, Dict, Any, Optional, Union, Callable, Type, TypeVar
+from backend.models.enums import PersonRelationshipType
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Email, To, Content, Bcc
 from datetime import datetime
@@ -459,7 +460,12 @@ def get_appointment_summary(appointment: Appointment) -> str:
         contacts_list = []
         for app_contact in appointment.appointment_contacts:
             contact = app_contact.contact
-            contacts_list.append(f"{contact.first_name} {contact.last_name}".strip())
+            # Handle self-contacts specially
+            if (contact.relationship_to_owner == PersonRelationshipType.SELF or 
+                (contact.first_name == PersonRelationshipType.SELF and contact.last_name == PersonRelationshipType.SELF)):
+                contacts_list.append(PersonRelationshipType.SELF)
+            else:
+                contacts_list.append(f"{contact.first_name} {contact.last_name}".strip())
         
         if contacts_list:
             contacts_info = ", ".join(contacts_list)
@@ -549,11 +555,15 @@ def get_appointment_changes_summary(old_data: Dict[str, Any], new_data: Dict[str
                     
                     if old_ids != new_ids:
                         old_names = ", ".join(
-                            f"{c.get('first_name', '')} {c.get('last_name', '')}".strip() 
+                            PersonRelationshipType.SELF if (c.get('relationship_to_owner') == PersonRelationshipType.SELF or 
+                                     (c.get('first_name') == PersonRelationshipType.SELF and c.get('last_name') == PersonRelationshipType.SELF))
+                            else f"{c.get('first_name', '')} {c.get('last_name', '')}".strip() 
                             for c in old_value
                         ) or "None"
                         new_names = ", ".join(
-                            f"{c.get('first_name', '')} {c.get('last_name', '')}".strip() 
+                            PersonRelationshipType.SELF if (c.get('relationship_to_owner') == PersonRelationshipType.SELF or 
+                                     (c.get('first_name') == PersonRelationshipType.SELF and c.get('last_name') == PersonRelationshipType.SELF))
+                            else f"{c.get('first_name', '')} {c.get('last_name', '')}".strip() 
                             for c in new_value
                         ) or "None"
                         changes.append(f"<p><strong>{display_name}:</strong> Changed from '{old_names}' to '{new_names}'</p>")

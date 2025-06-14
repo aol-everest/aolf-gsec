@@ -259,3 +259,8 @@ async def get_event_status_options_map():
 async def get_appointment_request_type_options_map():
     """Get appointment request type options as a map for frontend use"""
     return {x.name: x.value for x in models.RequestType} 
+
+@router.get("/user-contacts/relationship-type-options-map")
+async def get_user_contact_relationship_type_options_map():
+    """Get user contact relationship type options as a map for frontend use"""
+    return {x.name: x.value for x in models.PersonRelationshipType} 

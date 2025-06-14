@@ -33,6 +33,8 @@ import { UserContact, UserContactCreateData, RequestTypeConfig } from '../models
 import { EnumSelect } from './EnumSelect';
 import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
+import { useQuery } from '@tanstack/react-query';
+import { useApi } from '../hooks/useApi';
 
 interface ContactManagementProps {
   userContacts: UserContact[];
@@ -71,6 +73,24 @@ export const ContactManagement: React.FC<ContactManagementProps> = ({
   onModeChange,
 }) => {
   const [selectedContact, setSelectedContact] = useState<UserContact | null>(null);
+  const api = useApi();
+
+  // Fetch relationship type map from the API
+  const { data: relationshipTypeMap = {} } = useQuery<Record<string, string>>({
+    queryKey: ['relationship-type-map'],
+    queryFn: async () => {
+      const { data } = await api.get<Record<string, string>>('/user-contacts/relationship-type-options-map');
+      return data;
+    },
+  });
+
+  // Helper function to get display name for contact
+  const getContactDisplayName = (contact: UserContact) => {
+    const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
+    const isSelfContact = contact.relationship_to_owner === relationshipTypeMap['SELF'] ||
+      (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName);
+    return isSelfContact ? selfDisplayName : `${contact.first_name} ${contact.last_name}`;
+  };
 
   const contactForm = useForm<ContactFormData>({
     defaultValues: {
@@ -133,7 +153,7 @@ export const ContactManagement: React.FC<ContactManagementProps> = ({
                 }}
               >
                 <ListItemText
-                  primary={`${contact.first_name} ${contact.last_name}`}
+                  primary={getContactDisplayName(contact)}
                   secondary={
                     <>
                       {contact.email && (
@@ -252,7 +272,7 @@ export const ContactManagement: React.FC<ContactManagementProps> = ({
               <Grid item xs={12}>
                 <Autocomplete
                   options={availableContacts}
-                  getOptionLabel={(contact) => `${contact.first_name} ${contact.last_name}${contact.email ? ` (${contact.email})` : ''}`}
+                  getOptionLabel={(contact) => `${getContactDisplayName(contact)}${contact.email ? ` (${contact.email})` : ''}`}
                   value={selectedContact}
                   onChange={(_, newValue) => setSelectedContact(newValue)}
                   renderInput={(params) => (
@@ -267,7 +287,7 @@ export const ContactManagement: React.FC<ContactManagementProps> = ({
                     <Box component="li" {...props}>
                       <Box>
                         <Typography variant="body1">
-                          {contact.first_name} {contact.last_name}
+                          {getContactDisplayName(contact)}
                         </Typography>
                         {contact.email && (
                           <Typography variant="body2" color="text.secondary">
@@ -300,7 +320,7 @@ export const ContactManagement: React.FC<ContactManagementProps> = ({
                       Contact Details
                     </Typography>
                     <Typography variant="body2">
-                      <strong>Name:</strong> {selectedContact.first_name} {selectedContact.last_name}
+                      <strong>Name:</strong> {getContactDisplayName(selectedContact)}
                     </Typography>
                     {selectedContact.email && (
                       <Typography variant="body2">
