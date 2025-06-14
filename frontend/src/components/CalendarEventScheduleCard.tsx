@@ -162,21 +162,17 @@ const CalendarEventScheduleCard: React.FC<CalendarEventScheduleCardProps> = ({
           <GridItemIconText 
             containerRef={cardContainerRef} 
             icon={<LocationThinIconV2 sx={{ width: 20, height: 20 }} />} 
-            text={calendarEvent.location.name} 
+            text={
+              calendarEvent.meeting_place && calendarEvent.location ? 
+                calendarEvent.meeting_place.name + ' - ' + calendarEvent.location.name : 
+                calendarEvent.location ? calendarEvent.location.name : ''
+            }
             theme={theme} 
           />
         )}
 
-        {calendarEvent.meeting_place && (
-          <GridItemIconText 
-            containerRef={cardContainerRef} 
-            icon={<BlankIconV2 sx={{ width: 20, height: 20 }} />} 
-            text={calendarEvent.meeting_place.name} 
-            theme={theme} 
-          />
-        )}
 
-                  {/* Event Content - Different display for "other" and "darshan" types */}
+          {/* Event Content - Different display for "other" and "darshan" types */}
           {calendarEvent.event_type === eventTypeMap['OTHER'] || calendarEvent.event_type === eventTypeMap['DARSHAN'] ? (
           /* For "other" and "darshan" events, show summary details instead of individual appointments */
           <>
