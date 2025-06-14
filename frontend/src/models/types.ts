@@ -128,7 +128,9 @@ interface Appointment {
   location_id: number;
   meeting_place: MeetingPlace;
   meeting_place_id: number;
-  preferred_date?: string;
+  preferred_date?: string;  // For dignitary appointments only
+  preferred_start_date?: string;  // For non-dignitary appointments
+  preferred_end_date?: string;    // For non-dignitary appointments
   preferred_time_of_day?: string;
   purpose?: string;
   requester?: User;
@@ -380,6 +382,11 @@ export interface AppointmentSummary {
   secretariat_meeting_notes?: string;
   secretariat_follow_up_actions?: string;
   secretariat_notes_to_requester?: string;
+  // Date fields
+  preferred_date?: string;  // For dignitary appointments only
+  preferred_start_date?: string;  // For non-dignitary appointments
+  preferred_end_date?: string;    // For non-dignitary appointments
+  preferred_time_of_day?: string;
   // Legacy fields - now sourced from calendar event
   appointment_date: string;
   appointment_time: string;

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from 'macros.html' import render_attendees, attendee_count %}
+{% from 'macros.html' import render_attendees, attendee_count, format_appointment_date, get_date_label %}
 {% block title %}Appointment Request Created{% endblock %}
 {% block content %}
 <!-- <h2>Appointment Request Created</h2> -->
@@ -15,7 +15,7 @@
         <strong>Below are the details of your request:</strong>
         <ul>
             <li><strong>Meeting ID:</strong> {{ appointment.id }}</li>
-            <li><strong>Requested Date:</strong> {{ appointment.preferred_date }} {{ appointment.preferred_time_of_day or '' }}</li>
+            <li><strong>{{ get_date_label(appointment) }}:</strong> {{ format_appointment_date(appointment) }}</li>
             <li><strong>Location:</strong> {{ appointment.location.name }} - {{ appointment.location.city }}, {{ appointment.location.state }}</li>
             <li><strong>Group Size:</strong> {{ attendee_count(appointment) }} attendee(s)</li>
             <li><strong>Attendees:</strong>

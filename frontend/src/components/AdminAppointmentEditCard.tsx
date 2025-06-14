@@ -33,7 +33,7 @@ import {
 import { Controller, Control, UseFormGetValues, UseFormSetValue, UseFormWatch, useWatch } from 'react-hook-form';
 import { Location, MeetingPlace } from '../models/types';
 import { EnumSelect } from './EnumSelect';
-import { getLocalDateString, getLocalTimeString, findTimeOption, parseUTCDate, isTimeOffHours, getDurationOptions } from '../utils/dateUtils';
+import { getLocalDateString, getLocalTimeString, findTimeOption, parseUTCDate, isTimeOffHours, getDurationOptions, formatDateRange, formatDate } from '../utils/dateUtils';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
@@ -790,6 +790,37 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
   const durationOptions = getDurationOptions();
 
   // Function to get time slot occupancy data
+  // Helper function to check if appointment date is outside preferred range
+  const isDateOutsidePreferredRange = (selectedDate: string): { isOutside: boolean; preferredRange: string } => {
+    const appointmentData = initialFormValues;
+    
+    if (!selectedDate || !appointmentData) {
+      return { isOutside: false, preferredRange: '' };
+    }
+    
+    // Check for date range (non-dignitary appointments)
+    if (appointmentData.preferred_start_date && appointmentData.preferred_end_date) {
+      // Use string comparison to avoid timezone issues entirely
+      // Date strings in YYYY-MM-DD format can be compared directly
+      const isOutside = selectedDate < appointmentData.preferred_start_date || selectedDate > appointmentData.preferred_end_date;
+      const preferredRange = formatDateRange(appointmentData.preferred_start_date, appointmentData.preferred_end_date);
+      
+      return { isOutside, preferredRange };
+    }
+    
+    // Check for single preferred date (dignitary appointments)
+    if (appointmentData.preferred_date) {
+      // Use string comparison to avoid timezone issues entirely
+      const isOutside = selectedDate !== appointmentData.preferred_date;
+      // Use existing formatDate utility for consistency
+      const preferredRange = formatDate(appointmentData.preferred_date, false);
+      
+      return { isOutside, preferredRange };
+    }
+    
+    return { isOutside: false, preferredRange: '' };
+  };
+
   const getTimeSlotOccupancy = (timeSlot: string, duration?: number): { appointment_count: number; people_count: number } => {
     // Default empty data
     const defaultData = { appointment_count: 0, people_count: 0 };
@@ -907,6 +938,21 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
                         </Alert>
                       </Box>
                     )}
+                    {field.value && (() => {
+                      const { isOutside, preferredRange } = isDateOutsidePreferredRange(field.value);
+                      return isOutside ? (
+                        <Box component="span" sx={{ 
+                          display: 'inline-flex', 
+                          alignItems: 'center', 
+                          color: 'warning.main',
+                          fontWeight: 'bold'
+                        }}>
+                          <Alert severity="warning" sx={{ mt: 0.5, pl: 1.3, pr: 1.3, pb: 0.5, pt: 0.5, color: 'text.primary', fontWeight: '500', backgroundColor: 'warning.light' }}>
+                              ⚠️ Selected date is outside the preferred range: {preferredRange}
+                          </Alert>
+                        </Box>
+                      ) : null;
+                    })()}
                   </>
                 }
                 onChange={(e) => {

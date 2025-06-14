@@ -183,7 +183,9 @@ async def create_appointment(
             sub_status=appointment.sub_status,
             appointment_type=appointment.appointment_type,
             purpose=appointment.purpose,
-            preferred_date=appointment.preferred_date,
+            preferred_date=appointment.preferred_date,  # For dignitary appointments only
+            preferred_start_date=appointment.preferred_start_date,  # For non-dignitary appointments
+            preferred_end_date=appointment.preferred_end_date,      # For non-dignitary appointments
             preferred_time_of_day=appointment.preferred_time_of_day,
             requester_notes_to_secretariat=appointment.requester_notes_to_secretariat,
             secretariat_meeting_notes=appointment.secretariat_meeting_notes,
@@ -613,10 +615,17 @@ async def get_all_appointments(
     if request_type:
         query = query.filter(models.Appointment.request_type.in_(request_type.split(',')))
     
-    # Apply start and end date filters if provided
+    # Apply start and end date filters if provided - handle both single dates and date ranges
     if start_date:
         query = query.filter(or_(
+            # Single preferred date (dignitary appointments)
             models.Appointment.preferred_date >= start_date,
+            # Date ranges (non-dignitary appointments) - check if range overlaps with start_date
+            and_(
+                models.Appointment.preferred_start_date.isnot(None),
+                models.Appointment.preferred_end_date >= start_date
+            ),
+            # Calendar event dates (confirmed appointments)
             and_(
                 models.Appointment.calendar_event_id.isnot(None),
                 models.CalendarEvent.start_date >= start_date
@@ -624,7 +633,14 @@ async def get_all_appointments(
         ))
     if end_date:
         query = query.filter(or_(
+            # Single preferred date (dignitary appointments)
             models.Appointment.preferred_date <= end_date,
+            # Date ranges (non-dignitary appointments) - check if range overlaps with end_date
+            and_(
+                models.Appointment.preferred_start_date.isnot(None),
+                models.Appointment.preferred_start_date <= end_date
+            ),
+            # Calendar event dates (confirmed appointments)
             and_(
                 models.Appointment.calendar_event_id.isnot(None),
                 models.CalendarEvent.start_date <= end_date
@@ -696,8 +712,8 @@ async def get_upcoming_appointments(
     status: Optional[str] = None,
     request_type: Optional[str] = None
 ):
-    """Get all upcoming appointments (future calendar event date or preferred date) with access control restrictions and optional filters"""
-    # Start with the filter for upcoming appointments - use only calendar events and preferred dates
+    """Get all upcoming appointments (future calendar event date or preferred date/range) with access control restrictions and optional filters"""
+    # Start with the filter for upcoming appointments - use calendar events and preferred dates/ranges
     upcoming_filter = and_(
         or_(
             # Calendar event dates (confirmed appointments)
@@ -705,11 +721,17 @@ async def get_upcoming_appointments(
                 models.Appointment.calendar_event_id.isnot(None),
                 models.CalendarEvent.start_date >= date.today()-timedelta(days=1)
             ),
-            # Pending appointments with preferred dates
+            # Pending appointments with single preferred dates (dignitary appointments)
             and_(
                 models.Appointment.calendar_event_id.is_(None),
                 models.Appointment.preferred_date.isnot(None),
                 models.Appointment.preferred_date >= date.today()-timedelta(days=1)
+            ),
+            # Pending appointments with preferred date ranges (non-dignitary appointments)
+            and_(
+                models.Appointment.calendar_event_id.is_(None),
+                models.Appointment.preferred_start_date.isnot(None),
+                models.Appointment.preferred_end_date >= date.today()-timedelta(days=1)
             )
         ),
         models.Appointment.status.notin_([
@@ -774,10 +796,11 @@ async def get_upcoming_appointments(
         query = query.join(models.Location)
         query = query.filter(or_(*access_filters))
 
-    # Add sorting - prioritize calendar event dates, then preferred dates
+    # Add sorting - prioritize calendar event dates, then preferred dates/ranges
     query = query.order_by(
         models.CalendarEvent.start_date.asc().nulls_last(),
-        models.Appointment.preferred_date.asc().nulls_last()
+        models.Appointment.preferred_date.asc().nulls_last(),
+        models.Appointment.preferred_start_date.asc().nulls_last()
     )
 
     # Add options to eagerly load appointment_dignitaries and their associated dignitaries

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'macros.html' import format_appointment_date, get_date_label %}
 
 {% block title %}Update on Your Appointment Request{% endblock %}
 
@@ -13,11 +14,7 @@
     {% if appointment.status == "Approved" %}
         <p>Congratulations! Your request to meet with Gurudev has been approved.</p>
         
-        {% if appointment.appointment_date and appointment.appointment_time %}
-            <p><strong>Scheduled Date and Time:</strong> {{ appointment.appointment_date }} at {{ appointment.appointment_time }}</p>
-        {% else %}
-            <p>The specific date and time will be communicated to you shortly.</p>
-        {% endif %}
+        <p><strong>{{ get_date_label(appointment) }}:</strong> {{ format_appointment_date(appointment) }}</p>
         
         {% if appointment.location %}
             <p><strong>Location:</strong> {{ appointment.location.name }} - {{ appointment.location.street_address }}, {{ appointment.location.city }}, {{ appointment.location.state }} {{ appointment.location.zip_code }}</p>

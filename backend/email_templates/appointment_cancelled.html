@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'macros.html' import format_appointment_date, get_date_label %}
 {% block title %}Cancellation of Your Scheduled Appointment with Gurudev{% endblock %}
 {% block content %}
 <div class="content">
@@ -15,7 +16,7 @@
                 {{ dignitary.honorific_title|format_honorific_title }} {{ dignitary.first_name }} {{ dignitary.last_name }}{% if not loop.last %}{% if loop.index == appointment.appointment_dignitaries|length - 1 %} and {% else %}, {% endif %}{% endif %}
             {% endfor %}
         </li>
-        <li><strong>Scheduled Date & Time:</strong> {% if appointment.appointment_date %}{{ appointment.appointment_date }} {% if appointment.appointment_time %}{{ appointment.appointment_time }}{% endif %}{% else %}Not scheduled{% endif %}</li>
+        <li><strong>{{ get_date_label(appointment) }}:</strong> {{ format_appointment_date(appointment) }}</li>
         <li><strong>Location:</strong> {% if appointment.location %}{{ appointment.location.name }} - {{ appointment.location.city }}, {{ appointment.location.state }}{% else %}Not specified{% endif %}</li>
     </ul>
 

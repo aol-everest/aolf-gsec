@@ -781,6 +781,11 @@ const AdminAppointmentEdit: React.FC = () => {
                       secretariat_follow_up_actions: locationState?.secretariat_follow_up_actions || appointment.secretariat_follow_up_actions,
                       secretariat_meeting_notes: locationState?.secretariat_meeting_notes || appointment.secretariat_meeting_notes,
                       secretariat_notes_to_requester: appointment.secretariat_notes_to_requester,
+                      // Include preferred date fields for date range validation
+                      preferred_date: appointment.preferred_date,
+                      preferred_start_date: appointment.preferred_start_date,
+                      preferred_end_date: appointment.preferred_end_date,
+                      preferred_time_of_day: appointment.preferred_time_of_day,
                     } : undefined}
                     onValidationResult={handleValidationResult}
                   />

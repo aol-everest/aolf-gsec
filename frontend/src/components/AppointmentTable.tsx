@@ -26,7 +26,7 @@ import {
   RowSelectionState
 } from '@tanstack/react-table';
 import { Appointment, AppointmentDignitary, AppointmentContact, StatusMap } from '../models/types';
-import { formatDate } from '../utils/dateUtils';
+import { formatDate, formatDateRange } from '../utils/dateUtils';
 import { formatHonorificTitle } from '../utils/formattingUtils';
 import { AppointmentStatusChip } from './AppointmentStatusChip';
 import { EditIconV2, CheckCircleIconV2 } from './iconsv2';
@@ -117,14 +117,21 @@ const getDateTimeDisplay = (appointment: Appointment, statusMap: StatusMap) => {
     date = formatDate(appointment.appointment_date, false);
     time = appointment.appointment_time || '';
     isAppointmentDate = true;
-  } else {
-    // Show requested date (preferred_date) for non-approved appointments
-    // Fall back to created_at if preferred_date is not available
-    const requestedDate = appointment.preferred_date || appointment.created_at;
-    date = formatDate(requestedDate || '', false);
-    time = appointment.preferred_time_of_day || ''; // Show preferred time of day if available
-    isAppointmentDate = false;
-  }
+      } else {
+      // Show date range if available, otherwise single date
+      if (appointment.preferred_start_date && appointment.preferred_end_date) {
+        date = formatDateRange(appointment.preferred_start_date, appointment.preferred_end_date);
+        time = appointment.preferred_time_of_day || '';
+      } else if (appointment.preferred_date) {
+        date = formatDate(appointment.preferred_date, false);
+        time = appointment.preferred_time_of_day || '';
+      } else {
+        // Fall back to created_at if no preferred date is available
+        date = formatDate(appointment.created_at || '', false);
+        time = '';
+      }
+      isAppointmentDate = false;
+    }
 
   return { date, time, isAppointmentDate };
 };

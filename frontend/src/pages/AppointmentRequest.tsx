@@ -18,9 +18,7 @@ const AppointmentRequest: React.FC = () => {
             Request an Appointment
           </Typography>
           
-          {/* <Alert severity="info" sx={{ mb: 3 }}>
-            You can now add multiple dignitaries to a single appointment request. All dignitaries are treated equally with no primary dignitary.
-          </Alert> */}
+
           
           <Paper 
             elevation={0}

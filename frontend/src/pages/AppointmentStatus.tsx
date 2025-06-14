@@ -19,7 +19,7 @@ import { useTheme } from '@mui/material/styles';
 import { useQuery } from '@tanstack/react-query';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
-import { formatDate } from '../utils/dateUtils';
+import { formatDate, formatDateRange } from '../utils/dateUtils';
 import CommonDataGrid from '../components/GenericDataGrid';
 import { Appointment, Dignitary, Location } from '../models/types';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
@@ -167,12 +167,24 @@ const AppointmentStatus: React.FC = () => {
       flex: 1,
       editable: false,
       renderCell: (params: GridRenderCellParams) => {
-        let dateDisplay = formatDate(params.row.preferred_date, false) + ' ' + params.row.preferred_time_of_day;
+        let dateDisplay = '';
         let suffix = <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.7' }}><span className="small-font">(requested)</span></div>;
+        
         if (params.row.appointment_date && params.row.appointment_time) {
+          // Show confirmed appointment date/time
           dateDisplay = formatDate(params.row.appointment_date, false) + ' ' + params.row.appointment_time;
           suffix = <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.7' }}><span className="small-font">(confirmed)</span></div>;
+        } else {
+          // Show date range if available, otherwise single date
+          if (params.row.preferred_start_date && params.row.preferred_end_date) {
+            dateDisplay = formatDateRange(params.row.preferred_start_date, params.row.preferred_end_date) + ' ' + (params.row.preferred_time_of_day || '');
+          } else if (params.row.preferred_date) {
+            dateDisplay = formatDate(params.row.preferred_date, false) + ' ' + (params.row.preferred_time_of_day || '');
+          } else {
+            dateDisplay = 'Date TBD';
+          }
         }
+        
         return <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.7' }}>{dateDisplay}<br />{suffix}</div>;
       },
     },

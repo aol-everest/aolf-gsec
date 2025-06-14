@@ -5,7 +5,7 @@ import AppointmentCardSection from '../AppointmentCardSection';
 import GridItemIconText from '../GridItemIconText';
 import { CalendarIconV2, LocationThinIconV2, TagsIconV2, PeopleMenuIconV2, ListIconV2 } from '../iconsv2';
 import { formatHonorificTitle } from '../../utils/formattingUtils';
-import { formatDateWithTimezone } from '../../utils/dateUtils';
+import { formatDateWithTimezone, formatDateRange } from '../../utils/dateUtils';
 import { useTheme, useMediaQuery } from '@mui/material';
 
 interface AppointmentDetailsSectionProps {
@@ -54,8 +54,16 @@ export const AppointmentDetailsSection: React.FC<AppointmentDetailsSectionProps>
                         (appointment.appointment_time || '') + ' ' + 
                         (appointment.duration ? '(' + appointment.duration + ' mins)' : '') 
                         : 
-                        formatDateWithTimezone(appointment.preferred_date, 'UTC', false) + ' ' + 
-                        (appointment.preferred_time_of_day || '')
+                        (() => {
+                            // Show date range if available, otherwise single date
+                            if (appointment.preferred_start_date && appointment.preferred_end_date) {
+                                return formatDateRange(appointment.preferred_start_date, appointment.preferred_end_date) + ' ' + (appointment.preferred_time_of_day || '');
+                            } else if (appointment.preferred_date) {
+                                return formatDateWithTimezone(appointment.preferred_date, 'UTC', false) + ' ' + (appointment.preferred_time_of_day || '');
+                            } else {
+                                return 'Date TBD';
+                            }
+                        })()
                     } 
                     theme={theme} 
                 />

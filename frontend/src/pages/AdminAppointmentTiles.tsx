@@ -55,7 +55,7 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import Layout from '../components/Layout';
-import { formatDate } from '../utils/dateUtils';
+import { formatDate, formatDateRange } from '../utils/dateUtils';
 import { LocationThinIconV2, CalendarIconV2, ListIconV2 } from '../components/iconsv2';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';

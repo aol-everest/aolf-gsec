@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from 'macros.html' import render_attendees, attendee_count %}
+{% from 'macros.html' import render_attendees, attendee_count, format_appointment_date, get_date_label %}
 {% block title %}Confirmation of Your Appointment with Gurudev{% endblock %}
 {% block content %}
 <div class="content">
@@ -12,7 +12,7 @@
         <li><strong>Appointment Requested For:</strong>
             {{ render_attendees(appointment, 'inline') }}
         </li>
-        <li><strong>Date & Time:</strong> {% if appointment.appointment_date %}{{ appointment.appointment_date }} {% if appointment.appointment_time %}{{ appointment.appointment_time }}{% endif %}{% else %}To be determined{% endif %}</li>
+        <li><strong>{{ get_date_label(appointment) }}:</strong> {{ format_appointment_date(appointment) }}</li>
         <li><strong>Location:</strong> 
             {% if appointment.meeting_place %}
               {{ appointment.meeting_place.name }},

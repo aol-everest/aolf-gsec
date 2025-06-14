@@ -55,7 +55,9 @@ async def create_appointment(
             last_updated_by=current_user.id,
             status=models.AppointmentStatus.PENDING,
             purpose=appointment.purpose,
-            preferred_date=appointment.preferred_date,
+            preferred_date=appointment.preferred_date,  # For dignitary appointments only
+            preferred_start_date=appointment.preferred_start_date,  # For non-dignitary appointments
+            preferred_end_date=appointment.preferred_end_date,      # For non-dignitary appointments
             preferred_time_of_day=appointment.preferred_time_of_day,
             requester_notes_to_secretariat=appointment.requester_notes_to_secretariat,
             location_id=appointment.location_id,

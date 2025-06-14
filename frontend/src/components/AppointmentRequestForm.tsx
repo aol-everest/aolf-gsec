@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
-import { formatDate, getLocalDateString } from '../utils/dateUtils';
+import { formatDate, getLocalDateString, validateDateRange, validateSingleDate, formatDateRange } from '../utils/dateUtils';
 import {
   Box,
   Button,
@@ -69,6 +69,7 @@ import { PersonSelectionChip } from './PersonSelectionChip';
 // Add AppointmentResponse interface for the API response
 interface AppointmentResponse extends Omit<Appointment, 'dignitary' | 'requester' | 'location' | 'approved_by_user' | 'last_updated_by_user' | 'attachments'> {
   // Only include the fields that are returned by the API when creating a new appointment
+  // Note: preferred_start_date and preferred_end_date are already inherited from Appointment
 }
 
 // Add Country interface based on the backend model
@@ -151,7 +152,9 @@ interface PersonalAttendeeFormData {
 // Step 3: Appointment Information
 interface AppointmentFormData {
   purpose: string;
-  preferredDate: string;
+  preferredDate: string;  // For dignitary appointments only
+  preferredStartDate: string;  // For non-dignitary appointments
+  preferredEndDate: string;    // For non-dignitary appointments
   preferredTimeOfDay: string;
   location_id: number;
   requesterNotesToSecretariat: string;
@@ -213,6 +216,15 @@ export const AppointmentRequestForm: React.FC = () => {
 
   // Add a new state variable to track if the dignitary form is expanded
   const [isDignitaryFormExpanded, setIsDignitaryFormExpanded] = useState(false);
+
+  // Fetch event type map from the API
+  const { data: requestTypeMap = {} } = useQuery<Record<string, string>>({
+    queryKey: ['request-type-map'],
+    queryFn: async () => {
+      const { data } = await api.get<Record<string, string>>('/appointment/request-type-options-map');
+      return data;
+    },
+  });
 
   // Fetch status options
   const { data: statusOptions = [] } = useQuery<string[]>({
@@ -325,7 +337,9 @@ export const AppointmentRequestForm: React.FC = () => {
   const appointmentForm = useForm<AppointmentFormData>({
     defaultValues: {
       purpose: '',
-      preferredDate: '',
+      preferredDate: '',  // For dignitary appointments only
+      preferredStartDate: '',  // For non-dignitary appointments
+      preferredEndDate: '',    // For non-dignitary appointments
       preferredTimeOfDay: '',
       location_id: undefined,  // Changed from 0 to undefined
       requesterNotesToSecretariat: '',
@@ -462,7 +476,7 @@ export const AppointmentRequestForm: React.FC = () => {
   // Set default request type when configs are loaded
   useEffect(() => {
     if (requestTypeConfigs.length > 0 && !pocForm.getValues('requestType')) {
-      const defaultConfig = requestTypeConfigs.find(c => c.request_type === 'Dignitary') || requestTypeConfigs[0];
+      const defaultConfig = requestTypeConfigs.find(c => c.request_type === requestTypeMap['DIGNITARY']) || requestTypeConfigs[0];
       pocForm.setValue('requestType', defaultConfig.request_type);
     }
   }, [requestTypeConfigs, pocForm]);
@@ -1051,7 +1065,7 @@ export const AppointmentRequestForm: React.FC = () => {
       })();
     } else if (activeStep === 1) {
       // Handle different attendee types based on request type
-      if (selectedRequestTypeConfig?.attendee_type === 'dignitary') {
+      if (selectedRequestTypeConfig?.attendee_type === requestTypeMap['DIGNITARY']) {
         // For dignitary requests, check dignitaries
         if (selectedDignitaries.length === 0) {
           // If the current form has data, try to add it
@@ -1127,13 +1141,20 @@ export const AppointmentRequestForm: React.FC = () => {
         try {
           let appointmentCreateData: any = {
             purpose: data.purpose,
-            preferred_date: data.preferredDate,
             preferred_time_of_day: data.preferredTimeOfDay,
             location_id: data.location_id,
             requester_notes_to_secretariat: data.requesterNotesToSecretariat,
             status: statusOptions[0],
-            request_type: selectedRequestTypeConfig?.request_type || 'Dignitary',
+            request_type: selectedRequestTypeConfig?.request_type || requestTypeMap['DIGNITARY'],
           };
+
+          // Add appropriate date fields based on request type
+          if (selectedRequestTypeConfig?.request_type === requestTypeMap['DIGNITARY']) {
+            appointmentCreateData.preferred_date = data.preferredDate;
+          } else {
+            appointmentCreateData.preferred_start_date = data.preferredStartDate;
+            appointmentCreateData.preferred_end_date = data.preferredEndDate;
+          }
 
           if (selectedRequestTypeConfig?.attendee_type === 'dignitary') {
             // Get dignitary IDs from storage
@@ -2292,22 +2313,104 @@ export const AppointmentRequestForm: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} md={6} lg={4}>
-                <TextField
-                  fullWidth
-                  type="date"
-                  label="Preferred Date"
-                  InputLabelProps={{ shrink: true }}
-                  inputProps={{ 
-                    min: getLocalDateString(0),
-                    max: getLocalDateString(60),
-                  }}
-                  {...appointmentForm.register('preferredDate', { required: 'Preferred date is required' })}
-                  error={!!appointmentForm.formState.errors.preferredDate}
-                  helperText={appointmentForm.formState.errors.preferredDate?.message}
-                  required
-                />
-              </Grid>
+              {/* Conditional date fields based on request type */}
+              {selectedRequestTypeConfig?.request_type === requestTypeMap['DIGNITARY'] ? (
+                // Single date picker for dignitary appointments
+                <Grid item xs={12} md={6} lg={4}>
+                  <TextField
+                    fullWidth
+                    type="date"
+                    label="Preferred Date"
+                    InputLabelProps={{ shrink: true }}
+                    inputProps={{ 
+                      min: getLocalDateString(0),
+                      max: getLocalDateString(60),
+                    }}
+                    {...appointmentForm.register('preferredDate', { 
+                      required: 'Preferred date is required',
+                      validate: (value) => {
+                        const validation = validateSingleDate(value);
+                        return validation.isValid || validation.error;
+                      }
+                    })}
+                    error={!!appointmentForm.formState.errors.preferredDate}
+                    helperText={appointmentForm.formState.errors.preferredDate?.message}
+                    required
+                  />
+                </Grid>
+              ) : (
+                // Date range picker for non-dignitary appointments
+                <>
+                  <Grid item xs={12} md={6} lg={4}>
+                    <TextField
+                      fullWidth
+                      type="date"
+                      label="Preferred Start Date"
+                      InputLabelProps={{ shrink: true }}
+                      inputProps={{ 
+                        min: getLocalDateString(0),
+                        max: getLocalDateString(60),
+                      }}
+                      {...appointmentForm.register('preferredStartDate', { 
+                        required: 'Preferred start date is required',
+                        validate: (value) => {
+                          const endDate = appointmentForm.getValues('preferredEndDate');
+                          if (endDate) {
+                            const validation = validateDateRange(value, endDate);
+                            return validation.isValid || validation.error;
+                          }
+                          return true;
+                        }
+                      })}
+                      error={!!appointmentForm.formState.errors.preferredStartDate}
+                      helperText={appointmentForm.formState.errors.preferredStartDate?.message}
+                      required
+                      onChange={(e) => {
+                        appointmentForm.setValue('preferredStartDate', e.target.value);
+                        const currentEndDate = appointmentForm.getValues('preferredEndDate');
+                        
+                        // Auto-set end date to same as start date if not set, or if end date is before new start date
+                        if (!currentEndDate || new Date(currentEndDate + 'T00:00:00') < new Date(e.target.value + 'T00:00:00')) {
+                          appointmentForm.setValue('preferredEndDate', e.target.value);
+                        }
+                        // Trigger validation
+                        appointmentForm.trigger(['preferredStartDate', 'preferredEndDate']);
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6} lg={4}>
+                    <TextField
+                      fullWidth
+                      type="date"
+                      label="Preferred End Date"
+                      InputLabelProps={{ shrink: true }}
+                      inputProps={{ 
+                        min: appointmentForm.watch('preferredStartDate') || getLocalDateString(0),
+                        max: getLocalDateString(60),
+                      }}
+                      {...appointmentForm.register('preferredEndDate', { 
+                        required: 'Preferred end date is required',
+                        validate: (value) => {
+                          const startDate = appointmentForm.getValues('preferredStartDate');
+                          if (startDate) {
+                            const validation = validateDateRange(startDate, value);
+                            return validation.isValid || validation.error;
+                          }
+                          return true;
+                        }
+                      })}
+                      error={!!appointmentForm.formState.errors.preferredEndDate}
+                      helperText={appointmentForm.formState.errors.preferredEndDate?.message}
+                      required
+                      onChange={(e) => {
+                        appointmentForm.setValue('preferredEndDate', e.target.value);
+                        // Trigger validation
+                        appointmentForm.trigger(['preferredStartDate', 'preferredEndDate']);
+                      }}
+                    />
+                  </Grid>
+                </>
+              )}
 
               <Grid item xs={12} md={6} lg={4}>
               <FormControl fullWidth required error={!!appointmentForm.formState.errors.preferredTimeOfDay}>
@@ -2518,7 +2621,11 @@ export const AppointmentRequestForm: React.FC = () => {
             </Grid>
             <Grid item xs={12}>
               <Typography variant="body1">
-                <strong>Preferred Date:</strong> {submittedAppointment.preferred_date}
+                <strong>Preferred Date{selectedRequestTypeConfig?.request_type !== requestTypeMap['DIGNITARY'] ? ' Range' : ''}:</strong>{' '}
+                {selectedRequestTypeConfig?.request_type === requestTypeMap['DIGNITARY'] 
+                  ? submittedAppointment.preferred_date
+                  : formatDateRange(submittedAppointment.preferred_start_date || '', submittedAppointment.preferred_end_date || '')
+                }
               </Typography>
             </Grid>
             {submittedAppointment.preferred_time_of_day && (
@@ -2604,8 +2711,13 @@ export const AppointmentRequestForm: React.FC = () => {
                   <Grid item xs={12} sm={4}>
                     <Typography>
                       Date & Time: {
-                        formatDate(appointment.appointment_date, false) + ' ' + appointment.appointment_time + ' (confirmed)' || 
-                        formatDate(appointment.preferred_date, false) + ' ' + appointment.preferred_time_of_day + ' (requested)'
+                        appointment.appointment_date && appointment.appointment_time
+                          ? formatDate(appointment.appointment_date, false) + ' ' + appointment.appointment_time + ' (confirmed)'
+                          : appointment.preferred_start_date && appointment.preferred_end_date
+                            ? formatDateRange(appointment.preferred_start_date, appointment.preferred_end_date) + ' ' + (appointment.preferred_time_of_day || '') + ' (requested)'
+                            : appointment.preferred_date
+                              ? formatDate(appointment.preferred_date, false) + ' ' + (appointment.preferred_time_of_day || '') + ' (requested)'
+                              : 'Date TBD'
                       }
                     </Typography>
                   </Grid>

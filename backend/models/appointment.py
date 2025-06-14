@@ -32,8 +32,12 @@ class Appointment(Base):
     dignitary_id = Column(Integer, ForeignKey(f"{schema_prefix}dignitaries.id"), nullable=True)
     
     purpose = Column(Text, nullable=True)
-    preferred_date = Column(Date, nullable=True)
+    preferred_date = Column(Date, nullable=True)  # For dignitary appointments only
     preferred_time_of_day = Column(Enum(AppointmentTimeOfDay), nullable=True)
+    
+    # Date range fields for non-dignitary appointments (DARSHAN, PROJECT_TEAM_MEETING, OTHER)
+    preferred_start_date = Column(Date, nullable=True)
+    preferred_end_date = Column(Date, nullable=True)
     
     # DEPRECATED: Legacy fields - moved to CalendarEvent table
     # These fields are kept for backward compatibility with existing data only

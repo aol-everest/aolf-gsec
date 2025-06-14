@@ -63,4 +63,41 @@
 {# Macro to get total attendee count #}
 {% macro attendee_count(appointment) %}
     {{ ((appointment.appointment_dignitaries or []) | length) + ((appointment.appointment_contacts or []) | length) }}
+{% endmacro %}
+
+{# Macro to format appointment dates (handles both single dates and date ranges) #}
+{% macro format_appointment_date(appointment, include_time=true) %}
+    {% if appointment.appointment_date %}
+        {# Confirmed appointment date #}
+        {{ appointment.appointment_date }}{% if include_time and appointment.appointment_time %} {{ appointment.appointment_time }}{% endif %}
+    {% elif appointment.preferred_start_date and appointment.preferred_end_date %}
+        {# Date range for non-dignitary appointments #}
+        {% if appointment.preferred_start_date == appointment.preferred_end_date %}
+            {{ appointment.preferred_start_date }}{% if include_time and appointment.preferred_time_of_day %} {{ appointment.preferred_time_of_day }}{% endif %}
+        {% else %}
+            {{ appointment.preferred_start_date }} - {{ appointment.preferred_end_date }}{% if include_time and appointment.preferred_time_of_day %} ({{ appointment.preferred_time_of_day }}){% endif %}
+        {% endif %}
+    {% elif appointment.preferred_date %}
+        {# Single preferred date for dignitary appointments #}
+        {{ appointment.preferred_date }}{% if include_time and appointment.preferred_time_of_day %} {{ appointment.preferred_time_of_day }}{% endif %}
+    {% else %}
+        To be determined
+    {% endif %}
+{% endmacro %}
+
+{# Macro to get date type label for display #}
+{% macro get_date_label(appointment) %}
+    {% if appointment.appointment_date %}
+        Confirmed Date & Time
+    {% elif appointment.preferred_start_date and appointment.preferred_end_date %}
+        {% if appointment.preferred_start_date == appointment.preferred_end_date %}
+            Requested Date
+        {% else %}
+            Requested Date Range
+        {% endif %}
+    {% elif appointment.preferred_date %}
+        Requested Date
+    {% else %}
+        Date & Time
+    {% endif %}
 {% endmacro %} 

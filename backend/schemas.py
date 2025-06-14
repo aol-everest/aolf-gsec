@@ -525,7 +525,9 @@ class Appointment(AppointmentBase):
     id: int
     requester_id: Optional[int] = None
     purpose: Optional[str] = None
-    preferred_date: Optional[date] = None
+    preferred_date: Optional[date] = None  # For dignitary appointments only
+    preferred_start_date: Optional[date] = None  # For non-dignitary appointments
+    preferred_end_date: Optional[date] = None    # For non-dignitary appointments
     preferred_time_of_day: Optional[AppointmentTimeOfDay] = None
     requester_notes_to_secretariat: Optional[str] = None
     appointment_dignitaries: List[AppointmentDignitaryWithDignitary]
@@ -607,7 +609,9 @@ class AdminAppointment(AppointmentBase):
     request_type: Optional[RequestType] = None
     requester_id: Optional[int] = None
     purpose: Optional[str] = None
-    preferred_date: Optional[date] = None
+    preferred_date: Optional[date] = None  # For dignitary appointments only
+    preferred_start_date: Optional[date] = None  # For non-dignitary appointments
+    preferred_end_date: Optional[date] = None    # For non-dignitary appointments
     preferred_time_of_day: Optional[AppointmentTimeOfDay] = None
     requester_notes_to_secretariat: Optional[str] = None
     appointment_dignitaries: Optional[List[AdminAppointmentDignitaryWithDignitary]] = None
@@ -953,8 +957,12 @@ class AppointmentCreateEnhanced(BaseModel):
     calendar_event_id: Optional[int] = None
     
     # Option 2: User preferred time (creates calendar event on approval)
-    preferred_date: Optional[date] = None
+    preferred_date: Optional[date] = None  # For dignitary appointments only
     preferred_time_of_day: Optional[AppointmentTimeOfDay] = None
+    
+    # Date range fields for non-dignitary appointments (DARSHAN, PROJECT_TEAM_MEETING, OTHER)
+    preferred_start_date: Optional[date] = None
+    preferred_end_date: Optional[date] = None
     
     # Option 3: Admin exact scheduling (creates calendar event immediately)
     appointment_date: Optional[date] = None
@@ -994,8 +1002,33 @@ class AppointmentCreateEnhanced(BaseModel):
         if values.get('appointment_date') and not v:
             raise ValueError("appointment_time is required when appointment_date is specified")
         return v
+    
+    @validator('preferred_end_date')
+    def validate_date_range(cls, v, values):
+        """Validate date range for non-dignitary appointments (max 30 days, end >= start)"""
+        if v is not None:
+            preferred_start_date = values.get('preferred_start_date')
+            if not preferred_start_date:
+                raise ValueError("preferred_start_date is required when preferred_end_date is provided")
+            if v < preferred_start_date:
+                raise ValueError("preferred_end_date must be on or after preferred_start_date")
+            
+            # Validate 30-day maximum range
+            from datetime import timedelta
+            if (v - preferred_start_date).days > 30:
+                raise ValueError("Date range cannot exceed 30 days")
+        return v
+    
+    @validator('preferred_start_date')  
+    def validate_start_date_future(cls, v):
+        """Ensure preferred start date is not in the past"""
+        if v is not None:
+            from datetime import date
+            if v < date.today():
+                raise ValueError("preferred_start_date cannot be in the past")
+        return v
 
-    @root_validator(pre=True)
+    @root_validator(pre=True, skip_on_failure=True)
     def set_request_type_from_event_type(cls, values):
         if not values.get('request_type') and values.get('event_type'):
             from models.enums import EVENT_TYPE_TO_REQUEST_TYPE_MAPPING
@@ -1006,6 +1039,37 @@ class AppointmentCreateEnhanced(BaseModel):
                 values['request_type'] = reverse_map[event_type]
             elif hasattr(event_type, 'value') and event_type.value in reverse_map:
                 values['request_type'] = reverse_map[event_type.value]
+        return values
+    
+    @root_validator(skip_on_failure=True)
+    def validate_date_fields_by_request_type(cls, values):
+        """Validate that appropriate date fields are used based on request type"""
+        request_type = values.get('request_type')
+        preferred_date = values.get('preferred_date')
+        preferred_start_date = values.get('preferred_start_date')
+        preferred_end_date = values.get('preferred_end_date')
+        
+        if request_type:
+            from models.appointment import RequestType
+            
+            # Convert string to enum if needed
+            if isinstance(request_type, str):
+                request_type = RequestType(request_type)
+            
+            if request_type == RequestType.DIGNITARY:
+                # Dignitary appointments should use single preferred_date
+                if preferred_start_date or preferred_end_date:
+                    raise ValueError("Dignitary appointments should use preferred_date, not date ranges")
+            else:
+                # Non-dignitary appointments (DARSHAN, PROJECT_TEAM_MEETING, OTHER) should use date ranges
+                if preferred_date:
+                    raise ValueError(f"{request_type.value} appointments should use preferred_start_date and preferred_end_date, not preferred_date")
+                if preferred_start_date and not preferred_end_date:
+                    # If only start date provided, set end date to same value
+                    values['preferred_end_date'] = preferred_start_date
+                elif preferred_end_date and not preferred_start_date:
+                    raise ValueError("preferred_start_date is required when preferred_end_date is provided")
+        
         return values
 
 # Enhanced Appointment Response Schema

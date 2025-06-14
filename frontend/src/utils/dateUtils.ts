@@ -125,3 +125,87 @@ export const formatTime = (time: string) => {
     return time;
   }
 };
+
+// Date range validation utilities
+export const validateDateRange = (startDate: string, endDate: string): { isValid: boolean; error?: string } => {
+  if (!startDate || !endDate) {
+    return { isValid: false, error: 'Both start and end dates are required' };
+  }
+
+  // Parse dates in local timezone to avoid timezone issues
+  const start = new Date(startDate + 'T00:00:00');
+  const end = new Date(endDate + 'T00:00:00');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Reset time to start of day
+
+  // Check if dates are valid
+  if (!isValid(start) || !isValid(end)) {
+    return { isValid: false, error: 'Invalid date format' };
+  }
+
+  // Check if start date is today or in the future (allow today)
+  if (start < today) {
+    return { isValid: false, error: 'Start date cannot be in the past' };
+  }
+
+  // Check if end date is on or after start date
+  if (end < start) {
+    return { isValid: false, error: 'End date must be on or after start date' };
+  }
+
+  // Check 30-day maximum range
+  const daysDifference = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  if (daysDifference > 30) {
+    return { isValid: false, error: 'Date range cannot exceed 30 days' };
+  }
+
+  return { isValid: true };
+};
+
+// Single date validation utility
+export const validateSingleDate = (dateValue: string): { isValid: boolean; error?: string } => {
+  if (!dateValue) {
+    return { isValid: false, error: 'Date is required' };
+  }
+
+  // Parse date in local timezone to avoid timezone issues
+  const selectedDate = new Date(dateValue + 'T00:00:00');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Reset time to start of day
+
+  // Check if date is valid
+  if (!isValid(selectedDate)) {
+    return { isValid: false, error: 'Invalid date format' };
+  }
+
+  // Check if date is today or in the future (allow today)
+  if (selectedDate < today) {
+    return { isValid: false, error: 'Date cannot be in the past' };
+  }
+
+  return { isValid: true };
+};
+
+export const formatDateRange = (startDate: string, endDate: string): string => {
+  if (!startDate || !endDate) return '';
+  
+  try {
+    // Parse dates in local timezone to avoid timezone issues
+    const start = new Date(startDate + 'T00:00:00');
+    const end = new Date(endDate + 'T00:00:00');
+    
+    if (!isValid(start) || !isValid(end)) return '';
+    
+    const startFormatted = format(start, 'MMM d, yyyy');
+    const endFormatted = format(end, 'MMM d, yyyy');
+    
+    if (startDate === endDate) {
+      return startFormatted;
+    }
+    
+    return `${startFormatted} - ${endFormatted}`;
+  } catch (error) {
+    console.error('Error formatting date range:', error);
+    return '';
+  }
+};

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'macros.html' import format_appointment_date, get_date_label %}
 
 {% block title %}Rescheduled Appointment with Gurudev{% endblock %}
 
@@ -14,8 +15,7 @@
     has been rescheduled. Please find the updated details below:</p>
     
     <p>
-        <strong>Date:</strong> {% if appointment.appointment_date %}{{ appointment.appointment_date }}{% else %}To be determined{% endif %}<br>
-        <strong>Time:</strong> {% if appointment.appointment_time %}{{ appointment.appointment_time }}{% else %}To be determined{% endif %}<br>
+        <strong>{{ get_date_label(appointment) }}:</strong> {{ format_appointment_date(appointment) }}<br>
         <strong>Appointment Requested For:</strong>
         {% for app_dignitary in appointment.appointment_dignitaries %}
             {% set dignitary = app_dignitary.dignitary %}

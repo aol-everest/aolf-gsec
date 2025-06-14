@@ -37,8 +37,8 @@ All templates extend from `base.html`, which provides the common layout and styl
    - Context variables: `user_name`, `appointment`
 
 7. **macros.html**
-   - ✨ **New**: Reusable macros for attendee handling
-   - Contains `render_attendees()` and `attendee_count()` macros
+   - ✨ **New**: Reusable macros for attendee handling and date formatting
+   - Contains `render_attendees()`, `attendee_count()`, `format_appointment_date()`, and `get_date_label()` macros
 
 8. **generic_notification.html**
    - Generic template for miscellaneous notifications
@@ -48,12 +48,38 @@ All templates extend from `base.html`, which provides the common layout and styl
 
 All appointment templates now support both **dignitaries** and **contacts** as attendees. Use the macros from `macros.html`:
 
+## 🆕 Date Range Support
+
+All appointment templates now support both **single dates** (for dignitary appointments) and **date ranges** (for non-dignitary appointments). Use the date formatting macros from `macros.html`:
+
 ### Import Macros
 ```jinja2
-{% from 'macros.html' import render_attendees, attendee_count %}
+{% from 'macros.html' import render_attendees, attendee_count, format_appointment_date, get_date_label %}
 ```
 
-### Available Macros
+### Available Date Macros
+
+#### `format_appointment_date(appointment, include_time=true)`
+Intelligently formats appointment dates based on available data:
+
+```jinja2
+{{ format_appointment_date(appointment) }}
+<!-- For confirmed appointments: "2024-01-15 10:00 AM" -->
+<!-- For date ranges: "2024-01-15 - 2024-01-20 (Morning)" -->
+<!-- For single preferred dates: "2024-01-15 Morning" -->
+<!-- For no dates: "To be determined" -->
+```
+
+#### `get_date_label(appointment)`
+Returns appropriate label for the date field:
+
+```jinja2
+<strong>{{ get_date_label(appointment) }}:</strong> {{ format_appointment_date(appointment) }}
+<!-- Outputs: "Confirmed Date & Time: 2024-01-15 10:00 AM" -->
+<!-- Or: "Requested Date Range: 2024-01-15 - 2024-01-20 (Morning)" -->
+```
+
+### Available Attendee Macros
 
 #### `attendee_count(appointment)`
 Returns the total number of attendees (dignitaries + contacts).
