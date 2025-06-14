@@ -491,8 +491,8 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
       <TableContainer 
         component={Paper} 
         sx={{ 
-          borderRadius: '12px',
-          border: '1px solid #f7f7f7',
+          borderRadius: 2,
+          border: '1px solid rgba(56, 56, 56, 0.1)',
           boxShadow: '0px 12px 16px -4px rgba(81, 77, 74, 0.08), 0px -1px 6px -2px rgba(81, 77, 74, 0.03)',
           width: '100%',
           overflow: 'hidden', // Remove horizontal scroll

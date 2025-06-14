@@ -1730,7 +1730,8 @@ const AdminAppointmentTiles: React.FC = () => {
             position: 'relative',
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center'
+            // alignItems: 'center'
+            alignItems: 'flex-start',
           }}>
             {isLoading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
@@ -1784,7 +1785,7 @@ const AdminAppointmentTiles: React.FC = () => {
                 </Box>
               ) : selectedAppointment ? (
                 /* Card View - Show single appointment card */
-                <Box sx={{ width: '100%', maxWidth: '900px' }}>
+                <Box sx={{ width: '100%', maxWidth: '1000px' }}>
                   <AppointmentCard 
                     appointment={selectedAppointment} 
                     showCloseButton={true}
