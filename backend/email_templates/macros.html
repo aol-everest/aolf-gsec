@@ -18,13 +18,15 @@
     {% if appointment.appointment_contacts %}
         {% for app_contact in appointment.appointment_contacts %}
             {% set contact = app_contact.contact %}
-            {% if contact.relationship_to_owner == "Self" or (contact.first_name == "Self" and contact.last_name == "Self") %}
+            {% if contact.relationship_to_owner | lower == "self" %}
                 {% set attendee_name = "Self" %}
             {% else %}
                 {% set attendee_name = contact.first_name + " " + contact.last_name %}
             {% endif %}
-            {% set relationship = contact.relationship_to_owner %}
-            {% set _ = attendees.append({'name': attendee_name.strip(), 'type': 'contact', 'relationship': relationship}) %}
+            {% if contact.relationship_to_owner | lower != "self" %}
+                {% set relationship = contact.relationship_to_owner %}
+                {% set _ = attendees.append({'name': attendee_name.strip(), 'type': 'contact', 'relationship': relationship}) %}
+            {% endif %}
         {% endfor %}
     {% endif %}
     
