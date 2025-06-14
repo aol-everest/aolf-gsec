@@ -114,24 +114,25 @@ const getDateTimeDisplay = (appointment: Appointment, statusMap: StatusMap) => {
 
   if (shouldShowAppointmentDate && appointment.appointment_date) {
     // Show appointment date/time with checkmark
+    // console.log(appointment.id, 'appointment.appointment_date', appointment.appointment_date);
     date = formatDate(appointment.appointment_date, false);
     time = appointment.appointment_time || '';
     isAppointmentDate = true;
-      } else {
-      // Show date range if available, otherwise single date
-      if (appointment.preferred_start_date && appointment.preferred_end_date) {
-        date = formatDateRange(appointment.preferred_start_date, appointment.preferred_end_date);
-        time = appointment.preferred_time_of_day || '';
-      } else if (appointment.preferred_date) {
-        date = formatDate(appointment.preferred_date, false);
-        time = appointment.preferred_time_of_day || '';
-      } else {
-        // Fall back to created_at if no preferred date is available
-        date = formatDate(appointment.created_at || '', false);
-        time = '';
-      }
-      isAppointmentDate = false;
+  } else {
+    // Show date range if available, otherwise single date
+    if (appointment.preferred_start_date && appointment.preferred_end_date) {
+      date = formatDateRange(appointment.preferred_start_date, appointment.preferred_end_date);
+      time = appointment.preferred_time_of_day || '';
+    } else if (appointment.preferred_date) {
+      date = formatDate(appointment.preferred_date, false);
+      time = appointment.preferred_time_of_day || '';
+    } else {
+      // Fall back to created_at if no preferred date is available
+      date = formatDate(appointment.created_at || '', false);
+      time = '';
     }
+    isAppointmentDate = false;
+  }
 
   return { date, time, isAppointmentDate };
 };

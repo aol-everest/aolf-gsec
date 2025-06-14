@@ -57,10 +57,12 @@ export const parseUTCDate = (dateStr: string): Date => {
     // Handle specific date formats
     if (/^\d{4}-\d{2}-\d{2}$/.test(safeDateStr)) {
       // If date is in YYYY-MM-DD format, add time component
-      safeDateStr += 'T00:00:00.000Z';
+      // safeDateStr += 'T00:00:00.000Z';
+      safeDateStr += 'T00:00:00.000';
     } else if (!/([Zz]|[+-]\d{2}:\d{2})$/.test(safeDateStr)) {
       // If there's no explicit timezone, assume UTC
-      safeDateStr += 'Z';
+      // safeDateStr += 'Z';
+      safeDateStr += '';
     }
     
     // Try parsing with date-fns first (best cross-platform compatibility)
@@ -82,11 +84,15 @@ export const parseUTCDate = (dateStr: string): Date => {
 };
 
 export const formatDate = (dateStr?: string, showTime = true): string => {
+  // console.log('formatDate', dateStr, showTime);
   if (!dateStr) return '';
   try {
     const date = parseUTCDate(dateStr);
+    // console.log('date', date);
     if (!isValid(date)) return ''; // Return empty string for invalid dates
-    return date.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: showTime ? 'short' : undefined });
+    const formattedDate = date.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: showTime ? 'short' : undefined });
+    // console.log('formattedDate', formattedDate);
+    return formattedDate;
   } catch (error) {
     console.error('Error formatting date:', error);
     return '';
