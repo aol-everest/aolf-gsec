@@ -1934,13 +1934,13 @@ const AdminAppointmentTiles: React.FC = () => {
         aria-labelledby="calendar-event-selection-dialog-title"
       >
         <DialogTitle id="calendar-event-selection-dialog-title">
-          Select Calendar Event for Approval
+          Select Appointment for Approval
         </DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 1 }}>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Approving {calendarEventSelectionDialog.appointmentIds.length} appointment
-              {calendarEventSelectionDialog.appointmentIds.length === 1 ? '' : 's'}. Please select a darshan event to schedule them.
+              Approving {calendarEventSelectionDialog.appointmentIds.length} appointment request
+              {calendarEventSelectionDialog.appointmentIds.length === 1 ? '' : 's'}. Please select a darshan appointment to schedule them.
             </Typography>
             
             {/* Date Navigation */}
@@ -2055,7 +2055,7 @@ const AdminAppointmentTiles: React.FC = () => {
                     }}
                   >
                     <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
-                      ⚠️ Date Range Warning
+                      Warning: Selected date does not match preferred date
                     </Typography>
                     <Typography variant="body2" sx={{ mb: 1 }}>
                       {warnings.totalOutsideRange || 0} of {warnings.totalAppointments} selected appointment{warnings.totalAppointments === 1 ? '' : 's'} 
