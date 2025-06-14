@@ -43,8 +43,7 @@ import { useSnackbar } from 'notistack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../hooks/useApi';
 import Layout from '../components/Layout';
-import GenericDataGrid from '../components/GenericDataGrid';
-import { GridColDef, GridActionsCellItem } from '@mui/x-data-grid';
+import LocationTable from '../components/LocationTable';
 import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
 import { PencilIconV2, TrashIconV2, DownloadIconV2 } from '../components/iconsv2';
@@ -1007,131 +1006,13 @@ export default function AdminLocationsManage() {
     }
   };
 
-  const columns: GridColDef[] = [
-    { 
-      field: 'name',
-      headerName: 'Name',
-      width: 150,
-      flex: 1.3,
-    },
-    { 
-      field: 'street_address',
-      headerName: 'Address',
-      width: 200,
-      flex: 1.5,
-    },
-    { 
-      field: 'city',
-      headerName: 'City',
-      width: 120,
-      flex: 0.5,
-    },
-    { 
-      field: 'state',
-      headerName: 'State',
-      width: 120,
-      flex: 0.5,
-    },
-    { 
-      field: 'country',
-      headerName: 'Country',
-      width: 120,
-      flex: 0.5,
-    },
-    { 
-      field: 'timezone',
-      headerName: 'Timezone',
-      width: 150,
-      flex: 0.7,
-    },
-    {
-      field: 'is_active',
-      headerName: 'Status',
-      width: 100,
-      flex: 0.4,
-      renderCell: (params) => (
-        <Typography 
-          variant="body2" 
-          sx={{ 
-            color: params.row.is_active ? 'success.main' : 'error.main',
-            fontWeight: 'medium'
-          }}
-        >
-          {params.row.is_active ? 'Active' : 'Inactive'}
-        </Typography>
-      )
-    },
-    {
-      field: 'created_by_name',
-      headerName: 'Created By',
-      width: 150,
-      flex: 0.8,
-      renderCell: (params) => params.row.created_by_user 
-        ? `${params.row.created_by_user.first_name} ${params.row.created_by_user.last_name}`
-        : 'System'
-    },
-    {
-      field: 'updated_by_name',
-      headerName: 'Updated By',
-      width: 150,
-      flex: 0.8,
-      renderCell: (params) => params.row.updated_by_user 
-        ? `${params.row.updated_by_user.first_name} ${params.row.updated_by_user.last_name}`
-        : '-'
-    },
-    {
-      field: 'attachment',
-      headerName: 'Attachment',
-      width: 120,
-      flex: 0.5,
-      renderCell: (params) => {
-        if (!params.row.attachment_path) return null;
-        
-        const isImage = params.row.attachment_file_type?.startsWith('image/');
-        
-        // Use the new public endpoint for accessing attachments
-        const attachmentUrl = `${api.defaults.baseURL}/locations/${params.row.id}/attachment`;
-        
-        // For thumbnails, use the thumbnail endpoint
-        const thumbnailUrl = `${api.defaults.baseURL}/locations/${params.row.id}/thumbnail`;
-        
-        return (
-          <Link 
-            href={attachmentUrl} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            sx={{ display: 'flex', alignItems: 'center' }}
-          >
-            {isImage ? (
-              <img 
-                src={thumbnailUrl} 
-                alt={params.row.attachment_name}
-                style={{ width: 24, height: 24, marginRight: 4, objectFit: 'cover' }}
-              />
-            ) : (
-              <AttachFileIcon />
-            )}
-            <Typography variant="caption" sx={{ ml: 0.5 }}>
-              {params.row.attachment_name?.split('.').pop()?.toUpperCase()}
-            </Typography>
-          </Link>
-        );
-      }
-    },
-    {
-      field: 'actions',
-      type: 'actions',
-      headerName: 'Actions',
-      width: 80,
-      getActions: (params) => [
-        <GridActionsCellItem
-          icon={<PencilIconV2 sx={{ width: 20, height: 20 }} />}
-          label="Edit"
-          onClick={() => handleOpen(params.row)}
-        />,
-      ],
-    },
-  ];
+  // Handle location edit
+  const handleEditLocation = (locationId: number) => {
+    const location = locations.find(loc => loc.id === locationId);
+    if (location) {
+      handleOpen(location);
+    }
+  };
 
   // Load countries data for new and existing locations
   useEffect(() => {
@@ -1570,18 +1451,12 @@ export default function AdminLocationsManage() {
             </Card>
           </Collapse>
 
-          {isLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-              <CircularProgress />
-            </Box>
-          ) : (
-            <GenericDataGrid
-              rows={locations}
-              columns={columns}
-              loading={isLoading}
-              defaultVisibleColumns={['name', 'street_address', 'city', 'is_active', 'attachment', 'actions']}
-            />
-          )}
+          <LocationTable
+            locations={locations}
+            onEdit={handleEditLocation}
+            baseUrl={api.defaults.baseURL}
+            loading={isLoading}
+          />
         </Box>
       </Container>
 

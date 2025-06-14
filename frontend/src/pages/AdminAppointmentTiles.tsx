@@ -374,6 +374,18 @@ const AdminAppointmentTiles: React.FC = () => {
     }
   });
 
+  // Fetch sub status options using useEnums hook
+  const { values: subStatusOptions = [], isLoading: isLoadingSubStatusOptions } = useEnums('appointmentSubStatus');
+
+  // Fetch sub status map for consistent sub status checking
+  const { data: subStatusMap } = useQuery<Record<string, string>>({
+    queryKey: ['sub-status-map'],
+    queryFn: async () => {
+      const { data } = await api.get<Record<string, string>>('/appointments/sub-status-options-map');
+      return data;
+    }
+  });
+
   // Fetch event type map from the API
   const { data: requestTypeMap = {} } = useQuery<Record<string, string>>({
     queryKey: ['request-type-map'],
@@ -1791,6 +1803,7 @@ const AdminAppointmentTiles: React.FC = () => {
                     selectedRows={selectedAppointmentIds}
                     onRowSelectionChange={handleRowSelectionChange}
                     statusMap={statusMap}
+                    subStatusMap={subStatusMap}
                     relationshipTypeMap={relationshipTypeMap}
                     showAttendeeCount={true}
                     enableRowSelection={true}
@@ -2022,7 +2035,8 @@ const AdminAppointmentTiles: React.FC = () => {
                           onAppointmentCompletion={() => {}} // Disabled in selection mode
                           isAppointmentInPast={() => false} // Not relevant in selection mode
                           convertAppointmentSummaryToAppointment={convertAppointmentSummaryToAppointment}
-                          statusMap={{}}
+                          statusMap={statusMap}
+                          subStatusMap={subStatusMap}
                           isSelectable={true}
                           isSelected={isSelected}
                         />

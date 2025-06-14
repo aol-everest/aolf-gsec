@@ -1,39 +1,12 @@
-import React, { useMemo, useState } from 'react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Typography,
-  Box,
-  IconButton,
-  useTheme,
-  Checkbox,
-  Chip
-} from '@mui/material';
-import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  getFilteredRowModel,
-  flexRender,
-  createColumnHelper,
-  SortingState,
-  FilterFn,
-  RowSelectionState,
-  ColumnDef
-} from '@tanstack/react-table';
-import { Appointment, AppointmentDignitary, AppointmentContact, StatusMap } from '../models/types';
+import React, { useMemo } from 'react';
+import { Typography, Box } from '@mui/material';
+import { createColumnHelper, ColumnDef, FilterFn } from '@tanstack/react-table';
+import { Appointment, AppointmentDignitary, AppointmentContact, StatusMap, SubStatusMap } from '../models/types';
 import { formatDate, formatDateRange } from '../utils/dateUtils';
 import { formatHonorificTitle } from '../utils/formattingUtils';
 import { AppointmentStatusChip } from './AppointmentStatusChip';
 import { EditIconV2, CheckCircleIconV2 } from './iconsv2';
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
-import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
-import { debugLog, createDebugLogger } from '../utils/debugUtils';
+import { GenericTable, TableCellComponents, standardColumnSizes } from './GenericTable';
 
 interface AppointmentTableProps {
   appointments: Appointment[];
@@ -42,17 +15,17 @@ interface AppointmentTableProps {
   selectedRows?: number[];
   onRowSelectionChange?: (selectedIds: number[]) => void;
   statusMap?: StatusMap;
+  subStatusMap?: SubStatusMap;
   relationshipTypeMap?: Record<string, string>;
   showAttendeeCount?: boolean;
-  customColumns?: ColumnDef<Appointment, any>[];
   enableRowSelection?: boolean;
 }
 
-// Create a column helper for type safety
-const columnHelper = createColumnHelper<Appointment>();
+// Create a column helper for appointments
+const appointmentColumnHelper = createColumnHelper<Appointment>();
 
-// Custom filter function for searching across all fields
-const createGlobalFilterFn = (relationshipTypeMap: Record<string, string> = {}): FilterFn<Appointment> => 
+// Custom filter function for appointments
+const createAppointmentGlobalFilter = (relationshipTypeMap: Record<string, string> = {}): FilterFn<Appointment> => 
   (row, columnId, value, addMeta) => {
     const appointment = row.original;
     const searchValue = String(value).toLowerCase();
@@ -124,11 +97,16 @@ const getAttendeeCount = (appointment: Appointment) => {
 };
 
 // Helper function to determine which date/time to show and if appointment date should be marked
-const getDateTimeDisplay = (appointment: Appointment, statusMap: StatusMap) => {
+const getDateTimeDisplay = (appointment: Appointment, statusMap: StatusMap, subStatusMap: SubStatusMap) => {
   // Check if appointment is to be rescheduled, approved, or completed
-  const shouldShowAppointmentDate = appointment.status === statusMap['APPROVED'] || 
-                                   appointment.status === statusMap['COMPLETED'] ||
-                                   (appointment.status === statusMap['APPROVED'] && appointment.sub_status === 'NEED_RESCHEDULE');
+  const shouldShowAppointmentDate = (
+    appointment.status === statusMap['APPROVED'] || 
+    appointment.status === statusMap['COMPLETED'] ||
+    (
+      appointment.status === statusMap['APPROVED'] && 
+      appointment.sub_status === subStatusMap['NEED_RESCHEDULE']
+    )
+  );
 
   let date, time, isAppointmentDate = false;
 
@@ -156,86 +134,39 @@ const getDateTimeDisplay = (appointment: Appointment, statusMap: StatusMap) => {
   return { date, time, isAppointmentDate };
 };
 
-// Default column factory function
-const createDefaultColumns = (
+// Create appointment-specific columns
+const createAppointmentColumns = (
   onEdit: (appointmentId: number) => void,
   statusMap: StatusMap = {},
+  subStatusMap: SubStatusMap = {},
   relationshipTypeMap: Record<string, string> = {},
-  showAttendeeCount: boolean = false,
-  enableRowSelection: boolean = true
+  showAttendeeCount: boolean = false
 ): ColumnDef<Appointment, any>[] => {
   const columns: ColumnDef<Appointment, any>[] = [];
 
-  // Checkbox column for multi-select
-  if (enableRowSelection) {
-    columns.push(
-      columnHelper.display({
-        id: 'select',
-        header: ({ table }) => (
-          <Checkbox
-            checked={table.getIsAllRowsSelected()}
-            indeterminate={table.getIsSomeRowsSelected()}
-            onChange={table.getToggleAllRowsSelectedHandler()}
-            onClick={(e) => e.stopPropagation()}
-            size="small"
-          />
-        ),
-        cell: ({ row }) => (
-          <Checkbox
-            checked={row.getIsSelected()}
-            disabled={!row.getCanSelect()}
-            indeterminate={row.getIsSomeSelected()}
-            onChange={row.getToggleSelectedHandler()}
-            onClick={(e) => e.stopPropagation()}
-            size="small"
-          />
-        ),
-        size: 50,
-        minSize: 50,
-        maxSize: 50,
-        enableSorting: false,
-      })
-    );
-  }
-
   // ID column
   columns.push(
-    columnHelper.accessor('id', {
+    appointmentColumnHelper.accessor('id', {
       id: 'id',
       header: 'ID',
       cell: (info) => (
-        <Typography sx={{
-          fontSize: '14px',
-          color: '#31364e',
-          fontWeight: 500,
-          fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
-        }}>
+        <TableCellComponents.PrimaryText>
           #{info.getValue()}
-        </Typography>
+        </TableCellComponents.PrimaryText>
       ),
-      size: 50,
-      minSize: 40,
-      maxSize: 100,
+      ...standardColumnSizes.id,
     })
   );
 
   // Attendees column
   columns.push(
-    columnHelper.accessor((row) => getAttendeesInfo(row, relationshipTypeMap), {
+    appointmentColumnHelper.accessor((row) => getAttendeesInfo(row, relationshipTypeMap), {
       id: 'dignitary',
       header: 'Attendees',
       cell: (info) => (
-        <Typography 
-          variant="body2" 
-          sx={{ 
-            fontSize: '14px',
-            color: '#6f7283',
-            fontWeight: 400,
-            fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
-          }}
-        >
+        <TableCellComponents.SecondaryText>
           {info.getValue()}
-        </Typography>
+        </TableCellComponents.SecondaryText>
       ),
       size: 180,
       minSize: 180,
@@ -246,19 +177,13 @@ const createDefaultColumns = (
   // Attendee count column (optional)
   if (showAttendeeCount) {
     columns.push(
-      columnHelper.accessor((row) => getAttendeeCount(row), {
+      appointmentColumnHelper.accessor((row) => getAttendeeCount(row), {
         id: 'attendee_count',
         header: 'Count',
         cell: (info) => (
-          <Typography sx={{
-            fontSize: '14px',
-            color: '#6f7283',
-            fontWeight: 500,
-            fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
-            textAlign: 'center',
-          }}>
+          <TableCellComponents.SecondaryText sx={{ textAlign: 'center', fontWeight: 500 }}>
             {info.getValue()}
-          </Typography>
+          </TableCellComponents.SecondaryText>
         ),
         size: 60,
         minSize: 60,
@@ -269,7 +194,7 @@ const createDefaultColumns = (
 
   // Combined Date & Time column
   columns.push(
-    columnHelper.accessor((row) => getDateTimeDisplay(row, statusMap), {
+    appointmentColumnHelper.accessor((row) => getDateTimeDisplay(row, statusMap, subStatusMap), {
       id: 'date_time',
       header: 'Date & Time',
       cell: (info) => {
@@ -277,26 +202,13 @@ const createDefaultColumns = (
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'space-between' }}>
             <Box>
-              <Typography sx={{ 
-                fontSize: '14px',
-                color: '#6f7283',
-                fontWeight: 400,
-                fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
-                lineHeight: 1,
-              }}>
+              <TableCellComponents.SecondaryText sx={{ lineHeight: 1 }}>
                 {date}
-              </Typography>
+              </TableCellComponents.SecondaryText>
               {time && (
-                <Typography sx={{ 
-                  fontSize: '14px',
-                  color: '#6f7283',
-                  fontWeight: 400,
-                  fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
-                  lineHeight: 1,
-                  mt: '8px',
-                }}>
+                <TableCellComponents.SecondaryText sx={{ lineHeight: 1, mt: '8px' }}>
                   {time}
-                </Typography>
+                </TableCellComponents.SecondaryText>
               )}
             </Box>
             {isAppointmentDate && (
@@ -317,20 +229,16 @@ const createDefaultColumns = (
 
   // Location column
   columns.push(
-    columnHelper.accessor((row) => row.location?.name || 'N/A', {
+    appointmentColumnHelper.accessor((row) => row.location?.name || 'N/A', {
       id: 'location',
       header: 'Location',
       cell: (info) => (
-        <Typography sx={{
-          fontSize: '14px',
-          color: '#6f7283',
-          fontWeight: 400,
-          fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
+        <TableCellComponents.SecondaryText sx={{
           overflow: 'hidden',
           textOverflow: 'ellipsis',
         }}>
           {info.getValue()}
-        </Typography>
+        </TableCellComponents.SecondaryText>
       ),
       size: 120,
       minSize: 120,
@@ -340,7 +248,7 @@ const createDefaultColumns = (
 
   // Status column
   columns.push(
-    columnHelper.accessor('status', {
+    appointmentColumnHelper.accessor('status', {
       id: 'status',
       header: 'Status',
       cell: (info) => (
@@ -354,20 +262,15 @@ const createDefaultColumns = (
 
   // Requested column (when the appointment was requested)
   columns.push(
-    columnHelper.accessor('created_at', {
+    appointmentColumnHelper.accessor('created_at', {
       id: 'requested',
       header: 'Requested',
       cell: (info) => {
         const createdAt = info.getValue();
         return (
-          <Typography sx={{
-            fontSize: '14px',
-            color: '#6f7283',
-            fontWeight: 400,
-            fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
-          }}>
+          <TableCellComponents.SecondaryText>
             {createdAt ? formatDate(createdAt, false) : '-'}
-          </Typography>
+          </TableCellComponents.SecondaryText>
         );
       },
       size: 108,
@@ -378,29 +281,18 @@ const createDefaultColumns = (
 
   // Actions column
   columns.push(
-    columnHelper.display({
+    appointmentColumnHelper.display({
       id: 'actions',
       header: '',
       cell: (info) => (
-        <IconButton 
-          size="small"
-          onClick={(e) => {
+        <TableCellComponents.ActionButton
+          onClick={(e: React.MouseEvent) => {
             e.stopPropagation();
             onEdit(info.row.original.id);
           }}
-          sx={{ 
-            borderRadius: '12px',
-            border: '1px solid #e9e9e9',
-            width: 40,
-            height: 40,
-            backgroundColor: '#f7f7f7',
-            '&:hover': {
-              backgroundColor: 'rgba(0,0,0,0.08)',
-            }
-          }}
         >
           <EditIconV2 sx={{ width: 20, height: 20 }} />
-        </IconButton>
+        </TableCellComponents.ActionButton>
       ),
       size: 56,
       minSize: 56,
@@ -419,239 +311,50 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
   selectedRows = [],
   onRowSelectionChange,
   statusMap = {},
+  subStatusMap = {},
   relationshipTypeMap = {},
   showAttendeeCount = false,
-  customColumns,
   enableRowSelection = true
 }) => {
-  const logger = createDebugLogger('AppointmentTable');
-  const theme = useTheme();
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-
-  // Update row selection when selectedRows prop changes
-  React.useEffect(() => {
-    logger('📋 [TABLE DEBUG] selectedRows prop changed:', {
-      selectedRows,
-      count: selectedRows.length,
-      appointmentCount: appointments.length
-    });
-    
-    const newRowSelection: RowSelectionState = {};
-    selectedRows.forEach(id => {
-      // Since getRowId uses appointment ID, we use the ID directly as the key
-      const appointmentExists = appointments.some(apt => apt.id === id);
-      logger(`📋 [TABLE DEBUG] Looking for appointment ID ${id} exists: ${appointmentExists}`);
-      if (appointmentExists) {
-        newRowSelection[id.toString()] = true;
-      }
-    });
-    
-    logger('📋 [TABLE DEBUG] Setting new row selection:', newRowSelection);
-    setRowSelection(newRowSelection);
-  }, [selectedRows, appointments]);
-
-  // Handle row selection change
-  const handleRowSelectionChange = (updater: any) => {
-    logger('📋 [TABLE DEBUG] handleRowSelectionChange called with:', {
-      updaterType: typeof updater,
-      currentRowSelection: rowSelection,
-      appointmentCount: appointments.length
-    });
-    
-    const newSelection = typeof updater === 'function' ? updater(rowSelection) : updater;
-    
-    logger('📋 [TABLE DEBUG] New selection computed:', {
-      newSelection,
-      selectedRowKeys: Object.keys(newSelection).filter(key => newSelection[key]),
-      totalSelected: Object.keys(newSelection).filter(key => newSelection[key]).length
-    });
-    
-    setRowSelection(newSelection);
-    
-    if (onRowSelectionChange) {
-      const selectedIds = Object.keys(newSelection)
-        .filter(key => newSelection[key])
-        .map(key => {
-          // Since getRowId returns row.id.toString(), the key IS the appointment ID
-          const appointmentId = parseInt(key);
-          logger(`📋 [TABLE DEBUG] Selection key ${key} is appointment ID: ${appointmentId}`);
-          return appointmentId;
-        })
-        .filter(Boolean);
-      
-      logger('📋 [TABLE DEBUG] Final selectedIds:', selectedIds);
-      onRowSelectionChange(selectedIds);
-    }
-  };
-
-  // Define columns using custom columns or default ones
+  // Create appointment-specific columns
   const columns = useMemo(
-    () => customColumns || createDefaultColumns(onEdit, statusMap, relationshipTypeMap, showAttendeeCount, enableRowSelection),
-    [customColumns, onEdit, statusMap, relationshipTypeMap, showAttendeeCount, enableRowSelection]
+    () => createAppointmentColumns(onEdit, statusMap, subStatusMap, relationshipTypeMap, showAttendeeCount),
+    [onEdit, statusMap, subStatusMap, relationshipTypeMap, showAttendeeCount]
   );
 
-  // Create the global filter function with the relationship type map
+  // Create appointment-specific global filter
   const globalFilterFn = useMemo(
-    () => createGlobalFilterFn(relationshipTypeMap),
+    () => createAppointmentGlobalFilter(relationshipTypeMap),
     [relationshipTypeMap]
   );
 
-  // Create table instance
-  const table = useReactTable({
-    data: appointments,
-    columns,
-    state: {
-      sorting,
-      rowSelection,
-    },
-    enableRowSelection,
-    onRowSelectionChange: enableRowSelection ? handleRowSelectionChange : undefined,
-    onSortingChange: setSorting,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    globalFilterFn,
-    getRowId: (row) => row.id.toString(),
-    debugTable: false,
-    meta: {
-      relationshipTypeMap,
-    },
-  });
-
-  if (appointments.length === 0) {
-    return (
-      <Paper sx={{ p: 3, textAlign: 'center' }}>
-        <Typography>No appointments found for the selected filters.</Typography>
-      </Paper>
-    );
-  }
-
-  const selectedCount = Object.keys(rowSelection).filter(key => rowSelection[key]).length;
+  // Convert selectedRows to the format expected by GenericTable
+  const handleRowSelectionChange = (selectedIds: (string | number)[]) => {
+    if (onRowSelectionChange) {
+      // Convert back to numbers for appointment IDs
+      const numericIds = selectedIds.map(id => typeof id === 'number' ? id : parseInt(String(id), 10)).filter(id => !isNaN(id));
+      onRowSelectionChange(numericIds);
+    }
+  };
 
   return (
-    <Box sx={{ width: '100%' }}>
-      {/* Selection info */}
-      {enableRowSelection && selectedCount > 0 && (
-        <Box sx={{ 
-          mb: 1, 
-          p: 2, 
-          backgroundColor: 'rgba(255, 255, 255, 0.81)',
-          border: '1px solid rgba(56, 56, 56, 0.1)',
-          borderRadius: 2,
-        }}>
-          <Typography variant="body2" color="primary.dark">
-            {selectedCount} appointment{selectedCount === 1 ? '' : 's'} selected
-          </Typography>
-        </Box>
-      )}
-
-      <TableContainer 
-        component={Paper} 
-        sx={{ 
-          borderRadius: 2,
-          border: '1px solid rgba(56, 56, 56, 0.1)',
-          boxShadow: '0px 12px 16px -4px rgba(81, 77, 74, 0.08), 0px -1px 6px -2px rgba(81, 77, 74, 0.03)',
-          width: '100%',
-          overflow: 'hidden', // Remove horizontal scroll
-          backgroundColor: '#fff',
-        }}
-      >
-        <Table 
-          stickyHeader 
-          aria-label="appointments table"
-          sx={{ 
-            width: '100%',
-            tableLayout: 'fixed', // Critical: enforce column widths
-          }}
-        >
-          <TableHead>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableCell
-                    key={header.id}
-                    sx={{ 
-                      width: header.column.columnDef.size,
-                      minWidth: header.column.columnDef.minSize,
-                      maxWidth: header.column.columnDef.maxSize,
-                      padding: '12px 16px',
-                      fontSize: '12px',
-                      color: '#6f7283',
-                      fontWeight: 500,
-                      fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
-                      backgroundColor: '#f7f7f7',
-                      borderBottom: '1px solid #e9e9e9',
-                      cursor: header.column.getCanSort() ? 'pointer' : 'default',
-                      userSelect: 'none',
-                      '&:hover': header.column.getCanSort() ? {
-                        backgroundColor: 'rgba(0, 0, 0, 0.04)'
-                      } : {}
-                    }}
-                    onClick={header.column.getToggleSortingHandler()}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      {flexRender(header.column.columnDef.header, header.getContext())}
-                      {header.column.getCanSort() && (
-                        <Box sx={{ display: 'flex', flexDirection: 'column', opacity: 0.5 }}>
-                          {header.column.getIsSorted() === 'asc' ? (
-                            <ArrowUpwardIcon sx={{ fontSize: 16 }} />
-                          ) : header.column.getIsSorted() === 'desc' ? (
-                            <ArrowDownwardIcon sx={{ fontSize: 16 }} />
-                          ) : (
-                            <>
-                              <ArrowUpwardIcon sx={{ fontSize: 12, marginBottom: '-2px' }} />
-                              <ArrowDownwardIcon sx={{ fontSize: 12, marginTop: '-2px' }} />
-                            </>
-                          )}
-                        </Box>
-                      )}
-                    </Box>
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableHead>
-          <TableBody>
-            {table.getRowModel().rows.map((row) => (
-              <TableRow 
-                key={row.id}
-                hover 
-                onClick={() => onRowClick(row.original)}
-                sx={{ 
-                  cursor: 'pointer',
-                  '&:hover': {
-                    backgroundColor: theme.palette.action.hover,
-                  },
-                  '&:last-child td': {
-                    borderBottom: 'none',
-                  },
-                  backgroundColor: row.getIsSelected() ? theme.palette.action.selected : 'inherit',
-                }}
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell 
-                    key={cell.id}
-                    sx={{
-                      width: cell.column.columnDef.size,
-                      minWidth: cell.column.columnDef.minSize,
-                      maxWidth: cell.column.columnDef.maxSize,
-                      padding: '16px',
-                      borderBottom: '1px solid #e9e9e9',
-                      minHeight: '72px',
-                      height: '72px',
-                      verticalAlign: 'middle',
-                    }}
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    </Box>
+    <GenericTable
+      data={appointments}
+      columns={columns}
+      onRowClick={onRowClick}
+      selectedRows={selectedRows}
+      onRowSelectionChange={handleRowSelectionChange}
+      enableRowSelection={enableRowSelection}
+      globalFilterFn={globalFilterFn}
+      getRowId={(row) => row.id.toString()}
+      emptyMessage="No appointments found for the selected filters."
+      selectionMessage={`${selectedRows.length} appointment${selectedRows.length === 1 ? '' : 's'} selected`}
+      tableProps={{
+        stickyHeader: true,
+        size: 'medium',
+        padding: 'normal'
+      }}
+    />
   );
 };
 

@@ -35,6 +35,7 @@ interface CalendarEventScheduleCardProps {
   isAppointmentInPast: (appointment: Appointment) => boolean;
   convertAppointmentSummaryToAppointment: (summary: any, event: CalendarEventWithAppointments) => Appointment;
   statusMap: any;
+  subStatusMap?: any;
   // Selection props
   isSelectable?: boolean;
   isSelected?: boolean;
@@ -51,6 +52,7 @@ const CalendarEventScheduleCard: React.FC<CalendarEventScheduleCardProps> = ({
   isAppointmentInPast,
   convertAppointmentSummaryToAppointment,
   statusMap,
+  subStatusMap,
   // Selection props with defaults
   isSelectable = false,
   isSelected = false,
