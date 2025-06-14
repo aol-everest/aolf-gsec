@@ -37,9 +37,7 @@ import {
   ListItem,
   ListItemButton,
   ListItemText,
-  Radio,
-  RadioGroup,
-  FormControlLabel,
+
   Alert,
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -78,6 +76,7 @@ import { StatusActionButton } from '../components/StatusActionButton';
 import { Appointment, AppointmentDignitary, CalendarEventWithAppointments, AppointmentSummary, EventTypeMap } from '../models/types';
 import { AppointmentCard } from '../components/AppointmentCard';
 import AppointmentTable from '../components/AppointmentTable';
+import { SelectableList, SelectableListItem } from '../components/SelectableList';
 
 // Request type configuration interface
 interface RequestTypeConfig {
@@ -1990,30 +1989,50 @@ const AdminAppointmentTiles: React.FC = () => {
                   </Typography>
                 </Paper>
               ) : (
-                <RadioGroup
-                  value={calendarEventSelectionDialog.selectedCalendarEventId?.toString() || ''}
-                  onChange={(e) => {
-                    setCalendarEventSelectionDialog(prev => ({
-                      ...prev,
-                      selectedCalendarEventId: parseInt(e.target.value, 10)
-                    }));
-                  }}
-                >
-                  <List sx={{ maxHeight: 300, overflow: 'auto' }}>
-                    {calendarEventsForDate.map((event) => (
+                <List sx={{ maxHeight: 300, overflow: 'auto' }}>
+                  {calendarEventsForDate.map((event) => {
+                    const isSelected = calendarEventSelectionDialog.selectedCalendarEventId === event.id;
+                    
+                    return (
                       <ListItem key={event.id} disablePadding>
-                        <ListItemButton onClick={() => {
-                          setCalendarEventSelectionDialog(prev => ({
-                            ...prev,
-                            selectedCalendarEventId: event.id
-                          }));
-                        }}>
-                          <Radio
-                            value={event.id.toString()}
-                            size="small"
-                            sx={{ mr: 1 }}
-                          />
-                          <Box sx={{ flexGrow: 1 }}>
+                        <ListItemButton 
+                          onClick={() => {
+                            setCalendarEventSelectionDialog(prev => ({
+                              ...prev,
+                              selectedCalendarEventId: event.id
+                            }));
+                          }}
+                          sx={{
+                            position: 'relative',
+                            borderRadius: 1,
+                            mb: 1,
+                            '&:hover': {
+                              backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                            },
+                            ...(isSelected && {
+                              backgroundColor: 'rgba(218, 165, 32, 0.08)', // Light mustard background
+                              '&:hover': {
+                                backgroundColor: 'rgba(218, 165, 32, 0.12)',
+                              },
+                            }),
+                          }}
+                        >
+                          {/* Mustard yellow selection bar */}
+                          {isSelected && (
+                            <Box
+                              sx={{
+                                position: 'absolute',
+                                left: 0,
+                                top: 0,
+                                bottom: 0,
+                                width: 4,
+                                backgroundColor: '#DAA520', // Mustard yellow
+                                borderRadius: '0 2px 2px 0',
+                              }}
+                            />
+                          )}
+                          
+                          <Box sx={{ flexGrow: 1, pl: isSelected ? 1 : 0 }}>
                             <CalendarEventScheduleCard
                               calendarEvent={event}
                               daysToShow={1}
@@ -2027,9 +2046,9 @@ const AdminAppointmentTiles: React.FC = () => {
                           </Box>
                         </ListItemButton>
                       </ListItem>
-                    ))}
-                  </List>
-                </RadioGroup>
+                    );
+                  })}
+                </List>
               )}
             </Box>
 

@@ -148,14 +148,14 @@ const CalendarEventScheduleCard: React.FC<CalendarEventScheduleCardProps> = ({
         </Grid>
 
         {/* Calendar Event Duration (if significant) */}
-        {calendarEvent.duration && calendarEvent.duration > 15 && (
+        {/* {calendarEvent.duration && calendarEvent.duration > 15 && (
           <GridItemIconText 
             containerRef={cardContainerRef} 
             icon={<ClockSquareCircleIconV2 sx={{ width: 20, height: 20 }} />} 
             text={`${calendarEvent.duration} mins`} 
             theme={theme} 
           />
-        )}
+        )} */}
 
         {/* Calendar Event Location */}
         {calendarEvent.location && (
