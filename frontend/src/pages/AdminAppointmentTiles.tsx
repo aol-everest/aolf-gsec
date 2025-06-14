@@ -393,6 +393,15 @@ const AdminAppointmentTiles: React.FC = () => {
     },
   });
 
+  // Fetch relationship type map from the API
+  const { data: relationshipTypeMap = {} } = useQuery<Record<string, string>>({
+    queryKey: ['relationship-type-map'],
+    queryFn: async () => {
+      const { data } = await api.get<Record<string, string>>('/user-contacts/relationship-type-options-map');
+      return data;
+    },
+  });
+
 
   // Fetch request type configurations from API
   const { data: requestTypeConfigs = [], isLoading: isLoadingRequestTypes } = useQuery<RequestTypeConfig[]>({
@@ -1781,6 +1790,10 @@ const AdminAppointmentTiles: React.FC = () => {
                     }}
                     selectedRows={selectedAppointmentIds}
                     onRowSelectionChange={handleRowSelectionChange}
+                    statusMap={statusMap}
+                    relationshipTypeMap={relationshipTypeMap}
+                    showAttendeeCount={true}
+                    enableRowSelection={true}
                   />
                 </Box>
               ) : selectedAppointment ? (

@@ -23,7 +23,8 @@ import {
   createColumnHelper,
   SortingState,
   FilterFn,
-  RowSelectionState
+  RowSelectionState,
+  ColumnDef
 } from '@tanstack/react-table';
 import { Appointment, AppointmentDignitary, AppointmentContact, StatusMap } from '../models/types';
 import { formatDate, formatDateRange } from '../utils/dateUtils';
@@ -32,8 +33,6 @@ import { AppointmentStatusChip } from './AppointmentStatusChip';
 import { EditIconV2, CheckCircleIconV2 } from './iconsv2';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
-import { useQuery } from '@tanstack/react-query';
-import { useApi } from '../hooks/useApi';
 import { debugLog, createDebugLogger } from '../utils/debugUtils';
 
 interface AppointmentTableProps {
@@ -42,51 +41,54 @@ interface AppointmentTableProps {
   onEdit: (appointmentId: number) => void;
   selectedRows?: number[];
   onRowSelectionChange?: (selectedIds: number[]) => void;
+  statusMap?: StatusMap;
+  relationshipTypeMap?: Record<string, string>;
+  showAttendeeCount?: boolean;
+  customColumns?: ColumnDef<Appointment, any>[];
+  enableRowSelection?: boolean;
 }
 
 // Create a column helper for type safety
 const columnHelper = createColumnHelper<Appointment>();
 
 // Custom filter function for searching across all fields
-const globalFilterFn: FilterFn<Appointment> = (row, columnId, value, addMeta) => {
-  const appointment = row.original;
-  const searchValue = String(value).toLowerCase();
+const createGlobalFilterFn = (relationshipTypeMap: Record<string, string> = {}): FilterFn<Appointment> => 
+  (row, columnId, value, addMeta) => {
+    const appointment = row.original;
+    const searchValue = String(value).toLowerCase();
 
-  // Get relationship type map from table meta if available
-  const relationshipTypeMap = (addMeta as any)?.relationshipTypeMap || {};
+    // Search in basic appointment fields
+    const basicFields = [
+      appointment.id?.toString(),
+      appointment.request_type,
+      appointment.purpose,
+      appointment.status,
+      appointment.location?.name,
+      appointment.location?.city
+    ].filter(Boolean);
 
-  // Search in basic appointment fields
-  const basicFields = [
-    appointment.id?.toString(),
-    appointment.request_type,
-    appointment.purpose,
-    appointment.status,
-    appointment.location?.name,
-    appointment.location?.city
-  ].filter(Boolean);
+    // Search in dignitaries
+    const dignitaryNames = (appointment.appointment_dignitaries || []).map(ad =>
+      `${formatHonorificTitle(ad.dignitary.honorific_title)} ${ad.dignitary.first_name} ${ad.dignitary.last_name}`
+    );
 
-  // Search in dignitaries
-  const dignitaryNames = (appointment.appointment_dignitaries || []).map(ad =>
-    `${formatHonorificTitle(ad.dignitary.honorific_title)} ${ad.dignitary.first_name} ${ad.dignitary.last_name}`
-  );
+    // Search in contacts with proper self-contact handling
+    const contactNames = (appointment.appointment_contacts || []).map(ac => {
+      const contact = ac.contact;
+      const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
+      const isSelfContact = contact.relationship_to_owner === relationshipTypeMap['SELF'] ||
+        (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName);
+      return isSelfContact ? selfDisplayName : `${contact.first_name} ${contact.last_name}`;
+    });
 
-  // Search in contacts with proper self-contact handling
-  const contactNames = (appointment.appointment_contacts || []).map(ac => {
-    const contact = ac.contact;
-    const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
-    const isSelfContact = contact.relationship_to_owner === relationshipTypeMap['SELF'] ||
-      (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName);
-    return isSelfContact ? selfDisplayName : `${contact.first_name} ${contact.last_name}`;
-  });
+    const allSearchableText = [
+      ...basicFields,
+      ...dignitaryNames,
+      ...contactNames
+    ].join(' ').toLowerCase();
 
-  const allSearchableText = [
-    ...basicFields,
-    ...dignitaryNames,
-    ...contactNames
-  ].join(' ').toLowerCase();
-
-  return allSearchableText.includes(searchValue);
-};
+    return allSearchableText.includes(searchValue);
+  };
 
 // Helper function to get attendees info (simplified for table display)
 const getAttendeesInfo = (appointment: Appointment, relationshipTypeMap: Record<string, string> = {}) => {
@@ -114,6 +116,13 @@ const getAttendeesInfo = (appointment: Appointment, relationshipTypeMap: Record<
   return `${allNames[0]} +${totalCount - 1} others`;
 };
 
+// Helper function to get attendee count
+const getAttendeeCount = (appointment: Appointment) => {
+  const dignitaries = appointment.appointment_dignitaries || [];
+  const contacts = appointment.appointment_contacts || [];
+  return dignitaries.length + contacts.length;
+};
+
 // Helper function to determine which date/time to show and if appointment date should be marked
 const getDateTimeDisplay = (appointment: Appointment, statusMap: StatusMap) => {
   // Check if appointment is to be rescheduled, approved, or completed
@@ -125,7 +134,6 @@ const getDateTimeDisplay = (appointment: Appointment, statusMap: StatusMap) => {
 
   if (shouldShowAppointmentDate && appointment.appointment_date) {
     // Show appointment date/time with checkmark
-    // console.log(appointment.id, 'appointment.appointment_date', appointment.appointment_date);
     date = formatDate(appointment.appointment_date, false);
     time = appointment.appointment_time || '';
     isAppointmentDate = true;
@@ -148,36 +156,278 @@ const getDateTimeDisplay = (appointment: Appointment, statusMap: StatusMap) => {
   return { date, time, isAppointmentDate };
 };
 
+// Default column factory function
+const createDefaultColumns = (
+  onEdit: (appointmentId: number) => void,
+  statusMap: StatusMap = {},
+  relationshipTypeMap: Record<string, string> = {},
+  showAttendeeCount: boolean = false,
+  enableRowSelection: boolean = true
+): ColumnDef<Appointment, any>[] => {
+  const columns: ColumnDef<Appointment, any>[] = [];
+
+  // Checkbox column for multi-select
+  if (enableRowSelection) {
+    columns.push(
+      columnHelper.display({
+        id: 'select',
+        header: ({ table }) => (
+          <Checkbox
+            checked={table.getIsAllRowsSelected()}
+            indeterminate={table.getIsSomeRowsSelected()}
+            onChange={table.getToggleAllRowsSelectedHandler()}
+            onClick={(e) => e.stopPropagation()}
+            size="small"
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            disabled={!row.getCanSelect()}
+            indeterminate={row.getIsSomeSelected()}
+            onChange={row.getToggleSelectedHandler()}
+            onClick={(e) => e.stopPropagation()}
+            size="small"
+          />
+        ),
+        size: 50,
+        minSize: 50,
+        maxSize: 50,
+        enableSorting: false,
+      })
+    );
+  }
+
+  // ID column
+  columns.push(
+    columnHelper.accessor('id', {
+      id: 'id',
+      header: 'ID',
+      cell: (info) => (
+        <Typography sx={{
+          fontSize: '14px',
+          color: '#31364e',
+          fontWeight: 500,
+          fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
+        }}>
+          #{info.getValue()}
+        </Typography>
+      ),
+      size: 50,
+      minSize: 40,
+      maxSize: 100,
+    })
+  );
+
+  // Attendees column
+  columns.push(
+    columnHelper.accessor((row) => getAttendeesInfo(row, relationshipTypeMap), {
+      id: 'dignitary',
+      header: 'Attendees',
+      cell: (info) => (
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            fontSize: '14px',
+            color: '#6f7283',
+            fontWeight: 400,
+            fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
+          }}
+        >
+          {info.getValue()}
+        </Typography>
+      ),
+      size: 180,
+      minSize: 180,
+      maxSize: 180,
+    })
+  );
+
+  // Attendee count column (optional)
+  if (showAttendeeCount) {
+    columns.push(
+      columnHelper.accessor((row) => getAttendeeCount(row), {
+        id: 'attendee_count',
+        header: 'Count',
+        cell: (info) => (
+          <Typography sx={{
+            fontSize: '14px',
+            color: '#6f7283',
+            fontWeight: 500,
+            fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
+            textAlign: 'center',
+          }}>
+            {info.getValue()}
+          </Typography>
+        ),
+        size: 60,
+        minSize: 60,
+        maxSize: 60,
+      })
+    );
+  }
+
+  // Combined Date & Time column
+  columns.push(
+    columnHelper.accessor((row) => getDateTimeDisplay(row, statusMap), {
+      id: 'date_time',
+      header: 'Date & Time',
+      cell: (info) => {
+        const { date, time, isAppointmentDate } = info.getValue();
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'space-between' }}>
+            <Box>
+              <Typography sx={{ 
+                fontSize: '14px',
+                color: '#6f7283',
+                fontWeight: 400,
+                fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
+                lineHeight: 1,
+              }}>
+                {date}
+              </Typography>
+              {time && (
+                <Typography sx={{ 
+                  fontSize: '14px',
+                  color: '#6f7283',
+                  fontWeight: 400,
+                  fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
+                  lineHeight: 1,
+                  mt: '8px',
+                }}>
+                  {time}
+                </Typography>
+              )}
+            </Box>
+            {isAppointmentDate && (
+              <CheckCircleIconV2 sx={{ 
+                color: '#aaa', 
+                fontSize: 16,
+                flexShrink: 0
+              }} />
+            )}
+          </Box>
+        );
+      },
+      size: 130,
+      minSize: 130,
+      maxSize: 150,
+    })
+  );
+
+  // Location column
+  columns.push(
+    columnHelper.accessor((row) => row.location?.name || 'N/A', {
+      id: 'location',
+      header: 'Location',
+      cell: (info) => (
+        <Typography sx={{
+          fontSize: '14px',
+          color: '#6f7283',
+          fontWeight: 400,
+          fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}>
+          {info.getValue()}
+        </Typography>
+      ),
+      size: 120,
+      minSize: 120,
+      maxSize: 120,
+    })
+  );
+
+  // Status column
+  columns.push(
+    columnHelper.accessor('status', {
+      id: 'status',
+      header: 'Status',
+      cell: (info) => (
+        <AppointmentStatusChip status={info.getValue()} size="small" />
+      ),
+      size: 116,
+      minSize: 116,
+      maxSize: 116,
+    })
+  );
+
+  // Requested column (when the appointment was requested)
+  columns.push(
+    columnHelper.accessor('created_at', {
+      id: 'requested',
+      header: 'Requested',
+      cell: (info) => {
+        const createdAt = info.getValue();
+        return (
+          <Typography sx={{
+            fontSize: '14px',
+            color: '#6f7283',
+            fontWeight: 400,
+            fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
+          }}>
+            {createdAt ? formatDate(createdAt, false) : '-'}
+          </Typography>
+        );
+      },
+      size: 108,
+      minSize: 108,
+      maxSize: 108,
+    })
+  );
+
+  // Actions column
+  columns.push(
+    columnHelper.display({
+      id: 'actions',
+      header: '',
+      cell: (info) => (
+        <IconButton 
+          size="small"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit(info.row.original.id);
+          }}
+          sx={{ 
+            borderRadius: '12px',
+            border: '1px solid #e9e9e9',
+            width: 40,
+            height: 40,
+            backgroundColor: '#f7f7f7',
+            '&:hover': {
+              backgroundColor: 'rgba(0,0,0,0.08)',
+            }
+          }}
+        >
+          <EditIconV2 sx={{ width: 20, height: 20 }} />
+        </IconButton>
+      ),
+      size: 56,
+      minSize: 56,
+      maxSize: 56,
+      enableSorting: false,
+    })
+  );
+
+  return columns;
+};
+
 export const AppointmentTable: React.FC<AppointmentTableProps> = ({
   appointments,
   onRowClick,
   onEdit,
   selectedRows = [],
-  onRowSelectionChange
+  onRowSelectionChange,
+  statusMap = {},
+  relationshipTypeMap = {},
+  showAttendeeCount = false,
+  customColumns,
+  enableRowSelection = true
 }) => {
   const logger = createDebugLogger('AppointmentTable');
   const theme = useTheme();
-  const api = useApi();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-
-  // Fetch status map from the API
-  const { data: statusMap = {} } = useQuery<StatusMap>({
-    queryKey: ['status-map'],
-    queryFn: async () => {
-      const { data } = await api.get<StatusMap>('/appointments/status-options-map');
-      return data;
-    },
-  });
-
-  // Fetch relationship type map from the API
-  const { data: relationshipTypeMap = {} } = useQuery<Record<string, string>>({
-    queryKey: ['relationship-type-map'],
-    queryFn: async () => {
-      const { data } = await api.get<Record<string, string>>('/user-contacts/relationship-type-options-map');
-      return data;
-    },
-  });
 
   // Update row selection when selectedRows prop changes
   React.useEffect(() => {
@@ -235,206 +485,16 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
     }
   };
 
-  // Define columns using TanStack Table with exact Figma widths
+  // Define columns using custom columns or default ones
   const columns = useMemo(
-    () => [
-      // Checkbox column for multi-select
-      columnHelper.display({
-        id: 'select',
-        header: ({ table }) => (
-          <Checkbox
-            checked={table.getIsAllRowsSelected()}
-            indeterminate={table.getIsSomeRowsSelected()}
-            onChange={table.getToggleAllRowsSelectedHandler()}
-            onClick={(e) => e.stopPropagation()}
-            size="small"
-          />
-        ),
-        cell: ({ row }) => (
-          <Checkbox
-            checked={row.getIsSelected()}
-            disabled={!row.getCanSelect()}
-            indeterminate={row.getIsSomeSelected()}
-            onChange={row.getToggleSelectedHandler()}
-            onClick={(e) => e.stopPropagation()}
-            size="small"
-          />
-        ),
-        size: 50,
-        minSize: 50,
-        maxSize: 50,
-        enableSorting: false,
-      }),
+    () => customColumns || createDefaultColumns(onEdit, statusMap, relationshipTypeMap, showAttendeeCount, enableRowSelection),
+    [customColumns, onEdit, statusMap, relationshipTypeMap, showAttendeeCount, enableRowSelection]
+  );
 
-      columnHelper.accessor('id', {
-        id: 'id',
-        header: 'ID',
-        cell: (info) => (
-          <Typography sx={{
-            fontSize: '14px',
-            color: '#31364e',
-            fontWeight: 500,
-            fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
-          }}>
-            #{info.getValue()}
-          </Typography>
-        ),
-        size: 50,
-        minSize: 40,
-        maxSize: 100,
-      }),
-
-      columnHelper.accessor((row) => getAttendeesInfo(row, relationshipTypeMap), {
-        id: 'dignitary',
-        header: 'Attendees',
-        cell: (info) => (
-          <Typography 
-            variant="body2" 
-            sx={{ 
-              fontSize: '14px',
-              color: '#6f7283',
-              fontWeight: 400,
-              fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
-            }}
-          >
-            {info.getValue()}
-          </Typography>
-        ),
-        size: 180,
-        minSize: 180,
-        maxSize: 180,
-      }),
-
-      // Combined Date & Time column
-      columnHelper.accessor((row) => getDateTimeDisplay(row, statusMap), {
-        id: 'date_time',
-        header: 'Date & Time',
-        cell: (info) => {
-          const { date, time, isAppointmentDate } = info.getValue();
-          return (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'space-between' }}>
-              <Box>
-                <Typography sx={{ 
-                  fontSize: '14px',
-                  color: '#6f7283',
-                  fontWeight: 400,
-                  fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
-                  lineHeight: 1,
-                }}>
-                  {date}
-                </Typography>
-                {time && (
-                  <Typography sx={{ 
-                    fontSize: '14px',
-                    color: '#6f7283',
-                    fontWeight: 400,
-                    fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
-                    lineHeight: 1,
-                    mt: '8px',
-                  }}>
-                    {time}
-                  </Typography>
-                )}
-              </Box>
-              {isAppointmentDate && (
-                <CheckCircleIconV2 sx={{ 
-                  color: '#aaa', 
-                  fontSize: 16,
-                  flexShrink: 0
-                }} />
-              )}
-            </Box>
-          );
-        },
-        size: 130,
-        minSize: 130,
-        maxSize: 150,
-      }),
-
-      columnHelper.accessor((row) => row.location?.name || 'N/A', {
-        id: 'location',
-        header: 'Location',
-        cell: (info) => (
-          <Typography sx={{
-            fontSize: '14px',
-            color: '#6f7283',
-            fontWeight: 400,
-            fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}>
-            {info.getValue()}
-          </Typography>
-        ),
-        size: 120,
-        minSize: 120,
-        maxSize: 120,
-      }),
-
-      columnHelper.accessor('status', {
-        id: 'status',
-        header: 'Status',
-        cell: (info) => (
-          <AppointmentStatusChip status={info.getValue()} size="small" />
-        ),
-        size: 116,
-        minSize: 116,
-        maxSize: 116,
-      }),
-
-      // Requested column (when the appointment was requested)
-      columnHelper.accessor('created_at', {
-        id: 'requested',
-        header: 'Requested',
-        cell: (info) => {
-          const createdAt = info.getValue();
-          return (
-            <Typography sx={{
-              fontSize: '14px',
-              color: '#6f7283',
-              fontWeight: 400,
-              fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
-            }}>
-              {createdAt ? formatDate(createdAt, false) : '-'}
-            </Typography>
-          );
-        },
-        size: 108,
-        minSize: 108,
-        maxSize: 108,
-      }),
-
-      columnHelper.display({
-        id: 'actions',
-        header: '',
-        cell: (info) => (
-          <IconButton 
-            size="small"
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit(info.row.original.id);
-            }}
-            sx={{ 
-              borderRadius: '12px',
-              border: '1px solid #e9e9e9',
-              width: 40,
-              height: 40,
-              backgroundColor: '#f7f7f7',
-              '&:hover': {
-                backgroundColor: 'rgba(0,0,0,0.08)',
-              }
-            }}
-          >
-            <EditIconV2 sx={{ width: 20, height: 20 }} />
-          </IconButton>
-        ),
-        size: 56,
-        minSize: 56,
-        maxSize: 56,
-        enableSorting: false,
-      }),
-    ],
-    [onEdit, statusMap, relationshipTypeMap]
+  // Create the global filter function with the relationship type map
+  const globalFilterFn = useMemo(
+    () => createGlobalFilterFn(relationshipTypeMap),
+    [relationshipTypeMap]
   );
 
   // Create table instance
@@ -445,8 +505,8 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
       sorting,
       rowSelection,
     },
-    enableRowSelection: true,
-    onRowSelectionChange: handleRowSelectionChange,
+    enableRowSelection,
+    onRowSelectionChange: enableRowSelection ? handleRowSelectionChange : undefined,
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -472,15 +532,13 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
   return (
     <Box sx={{ width: '100%' }}>
       {/* Selection info */}
-      {selectedCount > 0 && (
+      {enableRowSelection && selectedCount > 0 && (
         <Box sx={{ 
           mb: 1, 
           p: 2, 
-          // backgroundColor: theme.palette.primary.light, 
           backgroundColor: 'rgba(255, 255, 255, 0.81)',
           border: '1px solid rgba(56, 56, 56, 0.1)',
           borderRadius: 2,
-          // border: `1px solid ${theme.palette.primary.main}`,
         }}>
           <Typography variant="body2" color="primary.dark">
             {selectedCount} appointment{selectedCount === 1 ? '' : 's'} selected
