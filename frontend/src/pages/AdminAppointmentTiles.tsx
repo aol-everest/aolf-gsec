@@ -40,6 +40,7 @@ import {
   Radio,
   RadioGroup,
   FormControlLabel,
+  Alert,
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -1240,6 +1241,54 @@ const AdminAppointmentTiles: React.FC = () => {
     } as Appointment;
   };
 
+  // Helper function to check if selected calendar event date is outside preferred date ranges
+  const checkDateRangeWarnings = useCallback((selectedEventDate: string, appointmentIds: number[]) => {
+    const selectedAppointments = filteredAppointments.filter(apt => 
+      appointmentIds.includes(apt.id)
+    );
+    
+    if (selectedAppointments.length === 0) return { hasWarnings: false, warnings: [], totalOutsideRange: 0, totalAppointments: 0 };
+    
+    // Use the calendar event's start_date directly (already in YYYY-MM-DD format)
+    const selectedDateStr = selectedEventDate;
+    const warnings: string[] = [];
+    let appointmentsOutsideRange = 0;
+    
+    selectedAppointments.forEach(appointment => {
+      let isOutsideRange = false;
+      let preferredRange = '';
+      
+      // Check for date range (non-dignitary appointments)
+      if (appointment.preferred_start_date && appointment.preferred_end_date) {
+        isOutsideRange = selectedDateStr < appointment.preferred_start_date || selectedDateStr > appointment.preferred_end_date;
+        preferredRange = formatDateRange(appointment.preferred_start_date, appointment.preferred_end_date);
+      }
+      // Check for single preferred date (dignitary appointments)
+      else if (appointment.preferred_date) {
+        isOutsideRange = selectedDateStr !== appointment.preferred_date;
+        preferredRange = formatDate(appointment.preferred_date, false);
+      }
+      
+      if (isOutsideRange) {
+        appointmentsOutsideRange++;
+        // Only add detailed warning for first few appointments to avoid overwhelming the user
+        if (warnings.length < 3) {
+          const appointmentLabel = appointment.appointment_dignitaries?.[0]?.dignitary ? 
+            `${appointment.appointment_dignitaries[0].dignitary.first_name} ${appointment.appointment_dignitaries[0].dignitary.last_name}` :
+            `Appointment #${appointment.id}`;
+          warnings.push(`${appointmentLabel}: preferred ${preferredRange}`);
+        }
+      }
+    });
+    
+    return {
+      hasWarnings: appointmentsOutsideRange > 0,
+      warnings,
+      totalOutsideRange: appointmentsOutsideRange,
+      totalAppointments: selectedAppointments.length
+    };
+  }, [filteredAppointments]);
+
   // Helper function to render status action buttons with business logic
   const renderStatusActionButton = (status: string) => {
     const isCompleted = statusMap && status === statusMap['COMPLETED'];
@@ -1983,6 +2032,57 @@ const AdminAppointmentTiles: React.FC = () => {
                 </RadioGroup>
               )}
             </Box>
+
+            {/* Date Range Warning */}
+            {calendarEventSelectionDialog.selectedCalendarEventId && (() => {
+              const selectedEvent = calendarEventsForDate.find(event => event.id === calendarEventSelectionDialog.selectedCalendarEventId);
+              if (!selectedEvent) return null;
+              
+              // Use the calendar event's start_date directly to avoid timezone issues
+              const warnings = checkDateRangeWarnings(selectedEvent.start_date, calendarEventSelectionDialog.appointmentIds);
+              
+              if (!warnings.hasWarnings) return null;
+              
+              return (
+                <Box sx={{ mb: 3 }}>
+                  <Alert 
+                    severity="warning" 
+                    sx={{ 
+                      backgroundColor: 'warning.light',
+                      '& .MuiAlert-icon': {
+                        color: 'warning.main'
+                      }
+                    }}
+                  >
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                      ⚠️ Date Range Warning
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      {warnings.totalOutsideRange || 0} of {warnings.totalAppointments} selected appointment{warnings.totalAppointments === 1 ? '' : 's'} 
+                      {(warnings.totalOutsideRange || 0) === 1 ? ' has a' : ' have'} preferred date{(warnings.totalOutsideRange || 0) === 1 ? '' : 's'} outside the selected event date 
+                      ({formatDate(selectedEvent.start_date, false)}).
+                    </Typography>
+                    {warnings.warnings.length > 0 && (
+                      <Box component="ul" sx={{ mt: 1, mb: 0, pl: 2 }}>
+                        {warnings.warnings.map((warning, index) => (
+                          <Typography component="li" key={index} variant="body2" sx={{ fontSize: '0.875rem' }}>
+                            {warning}
+                          </Typography>
+                        ))}
+                        {(warnings.totalOutsideRange || 0) > warnings.warnings.length && (
+                          <Typography component="li" variant="body2" sx={{ fontSize: '0.875rem', fontStyle: 'italic' }}>
+                            ...and {(warnings.totalOutsideRange || 0) - warnings.warnings.length} more
+                          </Typography>
+                        )}
+                      </Box>
+                    )}
+                    <Typography variant="body2" sx={{ mt: 1, fontWeight: 500 }}>
+                      Please confirm this is acceptable before proceeding.
+                    </Typography>
+                  </Alert>
+                </Box>
+              );
+            })()}
 
             {/* Notes Field */}
             <TextField
