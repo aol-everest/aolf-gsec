@@ -383,3 +383,37 @@ export const BlankIconV2: React.FC<IconProps> = React.memo(({ ...props }) => (
     <SvgIcon xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" {...props}>
     </SvgIcon>
 ));
+
+export const InfoCommentIconV2: React.FC<IconProps> = React.memo(({ ...props }) => (
+    <SvgIcon xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" {...props}>
+        <path fill="currentColor" d="M13.5,6.5a1.5,1.5,0,0,1-3,0A1.5,1.5,0,0,1,13.5,6.5ZM24,19V12.34A12.209,12.209,0,0,0,12.836.028,12,12,0,0,0,.029,12.854C.471,19.208,6.082,24,13.083,24H19A5.006,5.006,0,0,0,24,19ZM12.7,2.024A10.2,10.2,0,0,1,22,12.34V19a3,3,0,0,1-3,3H13.083C7.049,22,2.4,18.1,2.025,12.716A10,10,0,0,1,12.016,2C12.243,2,12.472,2.009,12.7,2.024ZM14,18V12a2,2,0,0,0-2-2H11a1,1,0,0,0,0,2h1v6a1,1,0,0,0,2,0Z"/>
+    </SvgIcon>
+));
+
+export const InfoCircleIconV2: React.FC<IconProps> = React.memo(({ ...props }) => (
+    <SvgIcon xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" {...props}>
+        <path fill="currentColor" d="M12,0A12,12,0,1,0,24,12,12.013,12.013,0,0,0,12,0Zm0,22A10,10,0,1,1,22,12,10.011,10.011,0,0,1,12,22Z"/>
+        <path fill="currentColor" d="M12,10H11a1,1,0,0,0,0,2h1v6a1,1,0,0,0,2,0V12A2,2,0,0,0,12,10Z"/>
+        <circle fill="currentColor" cx="12" cy="6.5" r="1.5"/>
+    </SvgIcon>
+));
+
+export const InfoSquareCircleIconV2: React.FC<IconProps> = React.memo(({ ...props }) => (
+    <SvgIcon xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" {...props}>
+        <path fill="currentColor" d="M11.994,1C4.929,1.044,1,5.011,1,12.019c0,6.891,3.933,10.94,11.006,10.981,7.162-.042,10.861-3.737,10.994-11.017-.122-7.037-4.026-10.938-11.006-10.983Zm.012,20c-6.026-.035-8.888-2.895-9.006-9,.113-6.019,3.059-8.963,8.994-9,5.874,.038,8.904,3.072,9.006,8.981-.112,6.117-2.974,8.983-8.994,9.019Z"/>
+        <path fill="currentColor" d="M12.567,10.639h-1.134c-.552,0-1,.448-1,1s.448,1,1,1h.134v3.432c0,.552,.448,1,1,1s1-.448,1-1v-4.432c0-.552-.447-1-1-1Z"/>
+        <circle fill="currentColor" cx="12" cy="7.931" r=".999"/>
+    </SvgIcon>
+));
+
+export const InfoSquareCircleFilledIconV2: React.FC<IconProps> = React.memo(({ ...props }) => (
+    <SvgIcon xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" {...props}>
+        <path fill="currentColor" d="M11.994,1C4.929,1.044,1,5.027,1,11.982s3.933,10.977,11.006,11.018c7.162-.042,10.861-3.737,10.994-11.017-.122-7.037-4.026-10.938-11.006-10.983Zm.006,5.432c.828,0,1.5,.671,1.5,1.5s-.671,1.5-1.5,1.5-1.5-.671-1.5-1.5,.671-1.5,1.5-1.5Zm1.566,10.171c0,.552-.447,1-1,1s-1-.448-1-1v-3.432h-.134c-.552,0-1-.448-1-1s.448-1,1-1h1.134c.552,0,1,.448,1,1v4.432Z"/>
+    </SvgIcon>
+));
+
+export const InfoCommentFilledIconV2: React.FC<IconProps> = React.memo(({ ...props }) => (
+    <SvgIcon xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" {...props}>
+        <path fill="currentColor" d="M12.836.028A12,12,0,0,0,.029,12.855C.47,19.208,6.082,24,13.083,24H19a5.006,5.006,0,0,0,5-5V12.34A12.209,12.209,0,0,0,12.836.028ZM12,5a1.5,1.5,0,0,1,0,3A1.5,1.5,0,0,1,12,5Zm2,13a1,1,0,0,1-2,0V12H11a1,1,0,0,1,0-2h1a2,2,0,0,1,2,2Z"/>
+    </SvgIcon>
+));

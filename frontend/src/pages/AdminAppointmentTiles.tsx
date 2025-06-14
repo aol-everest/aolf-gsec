@@ -55,7 +55,7 @@ import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import Layout from '../components/Layout';
 import { formatDate, formatDateRange } from '../utils/dateUtils';
-import { LocationThinIconV2, CalendarIconV2, ListIconV2 } from '../components/iconsv2';
+import { LocationThinIconV2, CalendarIconV2, ListIconV2, InfoSquareCircleIconV2, InfoSquareCircleFilledIconV2 } from '../components/iconsv2';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -1358,18 +1358,14 @@ const AdminAppointmentTiles: React.FC = () => {
 
   // Handle appointment row selection change
   const handleRowSelectionChange = (selectedIds: number[]) => {
-    logger('🔍 [DEBUG] handleRowSelectionChange called with:', {
-      selectedIds,
-      count: selectedIds.length,
+    logger('🔍 [APPOINTMENT SELECTION] handleRowSelectionChange called:', {
+      selectedIdsCount: selectedIds.length,
       previousCount: selectedAppointmentIds.length,
-      previousIds: selectedAppointmentIds,
-      stackTrace: new Error().stack
+      selectedIds: selectedIds.slice(0, 3), // Only log first 3 to avoid spam
+      previousIds: selectedAppointmentIds.slice(0, 3)
     });
     
-    logger(`Selection changed: ${selectedIds.length} appointments selected`);
     setSelectedAppointmentIds(selectedIds);
-    
-    logger('🔍 [DEBUG] After setSelectedAppointmentIds called');
   };
 
   // Updated AppointmentTile component to safely handle undefined appointments
@@ -1759,9 +1755,9 @@ const AdminAppointmentTiles: React.FC = () => {
                 <CircularProgress />
               </Box>
             ) : !filters.requestType ? (
-              <Paper sx={{ p: 4, textAlign: 'center', bgcolor: 'background.paper' }}>
-                <Typography variant="h6" gutterBottom>
-                  Select a Request Type to View Appointments
+              <Paper sx={{ p: 4, textAlign: 'center', bgcolor: 'background.paper', width: '100%' }}>
+                <Typography variant="h4" gutterBottom sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <InfoSquareCircleFilledIconV2 sx={{ width: 24, height: 24, mr: 1 }} />Select a Request Type to View Appointments
                 </Typography>
                 <Typography variant="body1" color="text.secondary">
                   Please choose a request type from the filter options above to see appointments.

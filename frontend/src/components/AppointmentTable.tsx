@@ -337,6 +337,19 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
     }
   };
 
+  // Define searchable fields for appointments (used when enableSearch is true)
+  const searchableFields: (keyof Appointment)[] = [
+    'id',
+    'purpose',
+    'appointment_type',
+    'status',
+    'sub_status',
+    'preferred_date',
+    'appointment_date',
+    'appointment_time',
+    'location'
+  ];
+
   return (
     <GenericTable
       data={appointments}
@@ -349,6 +362,7 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
       getRowId={(row) => row.id.toString()}
       emptyMessage="No appointments found for the selected filters."
       selectionMessage={`${selectedRows.length} appointment${selectedRows.length === 1 ? '' : 's'} selected`}
+      searchableFields={searchableFields}
       tableProps={{
         stickyHeader: true,
         size: 'medium',

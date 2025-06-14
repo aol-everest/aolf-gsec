@@ -12,7 +12,11 @@ import {
   useTheme,
   Checkbox,
   IconButton,
+  TextField,
+  InputAdornment,
 } from '@mui/material';
+import { SearchIconV2 } from './iconsv2';
+import ClearIcon from '@mui/icons-material/Clear';
 import {
   useReactTable,
   getCoreRowModel,
@@ -42,6 +46,11 @@ interface GenericTableProps<T extends Record<string, any>> {
   emptyMessage?: string;
   selectionMessage?: string;
   showSelectionInfo?: boolean;
+  enableSearch?: boolean;
+  searchPlaceholder?: string;
+  searchableFields?: (keyof T)[];
+  searchValue?: string;
+  onSearchChange?: (value: string) => void;
   tableProps?: {
     stickyHeader?: boolean;
     size?: 'small' | 'medium';
@@ -57,9 +66,31 @@ interface GenericTableProps<T extends Record<string, any>> {
 export const createGenericColumnHelper = <T extends Record<string, any>>() => createColumnHelper<T>();
 
 // Default global filter function for basic text search
-const createDefaultGlobalFilter = <T extends Record<string, any>>(): FilterFn<T> => 
+const createDefaultGlobalFilter = <T extends Record<string, any>>(searchableFields?: (keyof T)[]): FilterFn<T> => 
   (row, columnId, value) => {
     const searchValue = String(value).toLowerCase();
+    
+    // If specific fields are provided, search only those fields
+    if (searchableFields && searchableFields.length > 0) {
+      return searchableFields.some(field => {
+        const fieldValue = row.original[field];
+        if (fieldValue == null) return false;
+        
+        // Handle different types of field values
+        if (typeof fieldValue === 'string') {
+          return fieldValue.toLowerCase().includes(searchValue);
+        } else if (typeof fieldValue === 'number') {
+          return fieldValue.toString().includes(searchValue);
+        } else if (typeof fieldValue === 'object' && fieldValue && 'name' in fieldValue) {
+          // For objects with name property (like location)
+          return String(fieldValue.name).toLowerCase().includes(searchValue);
+        } else {
+          return String(fieldValue).toLowerCase().includes(searchValue);
+        }
+      });
+    }
+    
+    // Default behavior: search all fields
     const rowValues = Object.values(row.original).map(val => 
       val ? String(val).toLowerCase() : ''
     );
@@ -168,6 +199,11 @@ export function GenericTable<T extends Record<string, any>>({
   emptyMessage = 'No data available',
   selectionMessage,
   showSelectionInfo = true,
+  enableSearch = false,
+  searchPlaceholder = 'Search...',
+  searchableFields,
+  searchValue = '',
+  onSearchChange,
   tableProps = {},
   containerProps = {}
 }: GenericTableProps<T>) {
@@ -175,6 +211,8 @@ export function GenericTable<T extends Record<string, any>>({
   const theme = useTheme();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [globalFilter, setGlobalFilter] = useState(searchValue);
+  const prevSelectedRowsRef = React.useRef<(string | number)[]>([]);
 
   // Default table props
   const {
@@ -185,41 +223,65 @@ export function GenericTable<T extends Record<string, any>>({
 
   // Update row selection when selectedRows prop changes
   React.useEffect(() => {
-    logger('📋 [TABLE DEBUG] selectedRows prop changed:', {
-      selectedRows,
-      count: selectedRows.length,
+    // Check if selectedRows actually changed by comparing with previous value
+    const prevSelectedRows = prevSelectedRowsRef.current;
+    const selectedRowsChanged = selectedRows.length !== prevSelectedRows.length ||
+      selectedRows.some((id, index) => id !== prevSelectedRows[index]);
+
+    if (!selectedRowsChanged) {
+      logger('📋 [ROW SELECTION] selectedRows prop unchanged, skipping');
+      return;
+    }
+
+    logger('📋 [ROW SELECTION] selectedRows prop changed:', {
+      selectedRowsCount: selectedRows.length,
+      selectedRows: selectedRows.slice(0, 5), // Only log first 5 to avoid spam
+      currentRowSelectionCount: Object.keys(rowSelection).filter(key => rowSelection[key]).length,
       dataCount: data.length
     });
+
+    // Update the ref with current selectedRows
+    prevSelectedRowsRef.current = [...selectedRows];
+
+    // Only update if there's actually a change to prevent infinite loops
+    const currentSelectedIds = Object.keys(rowSelection).filter(key => rowSelection[key]);
+    const newSelectedIds = selectedRows.map(id => String(id));
     
-    const newRowSelection: RowSelectionState = {};
-    selectedRows.forEach(id => {
-      const itemExists = data.some(item => getRowId(item) === String(id));
-      logger(`📋 [TABLE DEBUG] Looking for item ID ${id} exists: ${itemExists}`);
-      if (itemExists) {
-        newRowSelection[String(id)] = true;
-      }
-    });
+    // Check if the selection has actually changed
+    const hasChanged = currentSelectedIds.length !== newSelectedIds.length ||
+      currentSelectedIds.some(id => !newSelectedIds.includes(id)) ||
+      newSelectedIds.some(id => !currentSelectedIds.includes(id));
     
-    logger('📋 [TABLE DEBUG] Setting new row selection:', newRowSelection);
-    setRowSelection(newRowSelection);
+    if (hasChanged) {
+      logger('📋 [ROW SELECTION] Internal selection state changed, updating rowSelection');
+      const newRowSelection: RowSelectionState = {};
+      selectedRows.forEach(id => {
+        const itemExists = data.some(item => getRowId(item) === String(id));
+        if (itemExists) {
+          newRowSelection[String(id)] = true;
+        }
+      });
+      setRowSelection(newRowSelection);
+    } else {
+      logger('📋 [ROW SELECTION] Internal selection state unchanged, skipping update');
+    }
   }, [selectedRows, data, getRowId]);
 
   // Handle row selection change
-  const handleRowSelectionChange = (updater: any) => {
-    logger('📋 [TABLE DEBUG] handleRowSelectionChange called with:', {
+  const handleRowSelectionChange = React.useCallback((updater: any) => {
+    logger('📋 [ROW SELECTION] handleRowSelectionChange called:', {
       updaterType: typeof updater,
-      currentRowSelection: rowSelection,
-      dataCount: data.length
+      currentSelectionCount: Object.keys(rowSelection).filter(key => rowSelection[key]).length
     });
-    
+
     const newSelection = typeof updater === 'function' ? updater(rowSelection) : updater;
+    const newSelectionCount = Object.keys(newSelection).filter(key => newSelection[key]).length;
     
-    logger('📋 [TABLE DEBUG] New selection computed:', {
-      newSelection,
-      selectedRowKeys: Object.keys(newSelection).filter(key => newSelection[key]),
-      totalSelected: Object.keys(newSelection).filter(key => newSelection[key]).length
+    logger('📋 [ROW SELECTION] New selection computed:', {
+      newSelectionCount,
+      willCallOnRowSelectionChange: !!onRowSelectionChange
     });
-    
+
     setRowSelection(newSelection);
     
     if (onRowSelectionChange) {
@@ -231,10 +293,14 @@ export function GenericTable<T extends Record<string, any>>({
           return !isNaN(numericId) ? numericId : key;
         });
       
-      logger('📋 [TABLE DEBUG] Final selectedIds:', selectedIds);
+      logger('📋 [ROW SELECTION] Calling onRowSelectionChange with:', {
+        selectedIdsCount: selectedIds.length,
+        selectedIds: selectedIds.slice(0, 5) // Only log first 5 to avoid spam
+      });
+      
       onRowSelectionChange(selectedIds);
     }
-  };
+  }, [rowSelection, onRowSelectionChange]);
 
   // Add selection column if row selection is enabled
   const finalColumns = useMemo(() => {
@@ -269,10 +335,30 @@ export function GenericTable<T extends Record<string, any>>({
     return [selectionColumn, ...columns];
   }, [columns, enableRowSelection]);
 
+  // Update global filter when searchValue prop changes
+  React.useEffect(() => {
+    if (globalFilter !== searchValue) {
+      setGlobalFilter(searchValue);
+    }
+  }, [searchValue, globalFilter]);
+
+  // Handle search change with debouncing to improve performance
+  const handleSearchChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setGlobalFilter(value);
+    onSearchChange?.(value);
+  }, [onSearchChange]);
+
+  // Clear search
+  const handleClearSearch = React.useCallback(() => {
+    setGlobalFilter('');
+    onSearchChange?.('');
+  }, [onSearchChange]);
+
   // Create the global filter function
   const finalGlobalFilterFn = useMemo(
-    () => globalFilterFn || createDefaultGlobalFilter<T>(),
-    [globalFilterFn]
+    () => globalFilterFn || createDefaultGlobalFilter<T>(searchableFields),
+    [globalFilterFn, searchableFields]
   );
 
   // Create table instance
@@ -282,10 +368,12 @@ export function GenericTable<T extends Record<string, any>>({
     state: {
       sorting,
       rowSelection,
+      globalFilter,
     },
     enableRowSelection,
     onRowSelectionChange: enableRowSelection ? handleRowSelectionChange : undefined,
     onSortingChange: setSorting,
+    onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -314,6 +402,38 @@ export function GenericTable<T extends Record<string, any>>({
 
   return (
     <Box sx={{ width: '100%' }}>
+      {/* Search bar */}
+      {enableSearch && (
+        <Box sx={{ mb: 2 }}>
+          <TextField
+            fullWidth
+            placeholder={searchPlaceholder}
+            variant="outlined"
+            size="small"
+            value={globalFilter}
+            onChange={handleSearchChange}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIconV2 />
+                </InputAdornment>
+              ),
+              endAdornment: globalFilter && (
+                <InputAdornment position="end">
+                  <IconButton
+                    size="small"
+                    onClick={handleClearSearch}
+                    edge="end"
+                  >
+                    <ClearIcon />
+                  </IconButton>
+                </InputAdornment>
+              )
+            }}
+          />
+        </Box>
+      )}
+
       {/* Selection info */}
       {enableRowSelection && showSelectionInfo && selectedCount > 0 && (
         <Box sx={{ 

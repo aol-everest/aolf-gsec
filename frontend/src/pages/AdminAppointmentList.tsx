@@ -5,83 +5,35 @@ import {
   Paper,
   Box,
   Chip,
-  Select,
-  MenuItem,
-  SelectChangeEvent,
-  Checkbox,
   CircularProgress,
   Button,
+  Grid,
 } from '@mui/material';
-import {
-  GridColDef,
-  GridActionsCellItem,
-  GridRowModesModel,
-  GridRowModes,
-  GridEventListener,
-  GridRowId,
-  GridRowModel,
-  GridRowEditStopReasons,
-  GridRenderCellParams,
-  GridRenderEditCellParams,
-  GridCellParams,
-  useGridApiContext,
-  GridRowParams,
-} from '@mui/x-data-grid';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/DeleteOutlined';
-import SaveIcon from '@mui/icons-material/Save';
-import CancelIcon from '@mui/icons-material/Close';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import Layout from '../components/Layout';
-import { getSubStatusChipSx, getStatusColor, formatHonorificTitle } from '../utils/formattingUtils';
+import { getStatusColor, formatHonorificTitle } from '../utils/formattingUtils';
 import { useTheme } from '@mui/material/styles';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDate } from '../utils/dateUtils';
-import GenericDataGrid from '../components/GenericDataGrid';
 import { Appointment } from '../models/types';
 import { Location } from '../models/types';
-import { AppointmentStatusChip } from '../components/AppointmentStatusChip';
+import { FilterChipGroup } from '../components/FilterChip';
+import AdminAppointmentListTable from '../components/AdminAppointmentListTable';
 
-interface StatusEditCellProps extends GridRenderEditCellParams<Appointment> {
-  statusOptions: string[];
-}
 
-const StatusEditCell = (props: StatusEditCellProps) => {
-  const { id, value, field, statusOptions } = props;
-  const apiRef = useGridApiContext();
-
-  const handleChange = (event: SelectChangeEvent) => {
-    apiRef.current.setEditCellValue({ id, field, value: event.target.value }, event);
-  };
-
-  return (
-    <Select
-      value={value as string}
-      onChange={handleChange}
-      fullWidth
-      variant="standard"
-    >
-      {statusOptions.map((option: string) => (
-        <MenuItem key={option} value={option}>
-          {option}
-        </MenuItem>
-      ))}
-    </Select>
-  );
-};
 
 interface AppointmentWithNames extends Appointment {
   dignitary_names?: string;
 }
 
 const AdminAppointmentList: React.FC = () => {
-  const [rowModesModel, setRowModesModel] = useState<GridRowModesModel>({});
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
   const [filteredAppointments, setFilteredAppointments] = useState<AppointmentWithNames[]>([]);
+  const [searchValue, setSearchValue] = useState<string>('');
   const theme = useTheme();
   const api = useApi();
   const { enqueueSnackbar } = useSnackbar();
@@ -185,9 +137,8 @@ const AdminAppointmentList: React.FC = () => {
 
   // Update appointment mutation
   const updateAppointmentMutation = useMutation({
-    mutationFn: async (newRow: Appointment) => {
+    mutationFn: async (newRow: AppointmentWithNames) => {
       const updateData = {
-        // dignitary_id: newRow.dignitary_id,
         purpose: newRow.purpose,
         preferred_date: newRow.preferred_date,
         preferred_time_of_day: newRow.preferred_time_of_day,
@@ -212,243 +163,15 @@ const AdminAppointmentList: React.FC = () => {
     },
   });
 
-  const handleRowEditStop: GridEventListener<'rowEditStop'> = (params, event) => {
-    if (params.reason === GridRowEditStopReasons.rowFocusOut) {
-      event.defaultMuiPrevented = true;
-    }
+  // Handle appointment update
+  const handleUpdateAppointment = async (appointment: AppointmentWithNames) => {
+    await updateAppointmentMutation.mutateAsync(appointment);
   };
 
-  const handleEditClick = (id: GridRowId) => () => {
-    setRowModesModel({ ...rowModesModel, [id]: { mode: GridRowModes.Edit } });
+  // Handle search change
+  const handleSearchChange = (value: string) => {
+    setSearchValue(value);
   };
-
-  const handleSaveClick = (id: GridRowId) => () => {
-    setRowModesModel({ ...rowModesModel, [id]: { mode: GridRowModes.View } });
-  };
-
-  const handleCancelClick = (id: GridRowId) => () => {
-    setRowModesModel({
-      ...rowModesModel,
-      [id]: { mode: GridRowModes.View, ignoreModifications: true },
-    });
-  };
-
-  const processRowUpdate = async (newRow: Appointment, oldRow: Appointment) => {
-    try {
-      await updateAppointmentMutation.mutateAsync(newRow);
-      return newRow;
-    } catch (error) {
-      throw error;
-    }
-  };
-
-  const handleRowModesModelChange = (newRowModesModel: GridRowModesModel) => {
-    setRowModesModel(newRowModesModel);
-  };
-
-  const columns: GridColDef<AppointmentWithNames>[] = [
-    {
-      field: 'actions',
-      type: 'actions',
-      headerName: '',
-      width: 56,
-      cellClassName: 'actions',
-      getActions: ({ id }) => {
-        const isInEditMode = rowModesModel[id]?.mode === GridRowModes.Edit;
-        if (isInEditMode) {
-          return [
-            <GridActionsCellItem
-              key="save"
-              icon={<SaveIcon />}
-              label="Save"
-              sx={{ color: 'primary.main' }}
-              onClick={handleSaveClick(id)}
-            />,
-            <GridActionsCellItem
-              key="cancel"
-              icon={<CancelIcon />}
-              label="Cancel"
-              className="textPrimary"
-              onClick={handleCancelClick(id)}
-              color="inherit"
-            />,
-          ];
-        }
-        return [
-          <GridActionsCellItem
-            key="edit"
-            icon={<EditIcon />}
-            label="Edit"
-            className="textPrimary"
-            onClick={handleEditClick(id)}
-            color="inherit"
-          />,
-        ];
-      },
-    },
-    {
-      field: 'id',
-      headerName: 'ID',
-      width: 56,
-      editable: false,
-    },
-    {
-      field: 'dignitary_names',
-      headerName: 'Dignitary',
-      width: 130,
-      flex: 1,
-      editable: false,
-    },
-    {
-      field: 'preferred_date_and_time',
-      headerName: 'Requested Date & Time',
-      width: 110,
-      flex: 0.5,
-      editable: false,
-      valueGetter: (value, row, column, apiRef) => {
-        return formatDate(row.preferred_date, false) + ' ' + row.preferred_time_of_day;
-      },
-    },
-    {
-      field: 'appointment_date',
-      headerName: 'Appointment Date',
-      width: 110,
-      flex: 0.5,
-      editable: true,
-      type: 'date',
-      valueGetter: (value: string) => {
-        if (!value) return null;
-        return new Date(value);
-      },
-    },
-    {
-      field: 'appointment_time',
-      headerName: 'Appointment Time',
-      width: 110,
-      flex: 0.5,
-      editable: true,
-    },
-    {
-      field: 'location',
-      headerName: 'Location',
-      width: 150,
-      flex: 1,
-      editable: true,
-      type: 'singleSelect',
-      valueOptions: locations.map(loc => ({ value: loc.id, label: `${loc.name} - ${loc.city}, ${loc.state}` })),
-      valueGetter: (value, row, column, apiRef) => row.location_id,
-      valueSetter: (value, row) => {
-        // const value = typeof params.value === 'number' ? params.value : null;
-        return { ...row, location_id: value };
-      },
-      renderCell: (params: GridRenderCellParams<Appointment>) => {
-        const location = params.row.location ? params.row.location : locations.find(loc => loc.id === params.row.location_id);
-        return location ? `${location.name} - ${location.city}, ${location.state}` : 'N/A';
-      },
-    },
-    {
-      field: 'has_dignitary_met_gurudev',
-      headerName: 'Met Gurudev?',
-      width: 81,
-      editable: true,
-      renderCell: (params: GridRenderCellParams<Appointment>) => {
-        if (params.row.appointment_dignitaries && params.row.appointment_dignitaries.length > 0) {
-          const dignitariesHasMetGurudev = params.row.appointment_dignitaries.map((ad: any) => {
-            const dig = ad.dignitary;
-            console.log(dig.first_name + ' ' + dig.last_name + ' ' + dig.has_dignitary_met_gurudev);
-            return dig.has_dignitary_met_gurudev;
-          });
-          
-          const yesCount = dignitariesHasMetGurudev.filter(Boolean).length;
-          const noCount = dignitariesHasMetGurudev.filter(Boolean).length === dignitariesHasMetGurudev.length ? 0 : dignitariesHasMetGurudev.length - yesCount;
-          
-          return `Yes: ${yesCount}, No: ${noCount}`;
-        } else {
-          return 'N/A';
-        }
-      },
-    },
-    {
-      field: 'status',
-      headerName: 'Status',
-      width: 130,
-      flex: 0.81,
-      editable: true,
-      type: 'singleSelect',
-      valueOptions: statusOptions,
-      renderCell: (params: GridRenderCellParams<Appointment>) => (
-        <AppointmentStatusChip status={params.value as string} size='small' />
-      ),
-      renderEditCell: (params: GridRenderEditCellParams<Appointment>) => (
-        <StatusEditCell
-          {...params}
-          statusOptions={statusOptions}
-        />
-      ),
-    },
-    {
-      field: 'sub_status',
-      headerName: 'Sub-Status',
-      width: 130,
-      flex: 0.81,
-      editable: true,
-      type: 'singleSelect',
-      valueOptions: subStatusOptions,
-      renderCell: (params: GridRenderCellParams<Appointment>) => (
-        <Chip
-          label={params.value}
-          sx={getSubStatusChipSx(params.value as string, theme)}
-          size="small"
-        />
-      ),
-      renderEditCell: (params: GridRenderEditCellParams<Appointment>) => (
-        <StatusEditCell
-          {...params}
-          statusOptions={subStatusOptions}
-        />
-      ),
-    },
-    {
-      field: 'appointment_type',
-      headerName: 'Type',
-      width: 130,
-      flex: 0.81,
-      editable: true,
-      type: 'singleSelect',
-      valueOptions: appointmentTypeOptions,
-      renderCell: (params: GridRenderCellParams<Appointment>) => (
-        <Chip
-          label={params.value}
-        />
-      ),
-      renderEditCell: (params: GridRenderEditCellParams<Appointment>) => (
-        <StatusEditCell
-          {...params}
-          statusOptions={appointmentTypeOptions}
-        />
-      ),
-    },
-    {
-      field: 'created_at',
-      headerName: 'Requested On',
-      width: 110,
-      flex: 0.5,
-      editable: false,
-      valueGetter: (value, row, column, apiRef) => {
-        return formatDate(row.created_at, true);
-      },
-    },
-    {
-      field: 'updated_at',
-      headerName: 'Last Updated',
-      width: 110,
-      flex: 0.5,
-      editable: false,
-      valueGetter: (value, row, column, apiRef) => {
-        return formatDate(row.updated_at, true);
-      },
-    },
-  ];
 
   return (
     <Layout>
@@ -468,71 +191,96 @@ const AdminAppointmentList: React.FC = () => {
               
               {/* Status Filters */}
               <Box>
-                <Typography variant="subtitle2" sx={{ mb: 1 }}>Filter by Status</Typography>
-                <Box sx={{ 
-                  display: 'flex', 
-                  gap: 1, 
-                  flexWrap: 'wrap'
-                }}>
-                  {statusOptions.map((status) => (
-                    <Chip
-                      key={status}
-                      label={`${status} (${appointments.filter(a => a.status === status).length})`}
-                      onClick={() => handleStatusFilter(status)}
-                      variant={selectedStatus === status ? 'filled' : 'outlined'}
-                      sx={{ 
-                        cursor: 'pointer',
+                <Grid container spacing={2} alignItems="center">
+                  <Grid item xs={12} md={2}>
+                    <Typography variant="subtitle2">Filter by Status</Typography>
+                  </Grid>
+                  <Grid item xs={12} md={10}>
+                    <FilterChipGroup
+                      options={statusOptions}
+                      selectedValue={selectedStatus}
+                      getLabel={(status) => status}
+                      getCount={(status) => appointments.filter(a => a.status === status).length}
+                      getColor={(status) => getStatusColor(status, theme)}
+                      onToggle={handleStatusFilter}
+                      sx={{
+                        pl: 0.5,
+                        pr: 0.5,
+                        color: '#9598A6',
+                        border: `1px solid rgba(149, 152, 166, 0.2)`,
+                        fontSize: '0.81rem',
+                        fontWeight: '500',
+                        backgroundColor: '#fff',
+                        borderRadius: '13px',
                         '&:hover': {
-                          opacity: 0.8,
+                          color: '#3D8BE8',
+                          border: '1px solid rgba(61, 139, 232, 0.2)',
+                          fontWeight: '500',
+                          backgroundColor: 'rgba(61, 139, 232, 0.1)',
                         },
-                        bgcolor: selectedStatus === status ? theme.palette.primary.light : 'white',
-                        color: selectedStatus === status ? 'white' : getStatusColor(status, theme),
-                        border: `1px solid ${getStatusColor(status, theme)}`,
-                        borderRadius: '10px',
+                        '&.MuiChip-filled': {
+                          color: '#3D8BE8',
+                          fontWeight: '600',
+                          border: '1px solid rgba(61, 139, 232, 0.2)',
+                        }
                       }}
                     />
-                  ))}
-                </Box>
+                  </Grid>
+                </Grid>
               </Box>
               
               {/* Location Filters */}
               <Box>
-                <Typography variant="subtitle2" sx={{ mb: 1 }}>Filter by Location</Typography>
-                {isLoadingLocations ? (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <CircularProgress size={20} />
-                    <Typography variant="body2">Loading locations...</Typography>
-                  </Box>
-                ) : locations.length > 0 ? (
-                  <Box sx={{ 
-                    display: 'flex', 
-                    gap: 1, 
-                    flexWrap: 'wrap'
-                  }}>
-                    {locations.map((location) => (
-                      <Chip
-                        key={location.id}
-                        icon={<LocationOnIcon />}
-                        label={`${location.name} (${getLocationAppointmentCount(location.id)})`}
-                        onClick={() => handleLocationFilter(location.id)}
-                        variant={selectedLocation === location.id ? 'filled' : 'outlined'}
-                        sx={{ 
-                          cursor: 'pointer',
+                <Grid container spacing={2} alignItems="center">
+                  <Grid item xs={12} md={2}>
+                    <Typography variant="subtitle2">Filter by Location</Typography>
+                  </Grid>
+                  <Grid item xs={12} md={10}>
+                    {isLoadingLocations ? (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <CircularProgress size={20} />
+                        <Typography variant="body2">Loading locations...</Typography>
+                      </Box>
+                    ) : locations.length > 0 ? (
+                      <FilterChipGroup
+                        options={locations.map(loc => loc.id)}
+                        selectedValue={selectedLocation}
+                        getLabel={(locationId) => {
+                          const location = locations.find(l => l.id === locationId);
+                          return location ? location.name : `Location ${locationId}`;
+                        }}
+                        getCount={(locationId) => getLocationAppointmentCount(locationId)}
+                        getColor={() => theme.palette.primary.main}
+                        onToggle={handleLocationFilter}
+                        sx={{
+                          pl: 0.5,
+                          pr: 0.5,
+                          color: '#9598A6',
+                          border: `1px solid rgba(149, 152, 166, 0.2)`,
+                          fontSize: '0.81rem',
+                          fontWeight: '500',
+                          backgroundColor: '#fff',
+                          borderRadius: '13px',
                           '&:hover': {
-                            opacity: 0.8,
+                            color: '#3D8BE8',
+                            border: '1px solid rgba(61, 139, 232, 0.2)',
+                            fontWeight: '500',
+                            backgroundColor: 'rgba(61, 139, 232, 0.1)',
                           },
-                          bgcolor: selectedLocation === location.id ? theme.palette.primary.light : 'white',
-                          color: selectedLocation === location.id ? 'white' : theme.palette.primary.main,
-                          borderRadius: '10px',
+                          '&.MuiChip-filled': {
+                            color: '#3D8BE8',
+                            fontWeight: '600',
+                            border: '1px solid rgba(61, 139, 232, 0.2)',
+                          }
                         }}
                       />
-                    ))}
-                  </Box>
-                ) : (
-                  <Typography variant="body2" color="text.secondary">
-                    No locations available. Please check with your administrator.
-                  </Typography>
-                )}
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        No locations available. Please check with your administrator.
+                      </Typography>
+                    )}
+                  </Grid>
+                </Grid>
               </Box>
               
               {/* Active Filters Summary */}
@@ -575,32 +323,17 @@ const AdminAppointmentList: React.FC = () => {
             </Box>
           </Paper>
 
-          <Box
-            sx={{
-              width: '100%',
-              '& .actions': { color: 'text.secondary' },
-              '& .textPrimary': { color: 'text.primary' },
-            }}
-          >
-            <GenericDataGrid
-              rows={selectedStatus || selectedLocation ? filteredAppointments : appointments}
-              // getRowHeight={() => 'auto'}
-              columns={columns}
+          <Box sx={{ width: '100%' }}>
+            <AdminAppointmentListTable
+              appointments={selectedStatus || selectedLocation ? filteredAppointments : appointments}
               loading={isLoading}
-              editMode="row"
-              rowModesModel={rowModesModel}
-              onRowModesModelChange={handleRowModesModelChange}
-              onRowEditStop={handleRowEditStop}
-              processRowUpdate={processRowUpdate}
-              defaultVisibleColumns={['id', 'dignitary_names', 'has_dignitary_met_gurudev', 'preferred_date_and_time', 'appointment_date', 'appointment_time', 'status', 'sub_status']}
-              initialState={{
-                pagination: {
-                  paginationModel: {
-                    pageSize: 10,
-                    page: 0,
-                  },
-                },
-              }}
+              statusOptions={statusOptions}
+              subStatusOptions={subStatusOptions}
+              appointmentTypeOptions={appointmentTypeOptions}
+              locations={locations}
+              onUpdateAppointment={handleUpdateAppointment}
+              searchValue={searchValue}
+              onSearchChange={handleSearchChange}
             />
           </Box>
         </Box>
