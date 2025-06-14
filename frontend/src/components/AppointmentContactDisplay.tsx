@@ -65,7 +65,7 @@ const AppointmentContactDisplay: React.FC<AppointmentContactDisplayProps> = ({
     return (
       <>
         <Typography variant="h6" gutterBottom color="primary">
-          Contacts ({totalContacts})
+          Attendees ({totalContacts})
         </Typography>
         
         {/* Grid container for responsive layout */}

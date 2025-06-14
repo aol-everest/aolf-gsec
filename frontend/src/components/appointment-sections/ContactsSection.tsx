@@ -34,11 +34,23 @@ export const ContactsSection: React.FC<ContactsSectionProps> = memo(({
         return null;
     }
 
+    // Helper function to check if a contact is the requester
+    const isRequesterContact = (contact: any) => {
+        // Check if the contact has SELF relationship (indicating they are the requester)
+        return contact.relationship_to_owner === relationshipTypeMap['SELF'];
+    };
+
     // Helper function to get display name for contact
     const getContactDisplayName = (contact: any) => {
         const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
         const isSelfContact = contact.relationship_to_owner === relationshipTypeMap['SELF'] ||
             (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName);
+        
+        // If this contact is the requester, show their name from the requester object with "(Requester)"
+        if (isRequesterContact(contact) && appointment.requester) {
+            return `${appointment.requester.first_name} ${appointment.requester.last_name} (Requester)`;
+        }
+        
         return isSelfContact ? selfDisplayName : `${contact.first_name} ${contact.last_name}`;
     };
 
@@ -51,6 +63,8 @@ export const ContactsSection: React.FC<ContactsSectionProps> = memo(({
         >
             {appointment.appointment_contacts.map((appointmentContact: AppointmentContact, index: number) => {
                 const contact = appointmentContact.contact;
+                const isRequester = isRequesterContact(contact);
+                
                 return (
                     <Box
                         sx={{ 
@@ -101,11 +115,12 @@ export const ContactsSection: React.FC<ContactsSectionProps> = memo(({
                                 <GridItemIconText 
                                     containerRef={cardContainerRef} 
                                     icon={<PhoneIconV2 sx={{ width: 22, height: 22 }} />} 
-                                    text={contact.phone || 'N/A'} 
+                                    text={(isRequester ? appointment.requester?.phone_number : contact.phone) || 'N/A'} 
                                     theme={theme} 
                                     maxGridWidth={6} 
                                 />
-                                {contact.relationship_to_owner && (
+                                {/* Skip relationship field for requester contacts */}
+                                {contact.relationship_to_owner && !isRequester && (
                                     <Grid item xs={12} sm={6}>
                                         <Typography sx={{ color: theme.palette.text.primary }}>
                                             <Typography sx={{ 
@@ -136,7 +151,7 @@ export const ContactsSection: React.FC<ContactsSectionProps> = memo(({
                                         </Typography>
                                     </Grid>
                                 )}
-                                {(contact.notes || appointmentContact.comments) && (
+                                {(appointmentContact.comments || contact.notes) && !isRequester && (
                                     <Grid item xs={12}>
                                         <Typography sx={{ fontWeight: 500, mr: 1, display: 'inline' }}>
                                             Notes:
@@ -148,7 +163,7 @@ export const ContactsSection: React.FC<ContactsSectionProps> = memo(({
                                             wordBreak: 'break-word',
                                             overflowWrap: 'break-word'
                                         }}>
-                                            {contact.notes || appointmentContact.comments || 'N/A'}
+                                            {appointmentContact.comments || contact.notes || 'N/A'}
                                         </Typography>
                                     </Grid>
                                 )}
