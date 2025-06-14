@@ -378,7 +378,7 @@ const AdminAppointmentTiles: React.FC = () => {
   const { data: requestTypeMap = {} } = useQuery<Record<string, string>>({
     queryKey: ['request-type-map'],
     queryFn: async () => {
-      const { data } = await api.get<Record<string, string>>('/appointment/request-type-options-map');
+      const { data } = await api.get<Record<string, string>>('/appointments/request-type-options-map');
       return data;
     },
   });

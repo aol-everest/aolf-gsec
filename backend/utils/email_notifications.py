@@ -1,5 +1,5 @@
 from typing import List, Dict, Any, Optional, Union, Callable, Type, TypeVar
-from backend.models.enums import PersonRelationshipType
+from models.enums import PersonRelationshipType
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Email, To, Content, Bcc
 from datetime import datetime
