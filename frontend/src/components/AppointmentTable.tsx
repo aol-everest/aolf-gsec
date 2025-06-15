@@ -7,6 +7,7 @@ import { formatHonorificTitle } from '../utils/formattingUtils';
 import { AppointmentStatusChip } from './AppointmentStatusChip';
 import { EditIconV2, CheckCircleIconV2 } from './iconsv2';
 import { GenericTable, TableCellComponents, standardColumnSizes } from './GenericTable';
+import { ActionButton } from './ActionButton';
 
 interface AppointmentTableProps {
   appointments: Appointment[];
@@ -285,14 +286,14 @@ const createAppointmentColumns = (
       id: 'actions',
       header: '',
       cell: (info) => (
-        <TableCellComponents.ActionButton
+        <ActionButton
           onClick={(e: React.MouseEvent) => {
             e.stopPropagation();
             onEdit(info.row.original.id);
           }}
         >
           <EditIconV2 sx={{ width: 20, height: 20 }} />
-        </TableCellComponents.ActionButton>
+        </ActionButton>
       ),
       size: 56,
       minSize: 56,

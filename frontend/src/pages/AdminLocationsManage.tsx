@@ -38,7 +38,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
-import EditIcon from '@mui/icons-material/Edit';
+import { ActionButton } from '../components/ActionButton';
 import { useSnackbar } from 'notistack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../hooks/useApi';
@@ -46,7 +46,7 @@ import Layout from '../components/Layout';
 import LocationTable from '../components/LocationTable';
 import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
-import { PencilIconV2, TrashIconV2, DownloadIconV2 } from '../components/iconsv2';
+import { EditIconV2, TrashIconV2, DownloadIconV2 } from '../components/iconsv2';
 
 // Google Maps types
 interface AddressComponent {
@@ -1391,13 +1391,13 @@ export default function AdminLocationsManage() {
                                   <ListItemSecondaryAction>
                                     {/* Enable Edit button */}
                                     <Tooltip title="Edit Meeting Place">
-                                      <IconButton 
+                                      <ActionButton 
                                         edge="end" 
                                         aria-label="edit" 
                                         onClick={() => handleEditMeetingPlace(mp)}
                                       >
-                                        <EditIcon fontSize="small"/>
-                                      </IconButton>
+                                        <EditIconV2 sx={{ width: 20, height: 20 }} />
+                                      </ActionButton>
                                     </Tooltip>
                                     <Tooltip title="Delete Meeting Place (Coming Soon)">
                                       <span>

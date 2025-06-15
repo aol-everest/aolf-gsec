@@ -27,6 +27,7 @@ import {
   Switch,
   Popover
 } from '@mui/material';
+import { ColumnDef } from '@tanstack/react-table';
 import {
   DataGrid,
   GridColDef,
@@ -37,7 +38,7 @@ import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDate } from '../utils/dateUtils';
-import CommonDataGrid from '../components/GenericDataGrid';
+import { GenericTable, createGenericColumnHelper } from '../components/GenericTable';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import CloseIcon from '@mui/icons-material/Close';
@@ -49,7 +50,8 @@ import { useEnums } from '../hooks/useEnums';
 import { RoleMap, AccessLevelMap, EntityTypeMap } from '../models/types';
 import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
-import { PencilIconV2 } from '../components/iconsv2';
+import { EditIconV2 } from '../components/iconsv2';
+import { ActionButton } from '../components/ActionButton';
 import { createDebugLogger } from '../utils/debugUtils';
 
 interface User {
@@ -75,6 +77,7 @@ interface User {
     first_name: string;
     last_name: string;
   };
+  name?: string; // Computed field for search
 }
 
 interface UserFormData {
@@ -145,6 +148,9 @@ const initialAccessFormData: UserAccessFormData = {
   is_active: true,
 };
 
+const columnHelper = createGenericColumnHelper<User>();
+const accessColumnHelper = createGenericColumnHelper<UserAccess>();
+
 const AdminManageUsers: React.FC = () => {
   const api = useApi();
   const { enqueueSnackbar } = useSnackbar();
@@ -153,6 +159,7 @@ const AdminManageUsers: React.FC = () => {
   const [formData, setFormData] = useState<UserFormData>(initialFormData);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [searchValue, setSearchValue] = useState('');
   
   // Access management states
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -221,7 +228,10 @@ const AdminManageUsers: React.FC = () => {
     queryFn: async () => {
       try {
         const { data } = await api.get<User[]>('/admin/users/all');
-        return data;
+        return data.map(user => ({
+          ...user,
+          name: `${user.first_name} ${user.last_name}`,
+        }));
       } catch (error) {
         console.error('Error fetching users:', error);
         enqueueSnackbar('Failed to fetch users', { variant: 'error' });
@@ -701,156 +711,162 @@ const AdminManageUsers: React.FC = () => {
     }
   }, [showAccessForm, editingId, users, accessFormData.country_code, filteredLocations, roleMap]);
 
-  const columns: GridColDef[] = [
-    { 
-        field: 'name', 
-        headerName: 'Name', 
-        width: 130,
-        flex: 1,
-        renderCell: (params) => `${params.row.first_name} ${params.row.last_name}`
-    },
-    { field: 'email', headerName: 'Email', width: 200, flex: 1 },
-    { field: 'phone_number', headerName: 'Phone Number', width: 130, flex: 1 },
-    { 
-      field: 'role', 
-      headerName: 'Role', 
-      width: 130, 
-      flex: 0.81,
-      renderCell: (params) => {
+  const handleSearchChange = (value: string) => {
+    setSearchValue(value);
+  };
+
+  const columns: ColumnDef<User, any>[] = [
+    columnHelper.accessor('name', {
+      header: 'Name',
+      size: 200,
+    }),
+    columnHelper.accessor('email', {
+      header: 'Email',
+      size: 200,
+    }),
+    columnHelper.accessor('phone_number', {
+      header: 'Phone Number',
+      size: 150,
+    }),
+    columnHelper.accessor('role', {
+      header: 'Role',
+      size: 130,
+      cell: ({ getValue }) => {
+        const value = getValue() as string;
         // Display the user-friendly value from the map if available
-        return Object.keys(roleMap).find(key => roleMap[key] === params.value) || params.value;
+        return Object.keys(roleMap).find(key => roleMap[key] === value) || value;
       }
-    },
-    { 
-      field: 'created_at', 
-      headerName: 'Created On', 
-      width: 110,
-      flex: 0.5,
-      renderCell: (params) => formatDate(params.row.created_at, false)
-    },
-    {
-      field: 'created_by_name',
-      headerName: 'Created By',
-      width: 150,
-      flex: 0.8,
-      renderCell: (params) => params.row.created_by_user 
-        ? `${params.row.created_by_user.first_name} ${params.row.created_by_user.last_name}`
-        : 'System'
-    },
-    {
-      field: 'updated_by_name',
-      headerName: 'Updated By',
-      width: 150,
-      flex: 0.8,
-      renderCell: (params) => params.row.updated_by_user 
-        ? `${params.row.updated_by_user.first_name} ${params.row.updated_by_user.last_name}`
-        : 'System'
-    },
-    {
-      field: 'last_login_at',
-      headerName: 'Last Login',
-      width: 170,
-      flex: 0.7,
-      renderCell: (params) => formatDate(params.row.last_login_at, true)
-    },
-    {
-      field: 'actions',
-      type: 'actions',
-      headerName: 'Actions',
-      width: 120,
-      flex: 0.3,
-      getActions: (params) => [
-        <GridActionsCellItem
-          icon={<PencilIconV2 sx={{ width: 20, height: 20 }} />}
-          label="Edit"
-          onClick={() => handleOpen(params.row)}
-        />
-      ],
-    },
+    }),
+    columnHelper.accessor('created_at', {
+      header: 'Created On',
+      size: 120,
+      cell: ({ getValue }) => formatDate(getValue() as string, false)
+    }),
+    columnHelper.accessor('created_by_user', {
+      id: 'created_by_name',
+      header: 'Created By',
+      size: 150,
+      cell: ({ getValue }) => {
+        const user = getValue() as User['created_by_user'];
+        return user ? `${user.first_name} ${user.last_name}` : 'System';
+      }
+    }),
+    columnHelper.accessor('updated_by_user', {
+      id: 'updated_by_name',
+      header: 'Updated By',
+      size: 150,
+      cell: ({ getValue }) => {
+        const user = getValue() as User['updated_by_user'];
+        return user ? `${user.first_name} ${user.last_name}` : 'System';
+      }
+    }),
+    columnHelper.accessor('last_login_at', {
+      header: 'Last Login',
+      size: 170,
+      cell: ({ getValue }) => formatDate(getValue() as string, true)
+    }),
+    columnHelper.display({
+      id: 'actions',
+      header: 'Actions',
+      size: 120,
+      cell: ({ row }) => (
+        <ActionButton
+          onClick={() => handleOpen(row.original)}
+          aria-label="edit"
+        >
+          <EditIconV2 sx={{ width: 20, height: 20 }} />
+        </ActionButton>
+      ),
+    }),
   ];
   
   // Access record data grid columns
-  const basicAccessColumns: GridColDef[] = [
-    { field: 'country_code', headerName: 'Country', width: 100, flex: 0.5 },
-    { 
-      field: 'location_id', 
-      headerName: 'Location', 
-      width: 180,
-      flex: 1,
-      renderCell: (params) => {
-        if (!params.value) return 'All Locations';
-        const location = locations.find(loc => loc.id === params.value);
-        return location ? location.name : `Location #${params.value}`;
+  const basicAccessColumns: ColumnDef<UserAccess, any>[] = [
+    accessColumnHelper.accessor('country_code', {
+      header: 'Country',
+      size: 100,
+    }),
+    accessColumnHelper.accessor('location_id', {
+      header: 'Location',
+      size: 180,
+      cell: ({ getValue }) => {
+        const value = getValue() as number | undefined;
+        if (!value) return 'All Locations';
+        const location = locations.find(loc => loc.id === value);
+        return location ? location.name : `Location #${value}`;
       }
-    },
-    { 
-      field: 'expiry_date', 
-      headerName: 'Expires', 
-      width: 120,
-      flex: 0.81,
-      renderCell: (params) => params.value ? formatDate(params.value, false) : 'Never'
-    },
-    { 
-      field: 'is_active', 
-      headerName: 'Status', 
-      width: 100,
-      flex: 0.5,
-      renderCell: (params) => params.value ? 
-        <Chip label="Active" color="success" size="small" /> : 
-        <Chip label="Inactive" color="error" size="small" />
-    },
-    {
-      field: 'actions',
-      type: 'actions',
-      headerName: 'Edit',
-      width: 150,
-      flex: 0.5,
-      getActions: (params) => [
-        <GridActionsCellItem
-          icon={params.row.is_active ? <LockIcon /> : <LockOpenIcon />}
-          label={params.row.is_active ? "Deactivate" : "Activate"}
-          onClick={() => handleToggleAccessStatus(params.row.id, params.row.is_active)}
-          showInMenu
-        />,
-        <GridActionsCellItem
-          icon={<EditIcon />}
-          label="Edit"
-          onClick={() => handleAccessFormOpen(params.row)}
-          showInMenu
-        />,
-        <GridActionsCellItem
-          icon={<DeleteIcon />}
-          label="Delete"
-          onClick={() => handleDeleteAccess(params.row.id)}
-          showInMenu
-        />,
-      ],
-    },
+    }),
+    accessColumnHelper.accessor('expiry_date', {
+      header: 'Expires',
+      size: 120,
+      cell: ({ getValue }) => {
+        const value = getValue() as string | undefined;
+        return value ? formatDate(value, false) : 'Never';
+      }
+    }),
+    accessColumnHelper.accessor('is_active', {
+      header: 'Status',
+      size: 100,
+      cell: ({ getValue }) => {
+        const isActive = getValue() as boolean;
+        return isActive ? 
+          <Chip label="Active" color="success" size="small" /> : 
+          <Chip label="Inactive" color="error" size="small" />;
+      }
+    }),
+    accessColumnHelper.display({
+      id: 'actions',
+      header: 'Edit',
+      size: 150,
+      cell: ({ row }) => (
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <IconButton
+            size="small"
+            onClick={() => handleToggleAccessStatus(row.original.id, row.original.is_active)}
+            title={row.original.is_active ? "Deactivate" : "Activate"}
+          >
+            {row.original.is_active ? <LockIcon /> : <LockOpenIcon />}
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={() => handleAccessFormOpen(row.original)}
+            title="Edit"
+          >
+            <EditIcon />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={() => handleDeleteAccess(row.original.id)}
+            title="Delete"
+          >
+            <DeleteIcon />
+          </IconButton>
+        </Box>
+      ),
+    }),
   ];
   
   // Update access record columns to use maps
-  const advancedAccessColumns: GridColDef[] = [
+  const advancedAccessColumns: ColumnDef<UserAccess, any>[] = [
     ...basicAccessColumns.slice(0, 2), // Include country and location columns
-    { 
-      field: 'access_level', 
-      headerName: 'Access Level', 
-      width: 120, 
-      flex: 0.81,
-      renderCell: (params) => {
+    accessColumnHelper.accessor('access_level', {
+      header: 'Access Level',
+      size: 120,
+      cell: ({ getValue }) => {
+        const value = getValue() as string;
         // Display the user-friendly value from the map if available
-        return Object.keys(accessLevelMap).find(key => accessLevelMap[key] === params.value) || params.value;
+        return Object.keys(accessLevelMap).find(key => accessLevelMap[key] === value) || value;
       }
-    },
-    { 
-      field: 'entity_type', 
-      headerName: 'Entity Type', 
-      width: 180, 
-      flex: 0.81,
-      renderCell: (params) => {
+    }),
+    accessColumnHelper.accessor('entity_type', {
+      header: 'Entity Type',
+      size: 180,
+      cell: ({ getValue }) => {
+        const value = getValue() as string;
         // Display the user-friendly value from the map if available
-        return Object.keys(entityTypeMap).find(key => entityTypeMap[key] === params.value) || params.value;
+        return Object.keys(entityTypeMap).find(key => entityTypeMap[key] === value) || value;
       }
-    },
+    }),
     ...basicAccessColumns.slice(2), // Include expiry date, status, and actions columns
   ];
 
@@ -1092,17 +1108,17 @@ const AdminManageUsers: React.FC = () => {
                           <CircularProgress size={24} />
                         </Box>
                       ) : userAccess.length > 0 ? (
-                        <CommonDataGrid
-                          rows={userAccess}
+                        <GenericTable
+                          data={userAccess}
                           columns={accessColumns}
                           loading={userAccessLoading}
-                          autoHeight
-                          hideFooter={userAccess.length <= 10}
-                          slots={{
-                            toolbar: null
+                          enablePagination={false}
+                          containerProps={{
+                            maxHeight: 400,
                           }}
-                          disableRowSelectionOnClick
-                          customRowHeight={45}
+                          tableProps={{
+                            size: 'small'
+                          }}
                         />
                       ) : (
                         <Paper sx={{ p: 2, textAlign: 'center', bgcolor: '#f9f9f9', borderRadius: 1 }}>
@@ -1371,12 +1387,33 @@ const AdminManageUsers: React.FC = () => {
             </Card>
           </Collapse>
 
-          <CommonDataGrid
-            rows={users}
+          <GenericTable
+            data={users}
             columns={columns}
             loading={isLoading}
-            defaultVisibleColumns={['name', 'email', 'phone_number', 'role', 'actions']}
-            customRowHeight={56}
+            enableSearch={true}
+            searchPlaceholder="Search users..."
+            searchableFields={['name', 'email', 'phone_number', 'role']}
+            searchValue={searchValue}
+            onSearchChange={handleSearchChange}
+            enableColumnVisibility={true}
+            initialColumnVisibility={{
+              created_at: false,
+              created_by_name: false,
+              updated_by_name: false,
+              last_login_at: false,
+            }}
+            enablePagination={true}
+            pageSize={25}
+            pageSizeOptions={[10, 25, 50, 100]}
+            containerProps={{
+              maxHeight: 'calc(100vh - 300px)',
+              sx: { mt: 2 }
+            }}
+            tableProps={{
+              stickyHeader: true,
+              size: 'small'
+            }}
           />
         </Box>
       </Container>

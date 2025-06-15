@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { Typography, Link } from '@mui/material';
 import { createColumnHelper, ColumnDef } from '@tanstack/react-table';
 import { GenericTable, TableCellComponents, standardColumnSizes } from './GenericTable';
-import { PencilIconV2 } from './iconsv2';
+import { EditIconV2 } from './iconsv2';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 
 // Location interface (you can import this from your types file)
@@ -276,7 +276,7 @@ const createLocationColumns = (
             onEdit(info.row.original.id);
           }}
         >
-          <PencilIconV2 sx={{ width: 20, height: 20 }} />
+          <EditIconV2 sx={{ width: 20, height: 20 }} />
         </TableCellComponents.ActionButton>
       ),
       size: 80,
