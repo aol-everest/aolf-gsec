@@ -44,6 +44,7 @@ import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import { debugLog, createDebugLogger } from '../utils/debugUtils';
 import { useDebounce } from '../hooks/useDebounce';
 import { SecondaryButton } from './SecondaryButton';
+import { ColumnsFilledIconV2 } from './iconsv2';
 
 interface GenericTableProps<T extends Record<string, any>> {
   data: T[];
@@ -544,7 +545,7 @@ export function GenericTable<T extends Record<string, any>>({
             <>
               <SecondaryButton
                 size="small"
-                startIcon={<ViewColumnIcon />}
+                startIcon={<ColumnsFilledIconV2 />}
                 onClick={(e) => setColumnVisibilityMenuAnchor(e.currentTarget)}
                 sx={{
                   minWidth: 'auto',
