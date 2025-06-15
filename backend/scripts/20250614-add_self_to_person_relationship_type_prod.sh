@@ -72,6 +72,33 @@ echo "This operation should complete in under 30 seconds..."
 
 echo "Starting SQL migration to add SELF to PersonRelationshipType enum..."
 
+# Step 0: Grant ownership of the enum to current user (admin permissions)
+echo "Step 0: Granting ownership of PersonRelationshipType enum to current user..."
+PGPASSWORD="$POSTGRES_PASSWORD" psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c "
+    ALTER TYPE personrelationshiptype OWNER TO $POSTGRES_USER;
+" -q
+
+if [ $? -eq 0 ]; then
+    echo "✅ Successfully granted ownership of PersonRelationshipType enum"
+else
+    echo "❌ Failed to grant ownership - checking if already owned..."
+    # Check if we're already the owner
+    CURRENT_OWNER=$(PGPASSWORD="$POSTGRES_PASSWORD" psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -t -c "
+        SELECT u.usename 
+        FROM pg_type t
+        JOIN pg_user u ON t.typowner = u.usesysid
+        WHERE t.typname = 'personrelationshiptype';
+    " | xargs)
+    
+    if [ "$CURRENT_OWNER" = "$POSTGRES_USER" ]; then
+        echo "✅ Current user already owns the enum"
+    else
+        echo "❌ Current owner is: $CURRENT_OWNER"
+        echo "❌ Cannot proceed without ownership. Please run as database admin or contact DBA."
+        exit 1
+    fi
+fi
+
 # Check database connectivity
 echo "Testing database connectivity..."
 PGPASSWORD="$POSTGRES_PASSWORD" psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c "SELECT 1;" > /dev/null 2>&1
