@@ -52,6 +52,9 @@ interface LocationTableProps {
   enableRowSelection?: boolean;
   baseUrl?: string; // API base URL for attachment links
   loading?: boolean;
+  enableSearch?: boolean;
+  searchPlaceholder?: string;
+  searchableFields?: (keyof Location)[];
 }
 
 // Create a column helper for locations
@@ -294,7 +297,10 @@ export const LocationTable: React.FC<LocationTableProps> = ({
   onRowSelectionChange,
   enableRowSelection = false,
   baseUrl = '',
-  loading = false
+  loading = false,
+  enableSearch = false,
+  searchPlaceholder = 'Search locations...',
+  searchableFields = ['name', 'street_address', 'city', 'state', 'country']
 }) => {
   // Create location-specific columns
   const columns = useMemo(
@@ -323,6 +329,14 @@ export const LocationTable: React.FC<LocationTableProps> = ({
       loading={loading}
       emptyMessage="No locations found."
       selectionMessage={`${selectedRows.length} location${selectedRows.length === 1 ? '' : 's'} selected`}
+      enableColumnVisibility={true}
+      initialColumnVisibility={{
+        timezone: false,
+        created_by_name: false,
+      }}
+      enableSearch={enableSearch}
+      searchPlaceholder={searchPlaceholder}
+      searchableFields={searchableFields}
       tableProps={{
         stickyHeader: true,
         size: 'medium',

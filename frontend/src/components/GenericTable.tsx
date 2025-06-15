@@ -15,9 +15,15 @@ import {
   TextField,
   InputAdornment,
   TablePagination,
+  Button,
+  Menu,
+  MenuItem,
+  FormControlLabel,
+  Divider,
 } from '@mui/material';
 import { SearchIconV2 } from './iconsv2';
 import ClearIcon from '@mui/icons-material/Clear';
+import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import {
   useReactTable,
   getCoreRowModel,
@@ -30,12 +36,14 @@ import {
   FilterFn,
   RowSelectionState,
   ColumnDef,
-  PaginationState
+  PaginationState,
+  VisibilityState
 } from '@tanstack/react-table';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import { debugLog, createDebugLogger } from '../utils/debugUtils';
 import { useDebounce } from '../hooks/useDebounce';
+import { SecondaryButton } from './SecondaryButton';
 
 interface GenericTableProps<T extends Record<string, any>> {
   data: T[];
@@ -58,6 +66,8 @@ interface GenericTableProps<T extends Record<string, any>> {
   enablePagination?: boolean;
   pageSize?: number;
   pageSizeOptions?: number[];
+  enableColumnVisibility?: boolean;
+  initialColumnVisibility?: VisibilityState;
   tableProps?: {
     stickyHeader?: boolean;
     size?: 'small' | 'medium';
@@ -255,6 +265,8 @@ export function GenericTable<T extends Record<string, any>>({
   enablePagination = false,
   pageSize = 10,
   pageSizeOptions = [5, 10, 25, 50, 100],
+  enableColumnVisibility = false,
+  initialColumnVisibility,
   tableProps = {},
   containerProps = {}
 }: GenericTableProps<T>) {
@@ -268,6 +280,8 @@ export function GenericTable<T extends Record<string, any>>({
     pageSize: pageSize,
   });
   const prevSelectedRowsRef = React.useRef<(string | number)[]>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(initialColumnVisibility || {});
+  const [columnVisibilityMenuAnchor, setColumnVisibilityMenuAnchor] = useState<null | HTMLElement>(null);
 
   // Default table props
   const {
@@ -439,14 +453,17 @@ export function GenericTable<T extends Record<string, any>>({
     onRowSelectionChange: enableRowSelection ? handleRowSelectionChange : undefined,
     onPaginationChange: enablePagination ? setPagination : undefined,
     onGlobalFilterChange: () => {}, // Let TanStack handle this internally
+    onColumnVisibilityChange: enableColumnVisibility ? setColumnVisibility : undefined,
     state: {
       sorting,
       rowSelection,
       globalFilter: debouncedGlobalFilter, // Use debounced value for actual filtering
       ...(enablePagination && { pagination }),
+      ...(enableColumnVisibility && { columnVisibility }),
     },
     globalFilterFn: finalGlobalFilterFn,
     enableRowSelection: enableRowSelection,
+    enableHiding: enableColumnVisibility,
     getRowId: getRowId,
   });
 
@@ -484,42 +501,101 @@ export function GenericTable<T extends Record<string, any>>({
 
   return (
     <Box sx={{ width: '100%' }}>
-      {/* Search bar */}
-      {enableSearch && (
-        <Box sx={{ mb: 2 }}>
-          <TextField
-            fullWidth
-            placeholder={searchPlaceholder}
-            variant="outlined"
-            size="small"
-            value={searchInput}
-            onChange={(e) => {
-              const value = e.target.value;
-              setSearchInput(value); // Only update UI state immediately
-              // Actual filtering and onSearchChange happens through debounced effect
-            }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIconV2 />
-                </InputAdornment>
-              ),
-              endAdornment: searchInput && (
-                <InputAdornment position="end">
-                  <IconButton
-                    size="small"
-                    onClick={() => {
-                      setSearchInput('');
-                      // Clear will be handled by the effect when debouncedGlobalFilter updates
-                    }}
-                    edge="end"
-                  >
-                    <ClearIcon />
-                  </IconButton>
-                </InputAdornment>
-              )
-            }}
-          />
+      {/* Search bar and controls */}
+      {(enableSearch || enableColumnVisibility) && (
+        <Box sx={{ mb: 2, display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+          {enableSearch && (
+            <TextField
+              fullWidth
+              placeholder={searchPlaceholder}
+              variant="outlined"
+              size="small"
+              value={searchInput}
+              onChange={(e) => {
+                const value = e.target.value;
+                setSearchInput(value); // Only update UI state immediately
+                // Actual filtering and onSearchChange happens through debounced effect
+              }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIconV2 />
+                  </InputAdornment>
+                ),
+                endAdornment: searchInput && (
+                  <InputAdornment position="end">
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        setSearchInput('');
+                        // Clear will be handled by the effect when debouncedGlobalFilter updates
+                      }}
+                      edge="end"
+                    >
+                      <ClearIcon />
+                    </IconButton>
+                  </InputAdornment>
+                )
+              }}
+            />
+          )}
+          
+          {enableColumnVisibility && (
+            <>
+              <SecondaryButton
+                size="small"
+                startIcon={<ViewColumnIcon />}
+                onClick={(e) => setColumnVisibilityMenuAnchor(e.currentTarget)}
+                sx={{
+                  minWidth: 'auto',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                }}
+              >
+                Columns
+              </SecondaryButton>
+              
+              <Menu
+                anchorEl={columnVisibilityMenuAnchor}
+                open={Boolean(columnVisibilityMenuAnchor)}
+                onClose={() => setColumnVisibilityMenuAnchor(null)}
+                PaperProps={{
+                  sx: {
+                    maxHeight: 300,
+                    minWidth: 200,
+                  }
+                }}
+              >
+                <Typography variant="subtitle2" sx={{ px: 2, py: 1, fontWeight: 600 }}>
+                  Show/Hide Columns
+                </Typography>
+                <Divider />
+                {table.getAllLeafColumns()
+                  .filter(column => column.getCanHide())
+                  .map(column => (
+                    <MenuItem key={column.id} sx={{ py: 0.5 }}>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={column.getIsVisible()}
+                            onChange={column.getToggleVisibilityHandler()}
+                            size="small"
+                          />
+                        }
+                        label={
+                          <Typography variant="body2">
+                            {typeof column.columnDef.header === 'string' 
+                              ? column.columnDef.header 
+                              : column.id}
+                          </Typography>
+                        }
+                        sx={{ margin: 0, width: '100%' }}
+                      />
+                    </MenuItem>
+                  ))}
+              </Menu>
+            </>
+          )}
         </Box>
       )}
 

@@ -1456,6 +1456,9 @@ export default function AdminLocationsManage() {
             onEdit={handleEditLocation}
             baseUrl={api.defaults.baseURL}
             loading={isLoading}
+            enableSearch={true}
+            searchPlaceholder="Search locations by name, address, city, state, or country..."
+            searchableFields={['name', 'street_address', 'city', 'state', 'country']}
           />
         </Box>
       </Container>
