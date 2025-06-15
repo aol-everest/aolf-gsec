@@ -63,6 +63,7 @@ interface ValidationErrors {
   status?: string;
   sub_status?: string;
   appointment_type?: string;
+  calendar_event_id?: string;
   secretariat_notes_to_requester?: string;
   secretariat_follow_up_actions?: string;
   secretariat_meeting_notes?: string;
@@ -146,6 +147,7 @@ interface AdminAppointmentEditCardProps {
   currentAppointmentId?: number;
   isLoadingTimeSlots?: boolean;
   showStatusFields?: boolean;
+  calendarEvents?: any[];
 }
 
 // Common file types and their corresponding icons
@@ -337,6 +339,7 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
   currentAppointmentId,
   isLoadingTimeSlots = false,
   showStatusFields = true,
+  calendarEvents = []
 }, ref) => {
   // File input refs
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -356,6 +359,7 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
   const watchAppointmentDate = useWatch({ control, name: 'appointment_date' });
   const watchAppointmentTime = useWatch({ control, name: 'appointment_time' });
   const watchDuration = useWatch({ control, name: 'duration' });
+  const watchAppointmentType = useWatch({ control, name: 'appointment_type' });
 
   const today = getLocalDateString();
   const now = getLocalTimeString();
@@ -483,6 +487,11 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
       if (data.status === statusMap['APPROVED']) {
         if (!data.appointment_type) {
           errors.appointment_type = 'Appointment type is required for Approved status';
+        }
+        
+        // Calendar event validation for darshan appointments
+        if (data.appointment_type === 'Darshan line' && !data.calendar_event_id) {
+          errors.calendar_event_id = 'Calendar event selection is required for darshan appointments';
         }
         
         if (data.sub_status === subStatusMap['SCHEDULED']) {
@@ -1289,6 +1298,83 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
               </FormControl>
             )}
           />
+        </Grid>
+      )}
+
+      {/* Calendar Event Selection */}
+      {showStatusFields && watchAppointmentType && calendarEvents && calendarEvents.length > 0 && (
+        <Grid item xs={12} md={6} lg={4}>
+          <Controller
+            name="calendar_event_id"
+            control={control}
+            render={({ field }) => (
+              <FormControl fullWidth error={!!validationErrors.calendar_event_id}>
+                <InputLabel>
+                  Calendar Event
+                  {watchAppointmentType === 'Darshan line' && ' *'}
+                </InputLabel>
+                <Select
+                  {...field}
+                  value={field.value || ''}
+                  label={`Calendar Event${watchAppointmentType === 'Darshan line' ? ' *' : ''}`}
+                  required={watchAppointmentType === 'Darshan line'}
+                >
+                  <MenuItem value="">
+                    <em>None</em>
+                  </MenuItem>
+                  {calendarEvents.map((event: any) => (
+                    <MenuItem key={event.id} value={event.id}>
+                      <Box>
+                        <Typography variant="body2" component="div">
+                          {event.title}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {event.start_date} at {event.start_time} ({event.duration} min)
+                          {event.location && ` • ${event.location.name}`}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          Capacity: {event.current_capacity || 0}/{event.max_capacity}
+                          {event.available_capacity <= 0 && (
+                            <Chip size="small" color="warning" label="Full" sx={{ ml: 1 }} />
+                          )}
+                        </Typography>
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </Select>
+                {watchAppointmentType === 'Darshan line' && (
+                  <FormHelperText>
+                    Calendar event selection is required for darshan appointments
+                  </FormHelperText>
+                )}
+                {validationErrors.calendar_event_id && (
+                  <FormHelperText error>{validationErrors.calendar_event_id}</FormHelperText>
+                )}
+              </FormControl>
+            )}
+          />
+        </Grid>
+      )}
+
+      {/* No Calendar Events Available Message */}
+      {showStatusFields && watchAppointmentType && calendarEvents && calendarEvents.length === 0 && (
+        <Grid item xs={12}>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
+              No Calendar Events Available
+            </Typography>
+            <Typography variant="body2">
+              {watchAppointmentType === 'Darshan line' && 
+                'No confirmed darshan calendar events found for the next 30 days. Please create a darshan calendar event first.'
+              }
+              {watchAppointmentType === 'Private event' && 
+                'No confirmed private event calendar events found for the next 30 days.'
+              }
+              {watchAppointmentType === 'Shared appointment' && 
+                'No confirmed shared calendar events (volunteer meetings, project meetings, etc.) found for the next 30 days.'
+              }
+            </Typography>
+          </Alert>
         </Grid>
       )}
 

@@ -26,7 +26,7 @@ const colors = {
     contrastText: '#fff',
   },
   info: {
-    main: '#0288d1',
+    main: '#3D8BE8',
     light: 'rgba(2, 136, 209, 0.081)',
     dark: 'rgba(2, 136, 209, 0.20)',
   },

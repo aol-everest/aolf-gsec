@@ -169,36 +169,36 @@ fi
 # Step 1: Create ENUM types for CourseType and SevaType
 echo "Step 1: Creating ENUM types..."
 
-echo "Creating CourseType ENUM..."
+echo "Creating CourseType ENUM with correct database values..."
 psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c "
     DO \$\$
     BEGIN
         IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'coursetype') THEN
             CREATE TYPE CourseType AS ENUM (
                 'SKY',
-                'Sahaj',
-                'Silence',
-                'Wisdom Series',
-                'Kids/Teens Course',
-                'Other Course'
+                'SAHAJ',
+                'SILENCE',
+                'WISDOM_SERIES',
+                'KIDS_TEENS_COURSE',
+                'OTHER_COURSE'
             );
-            RAISE NOTICE 'Created CourseType ENUM';
+            RAISE NOTICE 'Created CourseType ENUM with database values';
         ELSE
             RAISE NOTICE 'CourseType ENUM already exists';
         END IF;
     END\$\$;
 "
 
-echo "Creating SevaType ENUM..."
+echo "Creating SevaType ENUM with correct database values..."
 psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c "
     DO \$\$
     BEGIN
         IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'sevatype') THEN
             CREATE TYPE SevaType AS ENUM (
-                'Part Time',
-                'Full Time'
+                'PART_TIME',
+                'FULL_TIME'
             );
-            RAISE NOTICE 'Created SevaType ENUM';
+            RAISE NOTICE 'Created SevaType ENUM with database values';
         ELSE
             RAISE NOTICE 'SevaType ENUM already exists';
         END IF;
@@ -214,6 +214,20 @@ else
         DROP TYPE IF EXISTS CourseType;
         DROP TYPE IF EXISTS SevaType;
     "
+    exit 1
+fi
+
+# Step 1.5: Grant necessary permissions on ENUM types
+echo "Step 1.5: Granting permissions on ENUM types..."
+psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c "
+    GRANT USAGE ON TYPE CourseType TO aolf_gsec_app_user;
+    GRANT USAGE ON TYPE SevaType TO aolf_gsec_app_user;
+"
+
+if [ $? -eq 0 ]; then
+    echo "✅ Successfully granted permissions on ENUM types"
+else
+    echo "❌ Failed to grant permissions on ENUM types"
     exit 1
 fi
 

@@ -586,6 +586,7 @@ class AdminAppointmentUpdate(AppointmentBase):
     secretariat_follow_up_actions: Optional[str] = None
     secretariat_notes_to_requester: Optional[str] = None
     meeting_place_id: Optional[int] = None
+    calendar_event_id: Optional[int] = None
 
 
 class AdminAppointmentDignitaryWithDignitary(AppointmentDignitaryBase):

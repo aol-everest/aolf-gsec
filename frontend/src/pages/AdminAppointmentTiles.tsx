@@ -388,7 +388,7 @@ const AdminAppointmentTiles: React.FC = () => {
     }
   });
 
-  // Fetch event type map from the API
+  // Fetch request type map from the API
   const { data: requestTypeMap = {} } = useQuery<Record<string, string>>({
     queryKey: ['request-type-map'],
     queryFn: async () => {

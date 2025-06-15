@@ -68,6 +68,7 @@ import { SecondaryButton } from '../components/SecondaryButton';
 import { PrimaryButton } from '../components/PrimaryButton';
 import WarningButton from '../components/WarningButton';
 import { addMonths, addDays, subDays, format } from 'date-fns';
+import { InfoSquareCircleIconV2 } from '../components/iconsv2';
 
 interface AppointmentFormData {
   appointment_date: string;
@@ -78,6 +79,7 @@ interface AppointmentFormData {
   status: string;
   sub_status: string;
   appointment_type: string | null;
+  calendar_event_id: number | null;
   requester_notes_to_secretariat: string;
   secretariat_follow_up_actions: string;
   secretariat_meeting_notes: string;
@@ -148,6 +150,7 @@ const AdminAppointmentEdit: React.FC = () => {
   const [isExtractionDisabled, setIsExtractionDisabled] = useState(false);
   const [timeSlotDetailsMap, setTimeSlotDetailsMap] = useState<AppointmentTimeSlotDetailsMap | null>(null);
   const [isLoadingTimeSlots, setIsLoadingTimeSlots] = useState(false);
+  const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
   const theme = useTheme();
   
   // Extract prefilled values from location state if present
@@ -225,6 +228,15 @@ const AdminAppointmentEdit: React.FC = () => {
     }
   };
 
+  // Fetch request type map from the API
+  const { data: requestTypeMap = {} } = useQuery<Record<string, string>>({
+    queryKey: ['request-type-map'],
+    queryFn: async () => {
+      const { data } = await api.get<Record<string, string>>('/appointments/request-type-options-map');
+      return data;
+    },
+  });
+
   // Fetch status map from the API
   const { data: statusMap = {} } = useQuery<StatusMap>({
     queryKey: ['status-map'],
@@ -261,6 +273,47 @@ const AdminAppointmentEdit: React.FC = () => {
     },
   });
 
+  // Fetch calendar events based on appointment type
+  const currentAppointmentType = watch('appointment_type');
+  const { data: calendarEventsData = [] } = useQuery({
+    queryKey: ['calendar-events', currentAppointmentType],
+    queryFn: async () => {
+      if (!currentAppointmentType) return [];
+      
+      let eventTypes: string[] = [];
+      switch (currentAppointmentType) {
+        case 'Darshan line':
+          eventTypes = ['DARSHAN'];
+          break;
+        case 'Private event':
+          eventTypes = ['PRIVATE_EVENT'];
+          break;
+        case 'Shared appointment':
+          eventTypes = ['VOLUNTEER_MEETING', 'PROJECT_TEAM_MEETING', 'OTHER'];
+          break;
+        default:
+          return [];
+      }
+      
+      // Get future calendar events only
+      const today = new Date().toISOString().split('T')[0];
+      const oneMonthLater = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      
+      const { data } = await api.get<any[]>('/admin/calendar-events', {
+        params: {
+          start_date: today,
+          end_date: oneMonthLater,
+          status: 'CONFIRMED',
+          limit: 100
+        }
+      });
+      
+      // Filter by event types
+      return data.filter((event: any) => eventTypes.includes(event.event_type));
+    },
+    enabled: !!currentAppointmentType,
+  });
+
   // Fetch appointment
   const { data: appointment, isLoading } = useQuery({
     queryKey: ['appointment', id],
@@ -290,6 +343,7 @@ const AdminAppointmentEdit: React.FC = () => {
         status: locationState?.status || appointment.status || '',
         sub_status: locationState?.sub_status || appointment.sub_status || '',
         appointment_type: appointment.appointment_type || null,
+        calendar_event_id: appointment.calendar_event_id || null,
         requester_notes_to_secretariat: appointment.requester_notes_to_secretariat,
         secretariat_follow_up_actions: locationState?.secretariat_follow_up_actions || appointment.secretariat_follow_up_actions,
         secretariat_meeting_notes: locationState?.secretariat_meeting_notes || appointment.secretariat_meeting_notes,
@@ -709,6 +763,60 @@ const AdminAppointmentEdit: React.FC = () => {
               </Box>
             </Paper>
             
+            {/* Request Type Indicator */}
+            <Alert 
+              severity="info" 
+              sx={{ 
+                mb: 3, 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'flex-start', 
+                gap: 1,
+                color: 'info.main',
+                border: '1px solid',
+                borderColor: 'info.dark',
+                boxShadow: 'none'
+              }}
+              icon={<InfoSquareCircleIconV2 />}
+            >
+              <Typography variant="h6" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'flex-start' }}>
+                Request Type: {appointment.request_type || 'Not Specified'}
+              </Typography>
+              <Typography variant="body2">
+                {appointment.request_type === requestTypeMap['DARSHAN'] && 
+                  '⚠️ Note: This is a darshan appointment request. It is recommended to approve this request in bulk via the "Review Appointments" page. This flow is primarily for exclusive appointments.'
+                }
+                {appointment.request_type === requestTypeMap['PROJECT_TEAM_MEETING'] && 
+                  '⚠️ The requestee has requested a project team meeting.'
+                }
+                {appointment.request_type === requestTypeMap['OTHER'] && 
+                  'The requestee has not specified the type of appointment request.'
+                }
+                {/* {appointment.request_type === requestTypeMap['DIGNITARY'] && 
+                  'The requestee has requested a dignitary appointment.'
+                } */}
+                {!appointment.request_type && 
+                  '⚠️ This is a unknown appointment request type.'
+                }
+              </Typography>
+            </Alert>
+
+            {/* Darshan Warning */}
+            {appointment.appointment_type === 'Darshan line' && (
+              <Alert 
+                severity="warning" 
+                sx={{ mb: 3 }}
+              >
+                <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
+                  ⚠️ Darshan Appointment Notice
+                </Typography>
+                <Typography variant="body2">
+                  This administrative interface is primarily designed for exclusive appointments. 
+                  For darshan appointments, please ensure you select an appropriate calendar event below.
+                </Typography>
+              </Alert>
+            )}
+
             {/* Validation Summary */}
             {showValidationSummary && Object.keys(validationErrors).length > 0 && (
               <Alert 
@@ -777,6 +885,7 @@ const AdminAppointmentEdit: React.FC = () => {
                     timeSlotDetailsMap={timeSlotDetailsMap}
                     isLoadingTimeSlots={isLoadingTimeSlots}
                     currentAppointmentId={id ? Number(id) : undefined}
+                    calendarEvents={calendarEventsData}
                     initialFormValues={appointment ? {
                       appointment_date: appointment.appointment_date || appointment.preferred_date,
                       appointment_time: appointment.appointment_time,
@@ -786,6 +895,7 @@ const AdminAppointmentEdit: React.FC = () => {
                       status: locationState?.status || appointment.status || '',
                       sub_status: locationState?.sub_status || appointment.sub_status || '',
                       appointment_type: appointment.appointment_type || null,
+                      calendar_event_id: appointment.calendar_event_id || null,
                       requester_notes_to_secretariat: appointment.requester_notes_to_secretariat,
                       secretariat_follow_up_actions: locationState?.secretariat_follow_up_actions || appointment.secretariat_follow_up_actions,
                       secretariat_meeting_notes: locationState?.secretariat_meeting_notes || appointment.secretariat_meeting_notes,

@@ -123,6 +123,7 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
 
   const watchEventType = watch('eventType');
   const watchDate = watch('appointment_date');
+  const watchTime = watch('appointment_time');
   const watchStatus = watch('status');
   const watchNumberOfDignitaries = watch('numberOfDignitaries');
 
@@ -248,6 +249,50 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
       }
     }
   }, [watchStatus, statusSubStatusMapping, getValues, setValue]);
+
+  // Auto-generate title for Darshan events
+  useEffect(() => {
+    if (eventTypeMap && watchEventType === eventTypeMap['DARSHAN']) {
+      const currentTitle = getValues('title');
+      let autoTitle = '';
+
+      // Start with base title
+      if (!currentTitle || currentTitle.startsWith('General Darshan')) {
+        autoTitle = 'General Darshan';
+
+        // Add date if selected and valid
+        if (watchDate && watchDate.trim() !== '') {
+          const dateObj = new Date(watchDate);
+          // Check if the date is valid
+          if (!isNaN(dateObj.getTime())) {
+            const formattedDate = `${(dateObj.getMonth() + 1).toString()}/${dateObj.getDate().toString()}`;
+            autoTitle = `${autoTitle} ${formattedDate}`;
+          }
+        }
+
+        // Add time if selected and valid
+        if (watchTime && watchTime.trim() !== '' && watchTime.includes(':')) {
+          const [hours, minutes] = watchTime.split(':');
+          const hour24 = parseInt(hours, 10);
+          const minutesParsed = parseInt(minutes, 10);
+          
+          // Check if hours and minutes are valid numbers
+          if (!isNaN(hour24) && !isNaN(minutesParsed) && hour24 >= 0 && hour24 <= 23 && minutesParsed >= 0 && minutesParsed <= 59) {
+            const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
+            const ampm = hour24 >= 12 ? 'pm' : 'am';
+            // Only include minutes if they're not "00"
+            const formattedTime = minutes === '00' ? `${hour12}${ampm}` : `${hour12}:${minutes}${ampm}`;
+            autoTitle = `${autoTitle} ${formattedTime}`;
+          }
+        }
+
+        // Only update if the title has changed
+        if (autoTitle !== currentTitle) {
+          setValue('title', autoTitle);
+        }
+      }
+    }
+  }, [watchEventType, watchDate, watchTime, eventTypeMap, getValues, setValue]);
 
   // Handle event type changes
   const handleEventTypeChange = (eventType: string) => {

@@ -145,6 +145,7 @@ interface Appointment {
   appointment_contacts?: AppointmentContact[];
   request_type: string;
   number_of_attendees?: number;
+  calendar_event_id?: number;
 }
 
 interface AdminAppointmentUpdate {
