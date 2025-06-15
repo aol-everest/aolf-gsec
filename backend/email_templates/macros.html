@@ -20,10 +20,9 @@
             {% set contact = app_contact.contact %}
             {% if contact.relationship_to_owner | lower == "self" %}
                 {% set attendee_name = "Self" %}
+                {% set _ = attendees.append({'name': attendee_name.strip(), 'type': 'contact'}) %}
             {% else %}
                 {% set attendee_name = contact.first_name + " " + contact.last_name %}
-            {% endif %}
-            {% if contact.relationship_to_owner | lower != "self" %}
                 {% set relationship = contact.relationship_to_owner %}
                 {% set _ = attendees.append({'name': attendee_name.strip(), 'type': 'contact', 'relationship': relationship}) %}
             {% endif %}
