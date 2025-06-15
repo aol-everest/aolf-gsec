@@ -124,6 +124,7 @@ async def list_calendar_events(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_read_db),
     event_type: Optional[EventType] = None,
+    event_types: Optional[List[EventType]] = Query(default=None),
     status: Optional[EventStatus] = None,
     location_id: Optional[int] = None,
     start_date: Optional[date] = None,
@@ -133,11 +134,18 @@ async def list_calendar_events(
     limit: int = Query(100, ge=1, le=1000)
 ):
     """List calendar events with filters"""
+    logger.info(f"Calendar events list request - event_types: {event_types} (type: {type(event_types)}), status: {status}, start_date: {start_date}, end_date: {end_date}")
+    logger.info(f"Raw event_types value: {repr(event_types)}")
+    
     query = db.query(models.CalendarEvent)
     
     # Apply filters
     if event_type:
         query = query.filter(models.CalendarEvent.event_type == event_type)
+    elif event_types is not None and len(event_types) > 0:
+        logger.info(f"Filtering by event types: {[et.value for et in event_types]}")
+        query = query.filter(models.CalendarEvent.event_type.in_(event_types))
+    
     if status:
         query = query.filter(models.CalendarEvent.status == status)
     if location_id:

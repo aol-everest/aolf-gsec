@@ -887,6 +887,37 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
     };
   };
 
+  // Calendar Event Grouping and Sorting (for grouped select)
+  const eventsByDate = React.useMemo(() => {
+    const groups: Record<string, any[]> = {};
+    calendarEvents.forEach((event: any) => {
+      const date = event.start_date;
+      if (!groups[date]) {
+        groups[date] = [];
+      }
+      groups[date].push(event);
+    });
+    // Sort events within each date by start time
+    Object.keys(groups).forEach(date => {
+      groups[date].sort((a, b) => {
+        if (!a.start_time) return 1;
+        if (!b.start_time) return -1;
+        return a.start_time.localeCompare(b.start_time);
+      });
+    });
+    return groups;
+  }, [calendarEvents]);
+
+  const currentAppointmentDate = getValues('appointment_date');
+
+  const sortedDates = React.useMemo(() => {
+    const dates = Object.keys(eventsByDate).sort();
+    if (currentAppointmentDate && dates.includes(currentAppointmentDate)) {
+      return [currentAppointmentDate, ...dates.filter(d => d !== currentAppointmentDate)];
+    }
+    return dates;
+  }, [eventsByDate, currentAppointmentDate]);
+
   return (
     <Grid container spacing={3}>
       {/* Appointment Date and Time */}
@@ -1307,51 +1338,105 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
           <Controller
             name="calendar_event_id"
             control={control}
-            render={({ field }) => (
-              <FormControl fullWidth error={!!validationErrors.calendar_event_id}>
-                <InputLabel>
-                  Calendar Event
-                  {watchAppointmentType === 'Darshan line' && ' *'}
-                </InputLabel>
-                <Select
-                  {...field}
-                  value={field.value || ''}
-                  label={`Calendar Event${watchAppointmentType === 'Darshan line' ? ' *' : ''}`}
-                  required={watchAppointmentType === 'Darshan line'}
-                >
-                  <MenuItem value="">
-                    <em>None</em>
-                  </MenuItem>
-                  {calendarEvents.map((event: any) => (
-                    <MenuItem key={event.id} value={event.id}>
-                      <Box>
-                        <Typography variant="body2" component="div">
-                          {event.title}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {event.start_date} at {event.start_time} ({event.duration} min)
-                          {event.location && ` • ${event.location.name}`}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" display="block">
-                          Capacity: {event.current_capacity || 0}/{event.max_capacity}
-                          {event.available_capacity <= 0 && (
-                            <Chip size="small" color="warning" label="Full" sx={{ ml: 1 }} />
-                          )}
-                        </Typography>
-                      </Box>
+            render={({ field }) => {
+              const handleCalendarEventChange = (eventId: number | string) => {
+                field.onChange(eventId);
+                // If an event is selected, update appointment date and time
+                if (eventId) {
+                  const selectedEvent = calendarEvents.find((event: any) => event.id === eventId);
+                  if (selectedEvent) {
+                    setValue('appointment_date', selectedEvent.start_date);
+                    setValue('appointment_time', selectedEvent.start_time);
+                    if (selectedEvent.duration) {
+                      setValue('duration', selectedEvent.duration);
+                    }
+                    if (selectedEvent.location_id) {
+                      setValue('location_id', selectedEvent.location_id);
+                    }
+                    if (selectedEvent.meeting_place_id) {
+                      setValue('meeting_place_id', selectedEvent.meeting_place_id);
+                    }
+                  }
+                }
+              };
+              return (
+                <FormControl fullWidth error={!!validationErrors.calendar_event_id}>
+                  <InputLabel>
+                    Calendar Event
+                    {watchAppointmentType === 'Darshan line' && ' *'}
+                  </InputLabel>
+                  <Select
+                    value={field.value || ''}
+                    onChange={(e) => handleCalendarEventChange(e.target.value)}
+                    label={`Calendar Event${watchAppointmentType === 'Darshan line' ? ' *' : ''}`}
+                    required={watchAppointmentType === 'Darshan line'}
+                  >
+                    <MenuItem value="">
+                      <em>None</em>
                     </MenuItem>
-                  ))}
-                </Select>
-                {watchAppointmentType === 'Darshan line' && (
-                  <FormHelperText>
-                    Calendar event selection is required for darshan appointments
-                  </FormHelperText>
-                )}
-                {validationErrors.calendar_event_id && (
-                  <FormHelperText error>{validationErrors.calendar_event_id}</FormHelperText>
-                )}
-              </FormControl>
-            )}
+                    {sortedDates.map(date => {
+                      // Show the selected appointment date first, then other dates
+                      // If no appointment date is selected, don't show any date groups
+                      const isSelectedDate = date === currentAppointmentDate;
+                      // Skip showing date groups if no appointment date is selected
+                      if (!currentAppointmentDate) {
+                        return null;
+                      }
+                      return [
+                        // Date header (non-selectable)
+                        <MenuItem key={`header-${date}`} disabled sx={{ 
+                          fontWeight: 'bold', 
+                          backgroundColor: 'action.hover',
+                          '&.Mui-disabled': {
+                            opacity: 1
+                          }
+                        }}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                            {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { 
+                              weekday: 'long', 
+                              year: 'numeric', 
+                              month: 'long', 
+                              day: 'numeric' 
+                            })}
+                            {isSelectedDate && (
+                              <Chip size="small" color="primary" label="Selected Date" sx={{ ml: 1 }} />
+                            )}
+                          </Typography>
+                        </MenuItem>,
+                        // Events for this date
+                        ...eventsByDate[date].map((event: any) => (
+                          <MenuItem key={event.id} value={event.id} sx={{ pl: 4 }}>
+                            <Box>
+                              <Typography variant="body2" component="div">
+                                {event.title}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {event.start_time} ({event.duration} min)
+                                {event.location && ` • ${event.location.name}`}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary" display="block">
+                                Capacity: {event.current_capacity || 0}/{event.max_capacity}
+                                {event.available_capacity <= 0 && (
+                                  <Chip size="small" color="warning" label="Full" sx={{ ml: 1 }} />
+                                )}
+                              </Typography>
+                            </Box>
+                          </MenuItem>
+                        ))
+                      ];
+                    })}
+                  </Select>
+                  {watchAppointmentType === 'Darshan line' && (
+                    <FormHelperText>
+                      Calendar event selection is required for darshan appointments
+                    </FormHelperText>
+                  )}
+                  {validationErrors.calendar_event_id && (
+                    <FormHelperText error>{validationErrors.calendar_event_id}</FormHelperText>
+                  )}
+                </FormControl>
+              );
+            }}
           />
         </Grid>
       )}

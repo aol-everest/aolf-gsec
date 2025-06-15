@@ -33,6 +33,6 @@ FROM pg_enum
 WHERE enumtypid = (
     SELECT oid 
     FROM pg_type 
-    WHERE typname = 'personrelationshiptype'
+    WHERE typname = 'eventtype'
 )
 ORDER BY enumsortorder; 

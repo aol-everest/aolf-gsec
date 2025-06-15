@@ -41,7 +41,7 @@ import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AdminAppointmentsReviewRoute } from '../config/routes';
-import { Appointment, Location, AppointmentDignitary } from '../models/types';
+import { Appointment, Location, AppointmentDignitary, EnumMap } from '../models/types';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -273,45 +273,107 @@ const AdminAppointmentEdit: React.FC = () => {
     },
   });
 
+  // Fetch event type map
+  const { data: eventTypeMap } = useQuery<Record<string, string>>({
+    queryKey: ['event-type-map'],
+    queryFn: async () => {
+      const { data } = await api.get<Record<string, string>>('/calendar/event-type-options-map');
+      return data;
+    },
+  });
+
+  // Fetch appointment type map
+  const { data: appointmentTypeMap = {} } = useQuery<EnumMap>({
+    queryKey: ['appointment-type-map'],
+    queryFn: async () => {
+      const { data } = await api.get<EnumMap>('/appointments/type-options-map');
+      return data;
+    },
+  });
+
+  // Fetch event status map
+  const { data: eventStatusMap = {} } = useQuery<EnumMap>({
+    queryKey: ['event-status-map'],
+    queryFn: async () => {
+      const { data } = await api.get<EnumMap>('/calendar/event-status-options-map');
+      return data;
+    },
+  });
+
+
   // Fetch calendar events based on appointment type
   const currentAppointmentType = watch('appointment_type');
   const { data: calendarEventsData = [] } = useQuery({
-    queryKey: ['calendar-events', currentAppointmentType],
+    queryKey: ['calendar-events', currentAppointmentType, eventTypeMap, appointmentTypeMap, eventStatusMap],
     queryFn: async () => {
-      if (!currentAppointmentType) return [];
+      if (!currentAppointmentType || !eventTypeMap || !appointmentTypeMap || !eventStatusMap) return [];
+
+      console.log('currentAppointmentType', currentAppointmentType);
       
       let eventTypes: string[] = [];
       switch (currentAppointmentType) {
-        case 'Darshan line':
-          eventTypes = ['DARSHAN'];
+        case appointmentTypeMap['DARSHAN_LINE']:
+          eventTypes = [eventTypeMap['DARSHAN']];
           break;
-        case 'Private event':
-          eventTypes = ['PRIVATE_EVENT'];
+        case appointmentTypeMap['PRIVATE_EVENT']:
+          eventTypes = [eventTypeMap['PRIVATE_EVENT']];
           break;
-        case 'Shared appointment':
-          eventTypes = ['VOLUNTEER_MEETING', 'PROJECT_TEAM_MEETING', 'OTHER'];
+        case appointmentTypeMap['SHARED_APPOINTMENT']:
+          eventTypes = [eventTypeMap['VOLUNTEER_MEETING'], eventTypeMap['PROJECT_TEAM_MEETING'], eventTypeMap['OTHER']];
           break;
         default:
           return [];
       }
-      
+
+      console.log('eventTypes', eventTypes);
+
       // Get future calendar events only
       const today = new Date().toISOString().split('T')[0];
       const oneMonthLater = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       
-      const { data } = await api.get<any[]>('/admin/calendar-events', {
-        params: {
+      try {
+        const { data } = await api.get<any[]>('/admin/calendar-events', {
+          params: {
+            start_date: today,
+            end_date: oneMonthLater,
+            status: eventStatusMap['CONFIRMED'],
+            event_types: eventTypes,
+            limit: 100
+          },
+          paramsSerializer: (params) => {
+            // Custom serializer to handle arrays without brackets
+            const searchParams = new URLSearchParams();
+            Object.entries(params).forEach(([key, value]) => {
+              if (Array.isArray(value)) {
+                value.forEach(item => searchParams.append(key, item));
+              } else if (value !== null && value !== undefined) {
+                searchParams.append(key, String(value));
+              }
+            });
+            return searchParams.toString();
+          }
+        });
+        
+        console.log('Calendar events API response:', data);
+        console.log('Event types requested:', eventTypes);
+        
+        return data;
+      } catch (error: any) {
+        console.error('Calendar events API error:', error);
+        console.error('Error response:', error.response);
+        console.error('Error data:', error.response?.data);
+        console.error('Error status:', error.response?.status);
+        console.error('Request params:', {
           start_date: today,
           end_date: oneMonthLater,
-          status: 'CONFIRMED',
+          status: eventStatusMap['CONFIRMED'],
+          event_types: eventTypes,
           limit: 100
-        }
-      });
-      
-      // Filter by event types
-      return data.filter((event: any) => eventTypes.includes(event.event_type));
+        });
+        throw error;
+      }
     },
-    enabled: !!currentAppointmentType,
+    enabled: !!currentAppointmentType && !!eventTypeMap && !!appointmentTypeMap && !!eventStatusMap,
   });
 
   // Fetch appointment
