@@ -301,80 +301,7 @@ const AdminAppointmentEdit: React.FC = () => {
   });
 
 
-  // Fetch calendar events based on appointment type
-  const currentAppointmentType = watch('appointment_type');
-  const { data: calendarEventsData = [] } = useQuery({
-    queryKey: ['calendar-events', currentAppointmentType, eventTypeMap, appointmentTypeMap, eventStatusMap],
-    queryFn: async () => {
-      if (!currentAppointmentType || !eventTypeMap || !appointmentTypeMap || !eventStatusMap) return [];
 
-      console.log('currentAppointmentType', currentAppointmentType);
-      
-      let eventTypes: string[] = [];
-      switch (currentAppointmentType) {
-        case appointmentTypeMap['DARSHAN_LINE']:
-          eventTypes = [eventTypeMap['DARSHAN']];
-          break;
-        case appointmentTypeMap['PRIVATE_EVENT']:
-          eventTypes = [eventTypeMap['PRIVATE_EVENT']];
-          break;
-        case appointmentTypeMap['SHARED_APPOINTMENT']:
-          eventTypes = [eventTypeMap['VOLUNTEER_MEETING'], eventTypeMap['PROJECT_TEAM_MEETING'], eventTypeMap['OTHER']];
-          break;
-        default:
-          return [];
-      }
-
-      console.log('eventTypes', eventTypes);
-
-      // Get future calendar events only
-      const today = new Date().toISOString().split('T')[0];
-      const oneMonthLater = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      
-      try {
-        const { data } = await api.get<any[]>('/admin/calendar-events', {
-          params: {
-            start_date: today,
-            end_date: oneMonthLater,
-            status: eventStatusMap['CONFIRMED'],
-            event_types: eventTypes,
-            limit: 100
-          },
-          paramsSerializer: (params) => {
-            // Custom serializer to handle arrays without brackets
-            const searchParams = new URLSearchParams();
-            Object.entries(params).forEach(([key, value]) => {
-              if (Array.isArray(value)) {
-                value.forEach(item => searchParams.append(key, item));
-              } else if (value !== null && value !== undefined) {
-                searchParams.append(key, String(value));
-              }
-            });
-            return searchParams.toString();
-          }
-        });
-        
-        console.log('Calendar events API response:', data);
-        console.log('Event types requested:', eventTypes);
-        
-        return data;
-      } catch (error: any) {
-        console.error('Calendar events API error:', error);
-        console.error('Error response:', error.response);
-        console.error('Error data:', error.response?.data);
-        console.error('Error status:', error.response?.status);
-        console.error('Request params:', {
-          start_date: today,
-          end_date: oneMonthLater,
-          status: eventStatusMap['CONFIRMED'],
-          event_types: eventTypes,
-          limit: 100
-        });
-        throw error;
-      }
-    },
-    enabled: !!currentAppointmentType && !!eventTypeMap && !!appointmentTypeMap && !!eventStatusMap,
-  });
 
   // Fetch appointment
   const { data: appointment, isLoading } = useQuery({
@@ -947,7 +874,9 @@ const AdminAppointmentEdit: React.FC = () => {
                     timeSlotDetailsMap={timeSlotDetailsMap}
                     isLoadingTimeSlots={isLoadingTimeSlots}
                     currentAppointmentId={id ? Number(id) : undefined}
-                    calendarEvents={calendarEventsData}
+                    eventTypeMap={eventTypeMap}
+                    appointmentTypeMap={appointmentTypeMap}
+                    eventStatusMap={eventStatusMap}
                     initialFormValues={appointment ? {
                       appointment_date: appointment.appointment_date || appointment.preferred_date,
                       appointment_time: appointment.appointment_time,
