@@ -84,6 +84,15 @@ export const ContactManagement: React.FC<ContactManagementProps> = ({
     },
   });
 
+  // Fetch attendee type map from the API
+  const { data: attendeeTypeMap = {} } = useQuery<Record<string, string>>({
+    queryKey: ['attendee-type-map'],
+    queryFn: async () => {
+      const { data } = await api.get<Record<string, string>>('/appointments/attendee-type-options-map');
+      return data;
+    },
+  });
+
   // Helper function to get display name for contact
   const getContactDisplayName = (contact: UserContact) => {
     const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
@@ -169,7 +178,7 @@ export const ContactManagement: React.FC<ContactManagementProps> = ({
                           </Typography>
                         </>
                       )}
-                      {contact.relationship_to_owner && selectedRequestTypeConfig?.attendee_type === 'personal' && (
+                      {contact.relationship_to_owner && selectedRequestTypeConfig?.attendee_type === attendeeTypeMap['PERSONAL'] && (
                         <>
                           <br />
                           <Typography component="span" variant="body2" color="text.secondary">
@@ -397,7 +406,7 @@ export const ContactManagement: React.FC<ContactManagementProps> = ({
               </Grid>
 
               {/* Conditional fields based on attendee type */}
-              {selectedRequestTypeConfig?.attendee_type === 'personal' && (
+              {selectedRequestTypeConfig?.attendee_type === attendeeTypeMap['PERSONAL'] && (
                 <Grid item xs={12} md={6}>
                   <Controller
                     name="relationship_to_owner"

@@ -72,6 +72,16 @@ async def get_request_type_map():
     """Get a dictionary mapping of request type enum names to their display values"""
     return {req_type.name: req_type.value for req_type in models.RequestType}
 
+@router.get("/appointments/attendee-type-options", response_model=List[str])
+async def get_attendee_type_options():
+    """Get all possible attendee type options"""
+    return [attendee_type.value for attendee_type in models.AttendeeType]
+
+@router.get("/appointments/attendee-type-options-map")
+async def get_attendee_type_map():
+    """Get a dictionary mapping of attendee type enum names to their display values"""
+    return {attendee_type.name: attendee_type.value for attendee_type in models.AttendeeType}
+
 @router.get("/appointments/attendance-status-options", response_model=List[str])
 async def get_attendance_status_options():
     """Get all possible attendance status options"""
@@ -110,6 +120,26 @@ async def get_person_relationship_type_map():
 async def get_user_contact_relationship_type_options_map():
     """Get user contact relationship type options as a map for frontend use"""
     return {x.name: x.value for x in models.PersonRelationshipType}
+
+@router.get("/user-contacts/course-type-options", response_model=List[str])
+async def get_course_type_options():
+    """Get all possible course type options"""
+    return [course_type.value for course_type in models.CourseType]
+
+@router.get("/user-contacts/course-type-options-map")
+async def get_course_type_map():
+    """Get a dictionary mapping of course type enum names to their display values"""
+    return {course_type.name: course_type.value for course_type in models.CourseType}
+
+@router.get("/user-contacts/seva-type-options", response_model=List[str])
+async def get_seva_type_options():
+    """Get all possible seva type options"""
+    return [seva_type.value for seva_type in models.SevaType]
+
+@router.get("/user-contacts/seva-type-options-map")
+async def get_seva_type_map():
+    """Get a dictionary mapping of seva type enum names to their display values"""
+    return {seva_type.name: seva_type.value for seva_type in models.SevaType}
 
 # =============================================================================
 # DIGNITARY-RELATED ENUM ENDPOINTS

@@ -6,7 +6,8 @@ import { useApi } from './useApi';
  */
 export type EnumType = 'userRole' | 'appointmentStatus' | 'appointmentSubStatus' | 
   'appointmentType' | 'appointmentTimeOfDay' | 'honorificTitle' | 'primaryDomain' | 
-  'relationshipType' | 'personRelationshipType' | 'attachmentType' | 'accessLevel' | 'entityType';
+  'relationshipType' | 'personRelationshipType' | 'attachmentType' | 'accessLevel' | 'entityType' |
+  'courseType' | 'sevaType';
 
 // Map enum types to their endpoint paths
 const enumEndpoints: Record<EnumType, string> = {
@@ -21,7 +22,9 @@ const enumEndpoints: Record<EnumType, string> = {
   personRelationshipType: '/appointments/person-relationship-type-options',
   attachmentType: '/attachments/type-options',
   accessLevel: '/admin/access-level-options',
-  entityType: '/admin/entity-type-options'
+  entityType: '/admin/entity-type-options',
+  courseType: '/user-contacts/course-type-options',
+  sevaType: '/user-contacts/seva-type-options'
 };
 
 /**
@@ -71,7 +74,9 @@ const enumMapEndpoints: Record<EnumType, string> = {
   personRelationshipType: '/appointments/person-relationship-type-options-map',
   attachmentType: '/attachments/type-options-map',
   accessLevel: '/admin/access-level-options-map',
-  entityType: '/admin/entity-type-options-map'
+  entityType: '/admin/entity-type-options-map',
+  courseType: '/user-contacts/course-type-options-map',
+  sevaType: '/user-contacts/seva-type-options-map'
 };
 
 export const useEnumsMap = (enumType: EnumType) => {

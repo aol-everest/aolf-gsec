@@ -151,6 +151,84 @@ export const ContactsSection: React.FC<ContactsSectionProps> = memo(({
                                         </Typography>
                                     </Grid>
                                 )}
+                                
+                                {/* Engagement and participation fields */}
+                                {appointmentContact.has_met_gurudev_recently !== undefined && !isRequester && (
+                                    <Grid item xs={12} sm={6}>
+                                        <Typography sx={{ color: theme.palette.text.primary }}>
+                                            <Typography sx={{ 
+                                                fontWeight: 500, 
+                                                color: theme.palette.secondary.dark, 
+                                                display: 'inline', 
+                                                mr: 1 
+                                            }}>
+                                                Met Gurudev Recently:
+                                            </Typography> 
+                                            {appointmentContact.has_met_gurudev_recently ? 'Yes' : 'No'}
+                                        </Typography>
+                                    </Grid>
+                                )}
+                                {appointmentContact.is_attending_course !== undefined && !isRequester && (
+                                    <Grid item xs={12} sm={6}>
+                                        <Typography sx={{ color: theme.palette.text.primary }}>
+                                            <Typography sx={{ 
+                                                fontWeight: 500, 
+                                                color: theme.palette.secondary.dark, 
+                                                display: 'inline', 
+                                                mr: 1 
+                                            }}>
+                                                Attending Course:
+                                            </Typography> 
+                                            {appointmentContact.is_attending_course ? 'Yes' : 'No'}
+                                        </Typography>
+                                    </Grid>
+                                )}
+                                {appointmentContact.course_attending && !isRequester && (
+                                    <Grid item xs={12} sm={6}>
+                                        <Typography sx={{ color: theme.palette.text.primary }}>
+                                            <Typography sx={{ 
+                                                fontWeight: 500, 
+                                                color: theme.palette.secondary.dark, 
+                                                display: 'inline', 
+                                                mr: 1 
+                                            }}>
+                                                Course:
+                                            </Typography> 
+                                            {appointmentContact.course_attending}
+                                        </Typography>
+                                    </Grid>
+                                )}
+                                {appointmentContact.is_doing_seva !== undefined && !isRequester && (
+                                    <Grid item xs={12} sm={6}>
+                                        <Typography sx={{ color: theme.palette.text.primary }}>
+                                            <Typography sx={{ 
+                                                fontWeight: 500, 
+                                                color: theme.palette.secondary.dark, 
+                                                display: 'inline', 
+                                                mr: 1 
+                                            }}>
+                                                Doing Seva:
+                                            </Typography> 
+                                            {appointmentContact.is_doing_seva ? 'Yes' : 'No'}
+                                        </Typography>
+                                    </Grid>
+                                )}
+                                {appointmentContact.seva_type && !isRequester && (
+                                    <Grid item xs={12} sm={6}>
+                                        <Typography sx={{ color: theme.palette.text.primary }}>
+                                            <Typography sx={{ 
+                                                fontWeight: 500, 
+                                                color: theme.palette.secondary.dark, 
+                                                display: 'inline', 
+                                                mr: 1 
+                                            }}>
+                                                Seva Type:
+                                            </Typography> 
+                                            {appointmentContact.seva_type}
+                                        </Typography>
+                                    </Grid>
+                                )}
+                                
                                 {(appointmentContact.comments || contact.notes) && !isRequester && (
                                     <Grid item xs={12}>
                                         <Typography sx={{ fontWeight: 500, mr: 1, display: 'inline' }}>

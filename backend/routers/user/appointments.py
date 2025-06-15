@@ -45,6 +45,8 @@ async def create_appointment(
             number_of_attendees += len(appointment.dignitary_ids)
         if appointment.contact_ids:
             number_of_attendees += len(appointment.contact_ids)
+        elif appointment.contacts_with_engagement:
+            number_of_attendees += len(appointment.contacts_with_engagement)
         if number_of_attendees == 0:
             number_of_attendees = 1  # Default to 1 if nothing specified
         
@@ -102,6 +104,43 @@ async def create_appointment(
                 appointment_contact = models.AppointmentContact(
                     appointment_id=db_appointment.id,
                     contact_id=contact_id,
+                    created_by=current_user.id,
+                    updated_by=current_user.id
+                )
+                db.add(appointment_contact)
+        
+        # Handle contact attendees with engagement fields if provided
+        elif appointment.contacts_with_engagement:
+            for contact_data in appointment.contacts_with_engagement:
+                # Verify the contact exists and belongs to the current user
+                contact = db.query(models.UserContact).filter(
+                    models.UserContact.id == contact_data.contact_id,
+                    models.UserContact.owner_user_id == current_user.id
+                ).first()
+                
+                if not contact:
+                    raise HTTPException(
+                        status_code=404, 
+                        detail=f"Contact with ID {contact_data.contact_id} not found or not owned by current user"
+                    )
+                
+                # Update contact usage statistics
+                contact.appointment_usage_count += 1
+                contact.last_used_at = datetime.utcnow()
+                contact.updated_by = current_user.id
+                
+                # Create AppointmentContact link with engagement fields
+                appointment_contact = models.AppointmentContact(
+                    appointment_id=db_appointment.id,
+                    contact_id=contact_data.contact_id,
+                    role_in_team_project=contact_data.role_in_team_project,
+                    role_in_team_project_other=contact_data.role_in_team_project_other,
+                    comments=contact_data.comments,
+                    has_met_gurudev_recently=contact_data.has_met_gurudev_recently,
+                    is_attending_course=contact_data.is_attending_course,
+                    course_attending=contact_data.course_attending,
+                    is_doing_seva=contact_data.is_doing_seva,
+                    seva_type=contact_data.seva_type,
                     created_by=current_user.id,
                     updated_by=current_user.id
                 )

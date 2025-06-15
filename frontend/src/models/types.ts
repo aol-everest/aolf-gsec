@@ -184,6 +184,12 @@ interface AppointmentContact {
   checked_in_at?: string;
   checked_in_by?: number;
   comments?: string;
+  // Engagement and participation fields
+  has_met_gurudev_recently?: boolean;
+  is_attending_course?: boolean;
+  course_attending?: string;
+  is_doing_seva?: boolean;
+  seva_type?: string;
   created_at?: string;
   updated_at?: string;
 }

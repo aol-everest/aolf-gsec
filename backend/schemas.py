@@ -927,7 +927,7 @@ class AttendanceStatusUpdate(BaseModel):
     attendance_status: AttendanceStatus
 
 # Enhanced Appointment Creation Schema
-from models.enums import PersonRelationshipType
+from models.enums import PersonRelationshipType, CourseType, SevaType, RoleInTeamProject
 
 class AppointmentContactCreate(BaseModel):
     """Schema for creating appointment users (darshan attendees)"""
@@ -937,6 +937,19 @@ class AppointmentContactCreate(BaseModel):
     phone: Optional[str] = None
     relationship_to_owner: Optional[PersonRelationshipType] = None
     comments: Optional[str] = None  # Special requirements
+
+class AppointmentContactWithEngagement(BaseModel):
+    """Schema for appointment contact with engagement fields"""
+    contact_id: int
+    role_in_team_project: Optional[RoleInTeamProject] = None
+    role_in_team_project_other: Optional[str] = None
+    comments: Optional[str] = None
+    # Engagement and participation fields
+    has_met_gurudev_recently: Optional[bool] = None
+    is_attending_course: Optional[bool] = None
+    course_attending: Optional[CourseType] = None
+    is_doing_seva: Optional[bool] = None
+    seva_type: Optional[SevaType] = None
 
 # Enhanced Appointment Creation Schema
 from models.appointment import RequestType
@@ -984,11 +997,31 @@ class AppointmentCreateEnhanced(BaseModel):
     # For contact attendees - if present, create AppointmentContact records  
     contact_ids: Optional[List[int]] = None
     
+    # For contact attendees with engagement fields - alternative to contact_ids
+    contacts_with_engagement: Optional[List[AppointmentContactWithEngagement]] = None
+    
     @validator('contact_ids')
     def validate_contact_ids_not_empty(cls, v):
         if v is not None and len(v) == 0:
             raise ValueError("If contact_ids is provided, it must contain at least one contact")
         return v
+    
+    @validator('contacts_with_engagement')
+    def validate_contacts_with_engagement_not_empty(cls, v):
+        if v is not None and len(v) == 0:
+            raise ValueError("If contacts_with_engagement is provided, it must contain at least one contact")
+        return v
+    
+    @root_validator(skip_on_failure=True)
+    def validate_contact_fields_mutually_exclusive(cls, values):
+        """Ensure only one of contact_ids or contacts_with_engagement is provided"""
+        contact_ids = values.get('contact_ids')
+        contacts_with_engagement = values.get('contacts_with_engagement')
+        
+        if contact_ids is not None and contacts_with_engagement is not None:
+            raise ValueError("Cannot provide both contact_ids and contacts_with_engagement. Use one or the other.")
+        
+        return values
     
     @validator('dignitary_ids')
     def validate_dignitary_ids_not_empty(cls, v):

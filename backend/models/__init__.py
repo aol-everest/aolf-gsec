@@ -21,6 +21,8 @@ from .enums import (
     AOLTeacherStatus,
     AOLProgramType,
     AOLAffiliation,
+    CourseType,
+    SevaType,
     
     # Appointment-related enums
     AppointmentStatus,
@@ -30,6 +32,7 @@ from .enums import (
     RequestType,
     RoleInTeamProject,
     AttendanceStatus,
+    AttendeeType,
     
     # Dignitary-related enums
     HonorificTitle,
@@ -102,4 +105,7 @@ __all__ = [
     'RoleInTeamProject',
     'PersonRelationshipType',
     'CalendarCreationContext',
+    'CourseType',
+    'SevaType',
+    'AttendeeType',
 ]

@@ -522,6 +522,28 @@ class AttachmentType(str, enum.Enum):
         return self.value
 
 
+class CourseType(str, enum.Enum):
+    """Course type enum for appointment contacts"""
+    SKY = "SKY"
+    SAHAJ = "Sahaj"
+    SILENCE = "Silence"
+    WISDOM_SERIES = "Wisdom Series"
+    KIDS_TEENS_COURSE = "Kids/Teens Course"
+    OTHER_COURSE = "Other Course"
+
+    def __str__(self):
+        return self.value
+
+
+class SevaType(str, enum.Enum):
+    """Seva type enum for appointment contacts"""
+    PART_TIME = "Part Time"
+    FULL_TIME = "Full Time"
+
+    def __str__(self):
+        return self.value
+
+
 # ============================================================================
 # MAPPING DATA
 # ============================================================================

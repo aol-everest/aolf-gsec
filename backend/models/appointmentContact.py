@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Bool
 from sqlalchemy.orm import relationship
 from datetime import datetime, UTC
 from database import Base
-from .enums import AttendanceStatus, PersonRelationshipType, RoleInTeamProject
+from .enums import AttendanceStatus, PersonRelationshipType, RoleInTeamProject, CourseType, SevaType
 import os
 
 schema = os.getenv('POSTGRES_SCHEMA', 'public')
@@ -26,6 +26,13 @@ class AppointmentContact(Base):
     
     # Appointment-specific notes and requirements
     comments = Column(Text, nullable=True)
+    
+    # Engagement and participation fields
+    has_met_gurudev_recently = Column(Boolean, nullable=True)
+    is_attending_course = Column(Boolean, nullable=True)
+    course_attending = Column(Enum(CourseType), nullable=True)
+    is_doing_seva = Column(Boolean, nullable=True)
+    seva_type = Column(Enum(SevaType), nullable=True)
     
     # Audit fields
     created_at = Column(DateTime, default=datetime.utcnow)
