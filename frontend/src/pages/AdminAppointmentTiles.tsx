@@ -25,10 +25,11 @@ import {
   Theme,
   Tabs,
   Tab,
-  TextField,
-  InputAdornment,
+
   Stack,
   Dialog,
+  TextField,
+  InputAdornment,
   DialogTitle,
   DialogContent,
   DialogContentText,
@@ -49,7 +50,8 @@ import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
-import SearchIcon from '@mui/icons-material/Search';
+
+import { SearchBox } from '../components/SearchBox';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
@@ -1509,29 +1511,17 @@ const AdminAppointmentTiles: React.FC = () => {
             
             {/* Search Bar */}
             <Box>
-              <TextField
-                fullWidth
-                placeholder="Search appointments..."
-                variant="outlined"
+              <SearchBox
                 value={filters.searchTerm}
-                onChange={handleSearchChange}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon />
-                    </InputAdornment>
-                  ),
-                  endAdornment: filters.searchTerm && (
-                    <InputAdornment position="end">
-                      <SecondaryButton 
-                        onClick={() => setFilters(prev => ({ ...prev, searchTerm: '' }))}
-                        size="small"
-                      >
-                        Clear
-                      </SecondaryButton>
-                    </InputAdornment>
-                  )
+                onChange={(value) => {
+                  isFilteringRef.current = true;
+                  setFilters(prev => ({ ...prev, searchTerm: value }));
+                  setActiveStep(0);
                 }}
+                placeholder="Search appointments..."
+                clearButtonVariant="text"
+                clearButtonText="Clear"
+                onClear={() => setFilters(prev => ({ ...prev, searchTerm: '' }))}
                 sx={{ mb: 1 }}
               />
               

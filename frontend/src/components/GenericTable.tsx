@@ -12,8 +12,7 @@ import {
   useTheme,
   Checkbox,
   IconButton,
-  TextField,
-  InputAdornment,
+
   TablePagination,
   Button,
   Menu,
@@ -21,8 +20,7 @@ import {
   FormControlLabel,
   Divider,
 } from '@mui/material';
-import { SearchIconV2 } from './iconsv2';
-import ClearIcon from '@mui/icons-material/Clear';
+import { SearchBox } from './SearchBox';
 import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import {
   useReactTable,
@@ -506,37 +504,17 @@ export function GenericTable<T extends Record<string, any>>({
       {(enableSearch || enableColumnVisibility) && (
         <Box sx={{ mb: 2, display: 'flex', gap: 2, alignItems: 'flex-start' }}>
           {enableSearch && (
-            <TextField
-              fullWidth
-              placeholder={searchPlaceholder}
-              variant="outlined"
-              size="small"
+            <SearchBox
               value={searchInput}
-              onChange={(e) => {
-                const value = e.target.value;
+              onChange={(value) => {
                 setSearchInput(value); // Only update UI state immediately
                 // Actual filtering and onSearchChange happens through debounced effect
               }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIconV2 />
-                  </InputAdornment>
-                ),
-                endAdornment: searchInput && (
-                  <InputAdornment position="end">
-                    <IconButton
-                      size="small"
-                      onClick={() => {
-                        setSearchInput('');
-                        // Clear will be handled by the effect when debouncedGlobalFilter updates
-                      }}
-                      edge="end"
-                    >
-                      <ClearIcon />
-                    </IconButton>
-                  </InputAdornment>
-                )
+              placeholder={searchPlaceholder}
+              iconVariant="v2"
+              onClear={() => {
+                setSearchInput('');
+                // Clear will be handled by the effect when debouncedGlobalFilter updates
               }}
             />
           )}
@@ -567,8 +545,8 @@ export function GenericTable<T extends Record<string, any>>({
                   }
                 }}
               >
-                <Typography variant="subtitle2" sx={{ px: 2, py: 1, fontWeight: 600 }}>
-                  Show/Hide Columns
+                <Typography variant="subtitle2" sx={{ px: 2, py: 1, fontWeight: 500, textAlign: 'center' }}>
+                  Show/Hide
                 </Typography>
                 <Divider />
                 {table.getAllLeafColumns()

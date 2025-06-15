@@ -13,10 +13,7 @@ import {
   Stack,
   IconButton,
   Collapse,
-  TextField,
-  InputAdornment,
   Button,
-  Autocomplete,
 } from '@mui/material';
 import { format, addDays, parseISO, isToday, isTomorrow, isYesterday } from 'date-fns';
 import Layout from '../components/Layout';
@@ -33,11 +30,11 @@ import UndoIcon from '@mui/icons-material/Undo';
 import { formatTime } from '../utils/dateUtils';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
-import SearchIcon from '@mui/icons-material/Search';
-import ClearIcon from '@mui/icons-material/Clear';
+
+import { SearchBox } from '../components/SearchBox';
 import GroupIcon from '@mui/icons-material/Group';
 import PersonIcon from '@mui/icons-material/Person';
-import { UserIconSquareCircleV2, CirclePhoneFlipIconV2, CheckSquareCircleFilledIconV2, CloseIconFilledCircleV2 } from '../components/iconsv2';
+import { UserIconSquareCircleV2, CirclePhoneFlipIconV2, CheckSquareCircleFilledIconV2 } from '../components/iconsv2';
 import { IconTab, TabOption } from '../components/IconTab';
 
 // Define interfaces for the USHER view
@@ -679,68 +676,15 @@ const UsherAppointmentSchedule: React.FC = () => {
                 maxWidth: { xs: '100%', md: '400px' }, 
                 width: { xs: '100%', md: 'auto' },
             }}>
-              <Autocomplete
-                freeSolo
-                options={searchSuggestions}
-                inputValue={searchQuery}
-                onInputChange={(event, newInputValue) => {
-                  setSearchQuery(newInputValue || '');
-                }}
-                onChange={(event, newValue) => {
-                  // Handle selection from dropdown
-                  if (newValue) {
-                    setSearchQuery(newValue as string);
-                  }
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    placeholder="Search appointments, names, or phone numbers..."
-                    fullWidth
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        backgroundColor: '#FFFFFF',
-                        '& fieldset': {
-                          borderColor: '#E0E0E0',
-                        },
-                        '&:hover fieldset': {
-                          borderColor: '#BDBDBD',
-                        },
-                        '&.Mui-focused fieldset': {
-                          borderColor: '#3D8BE8',
-                        },
-                      },
-                    }}
-                    InputProps={{
-                      ...params.InputProps,
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <SearchIcon />
-                        </InputAdornment>
-                      ),
-                      endAdornment: (
-                        <>
-                          {searchQuery && (
-                            <InputAdornment position="end">
-                              <IconButton onClick={clearSearch} size="small">
-                                <CloseIconFilledCircleV2 sx={{ color: 'text.secondary', width: '1.2rem', height: '1.2rem' }} />
-                              </IconButton>
-                            </InputAdornment>
-                          )}
-                          {params.InputProps.endAdornment}
-                        </>
-                      ),
-                    }}
-                  />
-                )}
-                filterOptions={(options, { inputValue }) => {
-                  // Custom filtering to show suggestions that contain the input value
-                  const filtered = options.filter(option =>
-                    option.toLowerCase().includes(inputValue.toLowerCase())
-                  );
-                  return filtered.slice(0, 10); // Limit to 10 suggestions
-                }}
-                noOptionsText="No matching suggestions"
+              <SearchBox
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Search appointments, names, or phone numbers..."
+                variant="autocomplete"
+                suggestions={searchSuggestions}
+                maxSuggestions={10}
+                iconVariant="filled"
+                onClear={clearSearch}
               />
             </Box>
 
