@@ -11,18 +11,22 @@ echo "Adding engagement fields to user_contacts and appointment_contacts tables 
 echo "Date: $(date)"
 echo "=========================================="
 
-# Check if required environment variables are set
-if [ -z "$POSTGRES_HOST" ] || [ -z "$POSTGRES_USER" ] || [ -z "$POSTGRES_PASSWORD" ]; then
-    echo "❌ Required environment variables not set:"
-    echo "   POSTGRES_HOST, POSTGRES_USER, POSTGRES_PASSWORD must be set"
-    exit 1
-fi
-
 # Set environment variables for UAT
 export ENVIRONMENT=uat
-export POSTGRES_PORT=${POSTGRES_PORT:-5432}
-export POSTGRES_DB=${POSTGRES_DB:-aolf_gsec}
-export POSTGRES_SCHEMA=${POSTGRES_SCHEMA:-public}
+echo "Environment: $ENVIRONMENT"
+export POSTGRES_HOST=aolf-gsec-db-uat.cxg084kkue8o.us-east-2.rds.amazonaws.com
+export POSTGRES_PORT=5432
+export POSTGRES_DB=aolf_gsec
+export POSTGRES_USER=aolf_gsec_user
+export POSTGRES_PASSWORD=''
+export POSTGRES_SCHEMA=public
+
+# Check if required environment variables are set
+if [ -z "$POSTGRES_HOST" ] || [ -z "$POSTGRES_USER" ]; then
+    echo "❌ Required environment variables not set:"
+    echo "   POSTGRES_HOST, POSTGRES_USER must be set"
+    exit 1
+fi
 
 echo "Environment: $ENVIRONMENT"
 echo "Database: $POSTGRES_DB"
