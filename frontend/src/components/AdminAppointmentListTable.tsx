@@ -334,6 +334,9 @@ export const AdminAppointmentListTable: React.FC<AdminAppointmentListTableProps>
       searchableFields={searchableFields}
       searchValue={searchValue}
       onSearchChange={onSearchChange}
+      enablePagination={true}
+      pageSize={10}
+      pageSizeOptions={[10, 25, 50, 100]}
       tableProps={{
         stickyHeader: true,
         size: 'medium',

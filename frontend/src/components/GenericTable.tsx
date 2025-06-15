@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import {
   Table,
   TableBody,
@@ -14,6 +14,7 @@ import {
   IconButton,
   TextField,
   InputAdornment,
+  TablePagination,
 } from '@mui/material';
 import { SearchIconV2 } from './iconsv2';
 import ClearIcon from '@mui/icons-material/Clear';
@@ -22,16 +23,19 @@ import {
   getCoreRowModel,
   getSortedRowModel,
   getFilteredRowModel,
+  getPaginationRowModel,
   flexRender,
   createColumnHelper,
   SortingState,
   FilterFn,
   RowSelectionState,
-  ColumnDef
+  ColumnDef,
+  PaginationState
 } from '@tanstack/react-table';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import { debugLog, createDebugLogger } from '../utils/debugUtils';
+import { useDebounce } from '../hooks/useDebounce';
 
 interface GenericTableProps<T extends Record<string, any>> {
   data: T[];
@@ -51,6 +55,9 @@ interface GenericTableProps<T extends Record<string, any>> {
   searchableFields?: (keyof T)[];
   searchValue?: string;
   onSearchChange?: (value: string) => void;
+  enablePagination?: boolean;
+  pageSize?: number;
+  pageSizeOptions?: number[];
   tableProps?: {
     stickyHeader?: boolean;
     size?: 'small' | 'medium';
@@ -65,10 +72,13 @@ interface GenericTableProps<T extends Record<string, any>> {
 // Create a generic column helper factory
 export const createGenericColumnHelper = <T extends Record<string, any>>() => createColumnHelper<T>();
 
-// Default global filter function for basic text search
-const createDefaultGlobalFilter = <T extends Record<string, any>>(searchableFields?: (keyof T)[]): FilterFn<T> => 
-  (row, columnId, value) => {
-    const searchValue = String(value).toLowerCase();
+// Optimized global filter function using TanStack's built-in patterns
+const createOptimizedGlobalFilter = <T extends Record<string, any>>(
+  searchableFields?: (keyof T)[]
+): FilterFn<T> => {
+  return (row, columnId, value, addMeta) => {
+    const searchValue = String(value).toLowerCase().trim();
+    if (!searchValue) return true;
     
     // If specific fields are provided, search only those fields
     if (searchableFields && searchableFields.length > 0) {
@@ -90,71 +100,78 @@ const createDefaultGlobalFilter = <T extends Record<string, any>>(searchableFiel
       });
     }
     
-    // Default behavior: search all fields
-    const rowValues = Object.values(row.original).map(val => 
-      val ? String(val).toLowerCase() : ''
-    );
-    return rowValues.some(val => val.includes(searchValue));
+    // Default behavior: search all row values
+    const rowValues = Object.values(row.original);
+    return rowValues.some(val => {
+      if (val == null) return false;
+      return String(val).toLowerCase().includes(searchValue);
+    });
   };
-
-// Common styling utilities
-export const defaultTableStyles = {
-  // Standard text styles
-  primaryText: {
-    fontSize: '14px',
-    color: '#31364e',
-    fontWeight: 500,
-    fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
-  },
-  secondaryText: {
-    fontSize: '14px',
-    color: '#6f7283',
-    fontWeight: 400,
-    fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
-  },
-  // Action button styles
-  actionButton: {
-    borderRadius: '12px',
-    border: '1px solid #e9e9e9',
-    width: 40,
-    height: 40,
-    backgroundColor: '#f7f7f7',
-    '&:hover': {
-      backgroundColor: 'rgba(0,0,0,0.08)',
-    }
-  },
-  // Status styles
-  activeStatus: {
-    fontSize: '14px',
-    color: 'success.main',
-    fontWeight: 'medium',
-    fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
-  },
-  inactiveStatus: {
-    fontSize: '14px',
-    color: 'error.main',
-    fontWeight: 'medium',
-    fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
-  }
 };
 
-// Helper components for common cell types
+// Standard column sizes for consistent table layouts
+export const standardColumnSizes = {
+  checkbox: { size: 50, minSize: 50, maxSize: 50 },
+  id: { size: 50, minSize: 40, maxSize: 100 },
+  small: { size: 80, minSize: 70, maxSize: 120 },
+  medium: { size: 150, minSize: 100, maxSize: 200 },
+  large: { size: 200, minSize: 150, maxSize: 300 },
+  xlarge: { size: 250, minSize: 200, maxSize: 400 },
+  actions: { size: 80, minSize: 80, maxSize: 80 },
+  status: { size: 100, minSize: 80, maxSize: 120 },
+  auto: { size: undefined, minSize: 50, maxSize: undefined },
+};
+
+// Standard table cell components for reusability
 export const TableCellComponents = {
-  PrimaryText: ({ children, sx = {}, ...props }: any) => (
-    <Typography sx={{ ...defaultTableStyles.primaryText, ...sx }} {...props}>
-      {children}
+  // Basic text cell
+  TextCell: ({ value }: { value: any }) => (
+    <Typography variant="body2" sx={{ fontWeight: 400 }}>
+      {value || '-'}
     </Typography>
   ),
-  SecondaryText: ({ children, sx = {}, ...props }: any) => (
-    <Typography sx={{ ...defaultTableStyles.secondaryText, ...sx }} {...props}>
-      {children}
+  
+  // Number cell with formatting
+  NumberCell: ({ value }: { value: number | null | undefined }) => (
+    <Typography variant="body2" sx={{ fontWeight: 400, textAlign: 'right' }}>
+      {value != null ? value.toLocaleString() : '-'}
     </Typography>
   ),
-  StatusText: ({ active, children, sx = {}, ...props }: { active: boolean; children: React.ReactNode; sx?: any }) => (
+  
+  // Date cell with formatting  
+  DateCell: ({ value }: { value: string | Date | null | undefined }) => (
+    <Typography variant="body2" sx={{ fontWeight: 400 }}>
+      {value ? new Date(value).toLocaleDateString() : '-'}
+    </Typography>
+  ),
+  
+  // Status chip cell
+  StatusCell: ({ value, color = 'default' }: { value: string; color?: 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' }) => (
     <Typography 
       variant="body2" 
       sx={{ 
-        ...(active ? defaultTableStyles.activeStatus : defaultTableStyles.inactiveStatus),
+        fontWeight: 500,
+        px: 1,
+        py: 0.5,
+        borderRadius: 1,
+        backgroundColor: `${color}.light`,
+        color: `${color}.dark`,
+        display: 'inline-block'
+      }}
+    >
+      {value || '-'}
+    </Typography>
+  ),
+
+  // Legacy components for backward compatibility
+  PrimaryText: ({ children, sx = {}, ...props }: any) => (
+    <Typography 
+      variant="body2" 
+      sx={{ 
+        fontSize: '14px',
+        color: '#31364e',
+        fontWeight: 500,
+        fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
         ...sx 
       }} 
       {...props}
@@ -162,28 +179,59 @@ export const TableCellComponents = {
       {children}
     </Typography>
   ),
+  
+  SecondaryText: ({ children, sx = {}, ...props }: any) => (
+    <Typography 
+      variant="body2" 
+      sx={{ 
+        fontSize: '14px',
+        color: '#6f7283',
+        fontWeight: 400,
+        fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
+        ...sx 
+      }} 
+      {...props}
+    >
+      {children}
+    </Typography>
+  ),
+
+  StatusText: ({ active, children, sx = {}, ...props }: { active: boolean; children: React.ReactNode; sx?: any }) => (
+    <Typography 
+      variant="body2" 
+      sx={{ 
+        fontSize: '14px',
+        color: active ? 'success.main' : 'error.main',
+        fontWeight: 'medium',
+        fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
+        ...sx 
+      }} 
+      {...props}
+    >
+      {children}
+    </Typography>
+  ),
+  
   ActionButton: ({ children, onClick, sx = {}, ...props }: any) => (
     <IconButton 
       size="small"
       onClick={onClick}
-      sx={{ ...defaultTableStyles.actionButton, ...sx }}
+      sx={{ 
+        borderRadius: '12px',
+        border: '1px solid #e9e9e9',
+        width: 40,
+        height: 40,
+        backgroundColor: '#f7f7f7',
+        '&:hover': {
+          backgroundColor: 'rgba(0,0,0,0.08)',
+        },
+        ...sx 
+      }}
       {...props}
     >
       {children}
     </IconButton>
-  )
-};
-
-// Standard column sizes
-export const standardColumnSizes = {
-  small: { size: 80, minSize: 60, maxSize: 100 },
-  medium: { size: 120, minSize: 100, maxSize: 150 },
-  large: { size: 180, minSize: 150, maxSize: 220 },
-  extraLarge: { size: 250, minSize: 200, maxSize: 300 },
-  actions: { size: 80, minSize: 80, maxSize: 80 },
-  id: { size: 50, minSize: 40, maxSize: 100 },
-  status: { size: 100, minSize: 80, maxSize: 120 },
-  checkbox: { size: 50, minSize: 50, maxSize: 50 }
+  ),
 };
 
 export function GenericTable<T extends Record<string, any>>({
@@ -204,6 +252,9 @@ export function GenericTable<T extends Record<string, any>>({
   searchableFields,
   searchValue = '',
   onSearchChange,
+  enablePagination = false,
+  pageSize = 10,
+  pageSizeOptions = [5, 10, 25, 50, 100],
   tableProps = {},
   containerProps = {}
 }: GenericTableProps<T>) {
@@ -212,6 +263,10 @@ export function GenericTable<T extends Record<string, any>>({
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [globalFilter, setGlobalFilter] = useState(searchValue);
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: pageSize,
+  });
   const prevSelectedRowsRef = React.useRef<(string | number)[]>([]);
 
   // Default table props
@@ -220,6 +275,43 @@ export function GenericTable<T extends Record<string, any>>({
     size = 'medium',
     padding = 'normal'
   } = tableProps;
+
+  // Search input state (this is just for UI display, actual filtering is handled by TanStack)
+  const [searchInput, setSearchInput] = useState(searchValue || '');
+
+  // Debounced global filter that integrates with TanStack's filtering system
+  const debouncedGlobalFilter = useDebounce(searchInput, 300);
+
+  // Sync external searchValue with internal globalFilter
+  useEffect(() => {
+    if (searchValue !== globalFilter) {
+      setGlobalFilter(searchValue);
+    }
+  }, [searchValue]);
+
+  // Handle global filter change with external callback
+  const handleGlobalFilterChange = useCallback((value: any) => {
+    const stringValue = String(value || '');
+    setGlobalFilter(stringValue);
+    onSearchChange?.(stringValue);
+  }, [onSearchChange]);
+
+  // Clear search
+  const handleClearSearch = useCallback(() => {
+    setGlobalFilter('');
+    onSearchChange?.('');
+  }, [onSearchChange]);
+
+  // Create the global filter function
+  const finalGlobalFilterFn = useMemo(() => {
+    if (globalFilterFn) {
+      logger('🔍 [SEARCH] Using custom global filter function');
+      return globalFilterFn;
+    }
+    
+    logger('🔍 [SEARCH] Using optimized global filter function');
+    return createOptimizedGlobalFilter<T>(searchableFields);
+  }, [globalFilterFn, searchableFields]);
 
   // Update row selection when selectedRows prop changes
   React.useEffect(() => {
@@ -233,12 +325,12 @@ export function GenericTable<T extends Record<string, any>>({
       return;
     }
 
-    logger('📋 [ROW SELECTION] selectedRows prop changed:', {
+    logger(`📋 [ROW SELECTION] selectedRows prop changed: ${JSON.stringify({
       selectedRowsCount: selectedRows.length,
       selectedRows: selectedRows.slice(0, 5), // Only log first 5 to avoid spam
       currentRowSelectionCount: Object.keys(rowSelection).filter(key => rowSelection[key]).length,
       dataCount: data.length
-    });
+    })}`);
 
     // Update the ref with current selectedRows
     prevSelectedRowsRef.current = [...selectedRows];
@@ -335,52 +427,42 @@ export function GenericTable<T extends Record<string, any>>({
     return [selectionColumn, ...columns];
   }, [columns, enableRowSelection]);
 
-  // Update global filter when searchValue prop changes
-  React.useEffect(() => {
-    if (globalFilter !== searchValue) {
-      setGlobalFilter(searchValue);
-    }
-  }, [searchValue, globalFilter]);
-
-  // Handle search change with debouncing to improve performance
-  const handleSearchChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value;
-    setGlobalFilter(value);
-    onSearchChange?.(value);
-  }, [onSearchChange]);
-
-  // Clear search
-  const handleClearSearch = React.useCallback(() => {
-    setGlobalFilter('');
-    onSearchChange?.('');
-  }, [onSearchChange]);
-
-  // Create the global filter function
-  const finalGlobalFilterFn = useMemo(
-    () => globalFilterFn || createDefaultGlobalFilter<T>(searchableFields),
-    [globalFilterFn, searchableFields]
-  );
-
-  // Create table instance
+  // Table configuration with TanStack's built-in filtering and pagination
   const table = useReactTable({
     data,
     columns: finalColumns,
-    state: {
-      sorting,
-      rowSelection,
-      globalFilter,
-    },
-    enableRowSelection,
-    onRowSelectionChange: enableRowSelection ? handleRowSelectionChange : undefined,
-    onSortingChange: setSorting,
-    onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: enablePagination ? getPaginationRowModel() : undefined,
+    onSortingChange: setSorting,
+    onRowSelectionChange: enableRowSelection ? handleRowSelectionChange : undefined,
+    onPaginationChange: enablePagination ? setPagination : undefined,
+    onGlobalFilterChange: () => {}, // Let TanStack handle this internally
+    state: {
+      sorting,
+      rowSelection,
+      globalFilter: debouncedGlobalFilter, // Use debounced value for actual filtering
+      ...(enablePagination && { pagination }),
+    },
     globalFilterFn: finalGlobalFilterFn,
-    getRowId,
-    debugTable: false,
+    enableRowSelection: enableRowSelection,
+    getRowId: getRowId,
   });
+
+  // Update search input when external searchValue changes
+  useEffect(() => {
+    if (searchInput !== searchValue) {
+      setSearchInput(searchValue || '');
+    }
+  }, [searchValue]);
+
+  // Only call onSearchChange when the debounced value changes (not on every keystroke)
+  useEffect(() => {
+    if (onSearchChange && debouncedGlobalFilter !== searchValue) {
+      onSearchChange(debouncedGlobalFilter);
+    }
+  }, [debouncedGlobalFilter, onSearchChange, searchValue]);
 
   if (loading) {
     return (
@@ -410,19 +492,26 @@ export function GenericTable<T extends Record<string, any>>({
             placeholder={searchPlaceholder}
             variant="outlined"
             size="small"
-            value={globalFilter}
-            onChange={handleSearchChange}
+            value={searchInput}
+            onChange={(e) => {
+              const value = e.target.value;
+              setSearchInput(value); // Only update UI state immediately
+              // Actual filtering and onSearchChange happens through debounced effect
+            }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
                   <SearchIconV2 />
                 </InputAdornment>
               ),
-              endAdornment: globalFilter && (
+              endAdornment: searchInput && (
                 <InputAdornment position="end">
                   <IconButton
                     size="small"
-                    onClick={handleClearSearch}
+                    onClick={() => {
+                      setSearchInput('');
+                      // Clear will be handled by the effect when debouncedGlobalFilter updates
+                    }}
                     edge="end"
                   >
                     <ClearIcon />
@@ -554,6 +643,34 @@ export function GenericTable<T extends Record<string, any>>({
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* Pagination */}
+      {enablePagination && (
+        <TablePagination
+          component="div"
+          count={table.getFilteredRowModel().rows.length}
+          page={table.getState().pagination.pageIndex}
+          onPageChange={(_, page) => table.setPageIndex(page)}
+          rowsPerPage={table.getState().pagination.pageSize}
+          onRowsPerPageChange={(e) => table.setPageSize(Number(e.target.value))}
+          rowsPerPageOptions={pageSizeOptions}
+          showFirstButton
+          showLastButton
+          sx={{
+            borderTop: '1px solid rgba(56, 56, 56, 0.1)',
+            backgroundColor: '#fff',
+            '& .MuiTablePagination-toolbar': {
+              paddingLeft: 2,
+              paddingRight: 2,
+            },
+            '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
+              fontSize: '14px',
+              color: '#6f7283',
+              fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
+            },
+          }}
+        />
+      )}
     </Box>
   );
 }
