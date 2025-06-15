@@ -397,7 +397,7 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
 
       // Get future calendar events only
       const today = new Date().toISOString().split('T')[0];
-      const oneMonthLater = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const oneMonthLater = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       
       try {
         const { data } = await api.get<any[]>('/admin/calendar-events', {
@@ -967,6 +967,7 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
 
   // Calendar Event Grouping and Sorting (for grouped select)
   const eventsByDate = React.useMemo(() => {
+    console.log('AdminAppointmentEditCard: Processing calendar events for grouping:', calendarEvents);
     const groups: Record<string, any[]> = {};
     calendarEvents.forEach((event: any) => {
       const date = event.start_date;
@@ -983,6 +984,7 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
         return a.start_time.localeCompare(b.start_time);
       });
     });
+    console.log('AdminAppointmentEditCard: Events grouped by date:', groups);
     return groups;
   }, [calendarEvents]);
 
@@ -990,9 +992,14 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
 
   const sortedDates = React.useMemo(() => {
     const dates = Object.keys(eventsByDate).sort();
+    console.log('AdminAppointmentEditCard: Available event dates:', dates);
+    console.log('AdminAppointmentEditCard: Current appointment date:', currentAppointmentDate);
     if (currentAppointmentDate && dates.includes(currentAppointmentDate)) {
-      return [currentAppointmentDate, ...dates.filter(d => d !== currentAppointmentDate)];
+      const sorted = [currentAppointmentDate, ...dates.filter(d => d !== currentAppointmentDate)];
+      console.log('AdminAppointmentEditCard: Sorted dates (with current first):', sorted);
+      return sorted;
     }
+    console.log('AdminAppointmentEditCard: Sorted dates (no current date):', dates);
     return dates;
   }, [eventsByDate, currentAppointmentDate]);
 
@@ -1454,12 +1461,8 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
                     </MenuItem>
                     {sortedDates.map(date => {
                       // Show the selected appointment date first, then other dates
-                      // If no appointment date is selected, don't show any date groups
                       const isSelectedDate = date === currentAppointmentDate;
-                      // Skip showing date groups if no appointment date is selected
-                      if (!currentAppointmentDate) {
-                        return null;
-                      }
+                      
                       return [
                         // Date header (non-selectable)
                         <MenuItem key={`header-${date}`} disabled sx={{ 
@@ -1489,8 +1492,7 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
                                 {event.title}
                               </Typography>
                               <Typography variant="caption" color="text.secondary">
-                                {event.start_time} ({event.duration} min)
-                                {event.location && ` • ${event.location.name}`}
+                                {event.meeting_place && `${event.meeting_place.name}`}{event.location && `, ${event.location.name}`}
                               </Typography>
                               <Typography variant="caption" color="text.secondary" display="block">
                                 Capacity: {event.current_capacity || 0}/{event.max_capacity}
@@ -1521,20 +1523,17 @@ const AdminAppointmentEditCard = forwardRef<AdminAppointmentEditCardRef, AdminAp
 
       {/* No Calendar Events Available Message */}
       {showStatusFields && watchAppointmentType && calendarEvents && calendarEvents.length === 0 && (
-        <Grid item xs={12}>
-          <Alert severity="info" sx={{ mb: 2 }}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
-              No Calendar Events Available
-            </Typography>
+        <Grid item xs={12} md={6} lg={4}>
+          <Alert severity="info">
             <Typography variant="body2">
               {watchAppointmentType === 'Darshan line' && 
-                'No confirmed darshan calendar events found for the next 30 days. Please create a darshan calendar event first.'
+                'No confirmed darshan appointments found for the next 7 days. Please create a darshan appointment first.'
               }
               {watchAppointmentType === 'Private event' && 
-                'No confirmed private event calendar events found for the next 30 days.'
+                'No confirmed private events found for the next 7 days.'
               }
               {watchAppointmentType === 'Shared appointment' && 
-                'No confirmed shared calendar events (volunteer meetings, project meetings, etc.) found for the next 30 days.'
+                'No confirmed appointments (volunteer meetings, project meetings, etc.) found for the next 7 days.'
               }
             </Typography>
           </Alert>
