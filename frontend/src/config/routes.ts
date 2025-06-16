@@ -223,7 +223,7 @@ export const AdminEditDignitaryRoute: RouteConfig = {
 // Usher routes ---------------------------------------------------------------------------------------
 export const UsherAppointmentsRoute: RouteConfig = {
   path: '/usher/appointments',
-  label: 'Appointments Schedule',
+  label: 'Appointment Check-in',
   icon: CalendarMenuIconV2,
   roles: [USHER_ROLE, ADMIN_ROLE, SECRETARIAT_ROLE],
   showInSidebar: true,

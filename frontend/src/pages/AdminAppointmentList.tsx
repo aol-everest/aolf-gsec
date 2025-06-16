@@ -2,15 +2,10 @@ import React, { useState, useEffect } from 'react';
 import {
   Container,
   Typography,
-  Paper,
   Box,
-  Chip,
   CircularProgress,
-  Button,
   Grid,
 } from '@mui/material';
-import LocationOnIcon from '@mui/icons-material/LocationOn';
-import FilterListIcon from '@mui/icons-material/FilterList';
 import Layout from '../components/Layout';
 import { getStatusColor, formatHonorificTitle } from '../utils/formattingUtils';
 import { useTheme } from '@mui/material/styles';
@@ -21,6 +16,7 @@ import { formatDate } from '../utils/dateUtils';
 import { Appointment } from '../models/types';
 import { Location } from '../models/types';
 import { FilterChipGroup } from '../components/FilterChip';
+import { LocationThinIconV2, FilterIconV2, CategoryIconV2 } from '../components/iconsv2';
 import AdminAppointmentListTable from '../components/AdminAppointmentListTable';
 
 
@@ -181,18 +177,18 @@ const AdminAppointmentList: React.FC = () => {
           </Typography>
 
           {/* Filters Section */}
-          <Paper sx={{ p: 2, mb: 3 }}>
+          <Box sx={{ mb: 3 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <FilterListIcon fontSize="small" />
-                Filters
-              </Typography>
-              
               {/* Status Filters */}
               <Box>
                 <Grid container spacing={2} alignItems="center">
-                  <Grid item xs={12} md={2}>
-                    <Typography variant="subtitle2">Filter by Status</Typography>
+                  <Grid item xs={1} md={0.4} sx={{ display: 'flex', alignItems: 'center' }}>
+                    <CategoryIconV2 sx={{ width: 22, height: 22 }} />
+                  </Grid>
+                  <Grid item xs={11} md={1.6} sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Typography variant="body2" sx={{ m: 0, fontWeight: 600 }}>
+                      Filter by Status
+                    </Typography>
                   </Grid>
                   <Grid item xs={12} md={10}>
                     <FilterChipGroup
@@ -231,8 +227,11 @@ const AdminAppointmentList: React.FC = () => {
               {/* Location Filters */}
               <Box>
                 <Grid container spacing={2} alignItems="center">
-                  <Grid item xs={12} md={2}>
-                    <Typography variant="subtitle2">Filter by Location</Typography>
+                  <Grid item xs={1} md={0.4} sx={{ display: 'flex', alignItems: 'center' }}>
+                    <LocationThinIconV2 sx={{ width: 22, height: 22 }} />
+                  </Grid>
+                  <Grid item xs={11} md={1.6} sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Typography variant="body2">Location</Typography>
                   </Grid>
                   <Grid item xs={12} md={10}>
                     {isLoadingLocations ? (
@@ -281,46 +280,8 @@ const AdminAppointmentList: React.FC = () => {
                   </Grid>
                 </Grid>
               </Box>
-              
-              {/* Active Filters Summary */}
-              {(selectedStatus || selectedLocation) && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-                  <Typography variant="body2">Active Filters:</Typography>
-                  {selectedStatus && (
-                    <Chip 
-                      label={selectedStatus} 
-                      size="small" 
-                      onDelete={() => setSelectedStatus(null)}
-                      sx={{ 
-                        color: getStatusColor(selectedStatus, theme),
-                        borderColor: getStatusColor(selectedStatus, theme),
-                      }}
-                    />
-                  )}
-                  {selectedLocation && (
-                    <Chip 
-                      label={locations.find(l => l.id === selectedLocation)?.name || `Location ID: ${selectedLocation}`} 
-                      size="small" 
-                      onDelete={() => setSelectedLocation(null)}
-                      icon={<LocationOnIcon fontSize="small" />}
-                      sx={{ 
-                        color: theme.palette.primary.main,
-                      }}
-                    />
-                  )}
-                  <Button 
-                    size="small" 
-                    onClick={() => {
-                      setSelectedStatus(null);
-                      setSelectedLocation(null);
-                    }}
-                  >
-                    Clear All
-                  </Button>
-                </Box>
-              )}
             </Box>
-          </Paper>
+          </Box>
 
           <Box sx={{ width: '100%' }}>
             <AdminAppointmentListTable
@@ -333,6 +294,7 @@ const AdminAppointmentList: React.FC = () => {
               onUpdateAppointment={handleUpdateAppointment}
               searchValue={searchValue}
               onSearchChange={handleSearchChange}
+              enableColumnVisibility={true}
             />
           </Box>
         </Box>

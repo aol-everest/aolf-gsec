@@ -29,6 +29,7 @@ interface AdminAppointmentListTableProps {
   onUpdateAppointment: (appointment: AppointmentWithNames) => Promise<void>;
   searchValue?: string;
   onSearchChange?: (value: string) => void;
+  enableColumnVisibility?: boolean;
 }
 
 // Create a column helper for appointments
@@ -292,7 +293,8 @@ export const AdminAppointmentListTable: React.FC<AdminAppointmentListTableProps>
   locations,
   onUpdateAppointment,
   searchValue = '',
-  onSearchChange
+  onSearchChange,
+  enableColumnVisibility = false
 }) => {
   // Create appointment-specific columns
   const columns = useMemo(
@@ -345,6 +347,7 @@ export const AdminAppointmentListTable: React.FC<AdminAppointmentListTableProps>
       containerProps={{
         maxHeight: '70vh'
       }}
+      enableColumnVisibility={enableColumnVisibility}
     />
   );
 };
