@@ -62,6 +62,13 @@ import ProfileFieldsForm, { ProfileFieldsFormRef } from './ProfileFieldsForm';
 import { isProfileComplete, getProfileCompletionFields } from '../utils/profileValidation';
 import { UserUpdateData } from '../models/types';
 
+// Import new step configuration system
+import { getMainSteps, getDisplaySteps, shouldShowProfileOverlay, WizardState, StepData } from './appointment/stepConfig';
+import { StepNavigation } from './appointment/StepNavigation';
+import { AttendeeList } from './appointment/AttendeeList';
+import { ProfileOverlay } from './appointment/ProfileOverlay';
+import { InitialInfoStep } from './appointment/steps/InitialInfoStep';
+
 // Remove the hardcoded enum and add a state for time of day options
 // const AppointmentTimeOfDay = {
 //   MORNING: "Morning",
@@ -177,13 +184,6 @@ interface AppointmentFormData {
   requesterNotesToSecretariat: string;
 }
 
-// Dynamic step labels based on request type
-const getDynamicSteps = (requestTypeConfig: RequestTypeConfig | null, showProfileStep: boolean = false) => {
-  const step2Label = requestTypeConfig?.step_2_title || 'Add Attendee Information';
-  const baseSteps = ['Initial Information', step2Label, 'Appointment Details'];
-  return showProfileStep ? ['Complete Profile', ...baseSteps] : baseSteps;
-};
-
 interface AppointmentRequestFormProps {
   showProfileStep?: boolean;
 }
@@ -192,7 +192,26 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
   showProfileStep = false 
 }) => {
   const { userInfo, updateUserInfo } = useAuth();
-  const [activeStep, setActiveStep] = useState(0);
+  
+  // Initialize wizard state using step configuration system
+  const [wizardState, setWizardState] = useState<WizardState>({
+    currentStep: 0,
+    data: {},
+    isProfileRequired: !isProfileComplete(userInfo),
+    completedSteps: new Set<number>(),
+    errors: {}
+  });
+  
+  // Keep activeStep for backward compatibility during transition
+  const activeStep = wizardState.currentStep;
+  
+  // Helper function to update wizard state
+  const setActiveStep = (step: number | ((prev: number) => number)) => {
+    setWizardState(prev => ({
+      ...prev,
+      currentStep: typeof step === 'function' ? step(prev.currentStep) : step
+    }));
+  };
   const [selectedCountryCode, setSelectedCountryCode] = useState<string | undefined>(undefined);
   const [dignitaries, setDignitaries] = useState<Dignitary[]>([]);
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -237,8 +256,12 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
       enqueueSnackbar('Profile updated successfully', { variant: 'success' });
       // Update userInfo context with new data
       updateUserInfo(data as any);
-      // Move to next step
-      handleNext();
+      // Update wizard state to mark profile as complete and move to step 0
+      setWizardState(prev => ({
+        ...prev,
+        isProfileRequired: false,
+        currentStep: 0
+      }));
       // Invalidate user profile queries
       queryClient.invalidateQueries({ queryKey: ['userProfile'] });
     },
@@ -752,7 +775,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
         await uploadAttachments(appointmentResponse.id);
       }
       
-      setShowConfirmation(true);
+      // Don't show popup dialog, just update state to show confirmation on review page
       setIsUploading(false);
       queryClient.invalidateQueries({ queryKey: ['my-appointments'] });
     },
@@ -1282,7 +1305,8 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
   };
 
   const handleNext = async (skipExistingCheck: boolean = false) => {
-    if (activeStep === 0 && showProfileStep) {
+    // Check if we need to show profile overlay
+    if (wizardState.isProfileRequired && activeStep === 0) {
       // Handle profile completion step
       if (profileFormRef.current?.validate()) {
         profileFormRef.current.submit();
@@ -1295,7 +1319,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
         });
         return;
       }
-    } else if ((showProfileStep ? activeStep === 1 : activeStep === 0)) {
+    } else if (activeStep === 0) {
       // Validate POC form
       const isValid = await pocForm.trigger();
       if (!isValid) {
@@ -1312,12 +1336,12 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
           // Phone number is now handled in the profile step, so no need to update here
           // Set the required number of dignitaries
           setRequiredDignitariesCount(data.numberOfAttendees);
-          setActiveStep(showProfileStep ? 2 : 1);
+          setActiveStep(1);
         } catch (error) {
           console.error('Error updating user:', error);
         }
       })();
-    } else if ((showProfileStep ? activeStep === 2 : activeStep === 1)) {
+    } else if (activeStep === 1) {
       // Handle different attendee types based on request type
       if (selectedRequestTypeConfig?.attendee_type === attendeeTypeMap['DIGNITARY']) {
         // For dignitary requests, check dignitaries
@@ -1378,8 +1402,8 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
         sessionStorage.setItem('appointmentContactIds', JSON.stringify(contactIds));
       }
       
-      setActiveStep(showProfileStep ? 3 : 2);
-    } else if ((showProfileStep ? activeStep === 3 : activeStep === 2)) {
+      setActiveStep(2);
+    } else if (activeStep === 2) {
       // Validate appointment form
       const isValid = await appointmentForm.trigger();
       if (!isValid) {
@@ -1391,6 +1415,10 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
         return;
       }
       
+      // Move to review step instead of submitting
+      setActiveStep(3);
+    } else if (activeStep === 3) {
+      // Review & Submit step - actually submit the appointment
       const appointmentData = await appointmentForm.handleSubmit(async (data) => {
         try {
           let appointmentCreateData: any = {
@@ -1670,42 +1698,8 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
   };
 
   const renderStepContent = (step: number) => {
-    // Show loading indicator if data is still loading
-    // if (step === 1 && (isLoadingDomains || isLoadingTitles || isLoadingRelationships || isLoadingDignitaries)) {
-    //   return (
-    //     <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-    //       <CircularProgress />
-    //     </Box>
-    //   );
-    // }
-
     switch (step) {
       case 0:
-        // Profile completion step (only shown if showProfileStep is true)
-        if (showProfileStep) {
-          return (
-            <Box>
-              <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
-                Complete Your Profile
-              </Typography>
-              <Typography variant="body2" color="text.secondary" gutterBottom sx={{ mb: 3 }}>
-                Please complete your profile information before proceeding with your appointment request.
-              </Typography>
-              
-              <ProfileFieldsForm
-                ref={profileFormRef}
-                initialData={userInfo}
-                onSubmit={(data: UserUpdateData) => updateProfileMutation.mutate(data)}
-                isSubmitting={updateProfileMutation.isPending}
-                variant="onboarding"
-                fieldsToShow={getProfileCompletionFields(userInfo)}
-                showNotificationPreferences={false}
-                showInternalButton={false}
-              />
-            </Box>
-          );
-        }
-        // Otherwise fall through to initial information step
         return (
           <Box component="form" onSubmit={pocForm.handleSubmit(() => handleNext(false))}>
             <Grid container spacing={3}>
@@ -1821,124 +1815,6 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
         );
 
       case 1:
-        // Adjust step number if profile step is shown
-        if (showProfileStep) {
-          // This is actually the initial information step
-          return (
-            <Box component="form" onSubmit={pocForm.handleSubmit(() => handleNext(false))}>
-              <Grid container spacing={3}>
-                <Grid item xs={12}>
-                  <Typography variant="h6" gutterBottom>
-                    Point of Contact Information
-                  </Typography>
-                </Grid>
-                
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="First Name"
-                    {...pocForm.register('pocFirstName')}
-                    disabled
-                  />
-                </Grid>
-                
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Last Name"
-                    {...pocForm.register('pocLastName')}
-                    disabled
-                  />
-                </Grid>
-                
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Email"
-                    type="email"
-                    {...pocForm.register('pocEmail')}
-                    disabled
-                  />
-                </Grid>
-                
-                <Grid item xs={12}>
-                  <Typography variant="h6" gutterBottom>
-                    Appointment Information
-                  </Typography>
-                </Grid>
-
-                <Grid item xs={12} md={6}>
-                  <FormControl fullWidth required error={!!pocForm.formState.errors.requestType}>
-                    <InputLabel>Request Type</InputLabel>
-                    <Controller
-                      name="requestType"
-                      control={pocForm.control}
-                      rules={{ required: 'Request type is required' }}
-                      render={({ field }) => (
-                        <Select
-                          label="Request Type *"
-                          {...field}
-                          disabled={isLoadingRequestTypes}
-                        >
-                          {requestTypeConfigs.map((config) => (
-                            <MenuItem key={config.request_type} value={config.request_type}>
-                              <Box>
-                                <Typography variant="body1">{config.display_name}</Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                  {config.description}
-                                </Typography>
-                              </Box>
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      )}
-                    />
-                    {pocForm.formState.errors.requestType && (
-                      <FormHelperText>
-                        {pocForm.formState.errors.requestType.message}
-                      </FormHelperText>
-                    )}
-                  </FormControl>
-                </Grid>
-
-                <Grid item xs={12} md={6}>
-                  <Controller
-                    name="numberOfAttendees"
-                    control={pocForm.control}
-                    rules={{
-                      required: `Number of ${selectedRequestTypeConfig?.attendee_label_plural?.toLowerCase() || 'attendees'} is required`,
-                      min: {
-                        value: 1,
-                        message: `At least 1 ${selectedRequestTypeConfig?.attendee_label_singular?.toLowerCase() || 'attendee'} is required`
-                      },
-                      max: {
-                        value: selectedRequestTypeConfig?.max_attendees || 15,
-                        message: `Maximum ${selectedRequestTypeConfig?.max_attendees || 15} ${selectedRequestTypeConfig?.attendee_label_plural?.toLowerCase() || 'attendees'} allowed`
-                      }
-                    }}
-                    render={({ field }) => (
-                      <NumberInput
-                        value={field.value || 1}
-                        onChange={field.onChange}
-                        min={1}
-                        max={selectedRequestTypeConfig?.max_attendees || 15}
-                        increment={1}
-                        label={selectedRequestTypeConfig ? 
-                          `Number of ${selectedRequestTypeConfig.attendee_label_plural} (including yourself if attending)` : 
-                          "Number of Attendees (including yourself if attending)"
-                        }
-                        error={!!pocForm.formState.errors.numberOfAttendees}
-                        helperText={pocForm.formState.errors.numberOfAttendees?.message}
-                        required
-                      />
-                    )}
-                  />
-                </Grid>
-              </Grid>
-            </Box>
-          );
-        }
-        // Otherwise this is the attendee information step
         return (
           <Box>
             <Grid container spacing={3}>
@@ -2995,73 +2871,6 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
         );
 
       case 2:
-        // Adjust step number if profile step is shown
-        if (showProfileStep) {
-          // This is actually the attendee information step
-          return (
-            <Box>
-              <Grid container spacing={3}>
-                <Grid item xs={12}>
-                  <Typography variant="h6" gutterBottom>
-                    {selectedRequestTypeConfig?.step_2_title || 'Attendee Information'}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    {selectedRequestTypeConfig?.step_2_description || 'Add attendees to this appointment request.'}
-                    {requiredDignitariesCount > 0 && (
-                      <span> You need to add {requiredDignitariesCount} {selectedRequestTypeConfig?.attendee_label_singular?.toLowerCase() || 'attendee'}(s) in total.</span>
-                    )}
-                  </Typography>
-                </Grid>
-
-                {/* Show dignitary form for dignitary requests */}
-                {selectedRequestTypeConfig?.attendee_type === attendeeTypeMap['DIGNITARY'] ? (
-                  <>
-                    {/* List of selected dignitaries */}
-                    {selectedDignitaries.length > 0 && (
-                      <Grid item xs={12}>
-                        <Typography variant="subtitle1" gutterBottom sx={{ mb: 2 }}>
-                          Selected Dignitaries ({selectedDignitaries.length} of {requiredDignitariesCount})
-                        </Typography>
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-                          {selectedDignitaries.map((dignitary, index) => {
-                            const displayName = `${formatHonorificTitle(dignitary.honorific_title || '')} ${dignitary.first_name} ${dignitary.last_name}`;
-                            const titleCompany = [dignitary.title_in_organization, dignitary.organization].filter(Boolean).join(', ');
-                            const fullDisplayName = titleCompany ? `${displayName} - ${titleCompany}` : displayName;
-                            
-                            return (
-                              <PersonSelectionChip
-                                key={index}
-                                id={dignitary.id}
-                                firstName={dignitary.first_name}
-                                lastName={dignitary.last_name}
-                                displayName={fullDisplayName}
-                                onDelete={() => removeDignitaryFromList(index)}
-                                onEdit={() => {
-                                  editDignitaryInList(index);
-                                  setIsDignitaryFormExpanded(true);
-                                }}
-                                editIcon={<EditIcon />}
-                              />
-                            );
-                          })}
-                        </Box>
-                      </Grid>
-                    )}
-
-                    {/* Dignitary form logic continues... */}
-                    {/* Note: This should include the rest of the dignitary form logic from the original case 1 */}
-                  </>
-                ) : (
-                  <>
-                    {/* Non-dignitary attendee logic */}
-                    {/* Note: This should include the personal attendee form logic from the original case 1 */}
-                  </>
-                )}
-              </Grid>
-            </Box>
-          );
-        }
-        // Otherwise this is the appointment details step
         return (
           <Box component="form" onSubmit={appointmentForm.handleSubmit(() => handleNext(false))}>
             <Grid container spacing={3}>
@@ -3343,49 +3152,202 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
         );
 
       case 3:
-        // Appointment details step when profile step is shown
-        if (showProfileStep) {
-          return (
-            <Box component="form" onSubmit={appointmentForm.handleSubmit(() => handleNext(false))}>
-              <Grid container spacing={3}>
+        // Review & Submit step
+        return (
+          <Box>
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <Typography variant="h6" gutterBottom>
+                  Review Your Appointment Request
+                </Typography>
+                <Typography variant="body2" color="text.secondary" gutterBottom sx={{ mb: 3 }}>
+                  Please review all the details below before submitting your appointment request.
+                </Typography>
+              </Grid>
+
+              {/* Show confirmation if appointment was submitted */}
+              {submittedAppointment && (
                 <Grid item xs={12}>
-                  <Typography variant="h6" gutterBottom>
-                    Appointment Information
+                  <Paper 
+                    elevation={2} 
+                    sx={{ 
+                      p: 3, 
+                      mb: 3, 
+                      bgcolor: 'success.light', 
+                      color: 'success.contrastText',
+                      border: '1px solid',
+                      borderColor: 'success.main'
+                    }}
+                  >
+                    <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
+                      ✅ Appointment Request Submitted Successfully!
+                    </Typography>
+                    <Typography variant="subtitle1" gutterBottom>
+                      Request ID: <strong>{submittedAppointment.id}</strong>
+                    </Typography>
+                    <Typography variant="body2">
+                      Please save this ID for future reference and communication with the secretariat.
+                      You will receive email updates about your appointment status.
+                    </Typography>
+                  </Paper>
+                </Grid>
+              )}
+
+              {/* Request Summary */}
+                {/* Request Type */}
+                <Grid item xs={12} md={6}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Request Type
+                  </Typography>
+                  <Typography variant="body1">
+                    {selectedRequestTypeConfig?.display_name || pocForm.getValues('requestType')}
                   </Typography>
                 </Grid>
 
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    multiline
-                    rows={4}
-                    label="Purpose of Meeting"
-                    {...appointmentForm.register('purpose', { required: 'Purpose is required' })}
-                    error={!!appointmentForm.formState.errors.purpose}
-                    helperText={appointmentForm.formState.errors.purpose?.message}
-                    required
-                  />
+                {/* Number of Attendees */}
+                <Grid item xs={12} md={6}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Number of {selectedRequestTypeConfig?.attendee_label_plural || 'Attendees'}
+                  </Typography>
+                  <Typography variant="body1">
+                    {pocForm.getValues('numberOfAttendees')}
+                  </Typography>
                 </Grid>
 
-                {/* Date and other fields... */}
-                {/* Note: This should include the same date/time/location logic from case 2 */}
-                
+                {/* Attendees List */}
                 <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    multiline
-                    rows={4}
-                    label="Notes to Secretariat"
-                    {...appointmentForm.register('requesterNotesToSecretariat')}
-                    error={!!appointmentForm.formState.errors.requesterNotesToSecretariat}
-                    helperText={appointmentForm.formState.errors.requesterNotesToSecretariat?.message}
-                  />
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    {selectedRequestTypeConfig?.attendee_label_plural || 'Attendees'}
+                  </Typography>
+                  {selectedRequestTypeConfig?.attendee_type === attendeeTypeMap['DIGNITARY'] ? (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      {selectedDignitaries.map((dignitary, index) => {
+                        const displayName = `${formatHonorificTitle(dignitary.honorific_title || '')} ${dignitary.first_name} ${dignitary.last_name}`;
+                        const titleCompany = [dignitary.title_in_organization, dignitary.organization].filter(Boolean).join(', ');
+                        const fullDisplayName = titleCompany ? `${displayName} - ${titleCompany}` : displayName;
+                        return (
+                          <Chip key={index} label={fullDisplayName} variant="outlined" />
+                        );
+                      })}
+                    </Box>
+                  ) : (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      {selectedUserContacts.map((contact, index) => {
+                        const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
+                        const isSelfContact = contact.relationship_to_owner === relationshipTypeMap['SELF'] ||
+                          (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName);
+                        const displayName = isSelfContact ? selfDisplayName : `${contact.first_name} ${contact.last_name}`;
+                        const relationship = contact.relationship_to_owner;
+                        const fullDisplayName = relationship && !isSelfContact ? `${displayName} (${relationship})` : displayName;
+                        return (
+                          <Chip key={index} label={fullDisplayName} variant="outlined" />
+                        );
+                      })}
+                    </Box>
+                  )}
                 </Grid>
-              </Grid>
-            </Box>
-          );
-        }
-        return null;
+
+                {/* Purpose */}
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Purpose of Meeting
+                  </Typography>
+                  <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
+                    {appointmentForm.getValues('purpose')}
+                  </Typography>
+                </Grid>
+
+                {/* Date */}
+                <Grid item xs={12} md={6}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Preferred Date{selectedRequestTypeConfig?.request_type !== requestTypeMap['DIGNITARY'] ? ' Range' : ''}
+                  </Typography>
+                  <Typography variant="body1">
+                    {selectedRequestTypeConfig?.request_type === requestTypeMap['DIGNITARY'] 
+                      ? appointmentForm.getValues('preferredDate')
+                      : formatDateRange(appointmentForm.getValues('preferredStartDate'), appointmentForm.getValues('preferredEndDate'))
+                    }
+                  </Typography>
+                </Grid>
+
+                {/* Time */}
+                <Grid item xs={12} md={6}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Preferred Time of Day
+                  </Typography>
+                  <Typography variant="body1">
+                    {appointmentForm.getValues('preferredTimeOfDay')}
+                  </Typography>
+                </Grid>
+
+                {/* Location */}
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Location
+                  </Typography>
+                  <Typography variant="body1">
+                    {(() => {
+                      const locationId = appointmentForm.getValues('location_id');
+                      const location = locations.find(l => l.id === locationId);
+                      return location ? `${location.name} - ${location.city}, ${location.state}, ${location.country}` : 'Not specified';
+                    })()}
+                  </Typography>
+                </Grid>
+
+                {/* Notes */}
+                {appointmentForm.getValues('requesterNotesToSecretariat') && (
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Notes to Secretariat
+                    </Typography>
+                    <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
+                      {appointmentForm.getValues('requesterNotesToSecretariat')}
+                    </Typography>
+                  </Grid>
+                )}
+
+                {/* Attachments */}
+                {selectedFiles.length > 0 && (
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      Attachments ({selectedFiles.length})
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      {selectedFiles.map((file, index) => (
+                        <Chip 
+                          key={index} 
+                          label={file.name} 
+                          variant="outlined" 
+                          size="small"
+                          icon={
+                            <Box component="span" sx={{ fontSize: '1rem' }}>
+                              {file.type.includes('image') ? '🖼️' : 
+                                file.type.includes('pdf') ? '📄' : 
+                                file.type.includes('word') ? '📝' : 
+                                file.type.includes('excel') ? '📊' : 
+                                file.type.includes('presentation') ? '📽️' : '📁'}
+                            </Box>
+                          }
+                        />
+                      ))}
+                    </Box>
+                  </Grid>
+                )}
+
+              {/* Upload Progress */}
+              {isUploading && (
+                <Grid item xs={12}>
+                  <Paper elevation={1} sx={{ p: 2 }}>
+                    <Typography variant="body2" gutterBottom>
+                      Uploading attachments... {uploadProgress.toFixed(0)}%
+                    </Typography>
+                    <LinearProgress variant="determinate" value={uploadProgress} />
+                  </Paper>
+                </Grid>
+              )}
+            </Grid>
+          </Box>
+        );
 
       default:
         return null;
@@ -3592,43 +3554,67 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
       return (
       <Box sx={{ width: '100%' }}>
         <Stepper activeStep={activeStep} sx={{ mb: 4 }} alternativeLabel>
-          {getDynamicSteps(selectedRequestTypeConfig, showProfileStep).map((label: string) => (
+          {getDisplaySteps(selectedRequestTypeConfig).map((label: string) => (
             <Step key={label}>
               <StepLabel>{label}</StepLabel>
             </Step>
           ))}
         </Stepper>
 
-      <Paper sx={{ p: 3 }}>
+      <Paper sx={{ p: 3, position: 'relative' }}>
         {renderStepContent(activeStep)}
         
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
-          {activeStep > 0 && (
-          <SecondaryButton 
-            onClick={handleBack} 
-            sx={{ mr: 1 }}
-            disabled={(((showProfileStep ? activeStep === 2 : activeStep === 1)) && (isDignitaryFormExpanded || isContactFormExpanded))}
-          >
-            Back
-          </SecondaryButton>
-          )}
-          <PrimaryButton
-              onClick={() => handleNext(false)}
-              disabled={
-                // At step 0 (profile), check if form is valid
-                (activeStep === 0 && showProfileStep && !isProfileFormValid) ||
-                // Adjust step numbers when profile step is shown
-                (((showProfileStep ? activeStep === 2 : activeStep === 1)) && (isDignitaryFormExpanded || isContactFormExpanded)) || 
-                // At attendee step, if no attendees are selected (dignitary or contacts), disable the next button
-                (((showProfileStep ? activeStep === 2 : activeStep === 1)) && selectedRequestTypeConfig?.attendee_type === attendeeTypeMap['DIGNITARY'] && selectedDignitaries.length === 0) ||
-                (((showProfileStep ? activeStep === 2 : activeStep === 1)) && selectedRequestTypeConfig?.attendee_type !== attendeeTypeMap['DIGNITARY'] && selectedUserContacts.length === 0) ||
-                // At attendee step, if not enough attendees are added, disable the next button
-                (((showProfileStep ? activeStep === 2 : activeStep === 1)) && selectedRequestTypeConfig?.attendee_type === attendeeTypeMap['DIGNITARY'] && selectedDignitaries.length < requiredDignitariesCount) ||
-                (((showProfileStep ? activeStep === 2 : activeStep === 1)) && selectedRequestTypeConfig?.attendee_type !== attendeeTypeMap['DIGNITARY'] && selectedUserContacts.length < requiredDignitariesCount)
-              }
+        {/* Profile overlay when profile completion is required */}
+        {wizardState.isProfileRequired && (
+          <ProfileOverlay
+            userInfo={userInfo}
+            profileFormRef={profileFormRef}
+            onSubmit={(data: UserUpdateData) => updateProfileMutation.mutate(data)}
+            isSubmitting={updateProfileMutation.isPending}
+            fieldsToShow={getProfileCompletionFields(userInfo)}
+          />
+        )}
+        
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
+          {/* Show different buttons based on whether appointment is submitted */}
+          {submittedAppointment ? (
+            <PrimaryButton
+              onClick={() => navigate('/home')}
             >
-              {activeStep === getDynamicSteps(selectedRequestTypeConfig, showProfileStep).length - 1 ? 'Submit' : 'Next'}
+              Go to Home
             </PrimaryButton>
+          ) : (
+            <>
+              {activeStep !== 0 && (
+                <SecondaryButton 
+                  onClick={handleBack} 
+                  sx={{ mr: 1 }}
+                  disabled={(activeStep === 1 && (isDignitaryFormExpanded || isContactFormExpanded))}
+                >
+                  Back
+                </SecondaryButton>
+              )}
+              <PrimaryButton
+                onClick={() => handleNext(false)}
+                disabled={
+                  // At step 0 with profile required, check if form is valid
+                  (activeStep === 0 && wizardState.isProfileRequired && !isProfileFormValid) ||
+                  // At attendee step, if forms are expanded, disable navigation
+                  (activeStep === 1 && (isDignitaryFormExpanded || isContactFormExpanded)) || 
+                  // At attendee step, if no attendees are selected (dignitary or contacts), disable the next button
+                  (activeStep === 1 && selectedRequestTypeConfig?.attendee_type === attendeeTypeMap['DIGNITARY'] && selectedDignitaries.length === 0) ||
+                  (activeStep === 1 && selectedRequestTypeConfig?.attendee_type !== attendeeTypeMap['DIGNITARY'] && selectedUserContacts.length === 0) ||
+                  // At attendee step, if not enough attendees are added, disable the next button
+                  (activeStep === 1 && selectedRequestTypeConfig?.attendee_type === attendeeTypeMap['DIGNITARY'] && selectedDignitaries.length < requiredDignitariesCount) ||
+                  (activeStep === 1 && selectedRequestTypeConfig?.attendee_type !== attendeeTypeMap['DIGNITARY'] && selectedUserContacts.length < requiredDignitariesCount) ||
+                  // Disable submit button while uploading
+                  isUploading
+                }
+              >
+                {activeStep === getDisplaySteps(selectedRequestTypeConfig).length - 1 ? 'Submit' : 'Next'}
+              </PrimaryButton>
+            </>
+          )}
         </Box>
       </Paper>
 
