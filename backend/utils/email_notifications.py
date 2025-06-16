@@ -23,6 +23,7 @@ import time
 import atexit
 import re
 from dataclasses import dataclass, field
+from typing import Callable
 from sqlalchemy import or_, func
 
 # Configure logging
@@ -54,8 +55,19 @@ except Exception as e:
 
 # Email queue for async processing
 email_queue = queue.Queue()
+# Generic DB task queue for async processing
+db_task_queue = queue.Queue()
 email_worker_running = False
+db_worker_running = False
 email_worker_thread = None
+db_worker_thread = None
+
+@dataclass
+class DBTask:
+    """Generic database task for async processing."""
+    task_type: str
+    parameters: dict
+    created_at: float = field(default_factory=time.time)
 
 class EmailTemplate(str, Enum):
     """Enum for available email templates."""
@@ -261,11 +273,29 @@ def start_email_worker():
     email_worker_thread.start()
     logger.info("Email worker thread started")
 
+def start_db_worker():
+    """Start the background DB worker thread if not already running."""
+    global db_worker_running, db_worker_thread
+    
+    if db_worker_running:
+        return
+    
+    db_worker_running = True
+    db_worker_thread = threading.Thread(target=db_worker, daemon=True)
+    db_worker_thread.start()
+    logger.info("DB worker thread started")
+
 def stop_email_worker():
     """Stop the background email worker thread."""
     global email_worker_running
     email_worker_running = False
     logger.info("Email worker thread stop requested")
+
+def stop_db_worker():
+    """Stop the background DB worker thread."""
+    global db_worker_running
+    db_worker_running = False
+    logger.info("DB worker thread stop requested")
 
 def email_worker():
     """Background worker that processes the email queue."""
@@ -302,6 +332,73 @@ def email_worker():
             time.sleep(1)  # Prevent CPU spinning on repeated errors
     
     logger.info("Email worker stopped")
+
+def db_worker():
+    """Background worker that processes the generic DB task queue."""
+    global db_worker_running
+    
+    logger.info("DB worker started")
+    while db_worker_running:
+        try:
+            # Try to get a DB task from the queue with a timeout
+            try:
+                db_task = db_task_queue.get(timeout=1.0)
+            except queue.Empty:
+                continue
+            
+            # Process the DB task
+            try:
+                if isinstance(db_task, DBTask):
+                    task_age = time.time() - db_task.created_at
+                    logger.info(f"Processing DB task: {db_task.task_type} (age: {task_age:.2f}s)")
+                    _process_db_task(db_task)
+                else:
+                    logger.error(f"Invalid DB task type: {type(db_task)}")
+            except Exception as e:
+                logger.error(f"Error processing DB task: {str(e)}", exc_info=True)
+            
+            # Mark task as done
+            db_task_queue.task_done()
+            
+        except Exception as e:
+            logger.error(f"Error in DB worker: {str(e)}", exc_info=True)
+            time.sleep(1)  # Prevent CPU spinning on repeated errors
+    
+    logger.info("DB worker stopped")
+
+def _process_db_task(task: DBTask) -> None:
+    """Process a specific DB task based on its type."""
+    from database import get_db
+    
+    with get_db() as db:
+        if task.task_type == "contact_profile_check":
+            appointment_id = task.parameters.get('appointment_id')
+            if appointment_id:
+                # Get appointment with relationships loaded
+                from models.appointment import Appointment
+                from sqlalchemy.orm import joinedload
+                
+                appointment = db.query(Appointment).options(
+                    joinedload(Appointment.appointment_contacts),
+                    joinedload(Appointment.requester),
+                    joinedload(Appointment.location)
+                ).filter(Appointment.id == appointment_id).first()
+                
+                if appointment:
+                    _check_and_notify_contact_profiles_sync(db, appointment)
+                else:
+                    logger.error(f"Appointment {appointment_id} not found for profile checking")
+            else:
+                logger.error("Missing appointment_id parameter for contact_profile_check task")
+        
+        # Add more task types here in the future:
+        # elif task.task_type == "bulk_data_cleanup":
+        #     _process_bulk_data_cleanup(db, task.parameters)
+        # elif task.task_type == "generate_report":
+        #     _process_report_generation(db, task.parameters)
+        
+        else:
+            logger.error(f"Unknown DB task type: {task.task_type}")
 
 def _send_email_sync(to_email: str, subject: str, content: str, bcc_emails: List[str] = None):
     """Internal synchronous function to send an email using SendGrid."""
@@ -633,8 +730,8 @@ def notify_appointment_creation(db: Session, appointment: Appointment):
             appointment_id=appointment.id
         )
     
-    # Check contact profiles and send completion emails (async)
-    check_and_notify_contact_profiles_async(db, appointment)
+    # Queue contact profile checking for async processing
+    queue_contact_profile_check(appointment.id)
 
 def notify_appointment_update(db: Session, appointment: Appointment, old_data: Dict[str, Any], new_data: Dict[str, Any]):
     """Send notifications when an appointment is updated."""
@@ -832,10 +929,25 @@ def notify_appointment_update(db: Session, appointment: Appointment, old_data: D
         else:
             logger.info(f"Skipped sending email for appointment update (ID: {appointment.id})")
 
-def check_and_notify_contact_profiles_async(db: Session, appointment: Appointment) -> None:
+def queue_contact_profile_check(appointment_id: int) -> None:
+    """Queue a contact profile check task for async processing."""
+    task = DBTask(
+        task_type="contact_profile_check",
+        parameters={'appointment_id': appointment_id}
+    )
+    db_task_queue.put(task)
+    logger.info(f"Queued contact profile check for appointment {appointment_id}")
+
+def queue_db_task(task_type: str, parameters: dict) -> None:
+    """Queue a generic DB task for async processing."""
+    task = DBTask(task_type=task_type, parameters=parameters)
+    db_task_queue.put(task)
+    logger.info(f"Queued DB task: {task_type}")
+
+def _check_and_notify_contact_profiles_sync(db: Session, appointment: Appointment) -> None:
     """Check contact emails for existing users and send profile completion notifications.
     
-    This function runs asynchronously as part of the email notification system.
+    This function runs synchronously in the profile worker thread.
     
     Steps:
     1. Gets contact email addresses from the appointment
@@ -962,7 +1074,7 @@ def check_and_notify_contact_profiles_async(db: Session, appointment: Appointmen
         logger.info(f"Completed profile checking for appointment {appointment.id}")
         
     except Exception as e:
-        logger.error(f"Error in check_and_notify_contact_profiles_async for appointment {appointment.id}: {str(e)}", exc_info=True)
+        logger.error(f"Error in _check_and_notify_contact_profiles_sync for appointment {appointment.id}: {str(e)}", exc_info=True)
 
 def send_profile_completion_email(
     db: Session,
@@ -1030,11 +1142,13 @@ def send_profile_completion_email(
     except Exception as e:
         logger.error(f"Error sending profile completion email to {email}: {str(e)}", exc_info=True)
 
-# Initialize the email worker when module is imported
+# Initialize the workers when module is imported
 start_email_worker()
+start_db_worker()
 
-# Make sure the worker is stopped properly when the application exits
+# Make sure the workers are stopped properly when the application exits
 atexit.register(stop_email_worker)
+atexit.register(stop_db_worker)
 
 def test_sendgrid_connection():
     """Test the SendGrid API connection and permissions.

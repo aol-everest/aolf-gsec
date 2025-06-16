@@ -59,12 +59,12 @@ class AOLTeacherStatus(str, enum.Enum):
 
 class AOLProgramType(str, enum.Enum):
     """Art of Living program types enum"""
-    HP = "HP"
-    SILENCE_PROGRAM = "Silence Program"
-    OTHER_GRADUATE_PROGRAMS = "Other Graduate Programs - DSN / VTP / TTP / Sanyam"
+    HP = "Part 1 (SKY)"
+    SILENCE_PROGRAM = "Part 2 (Silence)"
+    OTHER_GRADUATE_PROGRAMS = "Other Graduate Programs (VTP / TTP / Blessings / DSN / Sanyam)"
     SAHAJ = "Sahaj"
-    AE_YES = "AE/YES!"
-    SSY = "SSY"
+    AE_YES = "Kids/Teens Courses"
+    SSY = "Sri Sri Yoga 1/2"
 
     def __str__(self):
         return self.value
@@ -72,12 +72,12 @@ class AOLProgramType(str, enum.Enum):
 
 class AOLAffiliation(str, enum.Enum):
     """Art of Living affiliations enum"""
-    ASHRAMITE = "Ashramite"
-    ASHRAM_SEVAK_SHORT_TERM = "Ashram Sevak (Short-term)"
+    ASHRAMITE = "Full Time"
+    ASHRAM_SEVAK_SHORT_TERM = "Ashram Seva (Short-term)"
     SWAMIJI_BRAHMACHARI = "Swamiji / Brahmachari"
     ASHRAM_HOD = "Ashram HOD"
     TRUSTEE = "Trustee"
-    STATE_APEX_STC = "State Apex / STC"
+    STATE_APEX_STC = "Board Member"
 
     def __str__(self):
         return self.value
@@ -524,9 +524,9 @@ class AttachmentType(str, enum.Enum):
 
 class CourseType(str, enum.Enum):
     """Course type enum for appointment contacts"""
-    SKY = "SKY"
+    SKY = "Part 1 (SKY)"
     SAHAJ = "Sahaj"
-    SILENCE = "Silence"
+    SILENCE = "Part 2 (Silence)"
     WISDOM_SERIES = "Wisdom Series"
     KIDS_TEENS_COURSE = "Kids/Teens Course"
     OTHER_COURSE = "Other Course"
