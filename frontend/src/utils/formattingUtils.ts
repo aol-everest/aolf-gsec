@@ -8,6 +8,7 @@ export const getStatusColor = (status: string, theme: Theme) => {
 export const getStatusTheme = (status: string, theme: Theme) => {
     const statusThemes: Record<string, PaletteColor> = {
         'Pending': theme.palette.warning,
+        'Pending Approval': theme.palette.warning,
 
         'Approved': theme.palette.success,
         'Appointment Scheduled': theme.palette.success,
@@ -15,6 +16,7 @@ export const getStatusTheme = (status: string, theme: Theme) => {
         'Confirmed': theme.palette.success,
   
         'Rejected': theme.palette.error,
+        'Unable to schedule': theme.palette.error,
   
         'Follow Up': theme.palette.info,
         'To Be Rescheduled': theme.palette.info,

@@ -48,6 +48,8 @@ export const AppointmentStatusChip = ({
             flex: 'none',
             order: 1,
             flexGrow: 0,
+
+            maxWidth: '170px',
         };
     };
     

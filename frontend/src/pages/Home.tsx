@@ -1,37 +1,124 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Container,
   Typography,
   Paper,
-  Card,
-  CardContent,
   Chip,
-  Grid,
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import Layout from '../components/Layout';
 import { useAppointmentSummary } from '../hooks/useAppointmentSummary';
+import PrimaryButton from '../components/PrimaryButton';
+import { formatDate } from '../utils/dateUtils';
+import GenericTable, { createGenericColumnHelper, standardColumnSizes, TableCellComponents } from '../components/GenericTable';
+import { createColumnHelper } from '@tanstack/react-table';
+import { AppointmentStatusChip } from '../components/AppointmentStatusChip';
+
 const drawerWidth = 260;
+
+// Define the flattened appointment type for the table
+interface AppointmentTableRow {
+  id: number;
+  requestType: string;
+  statusDisplay: string;
+}
 
 const Home: React.FC = () => {
   const { userInfo } = useAuth();
   const navigate = useNavigate();
-  const [mobileOpen, setMobileOpen] = React.useState(false);
   const { data: appointmentSummary, isLoading: summaryLoading } = useAppointmentSummary();
+
+  // Status mapping as requested
+  const getStatusDisplay = (status: string): string => {
+    switch (status.toLowerCase()) {
+      case 'approved':
+        return 'Approved';
+      case 'pending':
+        return 'Pending Approval';
+      case 'rejected':
+        return 'Unable to schedule';
+      default:
+        return status;
+    }
+  };
+
+  // Get status chip color based on status
+  const getStatusChipColor = (status: string): 'success' | 'warning' | 'error' | 'default' => {
+    switch (status.toLowerCase()) {
+      case 'approved':
+        return 'success';
+      case 'pending':
+        return 'warning';
+      case 'rejected':
+        return 'error';
+      default:
+        return 'default';
+    }
+  };
+
+  // Flatten appointments for table display
+  const tableData = useMemo((): AppointmentTableRow[] => {
+    if (!appointmentSummary) return [];
+    
+    const allAppointments: AppointmentTableRow[] = [];
+
+    Object.entries(appointmentSummary).forEach(([requestType, summary]) => {
+      summary.appointments.forEach(appointment => {
+        allAppointments.push({
+          id: appointment.id,
+          requestType: requestType + ' • ' + (appointment.date ? formatDate(appointment.date, false) : 'Not scheduled'),
+          statusDisplay: getStatusDisplay(appointment.status),
+        });
+      });
+    });
+    // CalendarDayIconV2
+
+    return allAppointments;
+  }, [appointmentSummary]);
+
+  // Create column definitions
+  const columnHelper = createGenericColumnHelper<AppointmentTableRow>();
+  const columns = useMemo(() => [
+    columnHelper.accessor('requestType', {
+      header: 'Request',
+      cell: (info) => (
+        <TableCellComponents.PrimaryText>
+          {info.getValue()}
+        </TableCellComponents.PrimaryText>
+      ),
+      ...standardColumnSizes.small,
+      enableSorting: true,
+    }),
+    columnHelper.accessor('statusDisplay', {
+      header: 'Status',
+      cell: (info) => {
+        return (
+          <AppointmentStatusChip status={info.getValue()} size="small" />
+        );
+      },
+      ...standardColumnSizes.status,
+      enableSorting: true,
+    }),
+  ], []);
+
+  const handleCreateAppointment = () => {
+    navigate('/appointment/request');
+  };
+
+  const handleRowClick = (row: AppointmentTableRow) => {
+    // Navigate to appointment details or edit page
+    navigate(`/appointment/${row.id}`);
+  };
 
   return (
     <Layout>
-      <Container maxWidth="xl">
+      <Container maxWidth="md">
         <Box
           component="main"
           sx={{
-            // flexGrow: 1,
-            // p: 3,
-            width: { sm: `calc(100% - ${drawerWidth}px)` },
-            // mt: 8,
-            // py: 4,
+            width: '100%',
             p: 0,
           }}
         >
@@ -44,43 +131,78 @@ const Home: React.FC = () => {
               Use the navigation menu to create new appointments, view existing requests, or manage your profile.
             </Typography>
             
-            {/* Appointment Summary Section */}
-            {!summaryLoading && appointmentSummary && Object.keys(appointmentSummary).length > 0 && (
-              <Box sx={{ mb: 4 }}>
-                <Typography variant="h6" gutterBottom>
-                  Your Open Appointment Requests
+            {/* Image with button overlay */}
+            <Box sx={{ position: 'relative', mb: 4 }}>
+              <img 
+                src={'/desktop-bg-1.png'} 
+                alt="banner" 
+                style={{ 
+                  width: '100%', 
+                  height: 'auto', 
+                  borderRadius: '13px', 
+                  border: '1px solid #eee' 
+                }} 
+              />
+              <Box
+                sx={{
+                  position: 'absolute',
+                  bottom: 24,
+                  left: 24,
+                }}
+              >
+                <PrimaryButton
+                  size="small"
+                  onClick={handleCreateAppointment}
+                  // sx={{
+                  //   boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.15)',
+                  // }}
+                >
+                  Create New Request
+                </PrimaryButton>
+              </Box>
+            </Box>
+
+            {/* Appointment Summary Table */}
+            {!summaryLoading && tableData.length > 0 && (
+              <Box>
+                <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
+                  Your Appointment Requests
                 </Typography>
-                <Grid container spacing={2}>
-                  {Object.entries(appointmentSummary).map(([requestType, summary]) => (
-                    <Grid item xs={12} sm={6} md={4} key={requestType}>
-                      <Card variant="outlined">
-                        <CardContent>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                            <Typography variant="body1" fontWeight="medium">
-                              {requestType}
-                            </Typography>
-                            <Chip 
-                              label={`${summary.count} request${summary.count > 1 ? 's' : ''}`}
-                              size="small"
-                              color="primary"
-                              variant="outlined"
-                            />
-                          </Box>
-                          <Typography variant="body2" color="text.secondary">
-                            {summary.count === 1 
-                              ? 'You have 1 open request of this type'
-                              : `You have ${summary.count} open requests of this type`
-                            }
-                          </Typography>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                  ))}
-                </Grid>
+                <GenericTable
+                  data={tableData}
+                  columns={columns}
+                  onRowClick={handleRowClick}
+                  loading={summaryLoading}
+                  emptyMessage="No open appointment requests found. Click 'Create New Request' to get started."
+                  enableSearch={false}
+                  enablePagination={tableData.length > 5}
+                  pageSize={5}
+                  pageSizeOptions={[5, 10, 25]}
+                  tableProps={{
+                    stickyHeader: true,
+                    size: 'medium',
+                    padding: 'normal',
+                  }}
+                  containerProps={{
+                    maxHeight: 600,
+                    sx: {
+                      borderRadius: 2,
+                      border: '1px solid rgba(56, 56, 56, 0.1)',
+                      boxShadow: '0px 12px 16px -4px rgba(81, 77, 74, 0.08), 0px -1px 6px -2px rgba(81, 77, 74, 0.03)',
+                    }
+                  }}
+                />
               </Box>
             )}
-            
-            <img src={'/desktop-bg-1.png'} alt="logo" style={{ width: '100%', height: 'auto', borderRadius: '13px', border: '1px solid #eee' }} />
+
+            {/* No appointments message */}
+            {!summaryLoading && tableData.length === 0 && (
+              <Box sx={{ textAlign: 'center', py: 4 }}>
+                <Typography variant="body1" color="text.secondary">
+                  No open appointment requests found. Click "Create New Request" to get started.
+                </Typography>
+              </Box>
+            )}
           </Paper>
         </Box>
       </Container>
