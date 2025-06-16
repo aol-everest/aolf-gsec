@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Create Your Account - Meeting with Gurudev{% endblock %}
+{% block content %}
+<div class="content">
+    <p>Dear {{ contact_name }},</p>
+
+    <p>We hope this message finds you well.</p>
+
+    <p>You have been added as an attendee for an upcoming meeting request with Gurudev (Meeting Request ID: {{ appointment_id }}). To participate in this meeting and access our appointment system, we invite you to create your account.</p>
+
+    <p>Creating an account will allow you to:</p>
+    <div style="background-color: #f9fafb; padding: 15px; border-radius: 5px; margin: 15px 0;">
+        <ul>
+            <li>Complete your profile information for meeting arrangements</li>
+            <li>Receive updates about your meeting status</li>
+            <li>Access additional features of our appointment system</li>
+            <li>Submit your own meeting requests in the future</li>
+        </ul>
+    </div>
+
+    <p>Please click the link below to create your account using this email address ({{ contact_email }}). Once you create your account, please complete your profile with the necessary information.</p>
+
+    <a href="{{ app_base_url }}/auth/register?email={{ contact_email }}&redirect=/profile" class="button">Create Your Account</a>
+
+    <p><strong>Meeting Details:</strong></p>
+    <div style="background-color: #f9fafb; padding: 15px; border-radius: 5px; margin: 15px 0;">
+        <ul>
+            <li><strong>Meeting Request ID:</strong> {{ appointment_id }}</li>
+            <li><strong>Requester:</strong> {{ requester_name }}</li>
+            {% if appointment_date %}
+            <li><strong>Requested Date:</strong> {{ appointment_date }}</li>
+            {% endif %}
+            {% if appointment_location %}
+            <li><strong>Location:</strong> {{ appointment_location }}</li>
+            {% endif %}
+        </ul>
+    </div>
+
+    <p>If you have any questions about creating your account or need assistance, please feel free to reach out to us.</p>
+
+    <p>Thank you for your interest, and we look forward to facilitating your meeting with Gurudev.</p>
+
+    <p>Warm regards,</p>
+    <p>Office of Gurudev Sri Sri Ravi Shankar, USA</p>
+</div>
+{% endblock %} 

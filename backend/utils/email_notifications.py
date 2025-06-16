@@ -12,6 +12,7 @@ from models.user import User, UserRole
 from models.appointment import Appointment, AppointmentStatus, AppointmentSubStatus
 from utils.utils import str_to_bool, as_dict, appointment_to_dict
 from models.dignitary import Dignitary, HonorificTitle
+from models.userContact import UserContact
 from enum import Enum, auto
 import logging
 from contextlib import contextmanager
@@ -22,7 +23,7 @@ import time
 import atexit
 import re
 from dataclasses import dataclass, field
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -69,6 +70,8 @@ class EmailTemplate(str, Enum):
     APPOINTMENT_REJECTED_LOW_PRIORITY = "appointment_rejected_low_priority.html"
     APPOINTMENT_REJECTED_MET_ALREADY = "appointment_rejected_met_already.html"
     APPOINTMENT_RESCHEDULED = "appointment_rescheduled.html"
+    PROFILE_COMPLETION_EXISTING_USER = "profile_completion_existing_user.html"
+    PROFILE_COMPLETION_NEW_USER = "profile_completion_new_user.html"
     GENERIC_NOTIFICATION = "generic_notification.html"
 
     def __str__(self):
@@ -85,6 +88,8 @@ class EmailTrigger(str, Enum):
     APPOINTMENT_REJECTED_LOW_PRIORITY = "appointment_rejected_low_priority"
     APPOINTMENT_REJECTED_MET_ALREADY = "appointment_rejected_met_already"
     APPOINTMENT_RESCHEDULED = "appointment_rescheduled"
+    PROFILE_COMPLETION_EXISTING_USER = "profile_completion_existing_user"
+    PROFILE_COMPLETION_NEW_USER = "profile_completion_new_user"
     GENERIC_NOTIFICATION = "generic_notification"
 
     def __str__(self):
@@ -167,6 +172,18 @@ NOTIFICATION_CONFIGS = {
         trigger=EmailTrigger.APPOINTMENT_RESCHEDULED,
         requester_template=EmailTemplate.APPOINTMENT_RESCHEDULED,
         subject_template="Rescheduled Appointment with Gurudev (ID: {appointment_id})"
+    ),
+    EmailTrigger.PROFILE_COMPLETION_EXISTING_USER: NotificationConfig(
+        trigger=EmailTrigger.PROFILE_COMPLETION_EXISTING_USER,
+        requester_template=EmailTemplate.PROFILE_COMPLETION_EXISTING_USER,
+        subject_template="Complete Your Profile - Meeting with Gurudev (ID: {appointment_id})",
+        preference_key="appointment_created"  # Use appointment_created preference for profile completion emails
+    ),
+    EmailTrigger.PROFILE_COMPLETION_NEW_USER: NotificationConfig(
+        trigger=EmailTrigger.PROFILE_COMPLETION_NEW_USER,
+        requester_template=EmailTemplate.PROFILE_COMPLETION_NEW_USER,
+        subject_template="Create Your Account - Meeting with Gurudev (ID: {appointment_id})",
+        preference_key="appointment_created"  # Use appointment_created preference for profile completion emails
     ),
     EmailTrigger.GENERIC_NOTIFICATION: NotificationConfig(
         trigger=EmailTrigger.GENERIC_NOTIFICATION,
@@ -615,6 +632,9 @@ def notify_appointment_creation(db: Session, appointment: Appointment):
             context=context,
             appointment_id=appointment.id
         )
+    
+    # Check contact profiles and send completion emails (async)
+    check_and_notify_contact_profiles_async(db, appointment)
 
 def notify_appointment_update(db: Session, appointment: Appointment, old_data: Dict[str, Any], new_data: Dict[str, Any]):
     """Send notifications when an appointment is updated."""
@@ -811,6 +831,204 @@ def notify_appointment_update(db: Session, appointment: Appointment, old_data: D
             )
         else:
             logger.info(f"Skipped sending email for appointment update (ID: {appointment.id})")
+
+def check_and_notify_contact_profiles_async(db: Session, appointment: Appointment) -> None:
+    """Check contact emails for existing users and send profile completion notifications.
+    
+    This function runs asynchronously as part of the email notification system.
+    
+    Steps:
+    1. Gets contact email addresses from the appointment
+    2. Checks if users exist with those emails (case-insensitive)
+    3. For existing users, checks if their profile is complete
+    4. Sends appropriate emails based on user status and profile completeness
+    
+    Args:
+        db: Database session
+        appointment: The created appointment
+    """
+    try:
+        # Import here to avoid circular imports
+        from utils.profile_validation import (
+            is_profile_complete, 
+            get_missing_fields, 
+            user_to_dict, 
+            get_missing_fields_display_names
+        )
+        
+        logger.info(f"Checking contact profiles for appointment {appointment.id}")
+        
+        # Get contact IDs from appointment
+        contact_ids = []
+        if hasattr(appointment, 'appointment_contacts') and appointment.appointment_contacts:
+            contact_ids = [ac.contact_id for ac in appointment.appointment_contacts]
+        
+        if not contact_ids:
+            logger.info(f"No contacts found for appointment {appointment.id}")
+            return
+        
+        # Batch query for all contacts with emails (more efficient than individual queries)
+        contacts = db.query(UserContact).filter(
+            UserContact.id.in_(contact_ids),
+            UserContact.email.isnot(None),
+            UserContact.email != ''
+        ).all()
+        
+        if not contacts:
+            logger.info(f"No contacts with email addresses found for appointment {appointment.id}")
+            return
+        
+        # Prepare appointment context information
+        appointment_date = None
+        if appointment.preferred_date:
+            appointment_date = appointment.preferred_date
+        elif appointment.preferred_start_date:
+            if appointment.preferred_end_date and appointment.preferred_start_date != appointment.preferred_end_date:
+                appointment_date = f"{appointment.preferred_start_date} - {appointment.preferred_end_date}"
+            else:
+                appointment_date = appointment.preferred_start_date
+        
+        appointment_location = None
+        if appointment.location:
+            appointment_location = f"{appointment.location.name} - {appointment.location.city}, {appointment.location.state}"
+        
+        requester_name = f"{appointment.requester.first_name} {appointment.requester.last_name}".strip()
+        
+        # Batch query for existing users to avoid N+1 queries
+        contact_emails = [contact.email.strip().lower() for contact in contacts if contact.email]
+        existing_users = {}
+        if contact_emails:
+            users = db.query(User).filter(
+                func.lower(User.email).in_(contact_emails)
+            ).all()
+            existing_users = {user.email.lower(): user for user in users}
+        
+        # Process each contact
+        for contact in contacts:
+            try:
+                contact_email = contact.email.strip().lower()
+                contact_name = f"{contact.first_name} {contact.last_name}".strip()
+                
+                logger.info(f"Processing contact: {contact_name} ({contact_email})")
+                
+                existing_user = existing_users.get(contact_email)
+                
+                if existing_user:
+                    # User exists - check if profile is complete
+                    logger.info(f"Found existing user for {contact_email}")
+                    
+                    user_data = user_to_dict(existing_user)
+                    
+                    if not is_profile_complete(user_data):
+                        # Profile is incomplete - send completion reminder
+                        missing_fields = get_missing_fields(user_data)
+                        missing_fields_display = get_missing_fields_display_names(missing_fields)
+                        
+                        logger.info(f"User {contact_email} has incomplete profile. Missing fields: {missing_fields}")
+                        
+                        send_profile_completion_email(
+                            db=db,
+                            email=contact.email,  # Use original email case from contact
+                            contact_name=existing_user.first_name or contact_name,
+                            appointment_id=appointment.id,
+                            requester_name=requester_name,
+                            appointment_date=appointment_date,
+                            appointment_location=appointment_location,
+                            missing_fields=missing_fields_display,
+                            is_new_user=False
+                        )
+                    else:
+                        logger.info(f"User {contact_email} has complete profile - no email needed")
+                else:
+                    # No user exists - send account creation invitation
+                    logger.info(f"No user found for {contact_email} - sending account creation email")
+                    
+                    send_profile_completion_email(
+                        db=db,
+                        email=contact.email,  # Use original email case from contact
+                        contact_name=contact_name,
+                        appointment_id=appointment.id,
+                        requester_name=requester_name,
+                        appointment_date=appointment_date,
+                        appointment_location=appointment_location,
+                        missing_fields=None,
+                        is_new_user=True
+                    )
+                    
+            except Exception as e:
+                logger.error(f"Error processing contact {contact.id} ({contact.email}): {str(e)}", exc_info=True)
+                continue
+        
+        logger.info(f"Completed profile checking for appointment {appointment.id}")
+        
+    except Exception as e:
+        logger.error(f"Error in check_and_notify_contact_profiles_async for appointment {appointment.id}: {str(e)}", exc_info=True)
+
+def send_profile_completion_email(
+    db: Session,
+    email: str,
+    contact_name: str,
+    appointment_id: int,
+    requester_name: str,
+    appointment_date: str = None,
+    appointment_location: str = None,
+    missing_fields: List[str] = None,
+    is_new_user: bool = False
+):
+    """Send profile completion email to a contact based on their user status.
+    
+    Args:
+        db: Database session
+        email: Contact's email address
+        contact_name: Contact's full name
+        appointment_id: ID of the appointment they're added to
+        requester_name: Name of the person who requested the appointment
+        appointment_date: Optional appointment date string
+        appointment_location: Optional appointment location string
+        missing_fields: List of missing profile fields (for existing users)
+        is_new_user: Whether this is a new user invitation or existing user reminder
+    """
+    try:
+        # Prepare context for email template
+        context = {
+            'contact_name': contact_name,
+            'contact_email': email,
+            'appointment_id': appointment_id,
+            'requester_name': requester_name,
+            'appointment_date': appointment_date,
+            'appointment_location': appointment_location
+        }
+        
+        if is_new_user:
+            trigger_type = EmailTrigger.PROFILE_COMPLETION_NEW_USER
+        else:
+            trigger_type = EmailTrigger.PROFILE_COMPLETION_EXISTING_USER
+            context['missing_fields'] = missing_fields or []
+        
+        # Create a temporary recipient object for the notification system
+        # Since this person might not have a User record yet, we create a minimal object
+        class TempRecipient:
+            def __init__(self, email_addr, name):
+                self.email = email_addr
+                self.first_name = name
+                self.role = UserRole.GENERAL
+                self.email_notification_preferences = {"appointment_created": True}
+        
+        recipient = TempRecipient(email, contact_name)
+        
+        # Send the notification email
+        send_notification_email(
+            db=db,
+            trigger_type=trigger_type,
+            recipient=recipient,
+            context=context,
+            appointment_id=appointment_id
+        )
+        
+        logger.info(f"Profile completion email sent to {email} (new_user: {is_new_user})")
+        
+    except Exception as e:
+        logger.error(f"Error sending profile completion email to {email}: {str(e)}", exc_info=True)
 
 # Initialize the email worker when module is imported
 start_email_worker()
