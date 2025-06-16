@@ -50,9 +50,10 @@ import { useEnums } from '../hooks/useEnums';
 import { RoleMap, AccessLevelMap, EntityTypeMap } from '../models/types';
 import PrimaryButton from '../components/PrimaryButton';
 import SecondaryButton from '../components/SecondaryButton';
-import { EditIconV2 } from '../components/iconsv2';
+import { CheckCircleIconV2, DoneIconV2, EditIconV2 } from '../components/iconsv2';
 import { ActionButton } from '../components/ActionButton';
 import { createDebugLogger } from '../utils/debugUtils';
+import { AddCircleFilledIconV2 } from '../components/iconsv2';
 
 interface User {
   id: number;
@@ -1090,7 +1091,7 @@ const AdminManageUsers: React.FC = () => {
                           <Typography variant="subtitle1" sx={{ mr: 2 }}>Access Management</Typography>
                           {!showAccessForm && (
                             <SecondaryButton
-                              startIcon={<AddIcon />}
+                              startIcon={<AddCircleFilledIconV2 />}
                               onClick={() => handleAccessFormOpen()}
                               size="small"
                             >
@@ -1132,18 +1133,18 @@ const AdminManageUsers: React.FC = () => {
                           }}
                         />
                       ) : (
-                        <Paper sx={{ p: 2, textAlign: 'center', bgcolor: '#f9f9f9', borderRadius: 1 }}>
+                        <Paper sx={{ p: 2, textAlign: 'center', bgcolor: '#fefefe', borderRadius: 1 }}>
                           <Typography variant="body1" color="text.secondary">
                             No access records found for this user
                           </Typography>
-                          <PrimaryButton
-                            startIcon={<AddIcon />}
+                          {/* <SecondaryButton
+                            startIcon={<AddCircleFilledIconV2 color="primary" />}
                             onClick={() => handleAccessFormOpen()}
                             size="small"
                             sx={{ mt: 2 }}
                           >
                             Grant Access
-                          </PrimaryButton>
+                          </SecondaryButton> */}
                         </Paper>
                       )}
                     </Box>
@@ -1338,15 +1339,16 @@ const AdminManageUsers: React.FC = () => {
                           >
                             Cancel
                           </SecondaryButton>
-                          <PrimaryButton 
+                          <SecondaryButton 
                             onClick={handleAccessSubmit} 
+                            startIcon={<CheckCircleIconV2 />}
                             size="small"
                             disabled={accessMutation.isPending}
                           >
                             {accessMutation.isPending ? (
                               <CircularProgress size={24} />
                             ) : editingAccessId ? 'Update Access' : 'Grant Access'}
-                          </PrimaryButton>
+                          </SecondaryButton>
                         </CardActions>
                       </Card>
                     </Collapse>
