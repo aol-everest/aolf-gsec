@@ -262,7 +262,12 @@ const createAppointmentColumns = (
                 {date}
               </TableCellComponents.SecondaryText>
               {time && (
-                <TableCellComponents.SecondaryText sx={{ lineHeight: 1, mt: '8px' }}>
+                <TableCellComponents.SecondaryText sx={{ 
+                  lineHeight: 1, 
+                  mt: '8px',
+                  fontSize: '0.75rem',
+                  color: 'text.secondary'
+                }}>
                   {time}
                 </TableCellComponents.SecondaryText>
               )}
