@@ -20,6 +20,8 @@ import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { PrimaryButton } from './PrimaryButton';
 import { SecondaryButton } from './SecondaryButton';
+import { isMandatoryField, MANDATORY_PROFILE_FIELDS } from '../utils/profileValidation';
+import { getFieldDisplayName } from '../models/types';
 
 interface NotificationPreferences {
   appointment_created: boolean;
@@ -289,31 +291,41 @@ export const ProfileFieldsForm = forwardRef<ProfileFieldsFormRef, ProfileFieldsF
     return fieldsToShow.includes(fieldName);
   };
 
-  // Validation logic
+  // Validation logic using shared configuration
   const validateForm = useCallback(() => {
+    const currentData = {
+      phone_number: phoneNumber,
+      country_code: countryCode,
+      title_in_organization: titleInOrganization,
+      organization: organization,
+      teacher_status: teacherStatus,
+      programs_taught: programsTaught
+    };
+    
     const requiredFields = [];
     
-    if (shouldShowField('phone_number') && !phoneNumber.trim()) {
-      requiredFields.push('Phone Number');
-    }
-    if (shouldShowField('country_code') && !countryCode) {
-      requiredFields.push('Country');
-    }
-    if (shouldShowField('title_in_organization') && !titleInOrganization.trim()) {
-      requiredFields.push('Title in Organization');
-    }
-    if (shouldShowField('organization') && !organization.trim()) {
-      requiredFields.push('Organization');
-    }
-    if (shouldShowField('teacher_status') && !teacherStatus) {
-      requiredFields.push('Teacher Status');
-    }
-    if (shouldShowField('programs_taught') && teacherStatus !== 'Not a Teacher' && programsTaught.length === 0) {
-      requiredFields.push('Programs Taught');
-    }
+    // Check basic mandatory fields
+    MANDATORY_PROFILE_FIELDS.basic.forEach(field => {
+      if (shouldShowField(field)) {
+        const value = currentData[field as keyof typeof currentData];
+        if (!value || (typeof value === 'string' && value.trim() === '')) {
+          requiredFields.push(getFieldDisplayName(field));
+        }
+      }
+    });
+    
+    // Check conditional mandatory fields
+    Object.entries(MANDATORY_PROFILE_FIELDS.conditional).forEach(([field, condition]) => {
+      if (shouldShowField(field) && condition(currentData)) {
+        const value = currentData[field as keyof typeof currentData];
+        if (!value || (Array.isArray(value) && value.length === 0)) {
+          requiredFields.push(getFieldDisplayName(field));
+        }
+      }
+    });
     
     return requiredFields.length === 0;
-  }, [phoneNumber, countryCode, titleInOrganization, organization, teacherStatus, programsTaught, fieldsToShow]);
+  }, [phoneNumber, countryCode, titleInOrganization, organization, teacherStatus, programsTaught, shouldShowField]);
 
   // Update validation state when form fields change
   useEffect(() => {

@@ -5,11 +5,58 @@ export const MANDATORY_PROFILE_FIELDS = {
   }
 } as const;
 
+// Field categories for form organization
+export const PROFILE_FIELD_CATEGORIES = {
+  contact: ['phone_number', 'country_code', 'state_province', 'city'],
+  professional: ['title_in_organization', 'organization'],
+  aol: ['teacher_status', 'teacher_code', 'programs_taught', 'aol_affiliations']
+} as const;
+
 export interface MandatoryFieldCheck {
   field: string;
   isMissing: boolean;
   isConditional?: boolean;
 }
+
+// Helper function to get all mandatory fields for a user
+export const getMandatoryFieldsForUser = (userData: any): string[] => {
+  const allFields: string[] = [...MANDATORY_PROFILE_FIELDS.basic];
+  
+  // Add conditional fields if they apply
+  Object.entries(MANDATORY_PROFILE_FIELDS.conditional).forEach(([field, condition]) => {
+    if (condition(userData)) {
+      allFields.push(field);
+    }
+  });
+  
+  return allFields;
+};
+
+// Helper function to get fields to show for profile completion
+export const getProfileCompletionFields = (userData?: any): string[] => {
+  // Include all categories and all mandatory fields
+  const categories = Object.keys(PROFILE_FIELD_CATEGORIES);
+  const mandatoryFields = getMandatoryFieldsForUser(userData || {});
+  
+  return [...categories, ...mandatoryFields];
+};
+
+// Helper function to check if a field is mandatory
+export const isMandatoryField = (fieldName: string, userData?: any): boolean => {
+  // Check basic mandatory fields
+  const basicFieldsArray = Array.from(MANDATORY_PROFILE_FIELDS.basic);
+  if (basicFieldsArray.some(field => field === fieldName)) {
+    return true;
+  }
+  
+  // Check conditional mandatory fields
+  if (fieldName in MANDATORY_PROFILE_FIELDS.conditional) {
+    const condition = MANDATORY_PROFILE_FIELDS.conditional[fieldName as keyof typeof MANDATORY_PROFILE_FIELDS.conditional];
+    return userData ? condition(userData) : false;
+  }
+  
+  return false;
+};
 
 export const checkMandatoryFields = (userData: any): MandatoryFieldCheck[] => {
   const checks: MandatoryFieldCheck[] = [];
@@ -55,14 +102,8 @@ export const getMissingFields = (userData: any): string[] => {
 
 export const getMissingFieldsDisplay = (userData: any): string[] => {
   const missingFields = getMissingFields(userData);
-  const displayMap: Record<string, string> = {
-    phone_number: 'Phone Number',
-    title_in_organization: 'Title in Organization',
-    organization: 'Organization',
-    country_code: 'Country',
-    teacher_status: 'Art of Living Teacher Status',
-    programs_taught: 'Programs Taught'
-  };
+  // Import here to avoid circular dependency
+  const { getFieldDisplayName } = require('../models/types');
   
-  return missingFields.map(field => displayMap[field] || field);
+  return missingFields.map(field => getFieldDisplayName(field));
 }; 

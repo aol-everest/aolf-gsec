@@ -437,6 +437,36 @@ export interface ScheduleResponse {
   total_events: number;
 }
 
+// Field display names mapping
+export const FIELD_DISPLAY_NAMES: Record<string, string> = {
+  phone_number: 'Phone Number',
+  country_code: 'Country',
+  title_in_organization: 'Title in Organization',
+  organization: 'Organization',
+  teacher_status: 'Art of Living Teacher Status',
+  programs_taught: 'Programs Taught',
+  teacher_code: 'Teacher Code',
+  aol_affiliations: 'Art of Living Affiliations',
+  state_province: 'State/Province',
+  city: 'City',
+  first_name: 'First Name',
+  last_name: 'Last Name',
+  email: 'Email',
+  honorific_title: 'Honorific Title',
+  primary_domain: 'Primary Domain',
+  bio_summary: 'Bio Summary',
+  linked_in_or_website: 'LinkedIn or Website',
+  state: 'State',
+  relationship_to_requester: 'Relationship to You',
+  role_in_team_project: 'Role in Team/Project',
+  comments: 'Comments',
+  notes: 'Notes'
+};
+
+export const getFieldDisplayName = (fieldName: string): string => {
+  return FIELD_DISPLAY_NAMES[fieldName] || fieldName;
+};
+
 export type { 
   Location, 
   User, 

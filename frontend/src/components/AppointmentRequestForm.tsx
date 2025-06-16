@@ -59,7 +59,7 @@ import SecondaryButton from './SecondaryButton';
 import { AppointmentStatusChip } from './AppointmentStatusChip';
 import { PersonSelectionChip } from './PersonSelectionChip';
 import ProfileFieldsForm, { UserUpdateData, ProfileFieldsFormRef } from './ProfileFieldsForm';
-import { isProfileComplete } from '../utils/profileValidation';
+import { isProfileComplete, getProfileCompletionFields } from '../utils/profileValidation';
 
 // Remove the hardcoded enum and add a state for time of day options
 // const AppointmentTimeOfDay = {
@@ -1697,7 +1697,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                 onSubmit={(data: UserUpdateData) => updateProfileMutation.mutate(data)}
                 isSubmitting={updateProfileMutation.isPending}
                 variant="onboarding"
-                fieldsToShow={['contact', 'professional', 'aol', 'phone_number', 'country_code', 'title_in_organization', 'organization', 'teacher_status', 'programs_taught']}
+                fieldsToShow={getProfileCompletionFields(userInfo)}
                 showNotificationPreferences={false}
                 showInternalButton={false}
               />
