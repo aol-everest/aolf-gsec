@@ -59,6 +59,7 @@ export const SubdivisionStateDropdown: React.FC<SubdivisionStateDropdownProps> =
             placeholder="Please select a country first"
             error={error}
             helperText="Please select a country first"
+            autoComplete="off"
           />
         )}
         noOptionsText="Please select a country first"
@@ -104,15 +105,16 @@ export const SubdivisionStateDropdown: React.FC<SubdivisionStateDropdownProps> =
           </Box>
         </Box>
       )}
-      renderInput={(params) => (
-        <TextField
-          {...params}
-          label={label}
-          placeholder="Search states/provinces..."
-          error={error}
-          helperText={subdivisionsLoading ? "Loading states/provinces..." : helperText}
-        />
-      )}
+             renderInput={(params) => (
+         <TextField
+           {...params}
+           label={label}
+           placeholder="Search states/provinces..."
+           error={error}
+           helperText={subdivisionsLoading ? "Loading states/provinces..." : helperText}
+           autoComplete="off"
+         />
+       )}
       disabled={disabled || subdivisionsLoading}
       loading={subdivisionsLoading}
       filterOptions={(options, { inputValue }) => {

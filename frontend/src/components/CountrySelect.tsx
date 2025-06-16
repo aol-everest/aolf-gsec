@@ -123,6 +123,7 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
           error={error}
           helperText={helperText}
           required={required}
+          autoComplete="off"
         />
       )}
       disabled={disabled}
