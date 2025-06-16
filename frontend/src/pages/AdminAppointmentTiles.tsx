@@ -63,7 +63,7 @@ import ScheduleIcon from '@mui/icons-material/Schedule';
 import SchoolIcon from '@mui/icons-material/School';
 import Layout from '../components/Layout';
 import { formatDate, formatDateRange } from '../utils/dateUtils';
-import { LocationThinIconV2, CalendarIconV2, ListIconV2, InfoSquareCircleIconV2, InfoSquareCircleFilledIconV2 } from '../components/iconsv2';
+import { LocationThinIconV2, CalendarIconV2, ListIconV2, InfoSquareCircleIconV2, InfoSquareCircleFilledIconV2, FilterIconV2, CategoryIconV2, CategoryFilledIconV2 } from '../components/iconsv2';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -1712,7 +1712,7 @@ const AdminAppointmentTiles: React.FC = () => {
             <Box>
               <Grid container spacing={2} alignItems="center">
                 <Grid item xs={1} md={0.4} sx={{ display: 'flex', alignItems: 'center' }}>
-                  <ListIconV2 sx={{ width: 22, height: 22 }} />
+                  <CategoryIconV2 sx={{ width: 22, height: 22 }} />
                 </Grid>
                 <Grid item xs={11} md={1.6} sx={{ display: 'flex', alignItems: 'center' }}>
                   <Typography variant="body2" sx={{ m: 0, fontWeight: 600 }}>
@@ -1862,131 +1862,123 @@ const AdminAppointmentTiles: React.FC = () => {
             </Box>
 
             {/* Additional Filters */}
-            
-            {/* Not Met Gurudev Filter */}
             <Box>
               <Grid container spacing={2} alignItems="center">
                 <Grid item xs={1} md={0.4} sx={{ display: 'flex', alignItems: 'center' }}>
-                  <PersonIcon sx={{ width: 22, height: 22 }} />
+                  <FilterIconV2 sx={{ width: 22, height: 22 }} />
                 </Grid>
                 <Grid item xs={11} md={1.6} sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Typography variant="body2" sx={{ m: 0 }}>Contacts</Typography>
-                </Grid>
-                <Grid item xs={12} md={10} sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}>
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={filters.notMetGurudev}
-                        onChange={(e) => handleNotMetGurudevFilter(e.target.checked)}
-                        size="small"
-                      />
-                    }
-                    label="Not met Gurudev recently"
-                    sx={{ 
-                      '& .MuiFormControlLabel-label': { 
-                        fontSize: '0.81rem',
-                        fontWeight: '500'
-                      }
-                    }}
-                  />
-                </Grid>
-              </Grid>
-            </Box>
-
-            {/* Requested Last 3 Days Filter */}
-            <Box>
-              <Grid container spacing={2} alignItems="center">
-                <Grid item xs={1} md={0.4} sx={{ display: 'flex', alignItems: 'center' }}>
-                  <ScheduleIcon sx={{ width: 22, height: 22 }} />
-                </Grid>
-                <Grid item xs={11} md={1.6} sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Typography variant="body2" sx={{ m: 0 }}>Recent</Typography>
-                </Grid>
-                <Grid item xs={12} md={10} sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}>
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={filters.requestedLast3Days}
-                        onChange={(e) => handleRequestedLast3DaysFilter(e.target.checked)}
-                        size="small"
-                      />
-                    }
-                    label="Requested in last 3 days"
-                    sx={{ 
-                      '& .MuiFormControlLabel-label': { 
-                        fontSize: '0.81rem',
-                        fontWeight: '500'
-                      }
-                    }}
-                  />
-                </Grid>
-              </Grid>
-            </Box>
-
-            {/* Number of People Range Filter */}
-            <Box>
-              <Grid container spacing={2} alignItems="center">
-                <Grid item xs={1} md={0.4} sx={{ display: 'flex', alignItems: 'center' }}>
-                  <GroupIcon sx={{ width: 22, height: 22 }} />
-                </Grid>
-                <Grid item xs={11} md={1.6} sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Typography variant="body2" sx={{ m: 0 }}>Group Size</Typography>
-                </Grid>
-                <Grid item xs={12} md={10} sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 2 }}>
-                  <Typography variant="body2" sx={{ fontSize: '0.81rem', fontWeight: '500', minWidth: 'fit-content' }}>
-                    {filters.attendeeCountRange[0]} - {filters.attendeeCountRange[1]} people
+                  <Typography variant="body2" sx={{ m: 0, fontWeight: 600 }}>
+                    Additional Filters
                   </Typography>
-                  <Box sx={{ width: 200 }}>
-                    <Slider
-                      value={filters.attendeeCountRange}
-                      onChange={(_, newValue) => handleAttendeeCountRangeFilter(newValue as [number, number])}
-                      valueLabelDisplay="auto"
-                      min={1}
-                      max={50}
-                      size="small"
+                </Grid>
+                <Grid item xs={12} md={10} sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                  {/* Not Met Gurudev Filter Chip */}
+                  <Chip
+                    label="Not met Gurudev recently"
+                    variant={filters.notMetGurudev ? "filled" : "outlined"}
+                    onClick={() => handleNotMetGurudevFilter(!filters.notMetGurudev)}
+                    sx={{
+                      height: '32px',
+                      pl: 0.5,
+                      pr: 0.5,
+                      color: filters.notMetGurudev ? '#3D8BE8' : '#9598A6',
+                      border: `1px solid ${filters.notMetGurudev ? 'rgba(61, 139, 232, 0.2)' : 'rgba(149, 152, 166, 0.2)'}`,
+                      fontSize: '0.81rem',
+                      fontWeight: filters.notMetGurudev ? '600' : '500',
+                      backgroundColor: filters.notMetGurudev ? 'rgba(61, 139, 232, 0.1)' : '#fff',
+                      borderRadius: '13px',
+                      '&:hover': {
+                        color: '#3D8BE8',
+                        border: '1px solid rgba(61, 139, 232, 0.2)',
+                        fontWeight: '500',
+                        backgroundColor: 'rgba(61, 139, 232, 0.1)',
+                      },
+                      '&.MuiChip-filled': {
+                        color: '#3D8BE8',
+                        fontWeight: '600',
+                        border: '1px solid rgba(61, 139, 232, 0.2)',
+                      }
+                    }}
+                  />
+
+                  {/* Requested Last 3 Days Filter Chip */}
+                  <Chip
+                    label="Requested in last 3 days"
+                    variant={filters.requestedLast3Days ? "filled" : "outlined"}
+                    onClick={() => handleRequestedLast3DaysFilter(!filters.requestedLast3Days)}
+                    sx={{
+                      height: '32px',
+                      pl: 0.5,
+                      pr: 0.5,
+                      color: filters.requestedLast3Days ? '#3D8BE8' : '#9598A6',
+                      border: `1px solid ${filters.requestedLast3Days ? 'rgba(61, 139, 232, 0.2)' : 'rgba(149, 152, 166, 0.2)'}`,
+                      fontSize: '0.81rem',
+                      fontWeight: filters.requestedLast3Days ? '600' : '500',
+                      backgroundColor: filters.requestedLast3Days ? 'rgba(61, 139, 232, 0.1)' : '#fff',
+                      borderRadius: '13px',
+                      '&:hover': {
+                        color: '#3D8BE8',
+                        border: '1px solid rgba(61, 139, 232, 0.2)',
+                        fontWeight: '500',
+                        backgroundColor: 'rgba(61, 139, 232, 0.1)',
+                      },
+                      '&.MuiChip-filled': {
+                        color: '#3D8BE8',
+                        fontWeight: '600',
+                        border: '1px solid rgba(61, 139, 232, 0.2)',
+                      }
+                    }}
+                  />
+
+                  {/* Is Teacher Filter Chip */}
+                  <Chip
+                    label="Is a teacher"
+                    variant={filters.isTeacher ? "filled" : "outlined"}
+                    onClick={() => handleIsTeacherFilter(!filters.isTeacher)}
+                    sx={{
+                      height: '32px',
+                      pl: 0.5,
+                      pr: 0.5,
+                      color: filters.isTeacher ? '#3D8BE8' : '#9598A6',
+                      border: `1px solid ${filters.isTeacher ? 'rgba(61, 139, 232, 0.2)' : 'rgba(149, 152, 166, 0.2)'}`,
+                      fontSize: '0.81rem',
+                      fontWeight: filters.isTeacher ? '600' : '500',
+                      backgroundColor: filters.isTeacher ? 'rgba(61, 139, 232, 0.1)' : '#fff',
+                      borderRadius: '13px',
+                      '&:hover': {
+                        color: '#3D8BE8',
+                        border: '1px solid rgba(61, 139, 232, 0.2)',
+                        fontWeight: '500',
+                        backgroundColor: 'rgba(61, 139, 232, 0.1)',
+                      },
+                      '&.MuiChip-filled': {
+                        color: '#3D8BE8',
+                        fontWeight: '600',
+                        border: '1px solid rgba(61, 139, 232, 0.2)',
+                      }
+                    }}
+                  />
+
+                  {/* Attendee Count Range Filter - Show only when not default */}
+                  {(filters.attendeeCountRange[0] !== 1 || filters.attendeeCountRange[1] !== 50) && (
+                    <Chip
+                      label={`${filters.attendeeCountRange[0]}-${filters.attendeeCountRange[1]} people`}
+                      variant="filled"
+                      onDelete={() => handleAttendeeCountRangeFilter([1, 50])}
                       sx={{
-                        '& .MuiSlider-thumb': {
-                          color: '#3D8BE8',
-                        },
-                        '& .MuiSlider-track': {
-                          color: '#3D8BE8',
-                        },
-                        '& .MuiSlider-rail': {
-                          color: 'rgba(149, 152, 166, 0.3)',
-                        },
+                        height: '32px',
+                        pl: 0.5,
+                        pr: 0.5,
+                        color: '#3D8BE8',
+                        border: '1px solid rgba(61, 139, 232, 0.2)',
+                        fontSize: '0.81rem',
+                        fontWeight: '600',
+                        backgroundColor: 'rgba(61, 139, 232, 0.1)',
+                        borderRadius: '13px',
                       }}
                     />
-                  </Box>
-                </Grid>
-              </Grid>
-            </Box>
-
-            {/* Is Teacher Filter */}
-            <Box>
-              <Grid container spacing={2} alignItems="center">
-                <Grid item xs={1} md={0.4} sx={{ display: 'flex', alignItems: 'center' }}>
-                  <SchoolIcon sx={{ width: 22, height: 22 }} />
-                </Grid>
-                <Grid item xs={11} md={1.6} sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Typography variant="body2" sx={{ m: 0 }}>Requester</Typography>
-                </Grid>
-                <Grid item xs={12} md={10} sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}>
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={filters.isTeacher}
-                        onChange={(e) => handleIsTeacherFilter(e.target.checked)}
-                        size="small"
-                      />
-                    }
-                    label="Is a teacher"
-                    sx={{ 
-                      '& .MuiFormControlLabel-label': { 
-                        fontSize: '0.81rem',
-                        fontWeight: '500'
-                      }
-                    }}
-                  />
+                  )}
                 </Grid>
               </Grid>
             </Box>
