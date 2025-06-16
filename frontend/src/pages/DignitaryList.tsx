@@ -202,7 +202,7 @@ const DignitaryList: React.FC = () => {
   ], []);
 
   // Define responsive column visibility
-  const columnVisibility = useMemo(() => {
+  const getColumnVisibility = () => {
     if (isMobile) {
       // Mobile: show only Name, Position, and Organization
       return {
@@ -238,7 +238,7 @@ const DignitaryList: React.FC = () => {
         'gurudev_meeting_notes': false,
       };
     }
-  }, [isMobile]);
+  };
 
   return (
     <Layout>
@@ -260,7 +260,7 @@ const DignitaryList: React.FC = () => {
             pageSize={10}
             pageSizeOptions={[5, 10, 25, 50]}
             enableColumnVisibility={true}
-            initialColumnVisibility={columnVisibility}
+            initialColumnVisibility={getColumnVisibility()}
             emptyMessage="No assigned dignitaries found."
             tableProps={{
               stickyHeader: true,
