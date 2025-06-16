@@ -3603,7 +3603,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
         {renderStepContent(activeStep)}
         
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
-          {activeStep !== 0 && (
+          {activeStep > 0 && (
           <SecondaryButton 
             onClick={handleBack} 
             sx={{ mr: 1 }}
