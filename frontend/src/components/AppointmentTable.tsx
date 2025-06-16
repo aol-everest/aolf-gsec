@@ -14,6 +14,7 @@ interface AppointmentTableProps {
   statusMap?: StatusMap;
   subStatusMap?: SubStatusMap;
   relationshipTypeMap?: Record<string, string>;
+  enableColumnVisibility?: boolean;
 }
 
 // Create a column helper for appointments
@@ -275,7 +276,8 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
   onRowClick,
   statusMap = {},
   subStatusMap = {},
-  relationshipTypeMap = {}
+  relationshipTypeMap = {},
+  enableColumnVisibility = false
 }) => {
   // Create appointment-specific columns
   const columns = useMemo(
@@ -317,6 +319,7 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
       enablePagination={appointments.length > 10}
       pageSize={10}
       pageSizeOptions={[5, 10, 25]}
+      enableColumnVisibility={enableColumnVisibility}
       tableProps={{
         stickyHeader: true,
         size: 'medium',

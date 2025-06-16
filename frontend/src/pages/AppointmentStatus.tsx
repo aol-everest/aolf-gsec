@@ -235,6 +235,7 @@ const AppointmentStatus: React.FC = () => {
             statusMap={statusMap}
             subStatusMap={subStatusMap}
             relationshipTypeMap={relationshipTypeMap}
+            enableColumnVisibility={true}
           />
         </Box>
       </Container>

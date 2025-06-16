@@ -1,15 +1,11 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Container, Typography, Paper, Box, Checkbox } from '@mui/material';
-import {
-  DataGrid,
-  GridColDef,
-  GridRenderCellParams,
-} from '@mui/x-data-grid';
+import { createColumnHelper, ColumnDef } from '@tanstack/react-table';
 import Layout from '../components/Layout';
 import { useApi } from '../hooks/useApi';
-import { useSnackbar } from 'notistack';
+
 import { useQuery } from '@tanstack/react-query';
-import CommonDataGrid from '../components/GenericDataGrid';
+import { GenericTable, TableCellComponents, standardColumnSizes, createGenericColumnHelper } from '../components/GenericTable';
 import { formatHonorificTitle } from '../utils/formattingUtils';
 
 interface Dignitary {
@@ -27,11 +23,13 @@ interface Dignitary {
   state: string;
   city: string;
   has_dignitary_met_gurudev: boolean;
+  gurudev_meeting_date?: string;
+  gurudev_meeting_location?: string;
+  gurudev_meeting_notes?: string;
 }
 
 const DignitaryList: React.FC = () => {
   const api = useApi();
-  const { enqueueSnackbar } = useSnackbar();
 
   const { data: dignitaries = [], isLoading } = useQuery({
     queryKey: ['assigned-dignitaries'],
@@ -41,59 +39,162 @@ const DignitaryList: React.FC = () => {
         return data;
       } catch (error) {
         console.error('Error fetching dignitaries:', error);
-        enqueueSnackbar('Failed to fetch assigned dignitaries', { variant: 'error' });
         throw error;
       }
     },
   });
 
-  const columns: GridColDef[] = [
-    { 
-      field: 'Name', 
-      headerName: 'Name', 
-      width: 200,
-      flex: 1.5,
-      renderCell: (params) => `${formatHonorificTitle(params.row.honorific_title)} ${params.row.first_name} ${params.row.last_name}`
-    },
-    { field: 'email', headerName: 'Email', width: 200, flex: 1 },
-    { field: 'phone', headerName: 'Phone', width: 130, flex: 1 },
-    { field: 'primary_domain', headerName: 'Domain', width: 130, flex: 0.81 },
-    { field: 'title_in_organization', headerName: 'Position', width: 130, flex: 1 },
-    { field: 'organization', headerName: 'Organization', width: 200, flex: 1 },
-    { field: 'country', headerName: 'Country', width: 100, flex: 0.81 },
-    { field: 'state', headerName: 'State', width: 100, flex: 0.81 },
-    { field: 'city', headerName: 'City', width: 100, flex: 0.81 },
-    { 
-      field: 'has_dignitary_met_gurudev', 
-      headerName: 'Met Gurudev?', 
-      width: 81,
-      flex: 0.5,
-      renderCell: (params: GridRenderCellParams) => (
+  // Create column helper for dignitaries
+  const columnHelper = createGenericColumnHelper<Dignitary>();
+  
+  const columns = useMemo(() => [
+    columnHelper.accessor((row) => `${formatHonorificTitle(row.honorific_title)} ${row.first_name} ${row.last_name}`, {
+      id: 'name',
+      header: 'Name',
+      cell: (info) => (
+        <TableCellComponents.PrimaryText>
+          {info.getValue()}
+        </TableCellComponents.PrimaryText>
+      ),
+      size: 200,
+      minSize: 150,
+      maxSize: 250,
+    }),
+    columnHelper.accessor('email', {
+      header: 'Email',
+      cell: (info) => (
+        <TableCellComponents.PrimaryText>
+          {info.getValue() || '-'}
+        </TableCellComponents.PrimaryText>
+      ),
+      size: 200,
+      minSize: 150,
+      maxSize: 250,
+    }),
+    columnHelper.accessor('phone', {
+      header: 'Phone',
+      cell: (info) => (
+        <TableCellComponents.PrimaryText>
+          {info.getValue() || '-'}
+        </TableCellComponents.PrimaryText>
+      ),
+      size: 130,
+      minSize: 100,
+      maxSize: 160,
+    }),
+    columnHelper.accessor('primary_domain', {
+      header: 'Domain',
+      cell: (info) => (
+        <TableCellComponents.PrimaryText>
+          {info.getValue() || '-'}
+        </TableCellComponents.PrimaryText>
+      ),
+      size: 130,
+      minSize: 100,
+      maxSize: 160,
+    }),
+    columnHelper.accessor('title_in_organization', {
+      header: 'Position',
+      cell: (info) => (
+        <TableCellComponents.PrimaryText>
+          {info.getValue() || '-'}
+        </TableCellComponents.PrimaryText>
+      ),
+      size: 130,
+      minSize: 100,
+      maxSize: 160,
+    }),
+    columnHelper.accessor('organization', {
+      header: 'Organization',
+      cell: (info) => (
+        <TableCellComponents.PrimaryText>
+          {info.getValue() || '-'}
+        </TableCellComponents.PrimaryText>
+      ),
+      size: 200,
+      minSize: 150,
+      maxSize: 250,
+    }),
+    columnHelper.accessor('country', {
+      header: 'Country',
+      cell: (info) => (
+        <TableCellComponents.PrimaryText>
+          {info.getValue() || '-'}
+        </TableCellComponents.PrimaryText>
+      ),
+      size: 100,
+      minSize: 80,
+      maxSize: 120,
+    }),
+    columnHelper.accessor('state', {
+      header: 'State',
+      cell: (info) => (
+        <TableCellComponents.PrimaryText>
+          {info.getValue() || '-'}
+        </TableCellComponents.PrimaryText>
+      ),
+      size: 100,
+      minSize: 80,
+      maxSize: 120,
+    }),
+    columnHelper.accessor('city', {
+      header: 'City',
+      cell: (info) => (
+        <TableCellComponents.PrimaryText>
+          {info.getValue() || '-'}
+        </TableCellComponents.PrimaryText>
+      ),
+      size: 100,
+      minSize: 80,
+      maxSize: 120,
+    }),
+    columnHelper.accessor('has_dignitary_met_gurudev', {
+      header: 'Met Gurudev?',
+      cell: (info) => (
         <Checkbox 
-          checked={params.row.has_dignitary_met_gurudev} 
+          checked={info.getValue() || false} 
           disabled
+          size="small"
         />
       ),
-    },
-    {
-      field: 'gurudev_meeting_date',
-      headerName: 'Meeting Date',
-      width: 110,
-      flex: 0.5,
-    },
-    {
-      field: 'gurudev_meeting_location',
-      headerName: 'Meeting Location',
-      width: 130,
-      flex: 0.5,
-    },
-    {
-      field: 'gurudev_meeting_notes',
-      headerName: 'Meeting Notes',
-      width: 130,
-      flex: 1.3,
-    },
-  ];
+      size: 120,
+      minSize: 100,
+      maxSize: 140,
+    }),
+    columnHelper.accessor('gurudev_meeting_date', {
+      header: 'Meeting Date',
+      cell: (info) => (
+        <TableCellComponents.PrimaryText>
+          {info.getValue() || '-'}
+        </TableCellComponents.PrimaryText>
+      ),
+      size: 110,
+      minSize: 100,
+      maxSize: 130,
+    }),
+    columnHelper.accessor('gurudev_meeting_location', {
+      header: 'Meeting Location',
+      cell: (info) => (
+        <TableCellComponents.PrimaryText>
+          {info.getValue() || '-'}
+        </TableCellComponents.PrimaryText>
+      ),
+      size: 130,
+      minSize: 120,
+      maxSize: 150,
+    }),
+    columnHelper.accessor('gurudev_meeting_notes', {
+      header: 'Meeting Notes',
+      cell: (info) => (
+        <TableCellComponents.PrimaryText>
+          {info.getValue() || '-'}
+        </TableCellComponents.PrimaryText>
+      ),
+      size: 200,
+      minSize: 150,
+      maxSize: 300,
+    }),
+  ], []);
 
   return (
     <Layout>
@@ -105,11 +206,37 @@ const DignitaryList: React.FC = () => {
           <Typography variant="h6" component="h2" gutterBottom>
             Dignitaries assigned to you
           </Typography>
-          <CommonDataGrid
-            rows={dignitaries}
+          <GenericTable
+            data={dignitaries}
             columns={columns}
             loading={isLoading}
-            defaultVisibleColumns={['Name', 'title_in_organization', 'organization', 'has_dignitary_met_gurudev']}
+            enableSearch={true}
+            searchPlaceholder="Search dignitaries..."
+            enablePagination={dignitaries.length > 10}
+            pageSize={10}
+            pageSizeOptions={[5, 10, 25, 50]}
+            enableColumnVisibility={true}
+            initialColumnVisibility={{
+              'name': true,
+              'title_in_organization': true,
+              'organization': true,
+              'has_dignitary_met_gurudev': true,
+              'email': false,
+              'phone': false,
+              'primary_domain': false,
+              'country': false,
+              'state': false,
+              'city': false,
+              'gurudev_meeting_date': false,
+              'gurudev_meeting_location': false,
+              'gurudev_meeting_notes': false,
+            }}
+            emptyMessage="No assigned dignitaries found."
+            tableProps={{
+              stickyHeader: true,
+              size: 'medium',
+              padding: 'normal'
+            }}
           />
         </Box>
       </Container>
