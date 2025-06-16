@@ -17,7 +17,8 @@ import { PrimaryButton } from '../components/PrimaryButton';
 import WarningButton from '../components/WarningButton';
 import { LogoutIconV2 } from '../components/iconsv2';
 import ProfileBackground from '../components/ProfileBackground';
-import ProfileFieldsForm, { UserUpdateData } from '../components/ProfileFieldsForm';
+import ProfileFieldsForm from '../components/ProfileFieldsForm';
+import { UserUpdateData } from '../models/types';
 
 const Profile: React.FC = () => {
   const { userInfo, logout } = useAuth();

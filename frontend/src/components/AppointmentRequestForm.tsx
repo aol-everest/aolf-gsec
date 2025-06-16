@@ -58,8 +58,9 @@ import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
 import { AppointmentStatusChip } from './AppointmentStatusChip';
 import { PersonSelectionChip } from './PersonSelectionChip';
-import ProfileFieldsForm, { UserUpdateData, ProfileFieldsFormRef } from './ProfileFieldsForm';
+import ProfileFieldsForm, { ProfileFieldsFormRef } from './ProfileFieldsForm';
 import { isProfileComplete, getProfileCompletionFields } from '../utils/profileValidation';
+import { UserUpdateData } from '../models/types';
 
 // Remove the hardcoded enum and add a state for time of day options
 // const AppointmentTimeOfDay = {

@@ -21,29 +21,7 @@ import { useSnackbar } from 'notistack';
 import { PrimaryButton } from './PrimaryButton';
 import { SecondaryButton } from './SecondaryButton';
 import { isMandatoryField, MANDATORY_PROFILE_FIELDS } from '../utils/profileValidation';
-import { getFieldDisplayName } from '../models/types';
-
-interface NotificationPreferences {
-  appointment_created: boolean;
-  appointment_updated: boolean;
-  new_appointment_request: boolean;
-  bcc_on_all_emails: boolean;
-}
-
-export interface UserUpdateData {
-  phone_number: string;
-  email_notification_preferences: NotificationPreferences;
-  country_code: string;
-  title_in_organization?: string;
-  organization?: string;
-  state_province?: string;
-  state_province_code?: string;
-  city?: string;
-  teacher_status: string;
-  teacher_code?: string;
-  programs_taught?: string[];
-  aol_affiliations?: string[];
-}
+import { getFieldDisplayName, NotificationPreferences, UserUpdateData, SubdivisionData } from '../models/types';
 
 export interface ProfileFieldsFormRef {
   validate: () => boolean;
@@ -63,16 +41,6 @@ interface ProfileFieldsFormProps {
   fieldsToShow?: string[];
   showNotificationPreferences?: boolean;
   showInternalButton?: boolean;
-}
-
-interface SubdivisionData {
-  id: number;
-  country_code: string;
-  subdivision_code: string;
-  name: string;
-  subdivision_type: string;
-  is_enabled: boolean;
-  full_code: string;
 }
 
 interface SubdivisionStateDropdownProps {

@@ -437,6 +437,40 @@ export interface ScheduleResponse {
   total_events: number;
 }
 
+// User profile and notification interfaces
+export interface NotificationPreferences {
+  appointment_created: boolean;
+  appointment_updated: boolean;
+  new_appointment_request: boolean;
+  bcc_on_all_emails: boolean;
+}
+
+export interface UserUpdateData {
+  phone_number: string;
+  email_notification_preferences: NotificationPreferences;
+  country_code: string;
+  title_in_organization?: string;
+  organization?: string;
+  state_province?: string;
+  state_province_code?: string;
+  city?: string;
+  teacher_status: string;
+  teacher_code?: string;
+  programs_taught?: string[];
+  aol_affiliations?: string[];
+}
+
+// Geographic data interface
+export interface SubdivisionData {
+  id: number;
+  country_code: string;
+  subdivision_code: string;
+  name: string;
+  subdivision_type: string;
+  is_enabled: boolean;
+  full_code: string;
+}
+
 // Field display names mapping
 export const FIELD_DISPLAY_NAMES: Record<string, string> = {
   phone_number: 'Phone Number',
