@@ -22,6 +22,7 @@ import { PrimaryButton } from './PrimaryButton';
 import { SecondaryButton } from './SecondaryButton';
 import { isMandatoryField, MANDATORY_PROFILE_FIELDS } from '../utils/profileValidation';
 import { getFieldDisplayName, NotificationPreferences, UserUpdateData, SubdivisionData } from '../models/types';
+import { CountrySelect } from './CountrySelect';
 
 export interface ProfileFieldsFormRef {
   validate: () => boolean;
@@ -381,22 +382,15 @@ export const ProfileFieldsForm = forwardRef<ProfileFieldsFormRef, ProfileFieldsF
             )}
             {shouldShowField('country_code') && (
               <Grid item xs={12} md={6}>
-                <TextField
-                  select
-                  fullWidth
+                <CountrySelect
                   label="Country"
                   value={countryCode}
-                  onChange={(e) => setCountryCode(e.target.value)}
+                  onChange={setCountryCode}
+                  countries={countries}
                   disabled={countriesLoading}
                   helperText={countriesLoading ? "Loading countries..." : ""}
                   required
-                >
-                  {countries.map((country) => (
-                    <MenuItem key={country.iso2_code} value={country.iso2_code}>
-                      {country.name} ({country.iso2_code})
-                    </MenuItem>
-                  ))}
-                </TextField>
+                />
               </Grid>
             )}
             {shouldShowField('state_province') && (

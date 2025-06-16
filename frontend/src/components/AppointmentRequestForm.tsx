@@ -71,6 +71,7 @@ import { ProfileOverlay } from './appointment/ProfileOverlay';
 import { InitialInfoStep } from './appointment/steps/InitialInfoStep';
 import { CheckSquareCircleFilledIconV2, CheckCircleIconV2, CloseIconFilledCircleV2 } from './iconsv2';
 import { useAppointmentSummary, hasExistingAppointments } from '../hooks/useAppointmentSummary';
+import { CountrySelect } from './CountrySelect';
 
 // Remove the hardcoded enum and add a state for time of day options
 // const AppointmentTimeOfDay = {
@@ -2322,13 +2323,10 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                       control={dignitaryForm.control}
                       rules={{ required: 'Country is required' }}
                       render={({ field }) => (
-                        <TextField
-                          select
-                          fullWidth
+                        <CountrySelect
                           label="Country"
                           value={field.value || ''}
-                          onChange={(e) => {
-                            const countryCode = e.target.value;
+                          onChange={(countryCode) => {
                             field.onChange(countryCode);
                             
                             // Find the selected country to get its name
@@ -2343,20 +2341,12 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                             dignitaryForm.setValue('dignitaryState', '');
                             dignitaryForm.setValue('dignitaryCity', '');
                           }}
+                          countries={countries}
                           disabled={isLoadingCountries}
                           error={!!dignitaryForm.formState.errors.dignitaryCountryCode}
                           helperText={dignitaryForm.formState.errors.dignitaryCountryCode?.message || (isLoadingCountries ? "Loading countries..." : "")}
                           required
-                        >
-                          <MenuItem value="">
-                            <em>Select a country</em>
-                          </MenuItem>
-                          {countries.map((country) => (
-                            <MenuItem key={country.iso2_code} value={country.iso2_code}>
-                              {country.name} ({country.iso2_code})
-                            </MenuItem>
-                          ))}
-                        </TextField>
+                        />
                       )}
                     />
                   </Grid>
