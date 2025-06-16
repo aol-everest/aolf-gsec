@@ -25,6 +25,7 @@ import { SecondaryButton } from './SecondaryButton';
 import { isMandatoryField, MANDATORY_PROFILE_FIELDS } from '../utils/profileValidation';
 import { getFieldDisplayName, NotificationPreferences, UserUpdateData, SubdivisionData } from '../models/types';
 import { CountrySelect } from './CountrySelect';
+import { SubdivisionStateDropdown } from './SubdivisionStateDropdown';
 
 export interface ProfileFieldsFormRef {
   validate: () => boolean;
@@ -45,94 +46,6 @@ interface ProfileFieldsFormProps {
   showNotificationPreferences?: boolean;
   showInternalButton?: boolean;
 }
-
-interface SubdivisionStateDropdownProps {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  onStateCodeChange?: (stateCode: string) => void;
-  error?: boolean;
-  helperText?: string;
-  countryCode?: string;
-  disabled?: boolean;
-}
-
-const SubdivisionStateDropdown: React.FC<SubdivisionStateDropdownProps> = ({
-  label,
-  value = '',
-  onChange,
-  onStateCodeChange,
-  error,
-  helperText,
-  countryCode,
-  disabled = false,
-}) => {
-  const api = useApi();
-  
-  const { data: subdivisions = [], isLoading: subdivisionsLoading } = useQuery({
-    queryKey: ['subdivisions', countryCode],
-    queryFn: async () => {
-      if (!countryCode) return [];
-      try {
-        const { data } = await api.get<SubdivisionData[]>(`/subdivisions/country/${countryCode}`);
-        return data;
-      } catch (error) {
-        console.error('Error fetching subdivisions:', error);
-        return [];
-      }
-    },
-    enabled: !!countryCode,
-  });
-
-  const handleStateChange = (event: React.ChangeEvent<{ value: unknown }>) => {
-    const selectedStateName = event.target.value as string;
-    const selectedState = subdivisions.find(subdivision => subdivision.name === selectedStateName);
-    
-    onChange(selectedStateName);
-    
-    if (selectedState && onStateCodeChange) {
-      onStateCodeChange(selectedState.subdivision_code);
-    }
-  };
-
-  if (!countryCode) {
-    return (
-      <TextField
-        select
-        fullWidth
-        label={label}
-        value=""
-        disabled={true}
-        helperText="Please select a country first"
-        error={error}
-      >
-        <MenuItem value="">Select a country first</MenuItem>
-      </TextField>
-    );
-  }
-
-  return (
-    <TextField
-      select
-      fullWidth
-      label={label}
-      value={value}
-      onChange={handleStateChange}
-      disabled={disabled || subdivisionsLoading}
-      error={error}
-      helperText={subdivisionsLoading ? "Loading states/provinces..." : helperText}
-    >
-      {subdivisions.length === 0 && !subdivisionsLoading && (
-        <MenuItem value="">No states/provinces available</MenuItem>
-      )}
-      {subdivisions.map((subdivision) => (
-        <MenuItem key={subdivision.subdivision_code} value={subdivision.name}>
-          {subdivision.name} ({subdivision.subdivision_type})
-        </MenuItem>
-      ))}
-    </TextField>
-  );
-};
 
 const DEFAULT_PREFERENCES: NotificationPreferences = {
   appointment_created: true,

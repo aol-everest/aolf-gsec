@@ -72,6 +72,7 @@ import { InitialInfoStep } from './appointment/steps/InitialInfoStep';
 import { CheckSquareCircleFilledIconV2, CheckCircleIconV2, CloseIconFilledCircleV2 } from './iconsv2';
 import { useAppointmentSummary, hasExistingAppointments } from '../hooks/useAppointmentSummary';
 import { CountrySelect } from './CountrySelect';
+import { SubdivisionStateDropdown } from './SubdivisionStateDropdown';
 
 // Remove the hardcoded enum and add a state for time of day options
 // const AppointmentTimeOfDay = {
@@ -126,6 +127,7 @@ interface DignitaryFormData {
   dignitaryCountry: string;
   dignitaryCountryCode: string; // Added for country code
   dignitaryState: string;
+  dignitaryStateCode: string; // Added for state code
   dignitaryCity: string;
   dignitaryHasMetGurudev: boolean;
   pocRelationshipType: string;
@@ -465,6 +467,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
       dignitaryCountry: '',
       dignitaryCountryCode: '',
       dignitaryState: '',
+      dignitaryStateCode: '',
       dignitaryCity: '',
       dignitaryHasMetGurudev: false,
       pocRelationshipType: '',
@@ -592,6 +595,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
     }
     
     dignitaryForm.setValue('dignitaryState', dignitary.state || '');
+    dignitaryForm.setValue('dignitaryStateCode', ''); // Initialize state code as empty since it's managed by the dropdown
     dignitaryForm.setValue('dignitaryCity', dignitary.city || '');
     dignitaryForm.setValue('dignitaryHasMetGurudev', dignitary.has_dignitary_met_gurudev);
     dignitaryForm.setValue('dignitaryGurudevMeetingDate', dignitary.gurudev_meeting_date || '');
@@ -884,6 +888,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
             country: formData.dignitaryCountry,
             country_code: formData.dignitaryCountryCode,
             state: formData.dignitaryState,
+            state_code: formData.dignitaryStateCode,
             city: formData.dignitaryCity,
             has_dignitary_met_gurudev: formData.dignitaryHasMetGurudev,
             gurudev_meeting_date: formData.dignitaryGurudevMeetingDate,
@@ -940,6 +945,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
           country: formData.dignitaryCountry,
           country_code: formData.dignitaryCountryCode,
           state: formData.dignitaryState,
+          state_code: formData.dignitaryStateCode,
           city: formData.dignitaryCity,
           poc_relationship_type: formData.pocRelationshipType,
           has_dignitary_met_gurudev: formData.dignitaryHasMetGurudev,
@@ -1052,6 +1058,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
       dignitaryCountry: '',
       dignitaryCountryCode: '',
       dignitaryState: '',
+      dignitaryStateCode: '',
       dignitaryCity: '',
       dignitaryHasMetGurudev: false,
       dignitaryGurudevMeetingDate: '',
@@ -2044,6 +2051,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                               dignitaryCountry: '',
                               dignitaryCountryCode: '',
                               dignitaryState: '',
+                              dignitaryStateCode: '',
                               dignitaryCity: '',
                               dignitaryHasMetGurudev: false,
                             });
@@ -2356,17 +2364,18 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                       name="dignitaryState"
                       control={dignitaryForm.control}
                       render={({ field }) => (
-                        <LocationAutocomplete
-                          label="State"
+                        <SubdivisionStateDropdown
+                          label="State/Province"
                           value={field.value}
                           onChange={(value) => {
-                            field.onChange(value.split(',')[0]);
+                            field.onChange(value);
+                          }}
+                          onStateCodeChange={(stateCode) => {
+                            dignitaryForm.setValue('dignitaryStateCode', stateCode);
                           }}
                           error={!!dignitaryForm.formState.errors.dignitaryState}
                           helperText={dignitaryForm.formState.errors.dignitaryState?.message}
-                          types={['administrative_area_level_1']}
-                          autoComplete="off"
-                          componentRestrictions={selectedCountryCode ? { country: selectedCountryCode } : undefined}
+                          countryCode={selectedCountryCode}
                         />
                       )}
                     />
