@@ -81,6 +81,16 @@ const Home: React.FC = () => {
   // Create column definitions
   const columnHelper = createGenericColumnHelper<AppointmentTableRow>();
   const columns = useMemo(() => [
+    columnHelper.accessor('id', {
+      header: 'ID',
+      cell: (info) => (
+        <TableCellComponents.PrimaryText>
+          {info.getValue()}
+        </TableCellComponents.PrimaryText>
+      ),
+      ...standardColumnSizes.id,
+      enableSorting: true,
+    }),
     columnHelper.accessor('requestType', {
       header: 'Request',
       cell: (info) => (
