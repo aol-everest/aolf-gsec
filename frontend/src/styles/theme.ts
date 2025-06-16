@@ -96,8 +96,10 @@ const typography = {
   h2: {
     fontWeight: 700,
     fontSize: '2rem',
-    lineHeight: 1.2,
-    letterSpacing: '-0.00833em',
+    lineHeight: 2.3,
+    letterSpacing: '0em',
+    fontFamily: 'Work Sans',
+    color: colors.primary.main,
   },
   h3: {
     fontWeight: 600,

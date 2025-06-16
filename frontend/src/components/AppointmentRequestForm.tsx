@@ -3561,21 +3561,10 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
           ))}
         </Stepper>
 
-      <Paper sx={{ p: 3, position: 'relative' }}>
+      <Paper sx={{ p: 3 }}>
         {renderStepContent(activeStep)}
         
-        {/* Profile overlay when profile completion is required */}
-        {wizardState.isProfileRequired && (
-          <ProfileOverlay
-            userInfo={userInfo}
-            profileFormRef={profileFormRef}
-            onSubmit={(data: UserUpdateData) => updateProfileMutation.mutate(data)}
-            isSubmitting={updateProfileMutation.isPending}
-            fieldsToShow={getProfileCompletionFields(userInfo)}
-          />
-        )}
-        
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
           {/* Show different buttons based on whether appointment is submitted */}
           {submittedAppointment ? (
             <PrimaryButton
@@ -3617,6 +3606,20 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
           )}
         </Box>
       </Paper>
+      
+      {/* Profile dialog when profile completion is required */}
+      <ProfileOverlay
+        open={wizardState.isProfileRequired}
+        userInfo={userInfo}
+        profileFormRef={profileFormRef}
+        onSubmit={(data: UserUpdateData) => updateProfileMutation.mutate(data)}
+        isSubmitting={updateProfileMutation.isPending}
+        fieldsToShow={getProfileCompletionFields(userInfo)}
+        onClose={() => {
+          // Optional: Allow closing dialog but keep profile requirement
+          // For now, we'll keep it required so no onClose action
+        }}
+      />
 
       {renderConfirmationDialog()}
       {renderWarningDialog()}

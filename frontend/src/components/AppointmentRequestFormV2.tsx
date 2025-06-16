@@ -160,15 +160,14 @@ export const AppointmentRequestFormV2: React.FC<AppointmentRequestFormV2Props> =
       
       <Paper sx={{ p: 3, position: 'relative' }}>
         {/* Show profile overlay if profile is incomplete */}
-        {showProfileOverlay && (
-          <ProfileOverlay
-            userInfo={userInfo}
-            profileFormRef={profileFormRef}
-            onSubmit={(data) => updateProfileMutation.mutate(data)}
-            isSubmitting={updateProfileMutation.isPending}
-            fieldsToShow={getProfileCompletionFields(userInfo)}
-          />
-        )}
+        <ProfileOverlay
+          open={showProfileOverlay}
+          userInfo={userInfo}
+          profileFormRef={profileFormRef}
+          onSubmit={(data) => updateProfileMutation.mutate(data)}
+          isSubmitting={updateProfileMutation.isPending}
+          fieldsToShow={getProfileCompletionFields(userInfo)}
+        />
         
         {/* Main step content */}
         <Box sx={{ opacity: showProfileOverlay ? 0.3 : 1 }}>
