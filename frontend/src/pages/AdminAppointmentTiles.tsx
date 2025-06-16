@@ -83,7 +83,7 @@ import { StatusActionButton } from '../components/StatusActionButton';
 
 import { Appointment, AppointmentDignitary, CalendarEventWithAppointments, AppointmentSummary, EventTypeMap } from '../models/types';
 import { AppointmentCard } from '../components/AppointmentCard';
-import AppointmentTable from '../components/AppointmentTable';
+import AdminAppointmentTable from '../components/AdminAppointmentTable';
 import { SelectableList, SelectableListItem } from '../components/SelectableList';
 
 // Request type configuration interface
@@ -2234,10 +2234,10 @@ const AdminAppointmentTiles: React.FC = () => {
                     </Box>
                   )}
                   
-                  <AppointmentTable
+                  <AdminAppointmentTable
                     appointments={filteredAppointments}
                     onRowClick={handleTableRowClick}
-                    onEdit={(appointmentId) => {
+                    onEdit={(appointmentId: number) => {
                       const currentUrl = window.location.pathname + window.location.search;
                       navigate(`${AdminAppointmentsEditRoute.path?.replace(':id', appointmentId.toString())}?redirectTo=${encodeURIComponent(currentUrl)}` || '');
                     }}

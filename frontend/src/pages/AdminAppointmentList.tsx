@@ -15,7 +15,7 @@ import Layout from '../components/Layout';
 import { getStatusColor, formatHonorificTitle } from '../utils/formattingUtils';
 import { useTheme } from '@mui/material/styles';
 import { useApi } from '../hooks/useApi';
-import { useSnackbar } from 'notistack';
+import { enqueueSnackbar, useSnackbar } from 'notistack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDate } from '../utils/dateUtils';
 import { Appointment } from '../models/types';
@@ -36,7 +36,6 @@ const AdminAppointmentList: React.FC = () => {
   const [searchValue, setSearchValue] = useState<string>('');
   const theme = useTheme();
   const api = useApi();
-  const { enqueueSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
 
   // Fetch status options

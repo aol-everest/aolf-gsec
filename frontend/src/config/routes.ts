@@ -21,6 +21,7 @@ import UsherAppointmentSchedule from '../pages/UsherAppointmentSchedule';
 import LocationAttachmentView from '../pages/LocationAttachmentView';
 import AdminAppointmentCreate from '../pages/AdminAppointmentCreate';
 import AddNewDignitary from '../pages/AdminAddNewDignitary';
+import AppointmentDetail from '../pages/AppointmentDetail';
 
 import { 
     HomeMenuIconV2,
@@ -99,6 +100,15 @@ export const LocationAttachmentViewRoute: RouteConfig = {
   icon: FileCopyIcon,
   showInSidebar: false,
   component: LocationAttachmentView
+}
+
+// Add the new route for viewing appointment details
+export const AppointmentDetailRoute: RouteConfig = {
+  path: '/appointment/:id',
+  label: 'Appointment Detail',
+  icon: ListMenuIconV2,
+  showInSidebar: false,
+  component: AppointmentDetail
 } 
 
 // Admin (Secretariat) routes ---------------------------------------------------------------------------
@@ -235,6 +245,7 @@ export const userRoutes: RouteConfig[] = [
   DignitariesRoute,
   ProfileRoute,
   LocationAttachmentViewRoute,
+  AppointmentDetailRoute,
 ];
 
 // Admin (Secretariat) routes --------------------------------------------------------------------------

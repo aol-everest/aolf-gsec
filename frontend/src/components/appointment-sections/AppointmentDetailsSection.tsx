@@ -10,7 +10,7 @@ import { useTheme, useMediaQuery } from '@mui/material';
 
 interface AppointmentDetailsSectionProps {
     appointment: Appointment;
-    displayMode?: 'regular' | 'calendar';
+    displayMode?: 'regular' | 'calendar' | 'dialog';
     cardContainerRef: React.RefObject<HTMLDivElement>;
 }
 
@@ -41,7 +41,7 @@ export const AppointmentDetailsSection: React.FC<AppointmentDetailsSectionProps>
     }
 
     const headerText = displayMode === 'calendar' ? '' : 
-        (['approved', 'completed'].includes(appointment.status.toLowerCase()) ? 'Approved ' : 'Requested ') + 'Appointment Details';
+        (['approved', 'completed'].includes(appointment.status?.toLowerCase() || '') ? 'Approved ' : 'Requested ') + 'Appointment Details';
 
     return (
         <AppointmentCardSection isMobile={isMobile} theme={theme} header={headerText}>
@@ -49,7 +49,7 @@ export const AppointmentDetailsSection: React.FC<AppointmentDetailsSectionProps>
                 <GridItemIconText 
                     containerRef={cardContainerRef} 
                     icon={<CalendarIconV2 sx={{ width: 22, height: 22 }} />} 
-                    text={['approved', 'completed'].includes(appointment.status.toLowerCase()) && appointment.appointment_date ? 
+                    text={['approved', 'completed'].includes(appointment.status?.toLowerCase() || '') && appointment.appointment_date ? 
                         formatDateWithTimezone(appointment.appointment_date, 'UTC', false) + ' ' + 
                         (appointment.appointment_time || '') + ' ' + 
                         (appointment.duration ? '(' + appointment.duration + ' mins)' : '') 

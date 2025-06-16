@@ -5,15 +5,21 @@ import { Appointment, AppointmentDignitary, AppointmentContact, StatusMap, SubSt
 import { formatDate, formatDateRange } from '../utils/dateUtils';
 import { formatHonorificTitle } from '../utils/formattingUtils';
 import { AppointmentStatusChip } from './AppointmentStatusChip';
-import { CheckCircleIconV2 } from './iconsv2';
+import { EditIconV2, CheckCircleIconV2 } from './iconsv2';
 import { GenericTable, TableCellComponents, standardColumnSizes } from './GenericTable';
+import { ActionButton } from './ActionButton';
 
-interface AppointmentTableProps {
+interface AdminAppointmentTableProps {
   appointments: Appointment[];
-  onRowClick?: (appointment: Appointment) => void;
+  onRowClick: (appointment: Appointment) => void;
+  onEdit: (appointmentId: number) => void;
+  selectedRows?: number[];
+  onRowSelectionChange?: (selectedIds: number[]) => void;
   statusMap?: StatusMap;
   subStatusMap?: SubStatusMap;
   relationshipTypeMap?: Record<string, string>;
+  showAttendeeCount?: boolean;
+  enableRowSelection?: boolean;
 }
 
 // Create a column helper for appointments
@@ -84,6 +90,13 @@ const getAttendeesInfo = (appointment: Appointment, relationshipTypeMap: Record<
   return { primaryName: allNames[0], additionalCount: totalCount - 1 };
 };
 
+// Helper function to get attendee count
+const getAttendeeCount = (appointment: Appointment) => {
+  const dignitaries = appointment.appointment_dignitaries || [];
+  const contacts = appointment.appointment_contacts || [];
+  return dignitaries.length + contacts.length;
+};
+
 // Helper function to determine which date/time to show and if appointment date should be marked
 const getDateTimeDisplay = (appointment: Appointment, statusMap: StatusMap, subStatusMap: SubStatusMap) => {
   // Check if appointment is to be rescheduled, approved, or completed
@@ -122,11 +135,13 @@ const getDateTimeDisplay = (appointment: Appointment, statusMap: StatusMap, subS
   return { date, time, isAppointmentDate };
 };
 
-// Create appointment-specific columns for general users (simplified)
+// Create appointment-specific columns
 const createAppointmentColumns = (
+  onEdit: (appointmentId: number) => void,
   statusMap: StatusMap = {},
   subStatusMap: SubStatusMap = {},
-  relationshipTypeMap: Record<string, string> = {}
+  relationshipTypeMap: Record<string, string> = {},
+  showAttendeeCount: boolean = false
 ): ColumnDef<Appointment, any>[] => {
   const columns: ColumnDef<Appointment, any>[] = [];
 
@@ -144,18 +159,58 @@ const createAppointmentColumns = (
     })
   );
 
+  // Requester column
+  columns.push(
+    appointmentColumnHelper.accessor((row) => row.requester, {
+      id: 'requester',
+      header: 'Requester',
+      cell: (info) => {
+        const requester = info.getValue();
+        if (!requester) {
+          return (
+            <TableCellComponents.SecondaryText>
+              No requester
+            </TableCellComponents.SecondaryText>
+          );
+        }
+        
+        const fullName = `${requester.first_name} ${requester.last_name}`.trim();
+        return (
+          <Box>
+            <TableCellComponents.PrimaryText sx={{ lineHeight: 1.2 }}>
+              {fullName || 'Unknown'}
+            </TableCellComponents.PrimaryText>
+            {requester.email && (
+              <TableCellComponents.SecondaryText sx={{ 
+                fontSize: '0.75rem', 
+                lineHeight: 1.2, 
+                mt: 0.5,
+                color: 'text.secondary'
+              }}>
+                {requester.email}
+              </TableCellComponents.SecondaryText>
+            )}
+          </Box>
+        );
+      },
+      size: 160,
+      minSize: 160,
+      maxSize: 180,
+    })
+  );
+
   // Attendees column
   columns.push(
     appointmentColumnHelper.accessor((row) => getAttendeesInfo(row, relationshipTypeMap), {
-      id: 'attendees',
+      id: 'dignitary',
       header: 'Attendees',
       cell: (info) => {
         const { primaryName, additionalCount } = info.getValue();
         return (
           <Box>
-            <TableCellComponents.PrimaryText sx={{ lineHeight: 1.2 }}>
+            <TableCellComponents.SecondaryText sx={{ lineHeight: 1.2 }}>
               {primaryName}
-            </TableCellComponents.PrimaryText>
+            </TableCellComponents.SecondaryText>
             {additionalCount > 0 && (
               <TableCellComponents.SecondaryText sx={{ 
                 fontSize: '0.75rem', 
@@ -169,11 +224,29 @@ const createAppointmentColumns = (
           </Box>
         );
       },
-      size: 180,
-      minSize: 150,
-      maxSize: 220,
+      size: 130,
+      minSize: 130,
+      maxSize: 170,
     })
   );
+
+  // Attendee count column (optional)
+  if (showAttendeeCount) {
+    columns.push(
+      appointmentColumnHelper.accessor((row) => getAttendeeCount(row), {
+        id: 'attendee_count',
+        header: 'Count',
+        cell: (info) => (
+          <TableCellComponents.SecondaryText sx={{ textAlign: 'center', fontWeight: 500 }}>
+            {info.getValue()}
+          </TableCellComponents.SecondaryText>
+        ),
+        size: 60,
+        minSize: 60,
+        maxSize: 60,
+      })
+    );
+  }
 
   // Combined Date & Time column
   columns.push(
@@ -185,9 +258,9 @@ const createAppointmentColumns = (
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'space-between' }}>
             <Box>
-              <TableCellComponents.PrimaryText sx={{ lineHeight: 1 }}>
+              <TableCellComponents.SecondaryText sx={{ lineHeight: 1 }}>
                 {date}
-              </TableCellComponents.PrimaryText>
+              </TableCellComponents.SecondaryText>
               {time && (
                 <TableCellComponents.SecondaryText sx={{ 
                   lineHeight: 1, 
@@ -201,7 +274,7 @@ const createAppointmentColumns = (
             </Box>
             {isAppointmentDate && (
               <CheckCircleIconV2 sx={{ 
-                color: '#4caf50', 
+                color: '#aaa', 
                 fontSize: 16,
                 flexShrink: 0
               }} />
@@ -209,9 +282,9 @@ const createAppointmentColumns = (
           </Box>
         );
       },
-      size: 160,
-      minSize: 140,
-      maxSize: 180,
+      size: 130,
+      minSize: 130,
+      maxSize: 150,
     })
   );
 
@@ -221,16 +294,16 @@ const createAppointmentColumns = (
       id: 'location',
       header: 'Location',
       cell: (info) => (
-        <TableCellComponents.PrimaryText sx={{
+        <TableCellComponents.SecondaryText sx={{
           overflow: 'hidden',
           textOverflow: 'ellipsis',
         }}>
           {info.getValue()}
-        </TableCellComponents.PrimaryText>
+        </TableCellComponents.SecondaryText>
       ),
-      size: 140,
+      size: 120,
       minSize: 120,
-      maxSize: 160,
+      maxSize: 120,
     })
   );
 
@@ -242,9 +315,9 @@ const createAppointmentColumns = (
       cell: (info) => (
         <AppointmentStatusChip status={info.getValue()} size="small" />
       ),
-      size: 120,
-      minSize: 100,
-      maxSize: 140,
+      size: 116,
+      minSize: 116,
+      maxSize: 116,
     })
   );
 
@@ -261,26 +334,53 @@ const createAppointmentColumns = (
           </TableCellComponents.SecondaryText>
         );
       },
-      size: 110,
-      minSize: 100,
-      maxSize: 120,
+      size: 108,
+      minSize: 108,
+      maxSize: 108,
+    })
+  );
+
+  // Actions column
+  columns.push(
+    appointmentColumnHelper.display({
+      id: 'actions',
+      header: '',
+      cell: (info) => (
+        <ActionButton
+          onClick={(e: React.MouseEvent) => {
+            e.stopPropagation();
+            onEdit(info.row.original.id);
+          }}
+        >
+          <EditIconV2 sx={{ width: 20, height: 20 }} />
+        </ActionButton>
+      ),
+      size: 56,
+      minSize: 56,
+      maxSize: 56,
+      enableSorting: false,
     })
   );
 
   return columns;
 };
 
-export const AppointmentTable: React.FC<AppointmentTableProps> = ({
+export const AdminAppointmentTable: React.FC<AdminAppointmentTableProps> = ({
   appointments,
   onRowClick,
+  onEdit,
+  selectedRows = [],
+  onRowSelectionChange,
   statusMap = {},
   subStatusMap = {},
-  relationshipTypeMap = {}
+  relationshipTypeMap = {},
+  showAttendeeCount = false,
+  enableRowSelection = true
 }) => {
   // Create appointment-specific columns
   const columns = useMemo(
-    () => createAppointmentColumns(statusMap, subStatusMap, relationshipTypeMap),
-    [statusMap, subStatusMap, relationshipTypeMap]
+    () => createAppointmentColumns(onEdit, statusMap, subStatusMap, relationshipTypeMap, showAttendeeCount),
+    [onEdit, statusMap, subStatusMap, relationshipTypeMap, showAttendeeCount]
   );
 
   // Create appointment-specific global filter
@@ -288,6 +388,15 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
     () => createAppointmentGlobalFilter(relationshipTypeMap),
     [relationshipTypeMap]
   );
+
+  // Convert selectedRows to the format expected by GenericTable
+  const handleRowSelectionChange = (selectedIds: (string | number)[]) => {
+    if (onRowSelectionChange) {
+      // Convert back to numbers for appointment IDs
+      const numericIds = selectedIds.map(id => typeof id === 'number' ? id : parseInt(String(id), 10)).filter(id => !isNaN(id));
+      onRowSelectionChange(numericIds);
+    }
+  };
 
   // Define searchable fields for appointments (used when enableSearch is true)
   const searchableFields: (keyof Appointment)[] = [
@@ -307,16 +416,14 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
       data={appointments}
       columns={columns}
       onRowClick={onRowClick}
-      enableRowSelection={false}
+      selectedRows={selectedRows}
+      onRowSelectionChange={handleRowSelectionChange}
+      enableRowSelection={enableRowSelection}
       globalFilterFn={globalFilterFn}
       getRowId={(row) => row.id.toString()}
-      emptyMessage="No appointments found."
-      enableSearch={true}
-      searchPlaceholder="Search appointments..."
+      emptyMessage="No appointments found for the selected filters."
+      selectionMessage={`${selectedRows.length} appointment${selectedRows.length === 1 ? '' : 's'} selected`}
       searchableFields={searchableFields}
-      enablePagination={appointments.length > 10}
-      pageSize={10}
-      pageSizeOptions={[5, 10, 25]}
       tableProps={{
         stickyHeader: true,
         size: 'medium',
@@ -326,4 +433,4 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
   );
 };
 
-export default AppointmentTable; 
+export default AdminAppointmentTable; 

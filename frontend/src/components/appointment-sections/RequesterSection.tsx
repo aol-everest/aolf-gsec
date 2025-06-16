@@ -10,7 +10,7 @@ import { useApi } from '../../hooks/useApi';
 
 interface RequesterSectionProps {
     appointment: Appointment;
-    displayMode?: 'regular' | 'calendar';
+    displayMode?: 'regular' | 'calendar' | 'dialog';
     cardContainerRef: React.RefObject<HTMLDivElement>;
 }
 

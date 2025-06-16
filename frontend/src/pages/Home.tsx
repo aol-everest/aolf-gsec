@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -15,6 +15,7 @@ import { formatDate } from '../utils/dateUtils';
 import GenericTable, { createGenericColumnHelper, standardColumnSizes, TableCellComponents } from '../components/GenericTable';
 import { createColumnHelper } from '@tanstack/react-table';
 import { AppointmentStatusChip } from '../components/AppointmentStatusChip';
+import AppointmentDetailDialog from '../components/AppointmentDetailDialog';
 
 const drawerWidth = 260;
 
@@ -29,10 +30,12 @@ const Home: React.FC = () => {
   const { userInfo } = useAuth();
   const navigate = useNavigate();
   const { data: appointmentSummary, isLoading: summaryLoading } = useAppointmentSummary();
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<number | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   // Status mapping as requested
   const getStatusDisplay = (status: string): string => {
-    switch (status.toLowerCase()) {
+    switch (status?.toLowerCase() || '') {
       case 'approved':
         return 'Approved';
       case 'pending':
@@ -40,13 +43,13 @@ const Home: React.FC = () => {
       case 'rejected':
         return 'Unable to schedule';
       default:
-        return status;
+        return status || 'Unknown';
     }
   };
 
   // Get status chip color based on status
   const getStatusChipColor = (status: string): 'success' | 'warning' | 'error' | 'default' => {
-    switch (status.toLowerCase()) {
+    switch (status?.toLowerCase() || '') {
       case 'approved':
         return 'success';
       case 'pending':
@@ -118,8 +121,14 @@ const Home: React.FC = () => {
   };
 
   const handleRowClick = (row: AppointmentTableRow) => {
-    // Navigate to appointment details or edit page
-    navigate(`/appointment/${row.id}`);
+    // Open appointment in dialog
+    setSelectedAppointmentId(row.id);
+    setDialogOpen(true);
+  };
+
+  const handleDialogClose = () => {
+    setDialogOpen(false);
+    setSelectedAppointmentId(null);
   };
 
   return (
@@ -216,6 +225,13 @@ const Home: React.FC = () => {
           </Paper>
         </Box>
       </Container>
+
+      {/* Appointment Detail Dialog */}
+      <AppointmentDetailDialog
+        appointmentId={selectedAppointmentId}
+        open={dialogOpen}
+        onClose={handleDialogClose}
+      />
     </Layout>
   );
 };
