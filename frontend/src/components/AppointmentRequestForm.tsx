@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { formatDate, getLocalDateString, validateDateRange, validateSingleDate, formatDateRange } from '../utils/dateUtils';
+import { alpha } from '@mui/material/styles';
 import {
   Box,
   Button,
@@ -68,6 +69,7 @@ import { StepNavigation } from './appointment/StepNavigation';
 import { AttendeeList } from './appointment/AttendeeList';
 import { ProfileOverlay } from './appointment/ProfileOverlay';
 import { InitialInfoStep } from './appointment/steps/InitialInfoStep';
+import { CheckSquareCircleFilledIconV2, CheckCircleIconV2, CloseIconFilledCircleV2 } from './iconsv2';
 
 // Remove the hardcoded enum and add a state for time of day options
 // const AppointmentTimeOfDay = {
@@ -230,6 +232,21 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
   // Add ref for ProfileFieldsForm
   const profileFormRef = useRef<ProfileFieldsFormRef>(null);
   const [isProfileFormValid, setIsProfileFormValid] = useState(false);
+
+  // Handle profile overlay close action
+  const handleProfileOverlayClose = () => {
+    // Check if profile is now complete
+    if (isProfileComplete(userInfo)) {
+      // Profile is complete, allow them to continue
+      setWizardState(prev => ({
+        ...prev,
+        isProfileRequired: false
+      }));
+    } else {
+      // Profile is still incomplete, redirect to home
+      navigate('/home');
+    }
+  };
 
   // Monitor profile form validation state
   useEffect(() => {
@@ -3156,15 +3173,6 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
         return (
           <Box>
             <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <Typography variant="h6" gutterBottom>
-                  Review Your Appointment Request
-                </Typography>
-                <Typography variant="body2" color="text.secondary" gutterBottom sx={{ mb: 3 }}>
-                  Please review all the details below before submitting your appointment request.
-                </Typography>
-              </Grid>
-
               {/* Show confirmation if appointment was submitted */}
               {submittedAppointment && (
                 <Grid item xs={12}>
@@ -3173,16 +3181,24 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                     sx={{ 
                       p: 3, 
                       mb: 3, 
-                      bgcolor: 'success.light', 
+                      bgcolor: alpha(theme.palette.success.light, 0.1),
                       color: 'success.contrastText',
                       border: '1px solid',
-                      borderColor: 'success.main'
+                      borderColor: alpha(theme.palette.success.main, 0.1),
+                      alignItems: 'center',
                     }}
                   >
-                    <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
-                      ✅ Appointment Request Submitted Successfully!
+                    <Typography variant="h6" gutterBottom sx={{ 
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      textAlign: 'center',
+                      mb: 2,
+                    }}>
+                      <CheckCircleIconV2 sx={{ fontSize: '2rem', mr: 1, color: 'success.main' }} /> Submitted!
                     </Typography>
-                    <Typography variant="subtitle1" gutterBottom>
+                    <Typography variant="h6" gutterBottom>
                       Request ID: <strong>{submittedAppointment.id}</strong>
                     </Typography>
                     <Typography variant="body2">
@@ -3193,10 +3209,19 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                 </Grid>
               )}
 
+              <Grid item xs={12}>
+                <Typography variant="h6" gutterBottom>
+                  Review Your Appointment Request
+                </Typography>
+                <Typography variant="body2" color="text.secondary" gutterBottom sx={{ mb: 3 }}>
+                  Please review all the details below before submitting your appointment request.
+                </Typography>
+              </Grid>
+
               {/* Request Summary */}
                 {/* Request Type */}
                 <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle2" color="text.secondary">
+                  <Typography variant="subtitle2">
                     Request Type
                   </Typography>
                   <Typography variant="body1">
@@ -3206,7 +3231,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
 
                 {/* Number of Attendees */}
                 <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle2" color="text.secondary">
+                  <Typography variant="subtitle2">
                     Number of {selectedRequestTypeConfig?.attendee_label_plural || 'Attendees'}
                   </Typography>
                   <Typography variant="body1">
@@ -3216,7 +3241,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
 
                 {/* Attendees List */}
                 <Grid item xs={12}>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  <Typography variant="subtitle2" gutterBottom>
                     {selectedRequestTypeConfig?.attendee_label_plural || 'Attendees'}
                   </Typography>
                   {selectedRequestTypeConfig?.attendee_type === attendeeTypeMap['DIGNITARY'] ? (
@@ -3249,7 +3274,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
 
                 {/* Purpose */}
                 <Grid item xs={12}>
-                  <Typography variant="subtitle2" color="text.secondary">
+                  <Typography variant="subtitle2">
                     Purpose of Meeting
                   </Typography>
                   <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
@@ -3259,7 +3284,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
 
                 {/* Date */}
                 <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle2" color="text.secondary">
+                  <Typography variant="subtitle2">
                     Preferred Date{selectedRequestTypeConfig?.request_type !== requestTypeMap['DIGNITARY'] ? ' Range' : ''}
                   </Typography>
                   <Typography variant="body1">
@@ -3272,7 +3297,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
 
                 {/* Time */}
                 <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle2" color="text.secondary">
+                  <Typography variant="subtitle2">
                     Preferred Time of Day
                   </Typography>
                   <Typography variant="body1">
@@ -3282,7 +3307,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
 
                 {/* Location */}
                 <Grid item xs={12}>
-                  <Typography variant="subtitle2" color="text.secondary">
+                  <Typography variant="subtitle2">
                     Location
                   </Typography>
                   <Typography variant="body1">
@@ -3297,7 +3322,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                 {/* Notes */}
                 {appointmentForm.getValues('requesterNotesToSecretariat') && (
                   <Grid item xs={12}>
-                    <Typography variant="subtitle2" color="text.secondary">
+                    <Typography variant="subtitle2">
                       Notes to Secretariat
                     </Typography>
                     <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
@@ -3309,7 +3334,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                 {/* Attachments */}
                 {selectedFiles.length > 0 && (
                   <Grid item xs={12}>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    <Typography variant="subtitle2" gutterBottom>
                       Attachments ({selectedFiles.length})
                     </Typography>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
@@ -3568,9 +3593,10 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
           {/* Show different buttons based on whether appointment is submitted */}
           {submittedAppointment ? (
             <PrimaryButton
-              onClick={() => navigate('/home')}
+              onClick={() => navigate('/')}
+              startIcon={<CloseIconFilledCircleV2 sx={{ fontSize: '1.5rem' }} />}
             >
-              Go to Home
+              Close
             </PrimaryButton>
           ) : (
             <>
@@ -3615,10 +3641,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
         onSubmit={(data: UserUpdateData) => updateProfileMutation.mutate(data)}
         isSubmitting={updateProfileMutation.isPending}
         fieldsToShow={getProfileCompletionFields(userInfo)}
-        onClose={() => {
-          // Optional: Allow closing dialog but keep profile requirement
-          // For now, we'll keep it required so no onClose action
-        }}
+        onClose={handleProfileOverlayClose}
       />
 
       {renderConfirmationDialog()}

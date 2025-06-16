@@ -23,7 +23,7 @@ interface ProfileOverlayProps {
   isSubmitting: boolean;
   fieldsToShow: string[];
   open: boolean;
-  onClose?: () => void;
+  onClose: () => void;
 }
 
 export const ProfileOverlay: React.FC<ProfileOverlayProps> = ({
@@ -65,15 +65,13 @@ export const ProfileOverlay: React.FC<ProfileOverlayProps> = ({
         <Typography variant="h2" component="div" sx={{ fontWeight: 600 }}>
           Complete Your Profile First
         </Typography>
-        {onClose && (
-          <IconButton
-            aria-label="close"
-            onClick={onClose}
-            sx={{ color: 'grey.500' }}
-          >
-            <CloseIconFilledCircleV2 />
-          </IconButton>
-        )}
+        <IconButton
+          aria-label="close"
+          onClick={onClose}
+          sx={{ color: 'grey.500' }}
+        >
+          <CloseIconFilledCircleV2 />
+        </IconButton>
       </DialogTitle>
       
       <DialogContent sx={{ pb: 3 }}>

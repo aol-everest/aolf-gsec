@@ -139,10 +139,12 @@ const typography = {
     // letterSpacing: '0.00938em',
   },
   subtitle2: {
-    fontSize: '0.875rem',
+    fontSize: '1rem',
     lineHeight: 1.5,
     letterSpacing: '0.00714em',
-    fontWeight: 600,
+    fontFamily: 'Work Sans',
+    fontWeight: 500,
+    color: colors.primary.dark,
     textTransform: 'uppercase' as const,
   },
   body1: {
