@@ -13,7 +13,9 @@ import {
   Checkbox,
   ListItemText,
   CircularProgress,
-  Divider
+  Divider,
+  Switch,
+  FormControlLabel
 } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { useApi } from '../hooks/useApi';
@@ -578,17 +580,22 @@ export const ProfileFieldsForm = forwardRef<ProfileFieldsFormRef, ProfileFieldsF
                 
                 return (
                   <Grid item xs={12} key={key}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <input
-                        type="checkbox"
-                        checked={notificationPreferences[key as keyof NotificationPreferences]}
-                        onChange={handleNotificationChange(key as keyof NotificationPreferences)}
-                        style={{ marginRight: 8 }}
-                      />
-                      <Typography variant="body2">
-                        {getNotificationLabel(key as keyof NotificationPreferences)}
-                      </Typography>
-                    </Box>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={notificationPreferences[key as keyof NotificationPreferences]}
+                          onChange={handleNotificationChange(key as keyof NotificationPreferences)}
+                          name={key}
+                          color="primary"
+                        />
+                      }
+                      label={
+                        <Typography variant="body2">
+                          {getNotificationLabel(key as keyof NotificationPreferences)}
+                        </Typography>
+                      }
+                      sx={{ ml: 0 }}
+                    />
                   </Grid>
                 );
               })}
