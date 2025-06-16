@@ -92,12 +92,13 @@ export const ProfileOverlay: React.FC<ProfileOverlayProps> = ({
           ref={profileFormRef}
           initialData={userInfo}
           onSubmit={onSubmit}
+          onCancel={onClose}
           isSubmitting={isSubmitting}
           variant="onboarding"
           fieldsToShow={fieldsToShow}
           showNotificationPreferences={false}
           submitButtonText="Complete Profile & Continue"
-          showCancelButton={false}
+          showCancelButton={true}
           showInternalButton={true}
         />
       </DialogContent>
