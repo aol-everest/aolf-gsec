@@ -223,12 +223,12 @@ const createAppointmentColumns = (
       id: 'location',
       header: 'Location',
       cell: (info) => (
-        <TableCellComponents.PrimaryText sx={{
+        <TableCellComponents.SecondaryText sx={{
           overflow: 'hidden',
           textOverflow: 'ellipsis',
         }}>
           {info.getValue()}
-        </TableCellComponents.PrimaryText>
+        </TableCellComponents.SecondaryText>
       ),
       size: 140,
       minSize: 120,

@@ -65,12 +65,38 @@ const DignitaryList: React.FC = () => {
       minSize: 150,
       maxSize: 250,
     }),
+    // Combined position and organization column for mobile
+    columnHelper.accessor((row) => ({ position: row.title_in_organization, organization: row.organization }), {
+      id: 'position_organization',
+      header: 'Position & Organization',
+      cell: (info) => {
+        const data = info.getValue();
+        return (
+          <Box>
+            <TableCellComponents.PrimaryText sx={{ lineHeight: 1.2 }}>
+              {data.position || '-'}
+            </TableCellComponents.PrimaryText>
+            <TableCellComponents.SecondaryText sx={{
+              fontSize: '12px',
+              color: '#6f7283',
+              mt: 0.25,
+              lineHeight: 1.1
+            }}>
+              {data.organization || '-'}
+            </TableCellComponents.SecondaryText>
+          </Box>
+        );
+      },
+      size: 200,
+      minSize: 150,
+      maxSize: 250,
+    }),
     columnHelper.accessor('email', {
       header: 'Email',
       cell: (info) => (
-        <TableCellComponents.PrimaryText>
+        <TableCellComponents.SecondaryText>
           {info.getValue() || '-'}
-        </TableCellComponents.PrimaryText>
+        </TableCellComponents.SecondaryText>
       ),
       size: 200,
       minSize: 150,
@@ -79,9 +105,9 @@ const DignitaryList: React.FC = () => {
     columnHelper.accessor('phone', {
       header: 'Phone',
       cell: (info) => (
-        <TableCellComponents.PrimaryText>
+        <TableCellComponents.SecondaryText>
           {info.getValue() || '-'}
-        </TableCellComponents.PrimaryText>
+        </TableCellComponents.SecondaryText>
       ),
       size: 130,
       minSize: 100,
@@ -90,9 +116,9 @@ const DignitaryList: React.FC = () => {
     columnHelper.accessor('primary_domain', {
       header: 'Domain',
       cell: (info) => (
-        <TableCellComponents.PrimaryText>
+        <TableCellComponents.SecondaryText>
           {info.getValue() || '-'}
-        </TableCellComponents.PrimaryText>
+        </TableCellComponents.SecondaryText>
       ),
       size: 130,
       minSize: 100,
@@ -101,9 +127,9 @@ const DignitaryList: React.FC = () => {
     columnHelper.accessor('title_in_organization', {
       header: 'Position',
       cell: (info) => (
-        <TableCellComponents.PrimaryText>
+        <TableCellComponents.SecondaryText>
           {info.getValue() || '-'}
-        </TableCellComponents.PrimaryText>
+        </TableCellComponents.SecondaryText>
       ),
       size: 130,
       minSize: 100,
@@ -112,9 +138,9 @@ const DignitaryList: React.FC = () => {
     columnHelper.accessor('organization', {
       header: 'Organization',
       cell: (info) => (
-        <TableCellComponents.PrimaryText>
+        <TableCellComponents.SecondaryText>
           {info.getValue() || '-'}
-        </TableCellComponents.PrimaryText>
+        </TableCellComponents.SecondaryText>
       ),
       size: 200,
       minSize: 150,
@@ -123,9 +149,9 @@ const DignitaryList: React.FC = () => {
     columnHelper.accessor('country', {
       header: 'Country',
       cell: (info) => (
-        <TableCellComponents.PrimaryText>
+        <TableCellComponents.SecondaryText>
           {info.getValue() || '-'}
-        </TableCellComponents.PrimaryText>
+        </TableCellComponents.SecondaryText>
       ),
       size: 100,
       minSize: 80,
@@ -134,9 +160,9 @@ const DignitaryList: React.FC = () => {
     columnHelper.accessor('state', {
       header: 'State',
       cell: (info) => (
-        <TableCellComponents.PrimaryText>
+        <TableCellComponents.SecondaryText>
           {info.getValue() || '-'}
-        </TableCellComponents.PrimaryText>
+        </TableCellComponents.SecondaryText>
       ),
       size: 100,
       minSize: 80,
@@ -145,9 +171,9 @@ const DignitaryList: React.FC = () => {
     columnHelper.accessor('city', {
       header: 'City',
       cell: (info) => (
-        <TableCellComponents.PrimaryText>
+        <TableCellComponents.SecondaryText>
           {info.getValue() || '-'}
-        </TableCellComponents.PrimaryText>
+        </TableCellComponents.SecondaryText>
       ),
       size: 100,
       minSize: 80,
@@ -169,9 +195,9 @@ const DignitaryList: React.FC = () => {
     columnHelper.accessor('gurudev_meeting_date', {
       header: 'Meeting Date',
       cell: (info) => (
-        <TableCellComponents.PrimaryText>
+        <TableCellComponents.SecondaryText>
           {info.getValue() || '-'}
-        </TableCellComponents.PrimaryText>
+        </TableCellComponents.SecondaryText>
       ),
       size: 110,
       minSize: 100,
@@ -180,9 +206,9 @@ const DignitaryList: React.FC = () => {
     columnHelper.accessor('gurudev_meeting_location', {
       header: 'Meeting Location',
       cell: (info) => (
-        <TableCellComponents.PrimaryText>
+        <TableCellComponents.SecondaryText>
           {info.getValue() || '-'}
-        </TableCellComponents.PrimaryText>
+        </TableCellComponents.SecondaryText>
       ),
       size: 130,
       minSize: 120,
@@ -191,9 +217,9 @@ const DignitaryList: React.FC = () => {
     columnHelper.accessor('gurudev_meeting_notes', {
       header: 'Meeting Notes',
       cell: (info) => (
-        <TableCellComponents.PrimaryText>
+        <TableCellComponents.SecondaryText>
           {info.getValue() || '-'}
-        </TableCellComponents.PrimaryText>
+        </TableCellComponents.SecondaryText>
       ),
       size: 200,
       minSize: 150,
@@ -204,14 +230,15 @@ const DignitaryList: React.FC = () => {
   // Define responsive column visibility
   const getColumnVisibility = () => {
     if (isMobile) {
-      // Mobile: show only Name, Position, and Organization
+      // Mobile: show only Name and combined Position & Organization
       return {
         'name': true,
+        'position_organization': true,
         'email': false,
         'phone': false,
         'primary_domain': false,
-        'title_in_organization': true,
-        'organization': true,
+        'title_in_organization': false,
+        'organization': false,
         'country': false,
         'state': false,
         'city': false,
@@ -221,9 +248,10 @@ const DignitaryList: React.FC = () => {
         'gurudev_meeting_notes': false,
       };
     } else {
-      // Desktop: show more fields including email and phone
+      // Desktop: show more fields including email and phone, but hide the combined column
       return {
         'name': true,
+        'position_organization': false,
         'email': true,
         'phone': true,
         'primary_domain': false,
