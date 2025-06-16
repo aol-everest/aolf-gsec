@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Typography, Box } from '@mui/material';
-import { createColumnHelper, ColumnDef, FilterFn } from '@tanstack/react-table';
+import { createColumnHelper, ColumnDef, FilterFn, VisibilityState } from '@tanstack/react-table';
 import { Appointment, AppointmentDignitary, AppointmentContact, StatusMap, SubStatusMap } from '../models/types';
 import { formatDate, formatDateRange } from '../utils/dateUtils';
 import { formatHonorificTitle } from '../utils/formattingUtils';
@@ -15,6 +15,7 @@ interface AppointmentTableProps {
   subStatusMap?: SubStatusMap;
   relationshipTypeMap?: Record<string, string>;
   enableColumnVisibility?: boolean;
+  initialColumnVisibility?: VisibilityState;
 }
 
 // Create a column helper for appointments
@@ -277,7 +278,8 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
   statusMap = {},
   subStatusMap = {},
   relationshipTypeMap = {},
-  enableColumnVisibility = false
+  enableColumnVisibility = false,
+  initialColumnVisibility = {}
 }) => {
   // Create appointment-specific columns
   const columns = useMemo(
@@ -320,6 +322,7 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
       pageSize={10}
       pageSizeOptions={[5, 10, 25]}
       enableColumnVisibility={enableColumnVisibility}
+      initialColumnVisibility={initialColumnVisibility}
       tableProps={{
         stickyHeader: true,
         size: 'medium',

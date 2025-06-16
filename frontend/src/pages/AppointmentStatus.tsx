@@ -6,7 +6,8 @@ import {
   Box, 
   Chip,
   CircularProgress,
-  Grid
+  Grid,
+  useMediaQuery
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
@@ -29,6 +30,9 @@ const AppointmentStatus: React.FC = () => {
   const theme = useTheme();
   const api = useApi();
   const navigate = useNavigate();
+  
+  // Check if we're on mobile
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   // Fetch status options
   const { data: statusOptions = [] } = useQuery({
@@ -154,6 +158,31 @@ const AppointmentStatus: React.FC = () => {
     setSelectedAppointmentId(null);
   };
 
+  // Define responsive column visibility
+  const getColumnVisibility = () => {
+    if (isMobile) {
+      // Mobile: show only id, date_time, and status
+      return {
+        id: true,
+        attendees: false,
+        date_time: true,
+        location: false,
+        status: true,
+        requested: false,
+      };
+    } else {
+      // Desktop: show all columns
+      return {
+        id: true,
+        attendees: true,
+        date_time: true,
+        location: true,
+        status: true,
+        requested: true,
+      };
+    }
+  };
+
   return (
     <Layout>
       <Container maxWidth="xl">
@@ -236,6 +265,7 @@ const AppointmentStatus: React.FC = () => {
             subStatusMap={subStatusMap}
             relationshipTypeMap={relationshipTypeMap}
             enableColumnVisibility={true}
+            initialColumnVisibility={getColumnVisibility()}
           />
         </Box>
       </Container>

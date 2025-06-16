@@ -282,6 +282,13 @@ export function GenericTable<T extends Record<string, any>>({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(initialColumnVisibility || {});
   const [columnVisibilityMenuAnchor, setColumnVisibilityMenuAnchor] = useState<null | HTMLElement>(null);
 
+  // Update column visibility when initialColumnVisibility prop changes
+  useEffect(() => {
+    if (initialColumnVisibility) {
+      setColumnVisibility(initialColumnVisibility);
+    }
+  }, [initialColumnVisibility]);
+
   // Default table props
   const {
     stickyHeader = true,

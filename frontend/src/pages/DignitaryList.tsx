@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
-import { Container, Typography, Paper, Box, Checkbox } from '@mui/material';
+import { Container, Typography, Paper, Box, Checkbox, useMediaQuery } from '@mui/material';
 import { createColumnHelper, ColumnDef } from '@tanstack/react-table';
 import Layout from '../components/Layout';
 import { useApi } from '../hooks/useApi';
+import { useTheme } from '@mui/material/styles';
 
 import { useQuery } from '@tanstack/react-query';
 import { GenericTable, TableCellComponents, standardColumnSizes, createGenericColumnHelper } from '../components/GenericTable';
@@ -30,6 +31,10 @@ interface Dignitary {
 
 const DignitaryList: React.FC = () => {
   const api = useApi();
+  const theme = useTheme();
+  
+  // Check if we're on mobile
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const { data: dignitaries = [], isLoading } = useQuery({
     queryKey: ['assigned-dignitaries'],
@@ -196,6 +201,45 @@ const DignitaryList: React.FC = () => {
     }),
   ], []);
 
+  // Define responsive column visibility
+  const columnVisibility = useMemo(() => {
+    if (isMobile) {
+      // Mobile: show only Name, Position, and Organization
+      return {
+        'name': true,
+        'email': false,
+        'phone': false,
+        'primary_domain': false,
+        'title_in_organization': true,
+        'organization': true,
+        'country': false,
+        'state': false,
+        'city': false,
+        'has_dignitary_met_gurudev': false,
+        'gurudev_meeting_date': false,
+        'gurudev_meeting_location': false,
+        'gurudev_meeting_notes': false,
+      };
+    } else {
+      // Desktop: show more fields including email and phone
+      return {
+        'name': true,
+        'email': true,
+        'phone': true,
+        'primary_domain': false,
+        'title_in_organization': true,
+        'organization': true,
+        'country': false,
+        'state': false,
+        'city': false,
+        'has_dignitary_met_gurudev': true,
+        'gurudev_meeting_date': false,
+        'gurudev_meeting_location': false,
+        'gurudev_meeting_notes': false,
+      };
+    }
+  }, [isMobile]);
+
   return (
     <Layout>
       <Container maxWidth="xl">
@@ -216,21 +260,7 @@ const DignitaryList: React.FC = () => {
             pageSize={10}
             pageSizeOptions={[5, 10, 25, 50]}
             enableColumnVisibility={true}
-            initialColumnVisibility={{
-              'name': true,
-              'title_in_organization': true,
-              'organization': true,
-              'has_dignitary_met_gurudev': true,
-              'email': false,
-              'phone': false,
-              'primary_domain': false,
-              'country': false,
-              'state': false,
-              'city': false,
-              'gurudev_meeting_date': false,
-              'gurudev_meeting_location': false,
-              'gurudev_meeting_notes': false,
-            }}
+            initialColumnVisibility={columnVisibility}
             emptyMessage="No assigned dignitaries found."
             tableProps={{
               stickyHeader: true,
