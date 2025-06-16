@@ -475,6 +475,28 @@ class AppointmentContactWithContact(AppointmentContactBase):
     id: int
     created_at: datetime
     contact: "UserContact"
+    
+    # Role and relationship context for this specific appointment
+    role_in_team_project: Optional[str] = None
+    role_in_team_project_other: Optional[str] = None
+    
+    # Check-in status
+    attendance_status: Optional[str] = None
+    checked_in_at: Optional[datetime] = None
+    
+    # Appointment-specific notes and requirements
+    comments: Optional[str] = None
+    
+    # Engagement and participation fields
+    has_met_gurudev_recently: Optional[bool] = None
+    is_attending_course: Optional[bool] = None
+    course_attending: Optional[str] = None
+    is_doing_seva: Optional[bool] = None
+    seva_type: Optional[str] = None
+    
+    # Audit fields
+    created_by: Optional[int] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         orm_mode = True
@@ -601,6 +623,30 @@ class AdminAppointmentContactWithContact(AppointmentContactBase):
     id: int
     created_at: datetime
     contact: "AdminUserContact"
+    
+    # Role and relationship context for this specific appointment
+    role_in_team_project: Optional[str] = None
+    role_in_team_project_other: Optional[str] = None
+    
+    # Check-in status
+    attendance_status: Optional[str] = None
+    checked_in_at: Optional[datetime] = None
+    checked_in_by: Optional[int] = None
+    
+    # Appointment-specific notes and requirements
+    comments: Optional[str] = None
+    
+    # Engagement and participation fields
+    has_met_gurudev_recently: Optional[bool] = None
+    is_attending_course: Optional[bool] = None
+    course_attending: Optional[str] = None
+    is_doing_seva: Optional[bool] = None
+    seva_type: Optional[str] = None
+    
+    # Audit fields
+    created_by: Optional[int] = None
+    updated_at: Optional[datetime] = None
+    updated_by: Optional[int] = None
 
     class Config:
         orm_mode = True
