@@ -487,11 +487,11 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
       roleInTeamProject: '',
       roleInTeamProjectOther: '',
       comments: '',
-      // Engagement and participation fields
-      hasMetGurudevRecently: false,
-      isAttendingCourse: false,
+      // Engagement and participation fields - default to not answered
+      hasMetGurudevRecently: null,
+      isAttendingCourse: null,
       courseAttending: '',
-      isDoingSeva: false,
+      isDoingSeva: null,
       sevaType: '',
     }
   });
@@ -1126,11 +1126,11 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
       roleInTeamProject: '',
       roleInTeamProjectOther: '',
       comments: '',
-      // Engagement and participation fields
-      hasMetGurudevRecently: false,
-      isAttendingCourse: false,
+      // Engagement and participation fields - reset to not answered
+      hasMetGurudevRecently: null,
+      isAttendingCourse: null,
       courseAttending: '',
-      isDoingSeva: false,
+      isDoingSeva: null,
       sevaType: '',
     });
     setEmailValidationWarnings([]); // Clear email warnings
@@ -1242,10 +1242,10 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
     setContactEngagementFields(prev => ({
       ...prev,
       [contact.id]: {
-        hasMetGurudevRecently: false,
-        isAttendingCourse: false,
+        hasMetGurudevRecently: null,  // Not answered by default
+        isAttendingCourse: null,      // Not answered by default
         courseAttending: '',
-        isDoingSeva: false,
+        isDoingSeva: null,            // Not answered by default
         sevaType: ''
       }
     }));
@@ -1283,10 +1283,10 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
       setContactEngagementFields(prev => ({
         ...prev,
         [newContact.id]: {
-          hasMetGurudevRecently: formData.hasMetGurudevRecently || false,
-          isAttendingCourse: formData.isAttendingCourse || false,
+          hasMetGurudevRecently: formData.hasMetGurudevRecently,  // Keep null if not answered
+          isAttendingCourse: formData.isAttendingCourse,          // Keep null if not answered
           courseAttending: formData.courseAttending || '',
-          isDoingSeva: formData.isDoingSeva || false,
+          isDoingSeva: formData.isDoingSeva,                      // Keep null if not answered
           sevaType: formData.sevaType || ''
         }
       }));
@@ -1506,10 +1506,10 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
             // Build contacts with engagement fields
             const contactsWithEngagement = contactIds.map((contactId: number) => {
               const engagementData = contactEngagementFields[contactId] || {
-                hasMetGurudevRecently: false,
-                isAttendingCourse: false,
+                hasMetGurudevRecently: null,  // Not answered by default
+                isAttendingCourse: null,      // Not answered by default
                 courseAttending: '',
-                isDoingSeva: false,
+                isDoingSeva: null,            // Not answered by default
                 sevaType: ''
               };
               
