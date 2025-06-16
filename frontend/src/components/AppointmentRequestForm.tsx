@@ -70,6 +70,7 @@ import { AttendeeList } from './appointment/AttendeeList';
 import { ProfileOverlay } from './appointment/ProfileOverlay';
 import { InitialInfoStep } from './appointment/steps/InitialInfoStep';
 import { CheckSquareCircleFilledIconV2, CheckCircleIconV2, CloseIconFilledCircleV2 } from './iconsv2';
+import { useAppointmentSummary, hasExistingAppointments } from '../hooks/useAppointmentSummary';
 
 // Remove the hardcoded enum and add a state for time of day options
 // const AppointmentTimeOfDay = {
@@ -330,6 +331,13 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
 
   // Add a new state variable to track if the dignitary form is expanded
   const [isDignitaryFormExpanded, setIsDignitaryFormExpanded] = useState(false);
+
+  // State for existing appointments dialog
+  const [showExistingAppointmentsDialog, setShowExistingAppointmentsDialog] = useState(false);
+  const [pendingStepTransition, setPendingStepTransition] = useState(false);
+
+  // Fetch appointment summary data
+  const { data: appointmentSummary } = useAppointmentSummary();
 
   // Fetch request type map from the API
   const { data: requestTypeMap = {} } = useQuery<Record<string, string>>({
@@ -1382,6 +1390,20 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
           // Phone number is now handled in the profile step, so no need to update here
           // Set the required number of dignitaries
           setRequiredDignitariesCount(data.numberOfAttendees);
+          
+          // Check for existing appointments for non-dignitary requests
+          if (!skipExistingCheck && 
+              selectedRequestTypeConfig?.attendee_type !== attendeeTypeMap['DIGNITARY']) {
+            const { hasExisting, count } = hasExistingAppointments(appointmentSummary, data.requestType);
+            
+            if (hasExisting) {
+              // Show confirmation dialog
+              setShowExistingAppointmentsDialog(true);
+              setPendingStepTransition(true);
+              return;
+            }
+          }
+          
           setActiveStep(1);
         } catch (error) {
           console.error('Error updating user:', error);
@@ -3589,6 +3611,71 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
     );
   };
 
+  // Render existing appointments confirmation dialog
+  const renderExistingAppointmentsDialog = () => {
+    if (!selectedRequestTypeConfig) return null;
+
+    const { hasExisting, count } = hasExistingAppointments(appointmentSummary, pocForm.getValues('requestType'));
+    
+    if (!hasExisting) return null;
+
+    return (
+      <Dialog
+        open={showExistingAppointmentsDialog}
+        onClose={() => {
+          setShowExistingAppointmentsDialog(false);
+          setPendingStepTransition(false);
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Existing Appointment Request Found</DialogTitle>
+        <DialogContent>
+          <Typography gutterBottom>
+            Dear {userInfo?.first_name},
+          </Typography>
+          
+          <Typography gutterBottom>
+            We noticed you currently have {count} open appointment request{count > 1 ? 's' : ''} for{' '}
+            <strong>{selectedRequestTypeConfig.display_name}</strong> that {count > 1 ? 'are' : 'is'} still being processed.
+          </Typography>
+
+          <Typography gutterBottom>
+            Would you like to proceed with creating another appointment request for the same type? 
+            Please note that submitting multiple requests for the same type may cause delays in processing.
+          </Typography>
+
+          <Typography>
+            If you need to update or modify your existing request, we recommend reaching out to our office directly.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => {
+              setShowExistingAppointmentsDialog(false);
+              setPendingStepTransition(false);
+            }} 
+            color="primary"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              setShowExistingAppointmentsDialog(false);
+              setPendingStepTransition(false);
+              // Continue with the step transition
+              setActiveStep(1);
+            }}
+            color="primary"
+            variant="contained"
+          >
+            Continue Anyway
+          </Button>
+        </DialogActions>
+      </Dialog>
+    );
+  };
+
   // Update the button text based on the current state
   const getButtonText = () => {
     if (isEditMode) {
@@ -3667,9 +3754,10 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
         fieldsToShow={getProfileCompletionFields(userInfo)}
         onClose={handleProfileOverlayClose}
       />
-
+      
       {renderConfirmationDialog()}
       {renderWarningDialog()}
+      {renderExistingAppointmentsDialog()}
     </Box>
   );
 };

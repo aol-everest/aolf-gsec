@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func
+from sqlalchemy import func, and_, or_
 from typing import List, Optional
-from datetime import datetime, time
+from datetime import datetime, time, date
 import logging
 import os
 
@@ -332,4 +332,93 @@ async def get_business_card_extraction_status(
 ):
     """Check if business card extraction is enabled"""
     enable_extraction = os.environ.get("ENABLE_BUSINESS_CARD_EXTRACTION", "true").lower() == "true"
-    return {"enabled": enable_extraction} 
+    return {"enabled": enable_extraction}
+
+@router.get("/appointments/summary", response_model=dict)
+async def get_appointments_summary(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_read_db)
+):
+    """Get summary of existing open appointments by request type for the current user"""
+    try:
+        # Get today's date for comparison
+        today = date.today()
+        
+        # Query for open appointments (not CANCELLED or COMPLETED) with future dates
+        query = db.query(models.Appointment).filter(
+            and_(
+                models.Appointment.requester_id == current_user.id,
+                ~models.Appointment.status.in_([
+                    models.AppointmentStatus.CANCELLED,
+                    models.AppointmentStatus.COMPLETED
+                ])
+            )
+        )
+        
+        # Filter by future dates - use confirmed dates if available, otherwise preferred dates
+        date_conditions = []
+        
+        # For confirmed appointments, check appointment_date
+        date_conditions.append(
+            and_(
+                models.Appointment.appointment_date.isnot(None),
+                models.Appointment.appointment_date >= today
+            )
+        )
+        
+        # For non-confirmed appointments with single preferred_date
+        date_conditions.append(
+            and_(
+                models.Appointment.appointment_date.is_(None),
+                models.Appointment.preferred_date.isnot(None),
+                models.Appointment.preferred_date >= today
+            )
+        )
+        
+        # For non-confirmed appointments with date range (preferred_end_date)
+        date_conditions.append(
+            and_(
+                models.Appointment.appointment_date.is_(None),
+                models.Appointment.preferred_date.is_(None),
+                models.Appointment.preferred_end_date.isnot(None),
+                models.Appointment.preferred_end_date >= today
+            )
+        )
+        
+        # Apply date filtering with OR conditions
+        query = query.filter(or_(*date_conditions))
+        
+        appointments = query.all()
+        
+        # Group by request type and count
+        summary = {}
+        for appointment in appointments:
+            request_type = appointment.request_type.value if appointment.request_type else 'Unknown'
+            if request_type not in summary:
+                summary[request_type] = {
+                    'count': 0,
+                    'appointments': []
+                }
+            
+            summary[request_type]['count'] += 1
+            
+            # Add basic appointment info for frontend use
+            appointment_info = {
+                'id': appointment.id,
+                'status': appointment.status.value if appointment.status else 'Unknown',
+                'purpose': appointment.purpose,
+                'date': (
+                    appointment.appointment_date.isoformat() if appointment.appointment_date
+                    else appointment.preferred_date.isoformat() if appointment.preferred_date
+                    else appointment.preferred_end_date.isoformat() if appointment.preferred_end_date
+                    else None
+                )
+            }
+            summary[request_type]['appointments'].append(appointment_info)
+        
+        logger.info(f"Fetched appointments summary for user {current_user.email}: {len(appointments)} open appointments")
+        return summary
+        
+    except Exception as e:
+        logger.error(f"Error fetching appointments summary: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to fetch appointments summary") 
