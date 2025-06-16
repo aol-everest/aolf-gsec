@@ -204,7 +204,7 @@ REQUEST_TYPE_CONFIGS: Dict[RequestType, RequestTypeConfig] = {
         max_attendees=10,
         attendee_label_singular="Person",
         attendee_label_plural="People",
-        step_2_title="Personal Attendees",
+        step_2_title="Attendees",
         step_2_description="Add yourself and any family members or friends who will attend."
     ),
     RequestType.PROJECT_TEAM_MEETING: RequestTypeConfig(

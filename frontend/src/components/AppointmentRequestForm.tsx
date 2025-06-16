@@ -322,7 +322,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
   const [editingContactId, setEditingContactId] = useState<number | null>(null);
   
   // State for self-attendance feature
-  const [isUserAttending, setIsUserAttending] = useState(false);
+  const [isUserAttending, setIsUserAttending] = useState(true);  // Changed to default to true
   const [emailValidationWarnings, setEmailValidationWarnings] = useState<string[]>([]);
   
   // Add a state to track if the selected dignitary has been modified
@@ -527,13 +527,38 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
 
   // Check if user is already attending when contacts change
   useEffect(() => {
-    const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
-    const userIsInContacts = selectedUserContacts.some(contact => 
-      contact.relationship_to_owner === relationshipTypeMap['SELF'] || 
-      (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName)
-    );
-    setIsUserAttending(userIsInContacts);
-  }, [selectedUserContacts]);
+    // Only sync the attendance state if we actually have contacts to check
+    // This prevents overriding the default 'true' value when the form is fresh
+    if (selectedUserContacts.length > 0) {
+      const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
+      const userIsInContacts = selectedUserContacts.some(contact => 
+        contact.relationship_to_owner === relationshipTypeMap['SELF'] || 
+        (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName)
+      );
+      setIsUserAttending(userIsInContacts);
+    }
+  }, [selectedUserContacts, relationshipTypeMap]);
+
+  // Auto-add user as attendee for new appointments
+  // This useEffect runs when necessary data is loaded and handles the default self-attendance
+  useEffect(() => {
+    // Only run this effect if:
+    // 1. We have user info (for creating self contact)
+    // 2. We have relationship type mapping (needed for self contact creation)
+    // 3. We have request type config (to check if it's non-dignitary)
+    // 4. User is marked as attending but not yet in the contacts list
+    // 5. We haven't selected any contacts yet (fresh form)
+    if (userInfo && 
+        relationshipTypeMap['SELF'] && 
+        selectedRequestTypeConfig &&
+        selectedRequestTypeConfig.attendee_type !== attendeeTypeMap['DIGNITARY'] &&
+        isUserAttending && 
+        selectedUserContacts.length === 0) {
+      
+      // Automatically add the user as an attendee
+      handleSelfAttendanceChange(true);
+    }
+  }, [userInfo, relationshipTypeMap, selectedRequestTypeConfig, attendeeTypeMap, isUserAttending, selectedUserContacts.length]);
 
   // Function to populate dignitary form fields
   const populateDignitaryForm = (dignitary: Dignitary) => {
@@ -1228,8 +1253,12 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
     const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
     const isSelfContact = contact.relationship_to_owner === relationshipTypeMap['SELF'] ||
       (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName);
-    const displayName = isSelfContact ? selfDisplayName : `${contact.first_name} ${contact.last_name}`;
-    enqueueSnackbar(`${displayName} added to appointment`, { variant: 'success' });
+    
+    // Skip notification for self-contacts to avoid unnecessary notifications
+    if (!isSelfContact) {
+      const displayName = `${contact.first_name} ${contact.last_name}`;
+      enqueueSnackbar(`${displayName} added to appointment`, { variant: 'success' });
+    }
   };
 
   const removeContactFromList = (contactId: number) => {
@@ -1643,11 +1672,6 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                 
                 // Clear course selection if not attending
                 if (!isAttending) {
-                  updateEngagementField('courseAttending', '');
-                }
-                
-                // Clear seva fields if attending course
-                if (isAttending) {
                   updateEngagementField('isDoingSeva', null);
                   updateEngagementField('sevaType', '');
                 }
