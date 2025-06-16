@@ -32,7 +32,7 @@ const AppointmentRequest: React.FC = () => {
             Request an Appointment
           </Typography>
           
-          {!profileComplete && (
+          {/* {!profileComplete && (
             <Alert severity="info" sx={{ mb: 3 }}>
               <Typography variant="body1" gutterBottom>
                 <strong>Complete Your Profile First</strong>
@@ -41,7 +41,7 @@ const AppointmentRequest: React.FC = () => {
                 Please complete your profile information before requesting an appointment. Missing fields: {missingFields.join(', ')}.
               </Typography>
             </Alert>
-          )}
+          )} */}
           
           <Paper 
             elevation={0}
