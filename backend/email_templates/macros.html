@@ -76,12 +76,8 @@
         {# Confirmed appointment date #}
         {{ appointment.appointment_date }}{% if include_time and appointment.appointment_time %} {{ appointment.appointment_time }}{% endif %}
     {% elif appointment.preferred_start_date and appointment.preferred_end_date %}
-        {# Date range for non-dignitary appointments #}
-        {% if appointment.preferred_start_date == appointment.preferred_end_date %}
-            {{ appointment.preferred_start_date }}{% if include_time and appointment.preferred_time_of_day %} {{ appointment.preferred_time_of_day }}{% endif %}
-        {% else %}
-            {{ appointment.preferred_start_date }} - {{ appointment.preferred_end_date }}{% if include_time and appointment.preferred_time_of_day %} ({{ appointment.preferred_time_of_day }}){% endif %}
-        {% endif %}
+        {# Date range for non-dignitary appointments - use the new format_date_range function #}
+        {{ format_date_range(appointment.preferred_start_date, appointment.preferred_end_date) }}{% if include_time and appointment.preferred_time_of_day %} ({{ appointment.preferred_time_of_day }}){% endif %}
     {% elif appointment.preferred_date %}
         {# Single preferred date for dignitary appointments #}
         {{ appointment.preferred_date }}{% if include_time and appointment.preferred_time_of_day %} {{ appointment.preferred_time_of_day }}{% endif %}

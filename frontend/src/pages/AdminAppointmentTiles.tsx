@@ -2353,7 +2353,7 @@ const AdminAppointmentTiles: React.FC = () => {
                 </>
               )
             ) : (
-              <Paper sx={{ p: 3, textAlign: 'center' }}>
+              <Paper sx={{ p: 3, textAlign: 'center', width: '100%' }}>
                 <Typography>No appointments found for the selected filters.</Typography>
               </Paper>
             )}

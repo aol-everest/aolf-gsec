@@ -1086,7 +1086,18 @@ const AdminManageUsers: React.FC = () => {
                     {/* Access Records Table - Show this first */}
                     <Box sx={{ mb: 3 }}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                        <Typography variant="subtitle1">Access Management</Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <Typography variant="subtitle1" sx={{ mr: 2 }}>Access Management</Typography>
+                          {!showAccessForm && (
+                            <SecondaryButton
+                              startIcon={<AddIcon />}
+                              onClick={() => handleAccessFormOpen()}
+                              size="small"
+                            >
+                              Add Access
+                            </SecondaryButton>
+                          )}
+                          </Box>
                         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                           {userRole === 'ADMIN' && (
                             <FormControlLabel
@@ -1136,15 +1147,6 @@ const AdminManageUsers: React.FC = () => {
                         </Paper>
                       )}
                     </Box>
-                    {!showAccessForm && (
-                          <PrimaryButton
-                            startIcon={<AddIcon />}
-                            onClick={() => handleAccessFormOpen()}
-                            size="small"
-                          >
-                            Add Access
-                          </PrimaryButton>
-                    )}
 
                     {/* New/Edit Access Form - Show this after the table */}
                     <Collapse in={showAccessForm}>

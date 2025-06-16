@@ -335,3 +335,63 @@ def convert_to_datetime_with_tz(appointment_date: str, start_time: str, location
     dt_with_tz = dt_naive.replace(tzinfo=ZoneInfo(tz_str))
     
     return dt_with_tz
+
+def format_date_range(start_date: Union[str, date], end_date: Union[str, date]) -> str:
+    """
+    Format a date range with intelligent shortening when month and year are the same.
+    
+    Examples:
+        - Same date: "Jun 17, 2025"
+        - Same month/year: "Jun 17-18, 2025"
+        - Same year: "Jun 30 - Jul 2, 2025"
+        - Different years: "Dec 30, 2024 - Jan 2, 2025"
+    
+    Args:
+        start_date: Start date as string (YYYY-MM-DD) or date object
+        end_date: End date as string (YYYY-MM-DD) or date object
+        
+    Returns:
+        Formatted date range string
+    """
+    if not start_date or not end_date:
+        return ''
+    
+    try:
+        # Convert to date objects if they're strings
+        if isinstance(start_date, str):
+            start = datetime.strptime(start_date, '%Y-%m-%d').date()
+        else:
+            start = start_date
+            
+        if isinstance(end_date, str):
+            end = datetime.strptime(end_date, '%Y-%m-%d').date()
+        else:
+            end = end_date
+        
+        # If same date, return single date
+        if start == end:
+            return start.strftime('%b %d, %Y')
+        
+        # Check if same month and year
+        if start.month == end.month and start.year == end.year:
+            # Same month and year: "Jun 17-18, 2025"
+            month_name = start.strftime('%b')
+            start_day = start.day
+            end_day = end.day
+            year = start.year
+            return f"{month_name} {start_day}-{end_day}, {year}"
+        elif start.year == end.year:
+            # Same year, different months: "Jun 30 - Jul 2, 2025"
+            start_formatted = start.strftime('%b %d')
+            end_formatted = end.strftime('%b %d')
+            year = start.year
+            return f"{start_formatted} - {end_formatted}, {year}"
+        else:
+            # Different years: "Dec 30, 2024 - Jan 2, 2025"
+            start_formatted = start.strftime('%b %d, %Y')
+            end_formatted = end.strftime('%b %d, %Y')
+            return f"{start_formatted} - {end_formatted}"
+            
+    except Exception as e:
+        # Fallback to simple string concatenation if parsing fails
+        return f"{start_date} - {end_date}"

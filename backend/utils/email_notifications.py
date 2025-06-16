@@ -10,7 +10,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy.orm import Session
 from models.user import User, UserRole
 from models.appointment import Appointment, AppointmentStatus, AppointmentSubStatus
-from utils.utils import str_to_bool, as_dict, appointment_to_dict
+from utils.utils import str_to_bool, as_dict, appointment_to_dict, format_date_range
 from models.dignitary import Dignitary, HonorificTitle
 from models.userContact import UserContact
 from enum import Enum, auto
@@ -48,6 +48,9 @@ try:
     )
     # Add custom filters to Jinja2 environment
     template_env.filters['format_honorific_title'] = HonorificTitle.format_honorific_title
+    
+    # Add global functions to Jinja2 environment
+    template_env.globals['format_date_range'] = format_date_range
     logger.info(f"Initialized Jinja2 environment with templates from {EMAIL_TEMPLATES_DIR}")
 except Exception as e:
     logger.error(f"Failed to initialize Jinja2 environment: {str(e)}")
@@ -995,8 +998,8 @@ def _check_and_notify_contact_profiles_sync(db: Session, appointment: Appointmen
         if appointment.preferred_date:
             appointment_date = appointment.preferred_date
         elif appointment.preferred_start_date:
-            if appointment.preferred_end_date and appointment.preferred_start_date != appointment.preferred_end_date:
-                appointment_date = f"{appointment.preferred_start_date} - {appointment.preferred_end_date}"
+            if appointment.preferred_end_date:
+                appointment_date = format_date_range(appointment.preferred_start_date, appointment.preferred_end_date)
             else:
                 appointment_date = appointment.preferred_start_date
         

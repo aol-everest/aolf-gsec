@@ -202,14 +202,33 @@ export const formatDateRange = (startDate: string, endDate: string): string => {
     
     if (!isValid(start) || !isValid(end)) return '';
     
-    const startFormatted = format(start, 'MMM d, yyyy');
-    const endFormatted = format(end, 'MMM d, yyyy');
-    
+    // If same date, return single date
     if (startDate === endDate) {
-      return startFormatted;
+      return format(start, 'MMM d, yyyy');
     }
     
-    return `${startFormatted} - ${endFormatted}`;
+    // Check if same month and year
+    const startMonth = start.getMonth();
+    const startYear = start.getFullYear();
+    const endMonth = end.getMonth();
+    const endYear = end.getFullYear();
+    
+    if (startMonth === endMonth && startYear === endYear) {
+      // Same month and year: "Jun 17-18, 2025"
+      const startDay = format(start, 'd');
+      const endDay = format(end, 'd');
+      return `${format(start, 'MMM')} ${startDay}-${endDay}, ${startYear}`;
+    } else if (startYear === endYear) {
+      // Same year, different months: "Jun 30 - Jul 2, 2025"
+      const startFormatted = format(start, 'MMM d');
+      const endFormatted = format(end, 'MMM d');
+      return `${startFormatted} - ${endFormatted}, ${startYear}`;
+    } else {
+      // Different years: "Dec 30, 2024 - Jan 2, 2025"
+      const startFormatted = format(start, 'MMM d, yyyy');
+      const endFormatted = format(end, 'MMM d, yyyy');
+      return `${startFormatted} - ${endFormatted}`;
+    }
   } catch (error) {
     console.error('Error formatting date range:', error);
     return '';
