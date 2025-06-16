@@ -63,7 +63,7 @@ import ScheduleIcon from '@mui/icons-material/Schedule';
 import SchoolIcon from '@mui/icons-material/School';
 import Layout from '../components/Layout';
 import { formatDate, formatDateRange } from '../utils/dateUtils';
-import { LocationThinIconV2, CalendarIconV2, ListIconV2, InfoSquareCircleIconV2, InfoSquareCircleFilledIconV2, FilterIconV2, CategoryIconV2, CategoryFilledIconV2 } from '../components/iconsv2';
+import { LocationThinIconV2, CalendarIconV2, ListIconV2, InfoSquareCircleIconV2, InfoSquareCircleFilledIconV2, FilterIconV2, CategoryIconV2, CategoryFilledIconV2, FilterFilledIconV2 } from '../components/iconsv2';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -149,6 +149,14 @@ const SEARCH_CONFIG = {
 
 // Create enhanced SwipeableViews with keyboard navigation and virtualization
 const VirtualizedSwipeableViews = bindKeyboard(virtualize(SwipeableViews));
+
+// Define attendee count buckets
+const ATTENDEE_BUCKETS = [
+  { key: '1', label: '1 person', min: 1, max: 1 },
+  { key: '2-5', label: '2-5 people', min: 2, max: 5 },
+  { key: '6-10', label: '6-10 people', min: 6, max: 10 },
+  { key: '10+', label: '10+ people', min: 11, max: Infinity }
+] as const;
 
 // Define interface for slide renderer params to match react-swipeable-views types
 interface SlideRendererParams {
@@ -320,7 +328,7 @@ interface FilterState {
   endDate: Date | null;
   notMetGurudev: boolean;
   requestedLast3Days: boolean;
-  attendeeCountRange: [number, number];
+  attendeeCountBuckets: string[];
   isTeacher: boolean;
 }
 
@@ -357,7 +365,7 @@ const AdminAppointmentTiles: React.FC = () => {
     endDate: addDays(new Date(), 7),
     notMetGurudev: false,
     requestedLast3Days: false,
-    attendeeCountRange: [1, 50],
+    attendeeCountBuckets: [],
     isTeacher: false
   });
   const [filteredAppointments, setFilteredAppointments] = useState<Appointment[]>([]);
@@ -537,7 +545,7 @@ const AdminAppointmentTiles: React.FC = () => {
       endDate: filters.endDate,
       notMetGurudev: false,
       requestedLast3Days: false,
-      attendeeCountRange: [1, 50],
+      attendeeCountBuckets: [],
       isTeacher: false
     };
     
@@ -853,25 +861,65 @@ const AdminAppointmentTiles: React.FC = () => {
       );
     }
     
-    // Filter by attendee count range (only apply if user has moved sliders from defaults)
-    if (filters.attendeeCountRange[0] !== 1 || filters.attendeeCountRange[1] !== 50) {
-      logger(`Filtering by attendee count range: ${filters.attendeeCountRange[0]} - ${filters.attendeeCountRange[1]}`);
-      console.log('DEBUG: Sample appointments attendee count:', filtered.slice(0, 3).map(a => ({
+    // Filter by attendee count buckets
+    if (filters.attendeeCountBuckets.length > 0) {
+      logger(`Filtering by attendee count buckets: ${filters.attendeeCountBuckets.join(', ')}`);
+      console.log('DEBUG: Sample appointments attendee count before bucket filter:', filtered.slice(0, 5).map(a => ({
         id: a.id,
         number_of_attendees: a.number_of_attendees,
         attendee_count_type: typeof a.number_of_attendees,
-        is_in_range: a.number_of_attendees != null && 
-                     a.number_of_attendees >= filters.attendeeCountRange[0] && 
-                     a.number_of_attendees <= filters.attendeeCountRange[1]
+        is_null: a.number_of_attendees === null,
+        is_undefined: a.number_of_attendees === undefined
       })));
       
+      console.log('DEBUG: All appointments attendee counts:', filtered.map(a => a.number_of_attendees));
+      console.log('DEBUG: First appointment full structure:', filtered[0]);
+      console.log('DEBUG: First appointment keys:', filtered[0] ? Object.keys(filtered[0]) : 'No appointments');
+      console.log('DEBUG: First appointment contacts:', filtered[0]?.appointment_contacts);
+      console.log('DEBUG: First appointment dignitaries:', filtered[0]?.appointment_dignitaries);
+      console.log('DEBUG: Calculated attendee counts:', filtered.map(a => {
+        const contactsCount = a.appointment_contacts?.length || 0;
+        const dignitariesCount = a.appointment_dignitaries?.length || 0;
+        const totalCount = contactsCount + dignitariesCount;
+        return { id: a.id, contacts: contactsCount, dignitaries: dignitariesCount, total: totalCount };
+      }));
+      
       const beforeCount = filtered.length;
-      filtered = filtered.filter(appointment => 
-        appointment.number_of_attendees != null &&
-        appointment.number_of_attendees >= filters.attendeeCountRange[0] && 
-        appointment.number_of_attendees <= filters.attendeeCountRange[1]
-      );
-      logger(`AttendeeCountRange filter: ${beforeCount} -> ${filtered.length} appointments`);
+      filtered = filtered.filter(appointment => {
+        // Calculate attendee count from contacts and dignitaries
+        const contactsCount = appointment.appointment_contacts?.length || 0;
+        const dignitariesCount = appointment.appointment_dignitaries?.length || 0;
+        const attendeeCount = contactsCount + dignitariesCount;
+        
+        // Skip appointments with no attendees
+        if (attendeeCount === 0) return false;
+        
+        const matchesBucket = filters.attendeeCountBuckets.some(bucketKey => {
+          const bucket = ATTENDEE_BUCKETS.find(b => b.key === bucketKey);
+          if (!bucket) {
+            console.log(`DEBUG: Bucket not found for key: ${bucketKey}`);
+            return false;
+          }
+          
+          let matches = false;
+          
+          // Handle the "10+" bucket specially
+          if (bucket.key === '10+') {
+            matches = attendeeCount >= bucket.min;
+          } else {
+            matches = attendeeCount >= bucket.min && attendeeCount <= bucket.max;
+          }
+          
+          console.log(`DEBUG: Appointment ${appointment.id} - attendees: ${attendeeCount} (contacts: ${contactsCount}, dignitaries: ${dignitariesCount}), bucket: ${bucket.key} (${bucket.min}-${bucket.max}), matches: ${matches}`);
+          
+          return matches;
+        });
+        
+        return matchesBucket;
+      });
+      console.log(`DEBUG: AttendeeCountBuckets filter: ${beforeCount} -> ${filtered.length} appointments`);
+      console.log('DEBUG: Selected buckets:', filters.attendeeCountBuckets);
+      console.log('DEBUG: Bucket definitions:', ATTENDEE_BUCKETS);
     }
     
     // Filter for appointments by teachers
@@ -901,7 +949,7 @@ const AdminAppointmentTiles: React.FC = () => {
     }
     
     return filtered;
-  }, [appointments, filters, searchableFields]);
+  }, [appointments, filters, searchableFields, teacherStatusMap]);
 
   // Apply filters and handle appointment selection
   useEffect(() => {
@@ -942,7 +990,7 @@ const AdminAppointmentTiles: React.FC = () => {
               endDate: null,
               notMetGurudev: false,
               requestedLast3Days: false,
-              attendeeCountRange: [1, 50],
+              attendeeCountBuckets: [],
               isTeacher: false
             }));
           }
@@ -1138,10 +1186,10 @@ const AdminAppointmentTiles: React.FC = () => {
     setActiveStep(0);
   };
 
-  const handleAttendeeCountRangeFilter = (range: [number, number]) => {
-    logger(`Setting attendee count range filter: ${range}`);
+  const handleAttendeeCountBucketsFilter = (buckets: string[]) => {
+    logger(`Setting attendee count buckets filter: ${buckets}`);
     isFilteringRef.current = true;
-    setFilters(prev => ({ ...prev, attendeeCountRange: range }));
+    setFilters(prev => ({ ...prev, attendeeCountBuckets: buckets }));
     setActiveStep(0);
   };
 
@@ -1566,6 +1614,103 @@ const AdminAppointmentTiles: React.FC = () => {
     return <AppointmentCard appointment={currentData} displayMode="regular" />;
   };
 
+  // Helper functions to get filter counts
+  const getNotMetGurudevCount = () => {
+    return appointments.filter(appointment => {
+      if (!appointment.appointment_contacts || appointment.appointment_contacts.length === 0) return true;
+      
+      // Check if ANY contact has NOT met Gurudev recently
+      return appointment.appointment_contacts.some(contact => {
+        const hasMetGurudev = contact.has_met_gurudev_recently;
+        return hasMetGurudev === false || hasMetGurudev === null || hasMetGurudev === undefined;
+      });
+    }).length;
+  };
+
+  const getRequestedLast3DaysCount = () => {
+    const threeDaysAgo = subDays(new Date(), 3);
+    return appointments.filter(appointment => 
+      appointment.created_at && new Date(appointment.created_at) >= threeDaysAgo
+    ).length;
+  };
+
+  const getIsTeacherCount = () => {
+    return appointments.filter(appointment => {
+      if (!appointment.requester) return false;
+      const teacherStatus = appointment.requester.teacher_status;
+      return teacherStatus && 
+             teacherStatus !== teacherStatusMap['NOT_TEACHER'] && 
+             teacherStatus !== '' &&
+             teacherStatus !== null;
+    }).length;
+  };
+
+  const getAttendeeBucketCount = (bucketKey: string) => {
+    const bucket = ATTENDEE_BUCKETS.find(b => b.key === bucketKey);
+    if (!bucket) return 0;
+    
+    // Filter from appointments that match current filters (except attendee count)
+    let baseAppointments = [...appointments];
+    
+    // Apply request type filter (mandatory)
+    if (filters.requestType) {
+      baseAppointments = baseAppointments.filter(appointment => 
+        appointment.request_type === filters.requestType
+      );
+    }
+    
+    // Apply status filter if selected
+    if (filters.status) {
+      baseAppointments = baseAppointments.filter(appointment => 
+        appointment.status === filters.status
+      );
+    }
+    
+    // Apply location filter if selected
+    if (filters.locationId) {
+      baseAppointments = baseAppointments.filter(appointment => 
+        appointment.location && appointment.location.id === filters.locationId
+      );
+    }
+    
+    return baseAppointments.filter(appointment => {
+      // Calculate attendee count from contacts and dignitaries
+      const contactsCount = appointment.appointment_contacts?.length || 0;
+      const dignitariesCount = appointment.appointment_dignitaries?.length || 0;
+      const attendeeCount = contactsCount + dignitariesCount;
+      
+      if (attendeeCount === 0) return false;
+      
+      // Handle the "10+" bucket specially
+      if (bucket.key === '10+') {
+        return attendeeCount >= bucket.min;
+      }
+      
+      return attendeeCount >= bucket.min && attendeeCount <= bucket.max;
+    }).length;
+  };
+
+  // State for attendee bucket dropdown
+  const [attendeeBucketDropdownOpen, setAttendeeBucketDropdownOpen] = useState(false);
+  const attendeeBucketAnchorRef = useRef<HTMLDivElement>(null);
+
+  const handleAttendeeBucketToggle = (bucketKey: string) => {
+    const newBuckets = filters.attendeeCountBuckets.includes(bucketKey)
+      ? filters.attendeeCountBuckets.filter(b => b !== bucketKey)
+      : [...filters.attendeeCountBuckets, bucketKey];
+    
+    handleAttendeeCountBucketsFilter(newBuckets);
+  };
+
+  const getAttendeeBucketChipLabel = () => {
+    if (filters.attendeeCountBuckets.length === 0) return "# of attendees";
+    if (filters.attendeeCountBuckets.length === 1) {
+      const bucket = ATTENDEE_BUCKETS.find(b => b.key === filters.attendeeCountBuckets[0]);
+      return bucket?.label || "# of attendees";
+    }
+    return `${filters.attendeeCountBuckets.length} attendee ranges`;
+  };
+
   return (
     <Layout>
       <Container>
@@ -1865,7 +2010,7 @@ const AdminAppointmentTiles: React.FC = () => {
             <Box>
               <Grid container spacing={2} alignItems="center">
                 <Grid item xs={1} md={0.4} sx={{ display: 'flex', alignItems: 'center' }}>
-                  <FilterIconV2 sx={{ width: 22, height: 22 }} />
+                  <FilterFilledIconV2 sx={{ width: 22, height: 22 }} />
                 </Grid>
                 <Grid item xs={11} md={1.6} sx={{ display: 'flex', alignItems: 'center' }}>
                   <Typography variant="body2" sx={{ m: 0, fontWeight: 600 }}>
@@ -1875,7 +2020,7 @@ const AdminAppointmentTiles: React.FC = () => {
                 <Grid item xs={12} md={10} sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
                   {/* Not Met Gurudev Filter Chip */}
                   <Chip
-                    label="Not met Gurudev recently"
+                    label={`Not met Gurudev recently (${getNotMetGurudevCount()})`}
                     variant={filters.notMetGurudev ? "filled" : "outlined"}
                     onClick={() => handleNotMetGurudevFilter(!filters.notMetGurudev)}
                     sx={{
@@ -1904,7 +2049,7 @@ const AdminAppointmentTiles: React.FC = () => {
 
                   {/* Requested Last 3 Days Filter Chip */}
                   <Chip
-                    label="Requested in last 3 days"
+                    label={`Requested in last 3 days (${getRequestedLast3DaysCount()})`}
                     variant={filters.requestedLast3Days ? "filled" : "outlined"}
                     onClick={() => handleRequestedLast3DaysFilter(!filters.requestedLast3Days)}
                     sx={{
@@ -1933,7 +2078,7 @@ const AdminAppointmentTiles: React.FC = () => {
 
                   {/* Is Teacher Filter Chip */}
                   <Chip
-                    label="Is a teacher"
+                    label={`Is a teacher (${getIsTeacherCount()})`}
                     variant={filters.isTeacher ? "filled" : "outlined"}
                     onClick={() => handleIsTeacherFilter(!filters.isTeacher)}
                     sx={{
@@ -1960,25 +2105,82 @@ const AdminAppointmentTiles: React.FC = () => {
                     }}
                   />
 
-                  {/* Attendee Count Range Filter - Show only when not default */}
-                  {(filters.attendeeCountRange[0] !== 1 || filters.attendeeCountRange[1] !== 50) && (
+                  {/* Attendee Count Buckets Filter Chip with Dropdown */}
+                  <Box ref={attendeeBucketAnchorRef}>
                     <Chip
-                      label={`${filters.attendeeCountRange[0]}-${filters.attendeeCountRange[1]} people`}
-                      variant="filled"
-                      onDelete={() => handleAttendeeCountRangeFilter([1, 50])}
+                      label={getAttendeeBucketChipLabel()}
+                      variant={filters.attendeeCountBuckets.length > 0 ? "filled" : "outlined"}
+                      onClick={() => setAttendeeBucketDropdownOpen(!attendeeBucketDropdownOpen)}
                       sx={{
                         height: '32px',
                         pl: 0.5,
                         pr: 0.5,
-                        color: '#3D8BE8',
-                        border: '1px solid rgba(61, 139, 232, 0.2)',
+                        color: filters.attendeeCountBuckets.length > 0 ? '#3D8BE8' : '#9598A6',
+                        border: `1px solid ${filters.attendeeCountBuckets.length > 0 ? 'rgba(61, 139, 232, 0.2)' : 'rgba(149, 152, 166, 0.2)'}`,
                         fontSize: '0.81rem',
-                        fontWeight: '600',
-                        backgroundColor: 'rgba(61, 139, 232, 0.1)',
+                        fontWeight: filters.attendeeCountBuckets.length > 0 ? '600' : '500',
+                        backgroundColor: filters.attendeeCountBuckets.length > 0 ? 'rgba(61, 139, 232, 0.1)' : '#fff',
                         borderRadius: '13px',
+                        '&:hover': {
+                          color: '#3D8BE8',
+                          border: '1px solid rgba(61, 139, 232, 0.2)',
+                          fontWeight: '500',
+                          backgroundColor: 'rgba(61, 139, 232, 0.1)',
+                        },
+                        '&.MuiChip-filled': {
+                          color: '#3D8BE8',
+                          fontWeight: '600',
+                          border: '1px solid rgba(61, 139, 232, 0.2)',
+                        }
                       }}
                     />
-                  )}
+                  </Box>
+
+                  {/* Attendee Bucket Dropdown */}
+                  <Dialog
+                    open={attendeeBucketDropdownOpen}
+                    onClose={() => setAttendeeBucketDropdownOpen(false)}
+                    PaperProps={{
+                      sx: {
+                        position: 'absolute',
+                        top: attendeeBucketAnchorRef.current ? 
+                          attendeeBucketAnchorRef.current.getBoundingClientRect().bottom + 8 : 'auto',
+                        left: attendeeBucketAnchorRef.current ? 
+                          attendeeBucketAnchorRef.current.getBoundingClientRect().left : 'auto',
+                        m: 0,
+                        minWidth: 200,
+                        maxWidth: 300,
+                      }
+                    }}
+                    BackdropProps={{
+                      invisible: true
+                    }}
+                  >
+                    <DialogContent sx={{ p: 1 }}>
+                      <List dense>
+                        {ATTENDEE_BUCKETS.map((bucket) => (
+                          <ListItem key={bucket.key} disablePadding>
+                            <ListItemButton
+                              onClick={() => handleAttendeeBucketToggle(bucket.key)}
+                              sx={{ py: 0.5 }}
+                            >
+                              <Checkbox
+                                checked={filters.attendeeCountBuckets.includes(bucket.key)}
+                                size="small"
+                                sx={{ mr: 1 }}
+                              />
+                              <ListItemText 
+                                primary={`${bucket.label} (${getAttendeeBucketCount(bucket.key)})`}
+                                primaryTypographyProps={{
+                                  fontSize: '0.875rem'
+                                }}
+                              />
+                            </ListItemButton>
+                          </ListItem>
+                        ))}
+                      </List>
+                    </DialogContent>
+                  </Dialog>
                 </Grid>
               </Grid>
             </Box>
