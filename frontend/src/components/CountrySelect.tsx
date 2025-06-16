@@ -1,5 +1,5 @@
 import React from 'react';
-import { TextField, MenuItem, Divider, Typography } from '@mui/material';
+import { TextField, Autocomplete, Typography, Box, Chip } from '@mui/material';
 import { useCountriesWithPriority } from '../hooks/useCountriesWithPriority';
 
 interface Country {
@@ -45,67 +45,109 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
 }) => {
   const sortedCountries = useCountriesWithPriority(countries, priorityCountries);
 
-  const renderMenuItems = () => {
-    if (sortedCountries.length === 0) {
-      return (
-        <MenuItem value="" disabled>
-          No countries available
-        </MenuItem>
-      );
-    }
+  // Group countries for display
+  const priorityItems = sortedCountries.filter(country => 
+    priorityCountries.includes(country.iso2_code)
+  );
+  
+  const otherItems = sortedCountries.filter(country => 
+    !priorityCountries.includes(country.iso2_code)
+  );
 
-    const priorityItems = sortedCountries.filter(country => 
-      priorityCountries.includes(country.iso2_code)
-    );
-    
-    const otherItems = sortedCountries.filter(country => 
-      !priorityCountries.includes(country.iso2_code)
-    );
+  // Use sorted countries as options for Autocomplete
+  const options = sortedCountries;
 
-    return [
-      // Priority countries
-      ...priorityItems.map(country => (
-        <MenuItem key={country.iso2_code} value={country.iso2_code}>
-          {country.name} ({country.iso2_code})
-        </MenuItem>
-      )),
-      
-      // Divider between priority and other countries (only if both exist)
-      ...(showDivider && priorityItems.length > 0 && otherItems.length > 0 ? [
-        <Divider key="divider" />,
-        <MenuItem key="other-countries-header" disabled>
-          <Typography variant="caption" color="text.secondary">
-            Other Countries
-          </Typography>
-        </MenuItem>
-      ] : []),
-      
-      // Other countries
-      ...otherItems.map(country => (
-        <MenuItem key={country.iso2_code} value={country.iso2_code}>
-          {country.name} ({country.iso2_code})
-        </MenuItem>
-      ))
-    ];
-  };
+  // Find selected country object
+  const selectedCountry = sortedCountries.find(country => country.iso2_code === value) || null;
 
   return (
-    <TextField
-      select
+    <Autocomplete
       fullWidth={fullWidth}
-      label={label}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
+      options={options}
+      value={selectedCountry}
+      onChange={(_, newValue) => {
+        onChange(newValue?.iso2_code || '');
+      }}
+      getOptionLabel={(option) => `${option.name} (${option.iso2_code})`}
+      groupBy={(option) => {
+        if (priorityCountries.includes(option.iso2_code)) {
+          return 'Frequently Used';
+        }
+        return showDivider && priorityItems.length > 0 ? 'Other Countries' : '';
+      }}
+      renderGroup={(params) => (
+        <Box key={params.group}>
+          {params.group && (
+            <Box sx={{ 
+              px: 2, 
+              py: 1, 
+              backgroundColor: 'grey.50',
+            //   borderBottom: '1px solid',
+              borderColor: 'grey.200'
+            }}>
+              <Typography variant="caption" color="grey.600" fontWeight={500}>
+                {params.group}
+              </Typography>
+            </Box>
+          )}
+          {params.children}
+        </Box>
+      )}
+      renderOption={(props, option) => (
+        <Box component="li" {...props} key={option.iso2_code}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="body2">
+              {option.name}
+            </Typography>
+            <Chip 
+              label={option.iso2_code} 
+              size="small" 
+              variant="outlined"
+              sx={{ 
+                fontSize: '0.7rem',
+                height: '20px',
+                backgroundColor: priorityCountries.includes(option.iso2_code) ? 'secondary.light' : 'grey.100',
+                color: priorityCountries.includes(option.iso2_code) ? 'text.primary' : 'text.secondary',
+                border: '1px solid',
+                borderColor: priorityCountries.includes(option.iso2_code) ? 'grey.300' : 'grey.200'
+              }}
+            />
+          </Box>
+        </Box>
+      )}
+      renderInput={(params) => (
+        <TextField
+          {...params}
+          label={label}
+          placeholder={placeholder}
+          error={error}
+          helperText={helperText}
+          required={required}
+        />
+      )}
       disabled={disabled}
-      error={error}
-      helperText={helperText}
-      required={required}
-    >
-      <MenuItem value="">
-        <em>{placeholder}</em>
-      </MenuItem>
-      {renderMenuItems()}
-    </TextField>
+      disableClearable={required}
+      filterOptions={(options, { inputValue }) => {
+        const filtered = options.filter(option =>
+          option.name.toLowerCase().includes(inputValue.toLowerCase()) ||
+          option.iso2_code.toLowerCase().includes(inputValue.toLowerCase()) ||
+          option.iso3_code?.toLowerCase().includes(inputValue.toLowerCase())
+        );
+        
+        // Keep priority order in search results
+        const priorityFiltered = filtered.filter(country => 
+          priorityCountries.includes(country.iso2_code)
+        );
+        const otherFiltered = filtered.filter(country => 
+          !priorityCountries.includes(country.iso2_code)
+        );
+        
+        return [...priorityFiltered, ...otherFiltered];
+      }}
+      noOptionsText="No countries found"
+      loadingText="Loading countries..."
+      isOptionEqualToValue={(option, value) => option.iso2_code === value.iso2_code}
+    />
   );
 };
 
