@@ -84,10 +84,10 @@ const getAttendeesInfo = (appointment: Appointment, relationshipTypeMap: Record<
   const allNames = [...dignitaryNames, ...contactNames];
   const totalCount = allNames.length;
   
-  if (totalCount === 0) return 'No attendees';
-  if (totalCount === 1) return allNames[0];
+  if (totalCount === 0) return { primaryName: 'No attendees', additionalCount: 0 };
+  if (totalCount === 1) return { primaryName: allNames[0], additionalCount: 0 };
   
-  return `${allNames[0]} +${totalCount - 1} others`;
+  return { primaryName: allNames[0], additionalCount: totalCount - 1 };
 };
 
 // Helper function to get attendee count
@@ -159,19 +159,74 @@ const createAppointmentColumns = (
     })
   );
 
+  // Requester column
+  columns.push(
+    appointmentColumnHelper.accessor((row) => row.requester, {
+      id: 'requester',
+      header: 'Requester',
+      cell: (info) => {
+        const requester = info.getValue();
+        if (!requester) {
+          return (
+            <TableCellComponents.SecondaryText>
+              No requester
+            </TableCellComponents.SecondaryText>
+          );
+        }
+        
+        const fullName = `${requester.first_name} ${requester.last_name}`.trim();
+        return (
+          <Box>
+            <TableCellComponents.PrimaryText sx={{ lineHeight: 1.2 }}>
+              {fullName || 'Unknown'}
+            </TableCellComponents.PrimaryText>
+            {requester.email && (
+              <TableCellComponents.SecondaryText sx={{ 
+                fontSize: '0.75rem', 
+                lineHeight: 1.2, 
+                mt: 0.5,
+                color: 'text.secondary'
+              }}>
+                {requester.email}
+              </TableCellComponents.SecondaryText>
+            )}
+          </Box>
+        );
+      },
+      size: 160,
+      minSize: 160,
+      maxSize: 180,
+    })
+  );
+
   // Attendees column
   columns.push(
     appointmentColumnHelper.accessor((row) => getAttendeesInfo(row, relationshipTypeMap), {
       id: 'dignitary',
       header: 'Attendees',
-      cell: (info) => (
-        <TableCellComponents.SecondaryText>
-          {info.getValue()}
-        </TableCellComponents.SecondaryText>
-      ),
-      size: 180,
-      minSize: 180,
-      maxSize: 180,
+      cell: (info) => {
+        const { primaryName, additionalCount } = info.getValue();
+        return (
+          <Box>
+            <TableCellComponents.SecondaryText sx={{ lineHeight: 1.2 }}>
+              {primaryName}
+            </TableCellComponents.SecondaryText>
+            {additionalCount > 0 && (
+              <TableCellComponents.SecondaryText sx={{ 
+                fontSize: '0.75rem', 
+                lineHeight: 1.2, 
+                mt: 0.5,
+                color: 'text.secondary'
+              }}>
+                +{additionalCount} others
+              </TableCellComponents.SecondaryText>
+            )}
+          </Box>
+        );
+      },
+      size: 130,
+      minSize: 130,
+      maxSize: 170,
     })
   );
 

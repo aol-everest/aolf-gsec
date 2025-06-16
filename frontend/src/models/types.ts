@@ -23,6 +23,20 @@ interface User {
   last_name: string;
   phone_number: string;
   role: string;
+  // Professional Information
+  title_in_organization?: string;
+  organization?: string;
+  // Enhanced Location Information
+  state_province?: string;
+  state_province_code?: string;
+  city?: string;
+  country_code?: string;
+  // Art of Living Teacher Information
+  teacher_status?: string;
+  teacher_code?: string;
+  programs_taught?: string[];
+  // Art of Living Roles/Affiliations
+  aol_affiliations?: string[];
 }
 
 interface BusinessCardExtraction {
@@ -309,6 +323,12 @@ export interface UserContact {
   email?: string;
   phone?: string;
   relationship_to_owner?: string;
+  has_met_gurudev_recently?: boolean;
+  is_attending_course?: boolean;
+  course_attending?: string;
+  is_doing_seva?: boolean;
+  seva_type?: string;
+  created_by?: number;
   notes?: string;
   appointment_usage_count: number;
   last_used_at?: string;

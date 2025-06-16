@@ -25,7 +25,6 @@ import {
   Theme,
   Tabs,
   Tab,
-
   Stack,
   Dialog,
   TextField,
@@ -38,8 +37,11 @@ import {
   ListItem,
   ListItemButton,
   ListItemText,
-
   Alert,
+  Slider,
+  FormControlLabel,
+  Switch,
+  Checkbox,
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -55,6 +57,10 @@ import { SearchBox } from '../components/SearchBox';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
+import PersonIcon from '@mui/icons-material/Person';
+import GroupIcon from '@mui/icons-material/Group';
+import ScheduleIcon from '@mui/icons-material/Schedule';
+import SchoolIcon from '@mui/icons-material/School';
 import Layout from '../components/Layout';
 import { formatDate, formatDateRange } from '../utils/dateUtils';
 import { LocationThinIconV2, CalendarIconV2, ListIconV2, InfoSquareCircleIconV2, InfoSquareCircleFilledIconV2 } from '../components/iconsv2';
@@ -312,6 +318,10 @@ interface FilterState {
   searchTerm: string;
   startDate: Date | null;
   endDate: Date | null;
+  notMetGurudev: boolean;
+  requestedLast3Days: boolean;
+  attendeeCountRange: [number, number];
+  isTeacher: boolean;
 }
 
 // Bulk action confirmation dialog interface
@@ -344,7 +354,11 @@ const AdminAppointmentTiles: React.FC = () => {
     requestType: null,
     searchTerm: '',
     startDate: subDays(new Date(), 1),
-    endDate: addDays(new Date(), 7)
+    endDate: addDays(new Date(), 7),
+    notMetGurudev: false,
+    requestedLast3Days: false,
+    attendeeCountRange: [1, 50],
+    isTeacher: false
   });
   const [filteredAppointments, setFilteredAppointments] = useState<Appointment[]>([]);
   const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
@@ -412,6 +426,15 @@ const AdminAppointmentTiles: React.FC = () => {
     queryKey: ['relationship-type-map'],
     queryFn: async () => {
       const { data } = await api.get<Record<string, string>>('/user-contacts/relationship-type-options-map');
+      return data;
+    },
+  });
+
+  // Fetch teacher status map from the API
+  const { data: teacherStatusMap = {} } = useQuery<Record<string, string>>({
+    queryKey: ['teacher-status-map'],
+    queryFn: async () => {
+      const { data } = await api.get<Record<string, string>>('/users/aol-teacher-status-options-map');
       return data;
     },
   });
@@ -511,7 +534,11 @@ const AdminAppointmentTiles: React.FC = () => {
       requestType: null,
       searchTerm: '',
       startDate: filters.startDate,
-      endDate: filters.endDate
+      endDate: filters.endDate,
+      notMetGurudev: false,
+      requestedLast3Days: false,
+      attendeeCountRange: [1, 50],
+      isTeacher: false
     };
     
     // Parse status filter
@@ -637,10 +664,7 @@ const AdminAppointmentTiles: React.FC = () => {
     queryFn: async () => {
       try {
         logger('Fetching appointments');
-        const params: Record<string, any> = {
-          include_location: true,
-          include_attachments: true
-        };
+        const params: Record<string, any> = {};
 
         if (filters.startDate) {
           params.start_date = filters.startDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD
@@ -651,6 +675,27 @@ const AdminAppointmentTiles: React.FC = () => {
 
         const { data } = await api.get<Appointment[]>('/admin/appointments/all', { params });
         logger(`Fetched ${data.length} appointments`);
+        
+        // Log sample appointment data for debugging
+        if (data.length > 0) {
+          console.log('DEBUG: Sample appointment data structure:', {
+            sample_count: Math.min(2, data.length),
+            appointments: data.slice(0, 2).map(a => ({
+              id: a.id,
+              has_appointment_contacts: !!a.appointment_contacts,
+              appointment_contacts_count: a.appointment_contacts?.length || 0,
+              has_requester: !!a.requester,
+              requester_data: a.requester ? {
+                id: a.requester.id,
+                has_teacher_status: !!(a.requester as any).teacher_status,
+                teacher_status: (a.requester as any).teacher_status
+              } : null,
+              number_of_attendees: a.number_of_attendees,
+              created_at: a.created_at,
+              request_type: a.request_type
+            }))
+          });
+        }
 
         // For each appointment, set up an individual query
         data.forEach(appointment => {
@@ -765,6 +810,96 @@ const AdminAppointmentTiles: React.FC = () => {
       });
     }
     
+    // Apply additional filters
+    
+    // Filter for appointments where contacts have not met Gurudev recently
+    if (filters.notMetGurudev) {
+      logger('Filtering for appointments where contacts have not met Gurudev recently');
+      console.log('DEBUG: Before notMetGurudev filter - appointments:', filtered.length);
+      console.log('DEBUG: Sample appointment_contacts data:', filtered.slice(0, 2).map(a => ({
+        id: a.id,
+        has_appointment_contacts: !!a.appointment_contacts,
+        contacts_count: a.appointment_contacts?.length || 0,
+        contacts_data: a.appointment_contacts?.map(c => ({
+          id: c.id,
+          has_met_gurudev_recently: c.has_met_gurudev_recently,
+          contact_name: c.contact ? `${c.contact.first_name} ${c.contact.last_name}` : 'No contact'
+        }))
+      })));
+      
+      const beforeCount = filtered.length;
+      filtered = filtered.filter(appointment => {
+        if (!appointment.appointment_contacts || appointment.appointment_contacts.length === 0) {
+          return false;
+        }
+        
+        // Check if ANY contact has NOT met Gurudev recently
+        // Treat null, undefined, or false as "not met recently"
+        return appointment.appointment_contacts.some(contact => {
+          const hasMetGurudev = contact.has_met_gurudev_recently;
+          return hasMetGurudev === false || hasMetGurudev === null || hasMetGurudev === undefined;
+        });
+      });
+      console.log(`DEBUG: After notMetGurudev filter: ${beforeCount} -> ${filtered.length} appointments`);
+    }
+    
+    // Filter for appointments requested in the last 3 days
+    if (filters.requestedLast3Days) {
+      logger('Filtering for appointments requested in the last 3 days');
+      const threeDaysAgo = new Date();
+      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+      filtered = filtered.filter(appointment => 
+        appointment.created_at && new Date(appointment.created_at) >= threeDaysAgo
+      );
+    }
+    
+    // Filter by attendee count range (only apply if user has moved sliders from defaults)
+    if (filters.attendeeCountRange[0] !== 1 || filters.attendeeCountRange[1] !== 50) {
+      logger(`Filtering by attendee count range: ${filters.attendeeCountRange[0]} - ${filters.attendeeCountRange[1]}`);
+      console.log('DEBUG: Sample appointments attendee count:', filtered.slice(0, 3).map(a => ({
+        id: a.id,
+        number_of_attendees: a.number_of_attendees,
+        attendee_count_type: typeof a.number_of_attendees,
+        is_in_range: a.number_of_attendees != null && 
+                     a.number_of_attendees >= filters.attendeeCountRange[0] && 
+                     a.number_of_attendees <= filters.attendeeCountRange[1]
+      })));
+      
+      const beforeCount = filtered.length;
+      filtered = filtered.filter(appointment => 
+        appointment.number_of_attendees != null &&
+        appointment.number_of_attendees >= filters.attendeeCountRange[0] && 
+        appointment.number_of_attendees <= filters.attendeeCountRange[1]
+      );
+      logger(`AttendeeCountRange filter: ${beforeCount} -> ${filtered.length} appointments`);
+    }
+    
+    // Filter for appointments by teachers
+    if (filters.isTeacher) {
+      logger('Filtering for appointments by teachers');
+      console.log('DEBUG: Sample appointments teacher status:', filtered.slice(0, 3).map(a => ({
+        id: a.id,
+        has_requester: !!a.requester,
+        requester_id: a.requester?.id,
+        teacher_status: a.requester?.teacher_status,
+        is_teacher: a.requester?.teacher_status && a.requester?.teacher_status !== teacherStatusMap['NOT_TEACHER']
+      })));
+      
+      const beforeCount = filtered.length;
+      filtered = filtered.filter(appointment => {
+        if (!appointment.requester) return false;
+        
+        const teacherStatus = appointment.requester.teacher_status;
+        // Only consider as teacher if explicitly set to a teacher status
+        // Treat null, undefined, empty string, or 'NOT_TEACHER' as non-teacher
+        return teacherStatus && 
+               teacherStatus !== teacherStatusMap['NOT_TEACHER'] && 
+               teacherStatus !== '' &&
+               teacherStatus !== null;
+      });
+      logger(`IsTeacher filter: ${beforeCount} -> ${filtered.length} appointments`);
+    }
+    
     return filtered;
   }, [appointments, filters, searchableFields]);
 
@@ -804,7 +939,11 @@ const AdminAppointmentTiles: React.FC = () => {
               // Keep requestType as it's mandatory
               searchTerm: '',
               startDate: null,
-              endDate: null
+              endDate: null,
+              notMetGurudev: false,
+              requestedLast3Days: false,
+              attendeeCountRange: [1, 50],
+              isTeacher: false
             }));
           }
           return; // Exit early - the effect will run again with cleared filters
@@ -981,6 +1120,35 @@ const AdminAppointmentTiles: React.FC = () => {
     logger('Clearing date filters');
     isFilteringRef.current = true;
     setFilters(prev => ({ ...prev, startDate: null, endDate: null }));
+    setActiveStep(0);
+  };
+
+  // Handle additional filter changes
+  const handleNotMetGurudevFilter = (checked: boolean) => {
+    logger(`Setting not met Gurudev filter: ${checked}`);
+    isFilteringRef.current = true;
+    setFilters(prev => ({ ...prev, notMetGurudev: checked }));
+    setActiveStep(0);
+  };
+
+  const handleRequestedLast3DaysFilter = (checked: boolean) => {
+    logger(`Setting requested last 3 days filter: ${checked}`);
+    isFilteringRef.current = true;
+    setFilters(prev => ({ ...prev, requestedLast3Days: checked }));
+    setActiveStep(0);
+  };
+
+  const handleAttendeeCountRangeFilter = (range: [number, number]) => {
+    logger(`Setting attendee count range filter: ${range}`);
+    isFilteringRef.current = true;
+    setFilters(prev => ({ ...prev, attendeeCountRange: range }));
+    setActiveStep(0);
+  };
+
+  const handleIsTeacherFilter = (checked: boolean) => {
+    logger(`Setting is teacher filter: ${checked}`);
+    isFilteringRef.current = true;
+    setFilters(prev => ({ ...prev, isTeacher: checked }));
     setActiveStep(0);
   };
 
@@ -1693,42 +1861,135 @@ const AdminAppointmentTiles: React.FC = () => {
               </Grid>
             </Box>
 
-            {/* Active Date Filters Summary */}
-            {/* {(filters.startDate || filters.endDate) && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0 }}>
-                <Typography variant="body2">Active Date Filters:</Typography>
-                <Button 
-                  size="small" 
-                  onClick={clearDateFilters}
-                >
-                  Clear All
-                </Button>
-              </Box>
-            )} */}
+            {/* Additional Filters */}
+            
+            {/* Not Met Gurudev Filter */}
+            <Box>
+              <Grid container spacing={2} alignItems="center">
+                <Grid item xs={1} md={0.4} sx={{ display: 'flex', alignItems: 'center' }}>
+                  <PersonIcon sx={{ width: 22, height: 22 }} />
+                </Grid>
+                <Grid item xs={11} md={1.6} sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Typography variant="body2" sx={{ m: 0 }}>Contacts</Typography>
+                </Grid>
+                <Grid item xs={12} md={10} sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={filters.notMetGurudev}
+                        onChange={(e) => handleNotMetGurudevFilter(e.target.checked)}
+                        size="small"
+                      />
+                    }
+                    label="Not met Gurudev recently"
+                    sx={{ 
+                      '& .MuiFormControlLabel-label': { 
+                        fontSize: '0.81rem',
+                        fontWeight: '500'
+                      }
+                    }}
+                  />
+                </Grid>
+              </Grid>
+            </Box>
 
-            {/* Active Location Filters Summary - Only shown for location filters */}
-            {/* {filters.locationId && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="body2">Active Location Filters:</Typography>
-                <Chip 
-                  label={locations.find(l => l.id === filters.locationId)?.name || `Location ID: ${filters.locationId}`} 
-                  size="small" 
-                  onDelete={() => setFilters(prev => ({ ...prev, locationId: null }))}
-                  icon={<LocationOnIcon fontSize="small" />}
-                  sx={{ 
-                    color: theme.palette.primary.main,
-                  }}
-                />
-                <Button 
-                  size="small" 
-                  onClick={() => {
-                    setFilters(prev => ({ ...prev, locationId: null }));
-                  }}
-                >
-                  Clear
-                </Button>
-              </Box>
-            )} */}
+            {/* Requested Last 3 Days Filter */}
+            <Box>
+              <Grid container spacing={2} alignItems="center">
+                <Grid item xs={1} md={0.4} sx={{ display: 'flex', alignItems: 'center' }}>
+                  <ScheduleIcon sx={{ width: 22, height: 22 }} />
+                </Grid>
+                <Grid item xs={11} md={1.6} sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Typography variant="body2" sx={{ m: 0 }}>Recent</Typography>
+                </Grid>
+                <Grid item xs={12} md={10} sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={filters.requestedLast3Days}
+                        onChange={(e) => handleRequestedLast3DaysFilter(e.target.checked)}
+                        size="small"
+                      />
+                    }
+                    label="Requested in last 3 days"
+                    sx={{ 
+                      '& .MuiFormControlLabel-label': { 
+                        fontSize: '0.81rem',
+                        fontWeight: '500'
+                      }
+                    }}
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+
+            {/* Number of People Range Filter */}
+            <Box>
+              <Grid container spacing={2} alignItems="center">
+                <Grid item xs={1} md={0.4} sx={{ display: 'flex', alignItems: 'center' }}>
+                  <GroupIcon sx={{ width: 22, height: 22 }} />
+                </Grid>
+                <Grid item xs={11} md={1.6} sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Typography variant="body2" sx={{ m: 0 }}>Group Size</Typography>
+                </Grid>
+                <Grid item xs={12} md={10} sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 2 }}>
+                  <Typography variant="body2" sx={{ fontSize: '0.81rem', fontWeight: '500', minWidth: 'fit-content' }}>
+                    {filters.attendeeCountRange[0]} - {filters.attendeeCountRange[1]} people
+                  </Typography>
+                  <Box sx={{ width: 200 }}>
+                    <Slider
+                      value={filters.attendeeCountRange}
+                      onChange={(_, newValue) => handleAttendeeCountRangeFilter(newValue as [number, number])}
+                      valueLabelDisplay="auto"
+                      min={1}
+                      max={50}
+                      size="small"
+                      sx={{
+                        '& .MuiSlider-thumb': {
+                          color: '#3D8BE8',
+                        },
+                        '& .MuiSlider-track': {
+                          color: '#3D8BE8',
+                        },
+                        '& .MuiSlider-rail': {
+                          color: 'rgba(149, 152, 166, 0.3)',
+                        },
+                      }}
+                    />
+                  </Box>
+                </Grid>
+              </Grid>
+            </Box>
+
+            {/* Is Teacher Filter */}
+            <Box>
+              <Grid container spacing={2} alignItems="center">
+                <Grid item xs={1} md={0.4} sx={{ display: 'flex', alignItems: 'center' }}>
+                  <SchoolIcon sx={{ width: 22, height: 22 }} />
+                </Grid>
+                <Grid item xs={11} md={1.6} sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Typography variant="body2" sx={{ m: 0 }}>Requester</Typography>
+                </Grid>
+                <Grid item xs={12} md={10} sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={filters.isTeacher}
+                        onChange={(e) => handleIsTeacherFilter(e.target.checked)}
+                        size="small"
+                      />
+                    }
+                    label="Is a teacher"
+                    sx={{ 
+                      '& .MuiFormControlLabel-label': { 
+                        fontSize: '0.81rem',
+                        fontWeight: '500'
+                      }
+                    }}
+                  />
+                </Grid>
+              </Grid>
+            </Box>
           </Box>
 
           <Box sx={{ 
