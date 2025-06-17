@@ -30,6 +30,7 @@ import LocationAutocomplete from './LocationAutocomplete';
 import { HonorificTitleSelect } from './selects/HonorificTitleSelect';
 import { PrimaryDomainSelect } from './selects/PrimaryDomainSelect';
 import { CountrySelect } from './selects/CountrySelect';
+import { SubdivisionStateDropdown } from './selects/SubdivisionStateDropdown';
 import { PrimaryButton } from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
 import { PencilIconV2, TrashIconV2 } from './iconsv2';
@@ -51,104 +52,7 @@ interface ValidationErrors {
   dignitaryPrimaryDomainOther?: string;
 }
 
-interface SubdivisionData {
-  id: number;
-  country_code: string;
-  subdivision_code: string;
-  name: string;
-  subdivision_type: string;
-  is_enabled: boolean;
-  full_code: string;
-}
 
-interface SubdivisionStateDropdownProps {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  onStateCodeChange?: (stateCode: string) => void;
-  error?: boolean;
-  helperText?: string;
-  countryCode?: string;
-  disabled?: boolean;
-}
-
-const SubdivisionStateDropdown: React.FC<SubdivisionStateDropdownProps> = ({
-  label,
-  value = '',
-  onChange,
-  onStateCodeChange,
-  error,
-  helperText,
-  countryCode,
-  disabled = false,
-}) => {
-  const api = useApi();
-  
-  // Fetch subdivisions for the selected country
-  const { data: subdivisions = [], isLoading: subdivisionsLoading } = useQuery({
-    queryKey: ['subdivisions', countryCode],
-    queryFn: async () => {
-      if (!countryCode) return [];
-      try {
-        const { data } = await api.get<SubdivisionData[]>(`/subdivisions/country/${countryCode}`);
-        return data;
-      } catch (error) {
-        console.error('Error fetching subdivisions:', error);
-        return [];
-      }
-    },
-    enabled: !!countryCode,
-  });
-
-  const handleStateChange = (event: React.ChangeEvent<{ value: unknown }>) => {
-    const selectedStateName = event.target.value as string;
-    const selectedState = subdivisions.find(subdivision => subdivision.name === selectedStateName);
-    
-    onChange(selectedStateName);
-    
-    if (selectedState && onStateCodeChange) {
-      onStateCodeChange(selectedState.subdivision_code);
-    }
-  };
-
-  if (!countryCode) {
-    return (
-      <TextField
-        select
-        fullWidth
-        label={label}
-        value=""
-        disabled={true}
-        helperText="Please select a country first"
-        error={error}
-      >
-        <MenuItem value="">Select a country first</MenuItem>
-      </TextField>
-    );
-  }
-
-  return (
-    <TextField
-      select
-      fullWidth
-      label={label}
-      value={value}
-      onChange={handleStateChange}
-      disabled={disabled || subdivisionsLoading}
-      error={error}
-      helperText={subdivisionsLoading ? "Loading states/provinces..." : helperText}
-    >
-      {subdivisions.length === 0 && !subdivisionsLoading && (
-        <MenuItem value="">No states/provinces available</MenuItem>
-      )}
-      {subdivisions.map((subdivision) => (
-        <MenuItem key={subdivision.subdivision_code} value={subdivision.name}>
-          {subdivision.name} ({subdivision.subdivision_type})
-        </MenuItem>
-      ))}
-    </TextField>
-  );
-};
 
 interface DignitaryFormData {
   isExistingDignitary: boolean;
