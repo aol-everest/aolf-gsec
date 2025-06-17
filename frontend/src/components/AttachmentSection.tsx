@@ -387,7 +387,7 @@ const AttachmentSection: React.FC<AttachmentSectionProps> = ({ attachments }) =>
       return (
         <Box sx={{ width: '100%', height: '75vh', display: 'flex', flexDirection: 'column' }}>
           <PdfViewer
-            src={`${fullFileUrl}#toolbar=1&navpanes=1&scrollbar=1`}
+            src={`${fullFileUrl}#toolbar=1&navpanes=0&scrollbar=1`}
             title={selectedAttachment.file_name}
             onError={() => {
               // Fallback: open PDF in new tab if iframe fails
