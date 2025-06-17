@@ -17,8 +17,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  ToggleButtonGroup,
-  ToggleButton,
   IconButton,
   useMediaQuery,
   Backdrop,
@@ -31,8 +29,12 @@ import isPast from 'date-fns/isPast';
 import addDays from 'date-fns/addDays';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import ViewDayIcon from '@mui/icons-material/ViewDay';
+import ViewWeekIcon from '@mui/icons-material/ViewWeek';
 import SwipeableViews from 'react-swipeable-views';
 import Layout from '../components/Layout';
+import { IconTab, TabOption } from '../components/IconTab';
 import { getLocalDateString } from '../utils/dateUtils';
 import { formatHonorificTitle } from '../utils/formattingUtils';
 import { useApi } from '../hooks/useApi';
@@ -68,6 +70,7 @@ const AdminAppointmentSchedule: React.FC = () => {
   const isLargeScreen = useMediaQuery(theme.breakpoints.up('xl'));
   const [appointmentUpdateData, setAppointmentUpdateData] = useState<AdminAppointmentUpdate>({});
   const [daysToShow, setDaysToShow] = useState<number>(isMobile ? 1 : 3);
+  const [viewMode, setViewMode] = useState<string>(isMobile ? 'day' : '3days');
   const [startDate, setStartDate] = useState(getLocalDateString(0));
   const [datesToShow, setDatesToShow] = useState<string[]>([startDate]);
   const cardContainerRef = useRef<HTMLDivElement>(null);
@@ -101,7 +104,27 @@ const AdminAppointmentSchedule: React.FC = () => {
   // Update daysToShow when screen size changes
   useEffect(() => {
     setDaysToShow(isMobile ? 1 : 3);
+    setViewMode(isMobile ? 'day' : '3days');
   }, [isMobile]);
+
+  // Create tab options based on screen size
+  const tabOptions: TabOption[] = [
+    {
+      key: 'day',
+      label: 'Day',
+      icon: <ViewDayIcon sx={{ width: '20px', height: '20px' }} />
+    },
+    ...((!isMobile) ? [{
+      key: '3days',
+      label: '3 Days',
+      icon: <ViewWeekIcon sx={{ width: '20px', height: '20px' }} />
+    }] : []),
+    // ...(isLargeScreen ? [{
+    //   key: 'week',
+    //   label: 'Week',
+    //   icon: <ViewWeekIcon sx={{ width: '20px', height: '20px' }} />
+    // }] : [])
+  ];
 
   const [expandedAppointment, setExpandedAppointment] = useState<Appointment | null>(null);
   const [expandedCalendarEvent, setExpandedCalendarEvent] = useState<CalendarEventWithAppointments | null>(null);
@@ -388,12 +411,23 @@ const AdminAppointmentSchedule: React.FC = () => {
     setStartDate(format(addDays(parseISO(startDate), 1), 'yyyy-MM-dd'));
   };
 
-  const handleDaySelectionChange = (
-    event: React.MouseEvent<HTMLElement>,
-    newDays: number | null,
-  ) => {
-    if (newDays !== null) {
-      setDaysToShow(newDays);
+  // Handle view mode change for IconTab
+  const handleViewModeChange = (tabKey: string) => {
+    setViewMode(tabKey);
+    
+    // Update daysToShow based on tab selection
+    switch (tabKey) {
+      case 'day':
+        setDaysToShow(1);
+        break;
+      case '3days':
+        setDaysToShow(3);
+        break;
+      case 'week':
+        setDaysToShow(7);
+        break;
+      default:
+        setDaysToShow(1);
     }
   };
 
@@ -536,28 +570,19 @@ const AdminAppointmentSchedule: React.FC = () => {
               </PrimaryButton>
             </Box>
             
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <ToggleButtonGroup
-                value={daysToShow}
-                exclusive
-                onChange={handleDaySelectionChange}
-                aria-label="days to display"
-                size="small"
-              >
-                <ToggleButton value={1} aria-label="1 day">
-                  Day
-                </ToggleButton>
-                {!isMobile && (
-                  <ToggleButton value={3} aria-label="3 days">
-                    3 Days
-                  </ToggleButton>
-                )}
-                {isLargeScreen && (
-                  <ToggleButton value={7} aria-label="7 days">
-                    Week
-                  </ToggleButton>
-                )}
-              </ToggleButtonGroup>
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 2,
+              width: { xs: '100%', md: 'auto' },
+              justifyContent: { xs: 'space-between', md: 'flex-end' }
+            }}>
+              <IconTab
+                tabs={tabOptions}
+                activeTab={viewMode}
+                onTabChange={handleViewModeChange}
+                autoWidth={true}
+              />
               
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <IconButton onClick={handlePrevDay}>
