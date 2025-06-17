@@ -202,7 +202,7 @@ export const AdminHeaderRoute: RouteConfig = {
 
 // Add the new route for secretariat appointment request
 export const AdminAppointmentRequestRoute: RouteConfig = {
-  path: '/admin/appointments/request',
+  path: '/admin/appointments/new',
   label: 'Create Appointment',
   icon: CalendarAddMenuIconV2,
   roles: [ADMIN_ROLE, SECRETARIAT_ROLE],

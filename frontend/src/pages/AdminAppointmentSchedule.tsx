@@ -50,7 +50,7 @@ import { debugLog } from '../utils/debugUtils';
 import { AppointmentStatusChip } from '../components/AppointmentStatusChip';
 import { AppointmentTimeChip } from '../components/AppointmentTimeChip';
 import GridItemIconText from '../components/GridItemIconText';
-import { PeopleMenuIconV2, ContactCardIconV2 } from '../components/iconsv2';
+import { PeopleMenuIconV2, ContactCardIconV2, AddCircleFilledIconV2 } from '../components/iconsv2';
 
 type AppointmentCardDimensions = {
   left: number | null;
@@ -520,9 +520,21 @@ const AdminAppointmentSchedule: React.FC = () => {
             flexWrap: 'wrap',
             gap: 2
           }}>
-            <Typography variant="h1" component="h1">
-              Appointment Schedule
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, }}>
+              <Typography variant="h1" component="h1">
+                Appointment Schedule
+              </Typography>
+              <PrimaryButton
+                onClick={() => navigate('/admin/appointments/new')}
+                size="extrasmall"
+                sx={{
+                  color: '#fff',
+                  mb: 2,
+                }}
+              >
+                <AddCircleFilledIconV2 />
+              </PrimaryButton>
+            </Box>
             
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <ToggleButtonGroup
