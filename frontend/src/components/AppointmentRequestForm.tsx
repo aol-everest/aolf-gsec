@@ -880,7 +880,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
             email: formData.dignitaryEmail,
             phone: formData.dignitaryPhone,
             primary_domain: formData.dignitaryPrimaryDomain,
-            primary_domain_other: formData.dignitaryPrimaryDomain.toLowerCase() === 'other' ? formData.dignitaryPrimaryDomainOther : null,
+            primary_domain_other: formData.dignitaryPrimaryDomain?.toLowerCase() === 'other' ? formData.dignitaryPrimaryDomainOther : null,
             title_in_organization: formData.dignitaryTitleInOrganization,
             organization: formData.dignitaryOrganization,
             bio_summary: formData.dignitaryBioSummary,
@@ -937,7 +937,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
           email: formData.dignitaryEmail,
           phone: formData.dignitaryPhone || null,
           primary_domain: formData.dignitaryPrimaryDomain,
-          primary_domain_other: formData.dignitaryPrimaryDomain.toLowerCase() === 'other' ? formData.dignitaryPrimaryDomainOther : null,
+          primary_domain_other: formData.dignitaryPrimaryDomain?.toLowerCase() === 'other' ? formData.dignitaryPrimaryDomainOther : null,
           title_in_organization: formData.dignitaryTitleInOrganization,
           organization: formData.dignitaryOrganization,
           bio_summary: formData.dignitaryBioSummary,
@@ -2268,6 +2268,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                     <Controller
                       name="dignitaryPrimaryDomain"
                       control={dignitaryForm.control}
+                      rules={{ required: 'Primary domain is required' }}
                       render={({ field }) => (
                         <EnumSelect
                           enumType="primaryDomain"
@@ -2275,6 +2276,8 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                           required
                           value={field.value}
                           onChange={field.onChange}
+                          error={!!dignitaryForm.formState.errors.dignitaryPrimaryDomain}
+                          helperText={dignitaryForm.formState.errors.dignitaryPrimaryDomain?.message}
                         />
                       )}
                     />
