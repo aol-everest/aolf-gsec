@@ -114,7 +114,8 @@ export const UserAppointmentCard: React.FC<{
             elevation={1}
             sx={{ 
                 position: 'relative',
-                minHeight: isMobile ? 'auto' : '400px',
+                minHeight: isMobile ? 'auto' : (displayMode === 'dialog' ? '100%' : '400px'),
+                height: displayMode === 'dialog' ? '100%' : 'auto',
                 mx: 'auto',
                 width: '100%',
                 border: displayMode === 'dialog' ? (isMobile ? '3px solid #E9E9E9' : '5px solid #E9E9E9') : '1px solid #E9E9E9',
@@ -129,30 +130,34 @@ export const UserAppointmentCard: React.FC<{
                 bgcolor: '#E9E9E9',
                 p: 0,
                 pt: showCloseButton ? 6 : 0,
-                pb: isMobile ? 9 : 8,
+                pb: displayMode === 'dialog' ? 5 : (isMobile ? 9 : 8),
             }}
             ref={cardContainerRef}
         >
+            {showCloseButton && onClose && (
+                <IconButton
+                    onClick={() => onClose()}
+                    sx={{
+                        position: 'absolute',
+                        right: 13,
+                        top: 13,
+                        padding: 0,
+                    }}
+                    size="small"
+                >
+                    <CloseIconFilledCircleV2 width="16px" height="16px" />
+                </IconButton>
+            )}
             <CardContent sx={{ 
                 width: '100%', 
+                height: '100%',
                 boxSizing: 'border-box',
                 p: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                position: 'relative',
             }}>
                 {/* Header with Request # and Status */}
-                {showCloseButton && onClose && (
-                    <IconButton
-                        onClick={() => onClose()}
-                        sx={{
-                            position: 'absolute',
-                            right: 13,
-                            top: 13,
-                            padding: 0,
-                        }}
-                        size="small"
-                    >
-                        <CloseIconFilledCircleV2 width="16px" height="16px" />
-                    </IconButton>
-                )}
                 <Box sx={{ 
                     bgcolor: 'white',
                     pl: isMobile ? 2 : 3,
@@ -160,6 +165,10 @@ export const UserAppointmentCard: React.FC<{
                     pt: isMobile ? 2 : 3,
                     borderBottom: '1px solid #E9E9E9',
                     borderRadius: '13px',
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    pb: displayMode === 'dialog' ? 3 : 0,
                 }}>
                     <Box sx={{ 
                         display: 'flex', 
@@ -182,7 +191,7 @@ export const UserAppointmentCard: React.FC<{
                     {/* Point of Contact Information */}
                     {
                         displayMode === 'dialog' ? (
-                            <>
+                            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                                 {/* Appointment Information */}
                                 <Box sx={{ 
                                     display: isSummaryExpanded ? 'none' : 'flex', 
@@ -206,7 +215,7 @@ export const UserAppointmentCard: React.FC<{
                                 </Box>
                                 <Collapse in={isSummaryExpanded}>
                                     <Box sx={{
-                                        maxHeight: isMobile ? '400px' : '350px',
+                                        maxHeight: isMobile ? '400px' : (displayMode === 'dialog' ? '60vh' : '350px'),
                                         overflowY: 'auto',
                                         pr: 1, // Add some padding for the scrollbar
                                         mr: -1, // Offset the padding to maintain alignment
@@ -228,7 +237,7 @@ export const UserAppointmentCard: React.FC<{
                                         <AppointmentDetailsSection appointment={appointment} displayMode={displayMode} cardContainerRef={cardContainerRef} />
                                     </Box>
                                 </Collapse>
-                                <Box>
+                                <Box sx={{ mt: 'auto' }}>
                                     <Box sx={{ 
                                         display: 'flex', 
                                         justifyContent: 'space-between', 
@@ -251,7 +260,7 @@ export const UserAppointmentCard: React.FC<{
                                     </Box>
                                     <Collapse in={isDetailsExpanded}>
                                         <Box sx={{
-                                            maxHeight: isMobile ? '400px' : '350px',
+                                            maxHeight: isMobile ? '400px' : (displayMode === 'dialog' ? '60vh' : '350px'),
                                             overflowY: 'auto',
                                             pr: 1, // Add some padding for the scrollbar
                                             mr: -1, // Offset the padding to maintain alignment
@@ -285,7 +294,7 @@ export const UserAppointmentCard: React.FC<{
                                         </Box>
                                     </Collapse>
                                 </Box>
-                            </>
+                            </Box>
                         ) : (
                             <>
                                 {/* Requester Information */}

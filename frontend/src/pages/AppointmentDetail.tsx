@@ -71,8 +71,30 @@ const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
 
     if (isDialogMode) {
       return (
-        <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-          <DialogContent>
+        <Dialog 
+          open={open} 
+          onClose={handleClose} 
+          maxWidth="md" 
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: '20px',
+              maxHeight: '95vh',
+              minHeight: '80vh',
+              width: '70vw',
+              maxWidth: '800px',
+            }
+          }}
+        >
+          <DialogContent sx={{ 
+            p: 0, 
+            overflow: 'hidden',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center'
+          }}>
             {loadingContent}
           </DialogContent>
         </Dialog>
@@ -102,8 +124,30 @@ const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
 
     if (isDialogMode) {
       return (
-        <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-          <DialogContent>
+        <Dialog 
+          open={open} 
+          onClose={handleClose} 
+          maxWidth="md" 
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: '20px',
+              maxHeight: '95vh',
+              // minHeight: '80vh',
+              width: '96vw',
+              maxWidth: '900px',
+            }
+          }}
+        >
+          <DialogContent sx={{ 
+            p: 0, 
+            overflow: 'hidden',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center'
+          }}>
             {errorContent}
           </DialogContent>
         </Dialog>
@@ -136,11 +180,21 @@ const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
         PaperProps={{
           sx: {
             borderRadius: '20px',
-            maxHeight: '90vh',
+            maxHeight: '95vh',
+            // minHeight: '80vh',
+            width: '96vw',
+            maxWidth: '900px',
+            mx: 2,
           }
         }}
       >
-        <DialogContent sx={{ p: 0, overflow: 'hidden' }}>
+        <DialogContent sx={{ 
+          p: 0, 
+          overflow: 'hidden',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
           {appointmentContent}
         </DialogContent>
       </Dialog>
