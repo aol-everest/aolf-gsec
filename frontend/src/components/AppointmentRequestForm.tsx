@@ -1239,10 +1239,6 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
 
     return (
       <>
-        <Grid item xs={12}>
-          <Divider sx={{ my: 2 }} />
-        </Grid>
-
         <Grid item xs={12} md={6} lg={4}>
           <FormControl component="fieldset" required>
             <FormLabel component="legend">
@@ -1491,7 +1487,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                 /* Contact management for non-dignitary requests */
                 <>
                   {/* Self-attendance option */}
-                  <Grid item xs={12}>
+                  <Grid item xs={12} md={6} lg={4}>
                     <FormControl component="fieldset" sx={{ mb: 2 }}>
                       <FormLabel component="legend">Are you attending this appointment?</FormLabel>
                       <RadioGroup
@@ -1643,7 +1639,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                       {(contactFormMode === 'select' && !editingContactId) ? (
                         /* Contact selection */
                         <>
-                          <Grid item xs={12}>
+                          <Grid item xs={12} md={6} lg={4}>
                             <FormControl fullWidth>
                               <InputLabel>Select Contact</InputLabel>
                               <Select
@@ -1738,7 +1734,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                       ) : (
                         /* Contact creation form */
                         <>
-                          <Grid item xs={12} md={6}>
+                          <Grid item xs={12} md={6} lg={4}>
                             <TextField
                               fullWidth
                               label="First Name"
@@ -1750,7 +1746,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                             />
                           </Grid>
                           
-                          <Grid item xs={12} md={6}>
+                          <Grid item xs={12} md={6} lg={4}>
                             <TextField
                               fullWidth
                               label="Last Name"
@@ -1762,7 +1758,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                             />
                           </Grid>
                           
-                          <Grid item xs={12} md={6}>
+                          <Grid item xs={12} md={6} lg={4}>
                             <TextField
                               fullWidth
                               label="Email"
@@ -1802,7 +1798,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                             )}
                           </Grid>
                           
-                          <Grid item xs={12} md={6}>
+                          <Grid item xs={12} md={6} lg={4}>
                             <TextField
                               fullWidth
                               label="Phone Number"
@@ -1815,7 +1811,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
 
                           {/* Conditional fields based on attendee type */}
                           {selectedRequestTypeConfig?.attendee_type === attendeeTypeMap['PERSONAL'] && (
-                            <Grid item xs={12} md={6}>
+                            <Grid item xs={12} md={6} lg={4}>
                               <Controller
                                 name="relationshipToRequester"
                                 control={personalAttendeeForm.control}
