@@ -194,7 +194,10 @@ export const UserAppointmentCard: React.FC<{
                                     mb: 1
                                 }} onClick={() => {
                                     setIsSummaryExpanded(!isSummaryExpanded)
-                                    isMobile && setIsDetailsExpanded(isSummaryExpanded);
+                                    // Enable minimize/maximize behavior on both mobile and desktop
+                                    // Switch to below commented code to keep this for mobile only
+                                    // isMobile && setIsDetailsExpanded(isSummaryExpanded);
+                                    setIsDetailsExpanded(isSummaryExpanded);
                                 }}>
                                     <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
                                         {!isSummaryExpanded ? 'Show Summary' : ''}
@@ -236,7 +239,10 @@ export const UserAppointmentCard: React.FC<{
                                         mb: 1
                                     }} onClick={() => {
                                         setIsDetailsExpanded(!isDetailsExpanded);
-                                        isMobile && setIsSummaryExpanded(isDetailsExpanded);
+                                        // Enable minimize/maximize behavior on both mobile and desktop
+                                        // Switch to below commented code to keep this for mobile only
+                                        // isMobile && setIsSummaryExpanded(isDetailsExpanded);
+                                        setIsSummaryExpanded(isDetailsExpanded);
                                     }}>
                                         <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
                                             {isDetailsExpanded ? 'Hide Details' : 'Show Details'}
