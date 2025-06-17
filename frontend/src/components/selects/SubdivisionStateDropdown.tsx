@@ -1,8 +1,8 @@
 import React from 'react';
 import { TextField, Autocomplete, Typography, Box, Chip } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
-import { useApi } from '../hooks/useApi';
-import { SubdivisionData } from '../models/types';
+import { useApi } from '../../hooks/useApi';
+import { SubdivisionData } from '../../models/types';
 
 interface SubdivisionStateDropdownProps {
   label: string;

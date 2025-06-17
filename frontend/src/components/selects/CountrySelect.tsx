@@ -1,6 +1,6 @@
 import React from 'react';
 import { TextField, Autocomplete, Typography, Box, Chip } from '@mui/material';
-import { useCountriesWithPriority } from '../hooks/useCountriesWithPriority';
+import { useCountriesWithPriority } from '../../hooks/useCountriesWithPriority';
 
 interface Country {
   iso2_code: string;
@@ -28,6 +28,7 @@ interface CountrySelectProps {
   showDivider?: boolean;
   placeholder?: string;
   allowedCountries?: string[];
+  loading?: boolean;
 }
 
 export const CountrySelect: React.FC<CountrySelectProps> = ({
@@ -43,7 +44,8 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
   priorityCountries = ['US', 'CA'],
   showDivider = true,
   placeholder = "Select a country",
-  allowedCountries
+  allowedCountries,
+  loading = false
 }) => {
   // Filter countries based on allowedCountries if provided
   const filteredCountries = allowedCountries 
@@ -53,11 +55,11 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
   const sortedCountries = useCountriesWithPriority(filteredCountries, priorityCountries);
 
   // Group countries for display
-  const priorityItems = sortedCountries.filter(country => 
+  const priorityItems = sortedCountries.filter((country: Country) => 
     priorityCountries.includes(country.iso2_code)
   );
   
-  const otherItems = sortedCountries.filter(country => 
+  const otherItems = sortedCountries.filter((country: Country) => 
     !priorityCountries.includes(country.iso2_code)
   );
 
@@ -65,7 +67,7 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
   const options = sortedCountries;
 
   // Find selected country object
-  const selectedCountry = sortedCountries.find(country => country.iso2_code === value) || null;
+  const selectedCountry = sortedCountries.find((country: Country) => country.iso2_code === value) || null;
 
   return (
     <Autocomplete
@@ -89,7 +91,6 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
               px: 2, 
               py: 1, 
               backgroundColor: 'grey.50',
-            //   borderBottom: '1px solid',
               borderColor: 'grey.200'
             }}>
               <Typography variant="caption" color="grey.600" fontWeight={500}>
@@ -133,7 +134,7 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
           autoComplete="off"
         />
       )}
-      disabled={disabled}
+      disabled={disabled || loading}
       disableClearable={required}
       filterOptions={(options, { inputValue }) => {
         const filtered = options.filter(option =>
@@ -143,10 +144,10 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
         );
         
         // Keep priority order in search results
-        const priorityFiltered = filtered.filter(country => 
+        const priorityFiltered = filtered.filter((country: Country) => 
           priorityCountries.includes(country.iso2_code)
         );
-        const otherFiltered = filtered.filter(country => 
+        const otherFiltered = filtered.filter((country: Country) => 
           !priorityCountries.includes(country.iso2_code)
         );
         

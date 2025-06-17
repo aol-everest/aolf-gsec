@@ -71,8 +71,10 @@ import { ProfileOverlay } from './appointment/ProfileOverlay';
 import { InitialInfoStep } from './appointment/steps/InitialInfoStep';
 import { CheckSquareCircleFilledIconV2, CheckCircleIconV2, CloseIconFilledCircleV2 } from './iconsv2';
 import { useAppointmentSummary, hasExistingAppointments } from '../hooks/useAppointmentSummary';
-import { CountrySelect } from './CountrySelect';
-import { SubdivisionStateDropdown } from './SubdivisionStateDropdown';
+import { CountrySelect } from './selects/CountrySelect';
+import { PrimaryDomainSelect } from './selects/PrimaryDomainSelect';
+import { SubdivisionStateDropdown } from './selects/SubdivisionStateDropdown';
+import { HonorificTitleSelect } from './selects/HonorificTitleSelect';
 
 // Remove the hardcoded enum and add a state for time of day options
 // const AppointmentTimeOfDay = {
@@ -395,6 +397,9 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
       return data;
     },
   });
+
+  // Fetch honorific titles
+
 
   // Fetch dignitaries assigned to the user
   const { data: fetchedDignitaries = [], isLoading: isLoadingDignitaries } = useQuery<Dignitary[]>({
@@ -2200,14 +2205,14 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                       control={dignitaryForm.control}
                       rules={{ required: 'Honorific title is required' }}
                       render={({ field }) => (
-                        <EnumSelect
-                          enumType="honorificTitle"
+                        <HonorificTitleSelect
                           label="Honorific Title"
+                          value={field.value || ''}
+                          onChange={field.onChange}
                           required
                           error={!!dignitaryForm.formState.errors.dignitaryHonorificTitle}
                           helperText={dignitaryForm.formState.errors.dignitaryHonorificTitle?.message}
-                          value={field.value}
-                          onChange={field.onChange}
+                          placeholder="Search for honorific title..."
                         />
                       )}
                     />
@@ -2289,8 +2294,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                       control={dignitaryForm.control}
                       rules={{ required: 'Primary domain is required' }}
                       render={({ field }) => (
-                        <EnumSelect
-                          enumType="primaryDomain"
+                        <PrimaryDomainSelect
                           label="Primary Domain"
                           required
                           value={field.value}

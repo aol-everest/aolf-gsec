@@ -27,6 +27,8 @@ import { Dignitary } from '../models/types';
 import { formatHonorificTitle } from '../utils/formattingUtils';
 import { EnumSelect } from './EnumSelect';
 import LocationAutocomplete from './LocationAutocomplete';
+import { HonorificTitleSelect } from './selects/HonorificTitleSelect';
+import { PrimaryDomainSelect } from './selects/PrimaryDomainSelect';
 import { PrimaryButton } from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
 import { PencilIconV2, TrashIconV2 } from './iconsv2';
@@ -386,14 +388,14 @@ export const DignitarySelector: React.FC<DignitarySelectorProps> = ({
                           control={dignitaryForm.control}
                           rules={{ required: 'Honorific title is required' }}
                           render={({ field }) => (
-                            <EnumSelect
-                              enumType="honorificTitle"
+                            <HonorificTitleSelect
                               label="Honorific Title"
+                              value={field.value || ''}
+                              onChange={field.onChange}
                               required
                               error={!!dignitaryForm.formState.errors.dignitaryHonorificTitle}
                               helperText={dignitaryForm.formState.errors.dignitaryHonorificTitle?.message}
-                              value={field.value}
-                              onChange={field.onChange}
+                              placeholder="Search for honorific title..."
                             />
                           )}
                         />
@@ -481,8 +483,7 @@ export const DignitarySelector: React.FC<DignitarySelectorProps> = ({
                           name="dignitaryPrimaryDomain"
                           control={dignitaryForm.control}
                           render={({ field }) => (
-                            <EnumSelect
-                              enumType="primaryDomain"
+                            <PrimaryDomainSelect
                               label="Primary Domain"
                               required
                               value={field.value}

@@ -24,8 +24,8 @@ import { PrimaryButton } from './PrimaryButton';
 import { SecondaryButton } from './SecondaryButton';
 import { isMandatoryField, MANDATORY_PROFILE_FIELDS } from '../utils/profileValidation';
 import { getFieldDisplayName, NotificationPreferences, UserUpdateData, SubdivisionData } from '../models/types';
-import { CountrySelect } from './CountrySelect';
-import { SubdivisionStateDropdown } from './SubdivisionStateDropdown';
+import { CountrySelect } from './selects/CountrySelect';
+import { SubdivisionStateDropdown } from './selects/SubdivisionStateDropdown';
 
 export interface ProfileFieldsFormRef {
   validate: () => boolean;

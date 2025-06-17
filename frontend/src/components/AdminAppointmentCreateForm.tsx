@@ -52,6 +52,8 @@ import { useSnackbar } from 'notistack';
 import { Location, Dignitary, Appointment } from '../models/types';
 import { EnumSelect } from './EnumSelect';
 import { useEnums } from '../hooks/useEnums';
+import { HonorificTitleSelect } from './selects/HonorificTitleSelect';
+import { PrimaryDomainSelect } from './selects/PrimaryDomainSelect';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/LibraryAdd';
 import EditIcon from '@mui/icons-material/Edit';
@@ -296,6 +298,9 @@ export const AdminAppointmentCreateForm: React.FC = () => {
 
   // Fetch all substatus options
   const { values: allSubStatusOptions = [] } = useEnums('appointmentSubStatus');
+
+  // Fetch honorific titles
+
 
   // Fetch event type options
   const { data: eventTypeOptions = [] } = useQuery<string[]>({
@@ -1492,14 +1497,14 @@ export const AdminAppointmentCreateForm: React.FC = () => {
                       control={dignitaryForm.control}
                       rules={{ required: 'Honorific title is required' }}
                       render={({ field }) => (
-                        <EnumSelect
-                          enumType="honorificTitle"
+                        <HonorificTitleSelect
                           label="Honorific Title"
+                          value={field.value || ''}
+                          onChange={field.onChange}
                           required
                           error={!!dignitaryForm.formState.errors.dignitaryHonorificTitle}
                           helperText={dignitaryForm.formState.errors.dignitaryHonorificTitle?.message}
-                          value={field.value}
-                          onChange={field.onChange}
+                          placeholder="Search for honorific title..."
                         />
                       )}
                     />
@@ -1580,8 +1585,7 @@ export const AdminAppointmentCreateForm: React.FC = () => {
                       name="dignitaryPrimaryDomain"
                       control={dignitaryForm.control}
                       render={({ field }) => (
-                        <EnumSelect
-                          enumType="primaryDomain"
+                        <PrimaryDomainSelect
                           label="Primary Domain"
                           required
                           value={field.value}

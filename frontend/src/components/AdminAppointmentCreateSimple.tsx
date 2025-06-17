@@ -181,6 +181,8 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
     },
   });
 
+
+
   // Fetch status-related data
   const { data: statusMap = {} } = useQuery<EnumMap>({
     queryKey: ['status-map'],

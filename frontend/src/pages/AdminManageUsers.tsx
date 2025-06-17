@@ -54,7 +54,7 @@ import { CheckCircleIconV2, DoneIconV2, EditIconV2 } from '../components/iconsv2
 import { ActionButton } from '../components/ActionButton';
 import { createDebugLogger } from '../utils/debugUtils';
 import { AddCircleFilledIconV2 } from '../components/iconsv2';
-import { CountrySelect } from '../components/CountrySelect';
+import { CountrySelect } from '../components/selects/CountrySelect';
 
 interface User {
   id: number;
