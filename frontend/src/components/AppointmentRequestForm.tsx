@@ -1558,6 +1558,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                               onDelete={() => removeContactFromList(contact.id)}
                               onEdit={() => editContactInList(contact)}
                               editIcon={<EditIcon />}
+                              isSelf={isSelfContact}
                             />
                           );
                         })}

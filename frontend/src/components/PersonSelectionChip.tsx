@@ -10,6 +10,7 @@ interface PersonSelectionChipProps {
   maxDisplayNameLength?: number;
   onEdit?: () => void;
   editIcon?: React.ReactNode;
+  isSelf?: boolean;
 }
 
 // Common styling constants
@@ -65,6 +66,7 @@ export const PersonSelectionChip: React.FC<PersonSelectionChipProps> = ({
   maxDisplayNameLength = 25,
   onEdit,
   editIcon,
+  isSelf = false,
 }) => {
   const truncatedDisplayName = displayName.length > maxDisplayNameLength 
     ? `${displayName.substring(0, maxDisplayNameLength)}...`
@@ -81,7 +83,7 @@ export const PersonSelectionChip: React.FC<PersonSelectionChipProps> = ({
           display: 'inline-flex',
           alignItems: 'center',
           pl: 1,
-          pr: 1,
+          pr: 2,
           gap: 1,
           mr: 2
         }}
@@ -97,19 +99,21 @@ export const PersonSelectionChip: React.FC<PersonSelectionChipProps> = ({
           {truncatedDisplayName}
         </Box>
         
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          <IconButton size="small" onClick={onEdit} sx={BUTTON_STYLES}>
-            {React.cloneElement(editIcon as React.ReactElement, { 
-              style: { fontSize: '16px' } 
-            })}
-          </IconButton>
-          
-          <IconButton size="small" onClick={onDelete} sx={BUTTON_STYLES}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-            </svg>
-          </IconButton>
-        </Box>
+        {!isSelf && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <IconButton size="small" onClick={onEdit} sx={BUTTON_STYLES}>
+              {React.cloneElement(editIcon as React.ReactElement, { 
+                style: { fontSize: '16px' } 
+              })}
+            </IconButton>
+            
+            <IconButton size="small" onClick={onDelete} sx={BUTTON_STYLES}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+              </svg>
+            </IconButton>
+          </Box>
+        )}
       </Box>
     );
   }
@@ -118,7 +122,7 @@ export const PersonSelectionChip: React.FC<PersonSelectionChipProps> = ({
   return (
     <Chip
       label={truncatedDisplayName}
-      onDelete={onDelete}
+      onDelete={!isSelf ? onDelete : undefined}
       variant="outlined"
       avatar={<Avatar sx={AVATAR_STYLES}>{avatarContent}</Avatar>}
       sx={{
