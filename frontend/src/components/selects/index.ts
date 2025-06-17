@@ -13,4 +13,9 @@ export { SubdivisionStateDropdown } from './SubdivisionStateDropdown';
 // Country-specific components (with internal data fetching)
 export { CountrySelect } from './CountrySelect';
 export { EnabledCountrySelect } from './EnabledCountrySelect';
-export { AdminCountrySelect } from './AdminCountrySelect'; 
+export { AdminCountrySelect } from './AdminCountrySelect';
+
+// Dignitary selector components
+export { GenericDignitarySelector } from './GenericDignitarySelector';
+export { UserDignitarySelector } from './UserDignitarySelector';
+export { AdminDignitarySelector } from './AdminDignitarySelector'; 

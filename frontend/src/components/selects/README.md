@@ -161,6 +161,14 @@ The country selection functionality is split into multiple components based on t
 | `AdminCountrySelect` | `/admin/countries/enabled` | Admin forms with access control | Admin-filtered enabled countries |
 | `GenericCountrySelect` | N/A | Custom data scenarios | External data via props |
 
+### Dignitary Selector Components
+
+| Component | API Endpoint | Use Case | Configuration |
+|-----------|--------------|----------|---------------|
+| `UserDignitarySelector` | `/dignitaries/new`, `/dignitaries/update/{id}` | User appointment forms | Full fields, relationship types, Gurudev meeting fields |
+| `AdminDignitarySelector` | `/admin/dignitaries`, `/admin/dignitaries/{id}` | Admin appointment forms | Simplified workflow, optional bio summary |
+| `GenericDignitarySelector` | N/A | Custom dignitary scenarios | Configurable field visibility and requirements |
+
 ### **CountrySelect** (Default - All Countries)
 - **API**: `/countries/all`
 - **Use Case**: Standard country selection for most forms

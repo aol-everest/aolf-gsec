@@ -32,7 +32,8 @@ import {
 import { PrimaryButton } from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
 import EventTypeSelector from './EventTypeSelector';
-import DignitarySelector from './DignitarySelector';
+import { AdminDignitarySelector } from './selects/AdminDignitarySelector';
+import { SelectedDignitary } from './selects/GenericDignitarySelector';
 import TimeSlotSelector from './TimeSlotSelector';
 import LocationSelector from './LocationSelector';
 import StatusSelector from './StatusSelector';
@@ -92,7 +93,7 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
 
   // Form state
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
-  const [selectedDignitaries, setSelectedDignitaries] = useState<Dignitary[]>([]);
+  const [selectedDignitaries, setSelectedDignitaries] = useState<SelectedDignitary[]>([]);
   const [isCalendarEventMode, setIsCalendarEventMode] = useState(false);
   
   // Use the time slots hook
@@ -296,7 +297,7 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
   };
 
   // Dignitary management
-  const handleDignitaryAdd = (dignitary: Dignitary) => {
+  const handleDignitaryAdd = (dignitary: SelectedDignitary) => {
     setSelectedDignitaries(prev => [...prev, dignitary]);
   };
 
@@ -434,17 +435,15 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
           {isDignitary && (
             <Grid item xs={12}>
               <Paper sx={{ p: 3 }}>
-                <DignitarySelector
+                <AdminDignitarySelector
                   dignitaries={dignitaries}
                   selectedDignitaries={selectedDignitaries}
                   onDignitaryAdd={handleDignitaryAdd}
                   onDignitaryRemove={handleDignitaryRemove}
-                  onDignitaryCreate={handleDignitaryCreate}
                   maxDignitaries={watchNumberOfDignitaries || maxAttendeesFromConfig}
                   required={true}
                   title="Select Dignitaries"
                   description="Select existing dignitaries or create new ones for this appointment."
-                  mode="admin"
                 />
               </Paper>
             </Grid>
