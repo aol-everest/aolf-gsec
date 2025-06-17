@@ -314,8 +314,8 @@ async def get_appointment_attachments(
         models.AppointmentAttachment.appointment_id == appointment_id
     )
     
-    # Add uploaded_by filter only for non-SECRETARIAT users
-    if not current_user.role.is_general_role_type():
+    # Add uploaded_by filter only for GENERAL users (non-admin)
+    if current_user.role.is_general_role_type():
         query = query.filter(models.AppointmentAttachment.uploaded_by == current_user.id)
     
     attachments = query.all()
