@@ -115,13 +115,13 @@ type ContactByTimeSlot = {
   }
 };
 
-// Tab types
+  // Tab types
 type TabType = 'dignitaries' | 'contacts';
 
 const UsherAppointmentSchedule: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [expandedPOCs, setExpandedPOCs] = useState<Record<string, boolean>>({});
-  const [activeTab, setActiveTab] = useState<TabType>('dignitaries');
+  const [activeTab, setActiveTab] = useState<TabType>('contacts');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const theme = useTheme();
   const api = useApi();
@@ -132,14 +132,14 @@ const UsherAppointmentSchedule: React.FC = () => {
   // Define tab options for the reusable component
   const tabOptions: TabOption[] = [
     {
+      key: 'contacts',
+      label: 'Regular',
+      icon: <GroupIcon sx={{ width: '20px', height: '20px' }} />
+    },
+    {
       key: 'dignitaries',
       label: 'Dignitaries',
       icon: <PersonIcon sx={{ width: '20px', height: '20px' }} />
-    },
-    {
-      key: 'contacts',
-      label: 'Other Appts',
-      icon: <GroupIcon sx={{ width: '20px', height: '20px' }} />
     }
   ];
 
