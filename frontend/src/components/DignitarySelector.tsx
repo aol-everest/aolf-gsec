@@ -29,6 +29,7 @@ import { EnumSelect } from './EnumSelect';
 import LocationAutocomplete from './LocationAutocomplete';
 import { HonorificTitleSelect } from './selects/HonorificTitleSelect';
 import { PrimaryDomainSelect } from './selects/PrimaryDomainSelect';
+import { CountrySelect } from './selects/CountrySelect';
 import { PrimaryButton } from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
 import { PencilIconV2, TrashIconV2 } from './iconsv2';
@@ -183,8 +184,8 @@ interface DignitarySelectorProps {
   onDignitaryAdd: (dignitary: Dignitary) => void;
   onDignitaryRemove: (index: number) => void;
   onDignitaryCreate: (formData: DignitaryFormData) => Promise<Dignitary>;
-  countries: Array<{ iso2_code: string; name: string }>;
-  isLoadingCountries: boolean;
+  countries?: Array<{ iso2_code: string; name: string }>;
+  isLoadingCountries?: boolean;
   maxDignitaries?: number;
   required?: boolean;
   title?: string;
@@ -547,42 +548,24 @@ export const DignitarySelector: React.FC<DignitarySelectorProps> = ({
                           control={dignitaryForm.control}
                           rules={{ required: 'Country is required' }}
                           render={({ field }) => (
-                            <TextField
-                              select
-                              fullWidth
+                            <CountrySelect
                               label="Country"
                               value={field.value || ''}
-                              onChange={(e) => {
-                                const countryCode = e.target.value;
+                              onChange={(countryCode) => {
                                 field.onChange(countryCode);
                                 
-                                // Find the selected country to get its name
-                                const selectedCountry = countries.find(c => c.iso2_code === countryCode);
-                                if (selectedCountry) {
-                                  dignitaryForm.setValue('dignitaryCountry', selectedCountry.name);
-                                  // Update selectedCountryCode for state and city autocomplete
-                                  setSelectedCountryCode(countryCode);
-                                }
+                                // Update selectedCountryCode for state and city autocomplete
+                                setSelectedCountryCode(countryCode);
                                 
                                 // Reset state, state code, and city when country changes
                                 dignitaryForm.setValue('dignitaryState', '');
                                 dignitaryForm.setValue('dignitaryStateCode', '');
                                 dignitaryForm.setValue('dignitaryCity', '');
                               }}
-                              disabled={isLoadingCountries}
                               error={!!dignitaryForm.formState.errors.dignitaryCountryCode}
-                              helperText={dignitaryForm.formState.errors.dignitaryCountryCode?.message || (isLoadingCountries ? "Loading countries..." : "")}
+                              helperText={dignitaryForm.formState.errors.dignitaryCountryCode?.message}
                               required
-                            >
-                              <MenuItem value="">
-                                <em>Select a country</em>
-                              </MenuItem>
-                              {countries.map((country) => (
-                                <MenuItem key={country.iso2_code} value={country.iso2_code}>
-                                  {country.name} ({country.iso2_code})
-                                </MenuItem>
-                              ))}
-                            </TextField>
+                            />
                           )}
                         />
                       </Grid>

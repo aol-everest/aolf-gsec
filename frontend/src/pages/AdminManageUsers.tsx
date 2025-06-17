@@ -1020,10 +1020,8 @@ const AdminManageUsers: React.FC = () => {
                           setFormErrors(prev => ({ ...prev, country_code: '' }));
                         }
                       }}
-                      countries={countries}
-                      disabled={countriesLoading}
                       error={!!formErrors.country_code}
-                      helperText={formErrors.country_code || (countriesLoading ? "Loading countries..." : "")}
+                      helperText={formErrors.country_code}
                       required
                       fullWidth
                       priorityCountries={['US', 'CA']}
@@ -1191,10 +1189,8 @@ const AdminManageUsers: React.FC = () => {
                                     setAccessFormErrors(prev => ({ ...prev, country_code: '' }));
                                   }
                                 }}
-                                countries={countries}
-                                disabled={countriesLoading}
                                 error={!!accessFormErrors.country_code}
-                                helperText={accessFormErrors.country_code || (countriesLoading ? 'Loading countries...' : '')}
+                                helperText={accessFormErrors.country_code}
                                 required
                                 fullWidth
                                 priorityCountries={['US', 'CA']}

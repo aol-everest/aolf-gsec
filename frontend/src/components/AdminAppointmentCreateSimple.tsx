@@ -172,17 +172,6 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
     },
   });
 
-  // Fetch countries
-  const { data: countries = [] } = useQuery<Array<{ iso2_code: string; name: string }>>({
-    queryKey: ['countries'],
-    queryFn: async () => {
-      const { data } = await api.get<Array<{ iso2_code: string; name: string }>>('/countries/all');
-      return data;
-    },
-  });
-
-
-
   // Fetch status-related data
   const { data: statusMap = {} } = useQuery<EnumMap>({
     queryKey: ['status-map'],
@@ -451,8 +440,6 @@ export const AdminAppointmentCreateSimple: React.FC = () => {
                   onDignitaryAdd={handleDignitaryAdd}
                   onDignitaryRemove={handleDignitaryRemove}
                   onDignitaryCreate={handleDignitaryCreate}
-                  countries={countries}
-                  isLoadingCountries={false}
                   maxDignitaries={watchNumberOfDignitaries || maxAttendeesFromConfig}
                   required={true}
                   title="Select Dignitaries"

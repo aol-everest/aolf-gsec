@@ -47,10 +47,10 @@ Components with specialized UX requirements that don't fit the generic pattern.
 **Usage:**
 ```typescript
 <CountrySelect
-  countries={countries}
-  loading={isLoading}
+  label="Country"
   value={value}
   onChange={onChange}
+  required
 />
 
 <SubdivisionStateDropdown
@@ -68,8 +68,12 @@ GenericSelect (Base Component)
 ├── GenericSimpleSelect (Simple wrapper - no priority grouping)
 ├── HonorificTitleSelect (Domain-specific with internal data fetching)
 ├── PrimaryDomainSelect (Domain-specific with internal data fetching)
-├── CountrySelect (Custom implementation with external data)
-└── SubdivisionStateDropdown (Custom implementation with external data + country dependency)
+└── Country Components:
+    ├── GenericCountrySelect (Base country component with external data)
+    ├── CountrySelect (All countries with internal data fetching)
+    ├── EnabledCountrySelect (Enabled countries with internal data fetching)
+    ├── AdminCountrySelect (Admin countries with internal data fetching)
+    └── SubdivisionStateDropdown (Custom implementation with country dependency)
 ```
 
 ## Creating New Select Components
@@ -144,4 +148,61 @@ When updating existing `EnumSelect` usages:
 2. Choose appropriate pattern
 3. Update imports
 4. Remove manual data fetching if using domain-specific pattern
-5. Test loading and error states 
+5. Test loading and error states
+
+## Country Select Components
+
+The country selection functionality is split into multiple components based on the API endpoint they use:
+
+| Component | API Endpoint | Use Case | Data |
+|-----------|--------------|----------|------|
+| `CountrySelect` | `/countries/all` | Standard forms (default) | All countries |
+| `EnabledCountrySelect` | `/countries/enabled` | Restricted to active countries | Enabled countries only |
+| `AdminCountrySelect` | `/admin/countries/enabled` | Admin forms with access control | Admin-filtered enabled countries |
+| `GenericCountrySelect` | N/A | Custom data scenarios | External data via props |
+
+### **CountrySelect** (Default - All Countries)
+- **API**: `/countries/all`
+- **Use Case**: Standard country selection for most forms
+- **Data**: All countries regardless of enabled status
+
+### **EnabledCountrySelect** (Enabled Countries Only)
+- **API**: `/countries/enabled`
+- **Use Case**: When you only want enabled/active countries
+- **Data**: Only enabled countries
+
+### **AdminCountrySelect** (Admin Countries)
+- **API**: `/admin/countries/enabled`
+- **Use Case**: Admin-specific country selection with access control
+- **Data**: Countries filtered by user's admin access level
+
+### **GenericCountrySelect** (Base Component)
+- **Use Case**: When you want to provide your own country data
+- **Data**: Accepts countries as props
+
+**Usage Examples:**
+```typescript
+// Standard all countries (default choice)
+<CountrySelect
+  label="Country"
+  value={countryCode}
+  onChange={setCountryCode}
+  required
+/>
+
+// Enabled countries only
+<EnabledCountrySelect
+  label="Country"
+  value={countryCode}
+  onChange={setCountryCode}
+  required
+/>
+
+// Admin-specific countries
+<AdminCountrySelect
+  label="Country"
+  value={countryCode}
+  onChange={setCountryCode}
+  required
+/>
+```

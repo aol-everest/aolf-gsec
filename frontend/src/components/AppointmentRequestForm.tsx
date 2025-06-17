@@ -2375,10 +2375,8 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                             dignitaryForm.setValue('dignitaryState', '');
                             dignitaryForm.setValue('dignitaryCity', '');
                           }}
-                          countries={countries}
-                          disabled={isLoadingCountries}
                           error={!!dignitaryForm.formState.errors.dignitaryCountryCode}
-                          helperText={dignitaryForm.formState.errors.dignitaryCountryCode?.message || (isLoadingCountries ? "Loading countries..." : "")}
+                          helperText={dignitaryForm.formState.errors.dignitaryCountryCode?.message}
                           required
                         />
                       )}

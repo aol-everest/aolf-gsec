@@ -301,9 +301,7 @@ export const ProfileFieldsForm = forwardRef<ProfileFieldsFormRef, ProfileFieldsF
                   label="Country"
                   value={countryCode}
                   onChange={setCountryCode}
-                  countries={countries}
-                  disabled={countriesLoading}
-                  helperText={countriesLoading ? "Loading countries..." : ""}
+                  helperText=""
                   required
                 />
               </Grid>

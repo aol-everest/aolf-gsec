@@ -15,7 +15,7 @@ interface Country {
   is_enabled: boolean;
 }
 
-interface CountrySelectProps {
+interface EnabledCountrySelectProps {
   label: string;
   value: string;
   onChange: (value: string) => void;
@@ -30,17 +30,17 @@ interface CountrySelectProps {
   allowedCountries?: string[];
 }
 
-export const CountrySelect: React.FC<CountrySelectProps> = (props) => {
+export const EnabledCountrySelect: React.FC<EnabledCountrySelectProps> = (props) => {
   const api = useApi();
   
   const { data: countries = [], isLoading } = useQuery({
-    queryKey: ['countries', 'all'],
+    queryKey: ['countries', 'enabled'],
     queryFn: async () => {
       try {
-        const { data } = await api.get<Country[]>('/countries/all');
+        const { data } = await api.get<Country[]>('/countries/enabled');
         return data;
       } catch (error) {
-        console.error('Error fetching all countries:', error);
+        console.error('Error fetching enabled countries:', error);
         return [];
       }
     },
@@ -55,4 +55,4 @@ export const CountrySelect: React.FC<CountrySelectProps> = (props) => {
   );
 };
 
-export default CountrySelect; 
+export default EnabledCountrySelect; 
