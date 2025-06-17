@@ -54,6 +54,7 @@ import { CheckCircleIconV2, DoneIconV2, EditIconV2 } from '../components/iconsv2
 import { ActionButton } from '../components/ActionButton';
 import { createDebugLogger } from '../utils/debugUtils';
 import { AddCircleFilledIconV2 } from '../components/iconsv2';
+import { CountrySelect } from '../components/CountrySelect';
 
 interface User {
   id: number;
@@ -127,6 +128,18 @@ interface Location {
   state?: string;
   zip_code?: string;
   is_active?: boolean;
+}
+
+interface Country {
+  iso2_code: string;
+  name: string;
+  iso3_code: string;
+  region?: string;
+  sub_region?: string;
+  intermediate_region?: string;
+  country_groups?: string[];
+  alt_names?: string[];
+  is_enabled: boolean;
 }
 
 const initialFormData: UserFormData = {
@@ -260,7 +273,7 @@ const AdminManageUsers: React.FC = () => {
     queryKey: ['countries'],
     queryFn: async () => {
       try {
-        const { data } = await api.get<any[]>('/admin/countries/enabled');
+        const { data } = await api.get<Country[]>('/countries/all');
         return data;
       } catch (error) {
         console.error('Error fetching countries:', error);
@@ -997,24 +1010,26 @@ const AdminManageUsers: React.FC = () => {
                     />
                   </Grid>
                   <Grid item xs={12} md={6} lg={4}>
-                    <TextField
-                      select
-                      fullWidth
+                    <CountrySelect
                       label="Residing Country"
-                      name="country_code"
                       value={formData.country_code}
-                      onChange={handleChange}
+                      onChange={(value) => {
+                        setFormData(prev => ({ ...prev, country_code: value }));
+                        // Clear any existing errors
+                        if (formErrors.country_code) {
+                          setFormErrors(prev => ({ ...prev, country_code: '' }));
+                        }
+                      }}
+                      countries={countries}
                       disabled={countriesLoading}
                       error={!!formErrors.country_code}
                       helperText={formErrors.country_code || (countriesLoading ? "Loading countries..." : "")}
                       required
-                    >
-                      {countries.map((country) => (
-                        <MenuItem key={country.iso2_code} value={country.iso2_code}>
-                          {country.name} ({country.iso2_code})
-                        </MenuItem>
-                      ))}
-                    </TextField>
+                      fullWidth
+                      priorityCountries={['US', 'CA']}
+                      allowedCountries={['US', 'CA']}
+                      placeholder="Select residing country"
+                    />
                   </Grid>
                   <Grid item xs={12} md={6} lg={4}>
                     <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
@@ -1162,37 +1177,30 @@ const AdminManageUsers: React.FC = () => {
                           
                           <Grid container spacing={2}>
                             <Grid item xs={12} md={6} lg={4}>
-                              <TextField
-                                select
-                                fullWidth
+                              <CountrySelect
                                 label="Country"
-                                name="country_code"
                                 value={accessFormData.country_code}
-                                onChange={(e) => {
-                                  const value = e.target.value;
+                                onChange={(value) => {
                                   setAccessFormData(prev => ({
                                     ...prev,
                                     country_code: value,
                                     location_ids: []
                                   }));
+                                  // Clear any existing errors
+                                  if (accessFormErrors.country_code) {
+                                    setAccessFormErrors(prev => ({ ...prev, country_code: '' }));
+                                  }
                                 }}
-                                required
+                                countries={countries}
                                 disabled={countriesLoading}
                                 error={!!accessFormErrors.country_code}
                                 helperText={accessFormErrors.country_code || (countriesLoading ? 'Loading countries...' : '')}
-                              >
-                                {countriesLoading ? (
-                                  <MenuItem disabled>Loading countries...</MenuItem>
-                                ) : countries.length > 0 ? (
-                                  countries.map((country) => (
-                                    <MenuItem key={country.iso2_code} value={country.iso2_code}>
-                                      {country.name} ({country.iso2_code})
-                                    </MenuItem>
-                                  ))
-                                ) : (
-                                  <MenuItem disabled>No countries available</MenuItem>
-                                )}
-                              </TextField>
+                                required
+                                fullWidth
+                                priorityCountries={['US', 'CA']}
+                                allowedCountries={['US', 'CA']}
+                                placeholder="Select country for access"
+                              />
                             </Grid>
                             <Grid item xs={12} md={6} lg={5}>
                               <TextField

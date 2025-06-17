@@ -27,6 +27,7 @@ interface CountrySelectProps {
   priorityCountries?: string[];
   showDivider?: boolean;
   placeholder?: string;
+  allowedCountries?: string[];
 }
 
 export const CountrySelect: React.FC<CountrySelectProps> = ({
@@ -41,9 +42,15 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({
   fullWidth = true,
   priorityCountries = ['US', 'CA'],
   showDivider = true,
-  placeholder = "Select a country"
+  placeholder = "Select a country",
+  allowedCountries
 }) => {
-  const sortedCountries = useCountriesWithPriority(countries, priorityCountries);
+  // Filter countries based on allowedCountries if provided
+  const filteredCountries = allowedCountries 
+    ? countries.filter(country => allowedCountries.includes(country.iso2_code))
+    : countries;
+
+  const sortedCountries = useCountriesWithPriority(filteredCountries, priorityCountries);
 
   // Group countries for display
   const priorityItems = sortedCountries.filter(country => 
