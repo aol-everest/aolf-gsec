@@ -444,7 +444,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
           pocFirstName: userInfo?.first_name || '',
     pocLastName: userInfo?.last_name || '',
     pocEmail: userInfo?.email || '',
-    requestType: 'Dignitary', // Default to dignitary request
+    requestType: 'Personal', // Default to personal request
     numberOfAttendees: 1,
     }
   });
@@ -661,7 +661,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
   // Set default request type when configs are loaded
   useEffect(() => {
     if (requestTypeConfigs.length > 0 && !pocForm.getValues('requestType')) {
-      const defaultConfig = requestTypeConfigs.find(c => c.request_type === requestTypeMap['DIGNITARY']) || requestTypeConfigs[0];
+      const defaultConfig = requestTypeConfigs.find(c => c.request_type === requestTypeMap['PERSONAL']) || requestTypeConfigs[0];
       pocForm.setValue('requestType', defaultConfig.request_type);
     }
   }, [requestTypeConfigs, pocForm]);
@@ -778,7 +778,13 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
       setUserContacts(prev => [...prev, newContact]);
       
       queryClient.invalidateQueries({ queryKey: ['user-contacts'] });
-      enqueueSnackbar('New contact created successfully', { variant: 'success' });
+      
+      // Skip notification for self-contacts to avoid unnecessary notifications
+      const isSelfContact = newContact.relationship_to_owner === relationshipTypeMap['SELF'];
+      
+      if (!isSelfContact) {
+        enqueueSnackbar('New contact created successfully', { variant: 'success' });
+      }
     },
     onError: (error: any) => {
       console.error('Failed to create contact:', error);
@@ -1185,15 +1191,14 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
   const createSelfContact = async (): Promise<UserContact | null> => {
     try {
       if (!userInfo?.email) {
-        enqueueSnackbar('User email not available for self-contact creation', { variant: 'error' });
-        return null;
+        return null; // Silent fail for missing email
       }
 
-      // Check if self-contact already exists
+      // Check existing contacts more thoroughly
       const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
-      const existingSelfContact = userContacts.find(contact => 
+      let existingSelfContact = userContacts.find(contact => 
         contact.relationship_to_owner === relationshipTypeMap['SELF'] || 
-        (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName)
+        (contact.email?.toLowerCase().trim() === userInfo.email?.toLowerCase().trim())
       );
 
       if (existingSelfContact) {
@@ -1206,14 +1211,28 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
         email: userInfo.email,
         relationship_to_owner: relationshipTypeMap['SELF'],
         notes: 'Auto-created self-contact for appointment attendance'
+        // Note: contact_user_id will be populated by the backend for self-contacts
       };
 
       const newSelfContact = await createUserContactMutation.mutateAsync(selfContactData);
       return newSelfContact;
-    } catch (error) {
+    } catch (error: any) {
+      // Handle 409 conflict gracefully
+      if (error.response?.status === 409) {
+        console.log('Self-contact already exists, fetching from server');
+        // Refetch contacts to get the existing one
+        queryClient.invalidateQueries({ queryKey: ['user-contacts'] });
+        // Try to find the existing contact in the current list
+        const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
+        const existingSelfContact = userContacts.find(contact => 
+          contact.relationship_to_owner === relationshipTypeMap['SELF'] || 
+          (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName) ||
+          (contact.email === userInfo?.email)
+        );
+        return existingSelfContact || null;
+      }
       console.error('Error creating self-contact:', error);
-      enqueueSnackbar('Failed to create contact', { variant: 'error' });
-      return null;
+      return null; // Silent fail to avoid user disruption
     }
   };
 

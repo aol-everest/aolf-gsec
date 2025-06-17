@@ -224,6 +224,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('accessToken', tokenData.access_token);
       localStorage.setItem('role', mergedUserInfo.role);
 
+      console.log('Login completed successfully for user:', mergedUserInfo.email);
+
       // Handle redirect
       const redirectUrl = localStorage.getItem('redirectUrl');
       if (redirectUrl) {

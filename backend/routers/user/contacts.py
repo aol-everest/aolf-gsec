@@ -27,12 +27,18 @@ async def create_contact(
     current_user: models.User = Depends(get_current_user_for_write),
     db: Session = Depends(get_db)
 ):
-    """Create a new contact for the current user"""
+    """Create a new contact for the current user with upsert logic for self-contacts"""
     start_time = datetime.utcnow()
     logger.info(f"Creating new contact for user {current_user.email} (ID: {current_user.id})")
     logger.debug(f"Contact data: {contact.dict()}")
     
     try:
+        # Auto-populate contact_user_id for self-contacts
+        if (contact.relationship_to_owner == models.PersonRelationshipType.SELF and 
+            contact.email == current_user.email):
+            contact.contact_user_id = current_user.id
+            logger.info(f"Auto-populated contact_user_id for self-contact: {current_user.id}")
+
         # Check for duplicate email if email is provided
         if contact.email:
             existing_contact = db.query(models.UserContact).filter(
@@ -41,6 +47,38 @@ async def create_contact(
             ).first()
             
             if existing_contact:
+                # For self-contacts, update and return the existing one instead of error
+                if (contact.relationship_to_owner == models.PersonRelationshipType.SELF or
+                    existing_contact.relationship_to_owner == models.PersonRelationshipType.SELF):
+                    logger.info(f"Found existing self-contact (ID: {existing_contact.id}), updating it")
+                    
+                    # Update existing self-contact with missing data
+                    existing_contact.relationship_to_owner = models.PersonRelationshipType.SELF
+                    existing_contact.updated_by = current_user.id
+                    existing_contact.updated_at = datetime.utcnow()
+                    
+                    # Populate contact_user_id if it's NULL for self-contacts
+                    if existing_contact.contact_user_id is None and contact.email == current_user.email:
+                        existing_contact.contact_user_id = current_user.id
+                        logger.info(f"Populated missing contact_user_id for existing self-contact: {current_user.id}")
+                    
+                    # Update other fields if they're empty
+                    if not existing_contact.first_name or existing_contact.first_name == "Self":
+                        existing_contact.first_name = contact.first_name
+                    if not existing_contact.last_name or existing_contact.last_name == "Self":
+                        existing_contact.last_name = contact.last_name
+                    if not existing_contact.notes:
+                        existing_contact.notes = contact.notes
+                    
+                    db.commit()
+                    db.refresh(existing_contact)
+                    
+                    # Calculate total operation time
+                    total_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+                    logger.info(f"Self-contact updated successfully (ID: {existing_contact.id}) in {total_time:.2f}ms")
+                    
+                    return existing_contact
+                
                 raise HTTPException(
                     status_code=409, 
                     detail=f"Contact with email '{contact.email}' already exists"
