@@ -611,86 +611,80 @@ export const GenericDignitarySelector: React.FC<GenericDignitarySelectorProps> =
               <Controller
                 name="selectedDignitaryId"
                 control={dignitaryForm.control}
-                render={({ field }) => (
-                  <Autocomplete
-                    fullWidth
-                    options={dignitaries}
-                    value={dignitaries.find(d => d.id === field.value) || undefined}
-                    onChange={(_, newValue) => {
-                      field.onChange(newValue?.id || '');
-                      if (newValue) {
-                        setSelectedDignitary(newValue);
-                        populateDignitaryForm(newValue);
-                      } else {
-                        setSelectedDignitary(null);
+                rules={{ required: 'Please select a dignitary' }}
+                render={({ field, fieldState }) => {
+                  // Filter out already-added dignitaries to prevent selection issues
+                  const availableDignitaries = isEditMode 
+                    ? dignitaries 
+                    : dignitaries.filter(d => !selectedDignitaries.some(sd => sd.id === d.id));
+                    
+                  return (
+                    <Autocomplete
+                      fullWidth
+                      options={availableDignitaries}
+                      value={availableDignitaries.find(d => d.id === field.value) || undefined}
+                      onChange={(_, newValue) => {
+                        field.onChange(newValue?.id || '');
+                        if (newValue) {
+                          setSelectedDignitary(newValue);
+                          populateDignitaryForm(newValue);
+                        } else {
+                          setSelectedDignitary(null);
+                        }
+                      }}
+                      getOptionLabel={(dignitary) => 
+                        `${formatHonorificTitle(dignitary.honorific_title || '')} ${dignitary.first_name} ${dignitary.last_name}`
                       }
-                    }}
-                    getOptionLabel={(dignitary) => 
-                      `${formatHonorificTitle(dignitary.honorific_title || '')} ${dignitary.first_name} ${dignitary.last_name}`
-                    }
-                    getOptionDisabled={(dignitary) => 
-                      !isEditMode && selectedDignitaries.some(d => d.id === dignitary.id)
-                    }
-                    renderOption={(props, dignitary) => {
-                      const isAlreadyAdded = !isEditMode && selectedDignitaries.some(d => d.id === dignitary.id);
-                      const titleCompany = [dignitary.title_in_organization, dignitary.organization].filter(Boolean).join(', ');
-                      
-                      return (
-                        <Box component="li" {...props} key={dignitary.id}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                            <Box sx={{ flex: 1 }}>
+                      renderOption={(props, dignitary) => {
+                        const titleCompany = [dignitary.title_in_organization, dignitary.organization].filter(Boolean).join(', ');
+                        
+                        return (
+                          <Box component="li" {...props} key={dignitary.id}>
+                            <Box sx={{ width: '100%' }}>
                               <Typography variant="body2">
                                 {`${formatHonorificTitle(dignitary.honorific_title || '')} ${dignitary.first_name} ${dignitary.last_name}`}
                               </Typography>
                               {titleCompany && (
-                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.25 }}>
                                   {titleCompany}
                                 </Typography>
                               )}
                             </Box>
-                            {isAlreadyAdded && (
-                              <Chip 
-                                label="Already Added" 
-                                size="small" 
-                                variant="outlined"
-                                sx={{ 
-                                  fontSize: '0.7rem',
-                                  height: '20px',
-                                  color: 'text.secondary',
-                                  borderColor: 'grey.400'
-                                }}
-                              />
-                            )}
                           </Box>
-                        </Box>
-                      );
-                    }}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Select Dignitary"
-                        placeholder="Search for a dignitary..."
-                        autoComplete="off"
-                      />
-                    )}
-                    disabled={isEditMode}
-                    disableClearable
-                    filterOptions={(options, { inputValue }) => {
-                      return options.filter(dignitary => {
-                        const fullName = `${formatHonorificTitle(dignitary.honorific_title || '')} ${dignitary.first_name} ${dignitary.last_name}`.toLowerCase();
-                        const organization = (dignitary.organization || '').toLowerCase();
-                        const title = (dignitary.title_in_organization || '').toLowerCase();
-                        const searchTerm = inputValue.toLowerCase();
+                        );
+                      }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Select Dignitary"
+                          placeholder="Search for a dignitary..."
+                          autoComplete="off"
+                          error={!!fieldState.error}
+                          helperText={fieldState.error?.message}
+                          required
+                        />
+                      )}
+                      disabled={isEditMode}
+                      disableClearable
+                      filterOptions={(options, { inputValue }) => {
+                        if (!inputValue) return options;
                         
-                        return fullName.includes(searchTerm) || 
-                               organization.includes(searchTerm) || 
-                               title.includes(searchTerm);
-                      });
-                    }}
-                    noOptionsText="No dignitaries found"
-                    isOptionEqualToValue={(option, value) => option.id === value.id}
-                  />
-                )}
+                        const searchTerm = inputValue.toLowerCase();
+                        return options.filter(dignitary => {
+                          const fullName = `${formatHonorificTitle(dignitary.honorific_title || '')} ${dignitary.first_name} ${dignitary.last_name}`.toLowerCase();
+                          const organization = (dignitary.organization || '').toLowerCase();
+                          const title = (dignitary.title_in_organization || '').toLowerCase();
+                          
+                          return fullName.includes(searchTerm) || 
+                                 organization.includes(searchTerm) || 
+                                 title.includes(searchTerm);
+                        });
+                      }}
+                      noOptionsText="No dignitaries found"
+                      isOptionEqualToValue={(option, value) => option.id === value.id}
+                    />
+                  );
+                }}
               />
             </Grid>
           )}
