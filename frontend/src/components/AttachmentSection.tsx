@@ -10,7 +10,9 @@ import CloseIcon from '@mui/icons-material/Close';
 import DownloadIcon from '@mui/icons-material/Download';
 import PreviewIcon from '@mui/icons-material/Preview';
 import { useApi } from '../hooks/useApi';
-import { DownloadFilledIconV2, EyeFilledIconV2, GenericFileIconV2, ImageIconV2, PDFIconV2, TextFileIconV2 } from './iconsv2';
+import { CloseIconFilledCircleV2, DownloadFilledIconV2, EyeFilledIconV2, GenericFileIconV2, ImageIconV2, PDFIconV2, TextFileIconV2 } from './iconsv2';
+import { PrimaryButton } from './PrimaryButton';
+import { SecondaryButton } from './SecondaryButton';
 
 const AttachmentItem = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(2),
@@ -483,16 +485,15 @@ const AttachmentSection: React.FC<AttachmentSectionProps> = ({ attachments }) =>
               {selectedAttachment?.file_name}
             </Typography>
             <ModalActions>
-              <Button
-                startIcon={<DownloadIcon />}
-                variant="outlined"
+              <PrimaryButton
+                startIcon={<DownloadFilledIconV2 />}
                 size="small"
                 onClick={() => selectedAttachment && downloadAttachment(selectedAttachment)}
               >
                 Download
-              </Button>
+              </PrimaryButton>
               <IconButton onClick={handleCloseModal} size="small">
-                <CloseIcon />
+                <CloseIconFilledCircleV2 />
               </IconButton>
             </ModalActions>
           </ModalHeader>
