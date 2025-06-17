@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { AppointmentAttachment } from '../models/types';
-import { Box, Typography, Grid, Paper, Link, Tooltip, Modal, IconButton, CircularProgress } from '@mui/material';
+import { Box, Typography, Grid, Paper, Tooltip, Modal, IconButton, CircularProgress, Button } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import ImageIcon from '@mui/icons-material/Image';
 import DescriptionIcon from '@mui/icons-material/Description';
 import CloseIcon from '@mui/icons-material/Close';
+import DownloadIcon from '@mui/icons-material/Download';
+import PreviewIcon from '@mui/icons-material/Preview';
 import { useApi } from '../hooks/useApi';
+import { DownloadFilledIconV2, EyeFilledIconV2, GenericFileIconV2, ImageIconV2, PDFIconV2, TextFileIconV2 } from './iconsv2';
 
 const AttachmentItem = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(2),
@@ -15,10 +18,36 @@ const AttachmentItem = styled(Paper)(({ theme }) => ({
   flexDirection: 'column',
   alignItems: 'center',
   height: '100%',
-  cursor: 'pointer',
+  position: 'relative',
   transition: 'transform 0.2s, box-shadow 0.2s',
   '&:hover': {
     transform: 'translateY(-4px)',
+    boxShadow: theme.shadows[4],
+    '& .attachment-actions': {
+      opacity: 1,
+    },
+  },
+}));
+
+const AttachmentActions = styled(Box)(({ theme }) => ({
+  position: 'absolute',
+  top: theme.spacing(1),
+  right: theme.spacing(1),
+  display: 'flex',
+  flexDirection: 'column',
+  gap: theme.spacing(0.5),
+  opacity: 0,
+  transition: 'opacity 0.2s',
+  zIndex: 1,
+}));
+
+const ActionButton = styled(IconButton)(({ theme }) => ({
+  backgroundColor: theme.palette.background.paper,
+  boxShadow: theme.shadows[2],
+  width: 32,
+  height: 32,
+  '&:hover': {
+    backgroundColor: theme.palette.grey[100],
     boxShadow: theme.shadows[4],
   },
 }));
@@ -60,9 +89,9 @@ const ModalContent = styled(Box)(({ theme }) => ({
   top: '50%',
   left: '50%',
   transform: 'translate(-50%, -50%)',
-  width: '80%',
-  maxWidth: '1000px',
-  maxHeight: '90vh',
+  width: '90%',
+  maxWidth: '1200px',
+  maxHeight: '95vh',
   backgroundColor: theme.palette.background.paper,
   boxShadow: theme.shadows[24],
   padding: theme.spacing(2),
@@ -77,6 +106,14 @@ const ModalHeader = styled(Box)(({ theme }) => ({
   justifyContent: 'space-between',
   alignItems: 'center',
   marginBottom: theme.spacing(2),
+  paddingBottom: theme.spacing(1),
+  borderBottom: `1px solid ${theme.palette.divider}`,
+}));
+
+const ModalActions = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  gap: theme.spacing(1),
+  alignItems: 'center',
 }));
 
 const ModalBody = styled(Box)({
@@ -85,12 +122,20 @@ const ModalBody = styled(Box)({
   justifyContent: 'center',
   alignItems: 'center',
   height: '100%',
+  minHeight: '400px',
 });
 
 const ModalImage = styled('img')({
   maxWidth: '100%',
-  maxHeight: '70vh',
+  maxHeight: '75vh',
   objectFit: 'contain',
+});
+
+const PdfViewer = styled('iframe')({
+  width: '100%',
+  height: '75vh',
+  border: 'none',
+  borderRadius: '4px',
 });
 
 // Add a loading container
@@ -123,13 +168,13 @@ interface AttachmentSectionProps {
 
 const getFileIcon = (fileType: string) => {
   if (fileType.includes('pdf')) {
-    return <PictureAsPdfIcon fontSize="inherit" color="error" />;
+    return <PDFIconV2 fontSize="inherit" color="error" />;
   } else if (fileType.includes('image')) {
-    return <ImageIcon fontSize="inherit" color="primary" />;
+    return <ImageIconV2 fontSize="inherit" color="primary" />;
   } else if (fileType.includes('text') || fileType.includes('document')) {
-    return <DescriptionIcon fontSize="inherit" color="info" />;
+    return <TextFileIconV2 fontSize="inherit" color="info" />;
   } else {
-    return <InsertDriveFileIcon fontSize="inherit" color="action" />;
+    return <GenericFileIconV2 fontSize="inherit" color="action" />;
   }
 };
 
@@ -138,7 +183,7 @@ const AttachmentSection: React.FC<AttachmentSectionProps> = ({ attachments }) =>
   const [selectedAttachment, setSelectedAttachment] = useState<AppointmentAttachment | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [thumbnailUrls, setThumbnailUrls] = useState<Record<number, string>>({});
-  const [fullImageUrl, setFullImageUrl] = useState<string | null>(null);
+  const [fullFileUrl, setFullFileUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
 
@@ -150,6 +195,11 @@ const AttachmentSection: React.FC<AttachmentSectionProps> = ({ attachments }) =>
   // Function to check if cached thumbnail is valid
   const isValidCache = (cached: CachedThumbnail) => {
     return cached && (Date.now() - cached.timestamp) < CACHE_DURATION;
+  };
+
+  // Function to check if file type can be previewed
+  const canPreviewFile = (fileType: string) => {
+    return fileType.includes('image') || fileType.includes('pdf');
   };
 
   // Load thumbnails when component mounts or attachments change
@@ -219,8 +269,8 @@ const AttachmentSection: React.FC<AttachmentSectionProps> = ({ attachments }) =>
     // Cleanup function
     return () => {
       // Cleanup is handled by the browser for localStorage
-      if (fullImageUrl) {
-        URL.revokeObjectURL(fullImageUrl);
+      if (fullFileUrl) {
+        URL.revokeObjectURL(fullFileUrl);
       }
     };
   }, [attachments, api]);
@@ -229,34 +279,39 @@ const AttachmentSection: React.FC<AttachmentSectionProps> = ({ attachments }) =>
     return null;
   }
 
-  const handleAttachmentClick = (attachment: AppointmentAttachment) => {
-    if (attachment.is_image) {
-      // For images, open in modal and load the full image
-      setSelectedAttachment(attachment);
-      setModalOpen(true);
-      setModalLoading(true);
-      
-      // Load the full image
-      api.get(`/appointments/attachments/${attachment.id}`, {
-        responseType: 'blob'
-      }).then(response => {
-        // Revoke previous URL if exists
-        if (fullImageUrl) {
-          URL.revokeObjectURL(fullImageUrl);
-        }
-        
-        const url = URL.createObjectURL(response.data as Blob);
-        setFullImageUrl(url);
-        setModalLoading(false);
-      }).catch(error => {
-        console.error('Error loading full image:', error);
-        setModalLoading(false);
-        alert('Failed to load the image. Please try again.');
-      });
-    } else {
-      // For non-images, download the file
-      downloadAttachment(attachment);
+  const handlePreviewClick = (attachment: AppointmentAttachment, event: React.MouseEvent) => {
+    event.stopPropagation();
+    
+    if (!canPreviewFile(attachment.file_type)) {
+      return;
     }
+
+    setSelectedAttachment(attachment);
+    setModalOpen(true);
+    setModalLoading(true);
+    
+    // Load the full file
+    api.get(`/appointments/attachments/${attachment.id}`, {
+      responseType: 'blob'
+    }).then(response => {
+      // Revoke previous URL if exists
+      if (fullFileUrl) {
+        URL.revokeObjectURL(fullFileUrl);
+      }
+      
+      const url = URL.createObjectURL(response.data as Blob);
+      setFullFileUrl(url);
+      setModalLoading(false);
+    }).catch(error => {
+      console.error('Error loading file:', error);
+      setModalLoading(false);
+      alert('Failed to load the file. Please try again.');
+    });
+  };
+
+  const handleDownloadClick = (attachment: AppointmentAttachment, event: React.MouseEvent) => {
+    event.stopPropagation();
+    downloadAttachment(attachment);
   };
 
   const downloadAttachment = async (attachment: AppointmentAttachment) => {
@@ -286,6 +341,10 @@ const AttachmentSection: React.FC<AttachmentSectionProps> = ({ attachments }) =>
   const handleCloseModal = () => {
     setModalOpen(false);
     setSelectedAttachment(null);
+    if (fullFileUrl) {
+      URL.revokeObjectURL(fullFileUrl);
+      setFullFileUrl(null);
+    }
   };
 
   // Function to handle thumbnail loading errors
@@ -298,16 +357,83 @@ const AttachmentSection: React.FC<AttachmentSectionProps> = ({ attachments }) =>
     });
   };
 
+  const renderModalContent = () => {
+    if (modalLoading) {
+      return (
+        <LoadingContainer>
+          <CircularProgress size={60} />
+        </LoadingContainer>
+      );
+    }
+
+    if (!selectedAttachment || !fullFileUrl) {
+      return (
+        <Typography color="error" sx={{ textAlign: 'center' }}>
+          Failed to load file
+        </Typography>
+      );
+    }
+
+    if (selectedAttachment.is_image) {
+      return (
+        <ModalImage
+          src={fullFileUrl}
+          alt={selectedAttachment.file_name}
+        />
+      );
+    } else if (selectedAttachment.file_type.includes('pdf')) {
+      return (
+        <Box sx={{ width: '100%', height: '75vh', display: 'flex', flexDirection: 'column' }}>
+          <PdfViewer
+            src={`${fullFileUrl}#toolbar=1&navpanes=1&scrollbar=1`}
+            title={selectedAttachment.file_name}
+            onError={() => {
+              // Fallback: open PDF in new tab if iframe fails
+              window.open(fullFileUrl, '_blank');
+            }}
+          />
+          <Typography variant="caption" sx={{ mt: 1, textAlign: 'center', color: 'text.secondary' }}>
+            If the PDF doesn't display properly, try the download button above or it will open in a new tab.
+          </Typography>
+        </Box>
+      );
+    }
+
+    return (
+      <Typography color="error" sx={{ textAlign: 'center' }}>
+        Preview not available for this file type
+      </Typography>
+    );
+  };
+
   return (
     <>
       <Box sx={{ mt: 3 }}>
-        {/* <Typography variant="h6" gutterBottom>
-          Attachments
-        </Typography> */}
         <Grid container spacing={2}>
           {attachments.map((attachment) => (
             <Grid item xs={12} sm={6} md={4} lg={3} key={attachment.id}>
-              <AttachmentItem onClick={() => handleAttachmentClick(attachment)}>
+              <AttachmentItem>
+                <AttachmentActions className="attachment-actions">
+                  {canPreviewFile(attachment.file_type) && (
+                    <Tooltip title="Preview">
+                      <ActionButton
+                        size="small"
+                        onClick={(e) => handlePreviewClick(attachment, e)}
+                      >
+                        <EyeFilledIconV2 fontSize="small" />
+                      </ActionButton>
+                    </Tooltip>
+                  )}
+                  <Tooltip title="Download">
+                    <ActionButton
+                      size="small"
+                      onClick={(e) => handleDownloadClick(attachment, e)}
+                    >
+                      <DownloadFilledIconV2 fontSize="small" />
+                    </ActionButton>
+                  </Tooltip>
+                </AttachmentActions>
+
                 <ThumbnailContainer>
                   {attachment.is_image ? (
                     loading ? (
@@ -345,7 +471,7 @@ const AttachmentSection: React.FC<AttachmentSectionProps> = ({ attachments }) =>
         </Grid>
       </Box>
 
-      {/* Image Viewer Modal */}
+      {/* File Viewer Modal */}
       <Modal
         open={modalOpen}
         onClose={handleCloseModal}
@@ -356,23 +482,22 @@ const AttachmentSection: React.FC<AttachmentSectionProps> = ({ attachments }) =>
             <Typography id="attachment-modal-title" variant="h6" component="h2">
               {selectedAttachment?.file_name}
             </Typography>
-            <IconButton onClick={handleCloseModal} size="small">
-              <CloseIcon />
-            </IconButton>
+            <ModalActions>
+              <Button
+                startIcon={<DownloadIcon />}
+                variant="outlined"
+                size="small"
+                onClick={() => selectedAttachment && downloadAttachment(selectedAttachment)}
+              >
+                Download
+              </Button>
+              <IconButton onClick={handleCloseModal} size="small">
+                <CloseIcon />
+              </IconButton>
+            </ModalActions>
           </ModalHeader>
           <ModalBody>
-            {modalLoading ? (
-              <LoadingContainer>
-                <CircularProgress size={60} />
-              </LoadingContainer>
-            ) : selectedAttachment && fullImageUrl ? (
-              <ModalImage
-                src={fullImageUrl}
-                alt={selectedAttachment.file_name}
-              />
-            ) : (
-              <Typography color="error">Failed to load image</Typography>
-            )}
+            {renderModalContent()}
           </ModalBody>
         </ModalContent>
       </Modal>
