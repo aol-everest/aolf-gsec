@@ -3665,33 +3665,26 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
             Would you like to proceed with creating another appointment request for the same type? 
             Please note that submitting multiple requests for the same type may cause delays in processing.
           </Typography>
-
-          <Typography>
-            If you need to update or modify your existing request, we recommend reaching out to our office directly.
-          </Typography>
         </DialogContent>
         <DialogActions>
-          <Button 
+          <SecondaryButton 
             onClick={() => {
               setShowExistingAppointmentsDialog(false);
               setPendingStepTransition(false);
             }} 
-            color="primary"
           >
             Cancel
-          </Button>
-          <Button
+          </SecondaryButton>
+          <PrimaryButton
             onClick={() => {
               setShowExistingAppointmentsDialog(false);
               setPendingStepTransition(false);
               // Continue with the step transition
               setActiveStep(1);
             }}
-            color="primary"
-            variant="contained"
           >
             Continue Anyway
-          </Button>
+          </PrimaryButton>
         </DialogActions>
       </Dialog>
     );
