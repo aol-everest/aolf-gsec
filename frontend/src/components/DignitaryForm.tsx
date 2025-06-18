@@ -184,7 +184,7 @@ export const DignitaryForm: React.FC<DignitaryFormProps> = ({ mode, dignitary, o
         {mode === 'create' ? 'Add a New Dignitary' : 'Edit Dignitary'}
       </Typography>
       <Typography variant="body2" color="text.secondary" gutterBottom>
-        {mode === 'create' ? 'Create a new dignitary for this appointment.' : 'Update dignitary information.'}
+        {mode === 'create' ? 'Enter the dignitary\'s information and click "Save and Add" at the bottom of the page.' : 'Update dignitary information and click "Save Changes" at the bottom of the page.'}
       </Typography>
       
       <Grid container spacing={3} sx={{ mt: 1 }}>
@@ -469,7 +469,7 @@ export const DignitaryForm: React.FC<DignitaryFormProps> = ({ mode, dignitary, o
               {(createDignitaryMutation.isPending || updateDignitaryMutation.isPending) 
                 ? 'Saving...' 
                 : mode === 'create' 
-                  ? 'Save and Add to Appointment' 
+                  ? 'Save and Add' 
                   : 'Save Changes'
               }
             </PrimaryButton>

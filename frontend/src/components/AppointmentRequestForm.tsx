@@ -72,7 +72,7 @@ import { StepNavigation } from './appointment/StepNavigation';
 import { AttendeeList } from './appointment/AttendeeList';
 import { ProfileOverlay } from './appointment/ProfileOverlay';
 import { InitialInfoStep } from './appointment/steps/InitialInfoStep';
-import { CheckSquareCircleFilledIconV2, CheckCircleIconV2, CloseIconFilledCircleV2, DropdownBarIconV2 } from './iconsv2';
+import { EditIconV2, CheckSquareCircleFilledIconV2, CheckCircleIconV2, CloseIconFilledCircleV2, DropdownBarIconV2, TrashIconV2 } from './iconsv2';
 import { useAppointmentSummary, hasExistingAppointments } from '../hooks/useAppointmentSummary';
 import { CountrySelect } from './selects/CountrySelect';
 import { PrimaryDomainSelect } from './selects/PrimaryDomainSelect';
@@ -2800,7 +2800,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                   }}
                   sx={{ width: 32, height: 32 }}
                 >
-                  <EditIcon sx={{ fontSize: 16 }} />
+                  <EditIconV2 sx={{ fontSize: 16 }} />
                 </TableCellComponents.ActionButton>
                 <TableCellComponents.ActionButton
                   onClick={(e: React.MouseEvent) => {
@@ -2816,7 +2816,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                     }
                   }}
                 >
-                  <DeleteIcon sx={{ fontSize: 16, color: 'error.main' }} />
+                  <TrashIconV2 sx={{ fontSize: 16, color: 'error.main' }} />
                 </TableCellComponents.ActionButton>
               </Box>
             );
@@ -2891,7 +2891,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                     editContactInList(contact);
                   }}
                 >
-                  <EditIcon sx={{ fontSize: 18 }} />
+                  <EditIconV2 sx={{ fontSize: 18 }} />
                 </TableCellComponents.ActionButton>
                 <TableCellComponents.ActionButton
                   onClick={(e: React.MouseEvent) => {
@@ -2905,7 +2905,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                     }
                   }}
                 >
-                  <DeleteIcon sx={{ fontSize: 18, color: 'error.main' }} />
+                  <TrashIconV2 sx={{ fontSize: 18, color: 'error.main' }} />
                 </TableCellComponents.ActionButton>
               </Box>
             );
@@ -2943,7 +2943,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
               </Box>
             );
           },
-          size: undefined, // Auto-size on mobile
+          // size: undefined, // Auto-size on mobile
         }),
         dignitariesColumnHelper.display({
           id: 'actions',
@@ -2961,7 +2961,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                   }}
                   sx={{ width: 32, height: 32 }}
                 >
-                  <EditIcon sx={{ fontSize: 16 }} />
+                  <EditIconV2 sx={{ fontSize: 16 }} />
                 </TableCellComponents.ActionButton>
                 <TableCellComponents.ActionButton
                   onClick={(e: React.MouseEvent) => {
@@ -2977,7 +2977,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                     }
                   }}
                 >
-                  <DeleteIcon sx={{ fontSize: 16, color: 'error.main' }} />
+                  <TrashIconV2 sx={{ fontSize: 16, color: 'error.main' }} />
                 </TableCellComponents.ActionButton>
               </Box>
             );
@@ -3049,7 +3049,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                     handleDignitaryEdit(dignitary);
                   }}
                 >
-                  <EditIcon sx={{ fontSize: 18 }} />
+                  <EditIconV2 sx={{ fontSize: 18 }} />
                 </TableCellComponents.ActionButton>
                 <TableCellComponents.ActionButton
                   onClick={(e: React.MouseEvent) => {
@@ -3063,7 +3063,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                     }
                   }}
                 >
-                  <DeleteIcon sx={{ fontSize: 18, color: 'error.main' }} />
+                  <TrashIconV2 sx={{ fontSize: 18, color: 'error.main' }} />
                 </TableCellComponents.ActionButton>
               </Box>
             );
