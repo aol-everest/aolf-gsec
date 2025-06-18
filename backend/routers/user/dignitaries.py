@@ -46,6 +46,9 @@ async def new_dignitary(
     db.commit()
     db.refresh(poc)
 
+    # Add the poc_relationship_type to the response
+    new_dignitary.poc_relationship_type = poc_relationship_type
+
     return new_dignitary
 
 @router.patch("/dignitaries/update/{dignitary_id}", response_model=schemas.Dignitary)
@@ -100,6 +103,10 @@ async def update_dignitary(
         logger.error(f"Error updating POC relationship: {str(e)}")
         raise HTTPException(status_code=422, detail=f"Error updating POC relationship: {str(e)}")
 
+    # Add the poc_relationship_type to the response
+    if poc_relationship_type:
+        existing_dignitary.poc_relationship_type = poc_relationship_type
+    
     logger.info(f"Successfully updated dignitary {dignitary_id}")
     return existing_dignitary
 

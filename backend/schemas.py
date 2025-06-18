@@ -189,9 +189,10 @@ class DignitaryBase(BaseModel):
     gurudev_meeting_notes: Optional[str] = None
     source: Optional[DignitarySource] = DignitarySource.MANUAL
     source_appointment_id: Optional[int] = None
+    poc_relationship_type: Optional[RelationshipType] = None
 
 class DignitaryCreate(DignitaryBase):
-    poc_relationship_type: RelationshipType
+    poc_relationship_type: RelationshipType  # Override to make it required
     country_code: str
 
 class DignitaryUpdate(DignitaryBase):
@@ -210,7 +211,6 @@ class DignitaryUpdate(DignitaryBase):
     country_code: str
     state: Optional[str] = None
     city: Optional[str] = None
-    poc_relationship_type: Optional[RelationshipType] = None
 
 class AppointmentDignitaryWithAppointment(AppointmentDignitaryBase):
     id: int

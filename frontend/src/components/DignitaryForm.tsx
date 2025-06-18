@@ -37,7 +37,7 @@ export const DignitaryForm: React.FC<DignitaryFormProps> = ({ mode, dignitary, o
   const api = useApi();
   const { enqueueSnackbar } = useSnackbar();
 
-//   console.log('Dignitary for edit:', dignitary);
+  console.log('Dignitary for edit:', dignitary);
   
   // Initialize form with appropriate default values based on mode
   const dignitaryForm = useForm({
@@ -87,17 +87,23 @@ export const DignitaryForm: React.FC<DignitaryFormProps> = ({ mode, dignitary, o
   // Create mutation for new dignitaries
   const createDignitaryMutation = useMutation<Dignitary, Error, any>({
     mutationFn: async (data: any) => {
+      console.log('Sending to API:', data);
+      console.log('poc_relationship_type in request:', data.poc_relationship_type);
       const { data: response } = await api.post<Dignitary>('/dignitaries/new', data);
       return response;
     },
     onSuccess: (newDignitary) => {
+      console.log('API response for new dignitary:', newDignitary);
+      console.log('poc_relationship_type in API response:', newDignitary.poc_relationship_type);
+      
       const selectedDignitary: SelectedDignitary = {
         ...newDignitary,
-        id: newDignitary.id,
-        first_name: newDignitary.first_name,
-        last_name: newDignitary.last_name,
         isNew: true,
       };
+      
+      console.log('selectedDignitary being passed to onSave:', selectedDignitary);
+      console.log('poc_relationship_type in selectedDignitary:', selectedDignitary.poc_relationship_type);
+      
       onSave(selectedDignitary);
       enqueueSnackbar('New dignitary created successfully', { variant: 'success' });
     },
@@ -120,9 +126,6 @@ export const DignitaryForm: React.FC<DignitaryFormProps> = ({ mode, dignitary, o
     onSuccess: (updatedDignitary) => {
       const selectedDignitary: SelectedDignitary = {
         ...updatedDignitary,
-        id: updatedDignitary.id,
-        first_name: updatedDignitary.first_name,
-        last_name: updatedDignitary.last_name,
       };
       onSave(selectedDignitary);
       enqueueSnackbar('Dignitary updated successfully', { variant: 'success' });

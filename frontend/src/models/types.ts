@@ -102,6 +102,7 @@ interface Dignitary {
   state: string;
   city: string;
   relationship_type?: string;
+  poc_relationship_type?: string;
   has_dignitary_met_gurudev: boolean;
   gurudev_meeting_date?: string;
   gurudev_meeting_location?: string;

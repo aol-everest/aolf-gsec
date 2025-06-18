@@ -650,6 +650,8 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
 
   // Dignitary management functions are now handled by UserDignitarySelector
   const handleDignitaryAdd = (dignitary: SelectedDignitary) => {
+    console.log('Adding dignitary to list:', dignitary);
+    console.log('poc_relationship_type in added dignitary:', dignitary.poc_relationship_type);
     setSelectedDignitaries(prev => [...prev, dignitary]);
   };
 
@@ -658,6 +660,9 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
   };
 
   const handleDignitaryEdit = (dignitary: SelectedDignitary) => {
+    console.log('Edit dignitary data:', dignitary);
+    console.log('poc_relationship_type:', dignitary.poc_relationship_type);
+    console.log('relationshipType:', dignitary.relationshipType);
     setEditingDignitary(dignitary);
     setShowDignitaryEditDialog(true);
   };
