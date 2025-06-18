@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { formatDate, getLocalDateString, validateDateRange, validateSingleDate, formatDateRange } from '../utils/dateUtils';
 import { alpha } from '@mui/material/styles';
@@ -44,6 +44,7 @@ import { useNavigate } from 'react-router-dom';
 import { formatHonorificTitle } from '../utils/formattingUtils';
 import NumberInput from './NumberInput';
 import { useTheme } from '@mui/material/styles';
+import { useMediaQuery } from '@mui/material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
@@ -55,6 +56,7 @@ import AddIcon from '@mui/icons-material/LibraryAdd';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
+import CloseIcon from '@mui/icons-material/Close';
 import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
 import { AppointmentStatusChip } from './AppointmentStatusChip';
@@ -62,6 +64,7 @@ import { PersonSelectionChip } from './PersonSelectionChip';
 import ProfileFieldsForm, { ProfileFieldsFormRef } from './ProfileFieldsForm';
 import { isProfileComplete, getProfileCompletionFields } from '../utils/profileValidation';
 import { UserUpdateData } from '../models/types';
+import { GenericTable, createGenericColumnHelper, TableCellComponents } from './GenericTable';
 
 // Import new step configuration system
 import { getMainSteps, getDisplaySteps, shouldShowProfileOverlay, WizardState, StepData } from './appointment/stepConfig';
@@ -76,7 +79,11 @@ import { PrimaryDomainSelect } from './selects/PrimaryDomainSelect';
 import { SubdivisionStateDropdown } from './selects/SubdivisionStateDropdown';
 import { HonorificTitleSelect } from './selects/HonorificTitleSelect';
 import { UserDignitarySelector } from './selects/UserDignitarySelector';
+import { DignitaryForm } from './DignitaryForm';
+
 import { SelectedDignitary as UserSelectedDignitary } from './selects/GenericDignitarySelector';
+
+
 
 // Remove the hardcoded enum and add a state for time of day options
 // const AppointmentTimeOfDay = {
@@ -168,6 +175,8 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
   showProfileStep = false 
 }) => {
   const { userInfo, updateUserInfo } = useAuth();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   
   // Initialize wizard state using step configuration system
   const [wizardState, setWizardState] = useState<WizardState>({
@@ -195,7 +204,6 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
   const [selectedDignitaries, setSelectedDignitaries] = useState<SelectedDignitary[]>([]);
   const [showWarningDialog, setShowWarningDialog] = useState(false);
   const navigate = useNavigate();
-  const theme = useTheme();
   const api = useApi();
   const { enqueueSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
@@ -284,6 +292,14 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
   const [isPersonalAttendeeFormExpanded, setIsPersonalAttendeeFormExpanded] = useState(false);
   const [isEditingPersonalAttendee, setIsEditingPersonalAttendee] = useState(false);
   const [editingPersonalAttendeeIndex, setEditingPersonalAttendeeIndex] = useState<number | null>(null);
+  
+  // State for dignitary editing
+  const [editingDignitary, setEditingDignitary] = useState<SelectedDignitary | null>(null);
+
+  const [showDignitaryEditDialog, setShowDignitaryEditDialog] = useState(false);
+  
+  // State for dignitary selection interface
+  const [dignitarySelectionMode, setDignitarySelectionMode] = useState<'none' | 'existing' | 'new'>('none');
   
   // State for user contacts integration
   const [userContacts, setUserContacts] = useState<UserContact[]>([]);
@@ -639,6 +655,33 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
 
   const handleDignitaryRemove = (index: number) => {
     setSelectedDignitaries(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleDignitaryEdit = (dignitary: SelectedDignitary) => {
+    setEditingDignitary(dignitary);
+    setShowDignitaryEditDialog(true);
+  };
+
+  const handleDignitaryUpdate = (updatedDignitary: SelectedDignitary) => {
+    setSelectedDignitaries(prev => 
+      prev.map(d => d.id === updatedDignitary.id ? updatedDignitary : d)
+    );
+    setEditingDignitary(null);
+    setShowDignitaryEditDialog(false);
+  };
+
+  const handleDignitaryEditCancel = () => {
+    setEditingDignitary(null);
+    setShowDignitaryEditDialog(false);
+  };
+
+  const handleDignitarySelectionCancel = () => {
+    setDignitarySelectionMode('none');
+  };
+
+  const handleAddExistingDignitary = (dignitary: SelectedDignitary) => {
+    handleDignitaryAdd(dignitary);
+    setDignitarySelectionMode('none');
   };
 
   // Personal attendee management functions
@@ -1239,75 +1282,45 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
 
     return (
       <>
-        <Grid item xs={12} md={6} lg={4}>
-          <FormControl component="fieldset" required>
-            <FormLabel component="legend">
-              {isRequester ? "Have you met Gurudev in last 2 weeks?" : "Have they met Gurudev in last 2 weeks?"}
-            </FormLabel>
-            <RadioGroup
-              row
-              value={engagementData.hasMetGurudevRecently?.toString() || ''}
-              onChange={(e) => updateEngagementField('hasMetGurudevRecently', e.target.value === 'true')}
-            >
-              <FormControlLabel value="true" control={<Radio />} label="Yes" />
-              <FormControlLabel value="false" control={<Radio />} label="No" />
-            </RadioGroup>
-          </FormControl>
-        </Grid>
-
-        <Grid item xs={12} md={6} lg={4}>
-          <FormControl component="fieldset" required>
-            <FormLabel component="legend">
-              {isRequester ? "Are you attending a course?" : "Are they attending a course?"}
-            </FormLabel>
-            <RadioGroup
-              row
-              value={engagementData.isAttendingCourse?.toString() || ''}
-              onChange={(e) => {
-                const isAttending = e.target.value === 'true';
-                updateEngagementField('isAttendingCourse', isAttending);
-                
-                // Clear course selection if not attending
-                if (!isAttending) {
-                  updateEngagementField('isDoingSeva', null);
-                  updateEngagementField('sevaType', '');
-                }
-              }}
-            >
-              <FormControlLabel value="true" control={<Radio />} label="Yes" />
-              <FormControlLabel value="false" control={<Radio />} label="No" />
-            </RadioGroup>
-          </FormControl>
-        </Grid>
-
-        {engagementData.isAttendingCourse && (
-          <Grid item xs={12} md={6} lg={4}>
-            <EnumSelect
-              enumType="courseType"
-              label="Course Attending"
-              value={engagementData.courseAttending}
-              onChange={(e) => updateEngagementField('courseAttending', e.target.value as string)}
-              fullWidth
-            />
-          </Grid>
-        )}
-
-        {engagementData.isAttendingCourse !== null && !engagementData.isAttendingCourse && (
-          <>
-            <Grid item xs={12} md={6} lg={4}>
+        <Grid item xs={12} sx={{ p: 0, pl: 0 }}>
+          <Grid container spacing={3} sx={{ 
+            border: '1px solid',
+            borderColor: 'divider',
+            borderRadius: 2,
+            pt: 0,
+            pb: 2,
+          }}>
+            <Grid item xs={12} md={4} lg={3}>
               <FormControl component="fieldset" required>
                 <FormLabel component="legend">
-                  {isRequester ? "Are you doing seva?" : "Are they doing seva?"}
+                  {isRequester ? "Have you met Gurudev in last 2 weeks?" : "Have they met Gurudev in last 2 weeks?"}
                 </FormLabel>
                 <RadioGroup
                   row
-                  value={engagementData.isDoingSeva?.toString() || ''}
+                  value={engagementData.hasMetGurudevRecently?.toString() || ''}
+                  onChange={(e) => updateEngagementField('hasMetGurudevRecently', e.target.value === 'true')}
+                >
+                  <FormControlLabel value="true" control={<Radio />} label="Yes" />
+                  <FormControlLabel value="false" control={<Radio />} label="No" />
+                </RadioGroup>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} md={4} lg={3}>
+              <FormControl component="fieldset" required>
+                <FormLabel component="legend">
+                  {isRequester ? "Are you attending a course?" : "Are they attending a course?"}
+                </FormLabel>
+                <RadioGroup
+                  row
+                  value={engagementData.isAttendingCourse?.toString() || ''}
                   onChange={(e) => {
-                    const isDoingSeva = e.target.value === 'true';
-                    updateEngagementField('isDoingSeva', isDoingSeva);
+                    const isAttending = e.target.value === 'true';
+                    updateEngagementField('isAttendingCourse', isAttending);
                     
-                    // Clear seva type if not doing seva
-                    if (!isDoingSeva) {
+                    // Clear course selection if not attending
+                    if (!isAttending) {
+                      updateEngagementField('isDoingSeva', null);
                       updateEngagementField('sevaType', '');
                     }
                   }}
@@ -1318,19 +1331,59 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
               </FormControl>
             </Grid>
 
-            {engagementData.isDoingSeva && (
-              <Grid item xs={12} md={6} lg={4}>
+            {engagementData.isAttendingCourse && (
+              <Grid item xs={12} md={4} lg={3}>
                 <EnumSelect
-                  enumType="sevaType"
-                  label="Type of Seva"
-                  value={engagementData.sevaType}
-                  onChange={(e) => updateEngagementField('sevaType', e.target.value as string)}
+                  enumType="courseType"
+                  label="Course Attending"
+                  value={engagementData.courseAttending}
+                  onChange={(e) => updateEngagementField('courseAttending', e.target.value as string)}
                   fullWidth
                 />
               </Grid>
             )}
-          </>
-        )}
+
+            {engagementData.isAttendingCourse !== null && !engagementData.isAttendingCourse && (
+              <>
+                <Grid item xs={12} md={4} lg={3}>
+                  <FormControl component="fieldset" required>
+                    <FormLabel component="legend">
+                      {isRequester ? "Are you doing seva?" : "Are they doing seva?"}
+                    </FormLabel>
+                    <RadioGroup
+                      row
+                      value={engagementData.isDoingSeva?.toString() || ''}
+                      onChange={(e) => {
+                        const isDoingSeva = e.target.value === 'true';
+                        updateEngagementField('isDoingSeva', isDoingSeva);
+                        
+                        // Clear seva type if not doing seva
+                        if (!isDoingSeva) {
+                          updateEngagementField('sevaType', '');
+                        }
+                      }}
+                    >
+                      <FormControlLabel value="true" control={<Radio />} label="Yes" />
+                      <FormControlLabel value="false" control={<Radio />} label="No" />
+                    </RadioGroup>
+                  </FormControl>
+                </Grid>
+
+                {engagementData.isDoingSeva && (
+                  <Grid item xs={12} md={4} lg={3}>
+                    <EnumSelect
+                      enumType="sevaType"
+                      label="Type of Seva"
+                      value={engagementData.sevaType}
+                      onChange={(e) => updateEngagementField('sevaType', e.target.value as string)}
+                      fullWidth
+                    />
+                  </Grid>
+                )}
+              </>
+            )}
+          </Grid> 
+        </Grid>
       </>
     );
   };
@@ -1468,28 +1521,144 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                 </Typography>
               </Grid>
 
-              {/* Show dignitary form for dignitary requests */}
+                            {/* Show dignitary form for dignitary requests */}
               {selectedRequestTypeConfig?.attendee_type === attendeeTypeMap['DIGNITARY'] ? (
-                <Grid item xs={12}>
-                  <UserDignitarySelector
-                    dignitaries={dignitaries}
-                    selectedDignitaries={selectedDignitaries}
-                    onDignitaryAdd={handleDignitaryAdd}
-                    onDignitaryRemove={handleDignitaryRemove}
-                    maxDignitaries={requiredDignitariesCount}
-                    title="Select Dignitaries"
-                    description={`Select existing dignitaries or create new ones for this appointment request. You need to add ${requiredDignitariesCount} dignitary(ies) in total.`}
-                    required={true}
-                  />
-                </Grid>
+                <>
+                  {/* Table of selected dignitaries */}
+                  {selectedDignitaries.length > 0 && (
+                    <Grid item xs={12}>
+                      <Typography variant="subtitle1" gutterBottom>
+                        Selected Dignitaries ({selectedDignitaries.length} of {requiredDignitariesCount})
+                      </Typography>
+                      <Box sx={{ mt: 2 }}>
+                        <GenericTable
+                          data={selectedDignitaries}
+                          columns={dignitariesTableColumns}
+                          getRowId={(dignitary) => dignitary.id.toString()}
+                          emptyMessage="No dignitaries added yet"
+                          enableSearch={false}
+                          enablePagination={false}
+                          enableColumnVisibility={false}
+                          tableProps={{
+                            size: isMobile ? 'small' : 'medium',
+                            stickyHeader: false,
+                          }}
+                          containerProps={{
+                            sx: {
+                              border: '1px solid',
+                              borderColor: 'divider',
+                              borderRadius: 1,
+                              '& .MuiTableContainer-root': {
+                                boxShadow: 'none',
+                              }
+                            }
+                          }}
+                        />
+                      </Box>
+                    </Grid>
+                  )}
 
+                  {/* Action buttons for dignitary selection */}
+                  {dignitarySelectionMode === 'none' && selectedDignitaries.length < requiredDignitariesCount && (
+                    <Grid item xs={12}>
+                      <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+                        <PrimaryButton
+                          size="medium"
+                          startIcon={<AddIcon />}
+                          onClick={() => setDignitarySelectionMode('new')}
+                          sx={{ flex: 1 }}
+                        >
+                          Add a New Dignitary
+                        </PrimaryButton>
+                        <SecondaryButton
+                          size="medium"
+                          onClick={() => setDignitarySelectionMode('existing')}
+                          sx={{ flex: 1 }}
+                        >
+                          Select an Existing Dignitary
+                        </SecondaryButton>
+                      </Box>
+                    </Grid>
+                  )}
+
+                  {/* Existing dignitary selector */}
+                  {dignitarySelectionMode === 'existing' && (
+                    <Grid item xs={12}>
+                      <Divider sx={{ my: 2 }} />
+                      <Typography variant="subtitle1" gutterBottom>
+                        Select an Existing Dignitary
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                        Choose from existing dignitaries in the system.
+                      </Typography>
+                      
+                      <FormControl fullWidth sx={{ mt: 2 }}>
+                        <InputLabel>Select Dignitary</InputLabel>
+                        <Select
+                          label="Select Dignitary"
+                          value=""
+                          onChange={(e) => {
+                            const dignitaryId = Number(e.target.value);
+                            const dignitary = dignitaries.find(d => d.id === dignitaryId);
+                            if (dignitary) {
+                              const selectedDignitary: SelectedDignitary = {
+                                ...dignitary,
+                                id: dignitary.id,
+                                first_name: dignitary.first_name,
+                                last_name: dignitary.last_name,
+                              };
+                              handleAddExistingDignitary(selectedDignitary);
+                            }
+                          }}
+                        >
+                          {dignitaries
+                            .filter(d => !selectedDignitaries.some(sd => sd.id === d.id))
+                            .map((dignitary) => (
+                              <MenuItem key={dignitary.id} value={dignitary.id}>
+                                <Box>
+                                  <Typography variant="body1">
+                                    {formatHonorificTitle(dignitary.honorific_title || '')} {dignitary.first_name} {dignitary.last_name}
+                                  </Typography>
+                                  <Typography variant="body2" color="text.secondary">
+                                    {[dignitary.title_in_organization, dignitary.organization, dignitary.email].filter(Boolean).join(' | ') || 'No additional info'}
+                                  </Typography>
+                                </Box>
+                              </MenuItem>
+                            ))}
+                        </Select>
+                      </FormControl>
+                      
+                      <Box sx={{ display: 'flex', gap: 2, mt: 2, justifyContent: 'flex-end' }}>
+                        <SecondaryButton
+                          onClick={handleDignitarySelectionCancel}
+                        >
+                          Cancel
+                        </SecondaryButton>
+                      </Box>
+                    </Grid>
+                  )}
+
+                  {/* New dignitary form */}
+                  {dignitarySelectionMode === 'new' && (
+                    <DignitaryForm
+                      mode="create"
+                      onSave={(dignitary) => {
+                        handleDignitaryAdd(dignitary);
+                        setDignitarySelectionMode('none');
+                      }}
+                      onCancel={handleDignitarySelectionCancel}
+                    />
+                  )}
+                </>
                             ) : (
                 /* Contact management for non-dignitary requests */
                 <>
                   {/* Self-attendance option */}
-                  <Grid item xs={12} md={6} lg={4}>
-                    <FormControl component="fieldset" sx={{ mb: 2 }}>
-                      <FormLabel component="legend">Are you attending this appointment?</FormLabel>
+                  <Grid item xs={12} md={12} lg={12}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                      <Typography variant="body1" component="span">
+                        Are you attending this appointment?
+                      </Typography>
                       <RadioGroup
                         row
                         value={isUserAttending.toString()}
@@ -1506,7 +1675,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                           label="No, I am not attending" 
                         />
                       </RadioGroup>
-                    </FormControl>
+                    </Box>
                   </Grid>
 
                   {/* Engagement fields for self-attendance */}
@@ -1523,41 +1692,36 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                     </>
                   )}
 
-                  {/* List of selected contacts */}
+                  {/* Table of selected contacts */}
                   {selectedUserContacts.length > 0 && (
                     <Grid item xs={12}>
                       <Typography variant="subtitle1" gutterBottom>
                         Selected {selectedRequestTypeConfig?.attendee_label_plural || 'Attendees'} ({selectedUserContacts.length} of {requiredDignitariesCount})
                       </Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-                        {selectedUserContacts.map((contact, index) => {
-                          const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
-                          const isSelfContact = contact.relationship_to_owner === relationshipTypeMap['SELF'] || 
-                                               (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName);
-                          
-                          let fullDisplayName;
-                          if (isSelfContact) {
-                            fullDisplayName = selfDisplayName; // Just show "Self" for self-contacts
-                          } else {
-                            const displayName = `${contact.first_name} ${contact.last_name}`;
-                            const additionalInfo = contact.relationship_to_owner;
-                            fullDisplayName = additionalInfo ? `${displayName} - ${additionalInfo}` : displayName;
-                          }
-                          
-                          return (
-                            <PersonSelectionChip
-                              key={contact.id}
-                              id={contact.id}
-                              firstName={contact.first_name}
-                              lastName={contact.last_name}
-                              displayName={fullDisplayName}
-                              onDelete={() => removeContactFromList(contact.id)}
-                              onEdit={() => editContactInList(contact)}
-                              editIcon={<EditIcon />}
-                              isSelf={isSelfContact}
-                            />
-                          );
-                        })}
+                      <Box sx={{ mt: 2 }}>
+                        <GenericTable
+                          data={selectedUserContacts}
+                          columns={contactsTableColumns}
+                          getRowId={(contact) => contact.id.toString()}
+                          emptyMessage={`No ${selectedRequestTypeConfig?.attendee_label_plural?.toLowerCase() || 'attendees'} added yet`}
+                          enableSearch={false}
+                          enablePagination={false}
+                          enableColumnVisibility={false}
+                          tableProps={{
+                            size: isMobile ? 'small' : 'medium',
+                            stickyHeader: false,
+                          }}
+                          containerProps={{
+                            sx: {
+                              border: '1px solid',
+                              borderColor: 'divider',
+                              borderRadius: 1,
+                              '& .MuiTableContainer-root': {
+                                boxShadow: 'none',
+                              }
+                            }
+                          }}
+                        />
                       </Box>
                     </Grid>
                   )}
@@ -2574,7 +2738,336 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
     );
   };
 
-  // getButtonText function is no longer needed as dignitary management is handled by UserDignitarySelector
+  // Create column helper for contacts table
+  const contactsColumnHelper = createGenericColumnHelper<UserContact>();
+
+  // Create column helper for dignitaries table
+  const dignitariesColumnHelper = createGenericColumnHelper<SelectedDignitary>();
+
+  // Define contacts table columns
+  const contactsTableColumns = useMemo(() => {
+    if (isMobile) {
+      // Mobile: only show name with relationship and actions
+      return [
+        contactsColumnHelper.accessor('first_name', {
+          id: 'nameAndRelationship',
+          header: 'Contact',
+          cell: ({ row }) => {
+            const contact = row.original;
+            const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
+            const isSelfContact = contact.relationship_to_owner === relationshipTypeMap['SELF'] || 
+                                 (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName);
+            
+            const displayName = isSelfContact ? selfDisplayName : `${contact.first_name} ${contact.last_name}`;
+            const relationship = contact.relationship_to_owner;
+            
+            return (
+              <Box>
+                <TableCellComponents.PrimaryText sx={{ fontSize: '14px', fontWeight: 500 }}>
+                  {displayName}
+                </TableCellComponents.PrimaryText>
+                {relationship && !isSelfContact && (
+                  <TableCellComponents.SecondaryText sx={{ fontSize: '12px', mt: 0.5 }}>
+                    {relationship}
+                  </TableCellComponents.SecondaryText>
+                )}
+              </Box>
+            );
+          },
+          size: undefined, // Auto-size on mobile
+        }),
+        contactsColumnHelper.display({
+          id: 'actions',
+          header: 'Actions',
+          cell: ({ row }) => {
+            const contact = row.original;
+            const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
+            const isSelfContact = contact.relationship_to_owner === relationshipTypeMap['SELF'] || 
+                                 (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName);
+            
+            return (
+              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                <TableCellComponents.ActionButton 
+                  onClick={(e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    editContactInList(contact);
+                  }}
+                  sx={{ width: 32, height: 32 }}
+                >
+                  <EditIcon sx={{ fontSize: 16 }} />
+                </TableCellComponents.ActionButton>
+                <TableCellComponents.ActionButton
+                  onClick={(e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    removeContactFromList(contact.id);
+                  }}
+                  sx={{ 
+                    width: 32, 
+                    height: 32,
+                    '&:hover': {
+                      backgroundColor: 'error.light',
+                      borderColor: 'error.main'
+                    }
+                  }}
+                >
+                  <DeleteIcon sx={{ fontSize: 16, color: 'error.main' }} />
+                </TableCellComponents.ActionButton>
+              </Box>
+            );
+          },
+          size: 80,
+          enableSorting: false,
+        }),
+      ];
+    } else {
+      // Desktop: show more details in separate columns
+      return [
+        contactsColumnHelper.accessor('first_name', {
+          id: 'name',
+          header: 'Name',
+          cell: ({ row }) => {
+            const contact = row.original;
+            const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
+            const isSelfContact = contact.relationship_to_owner === relationshipTypeMap['SELF'] || 
+                                 (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName);
+            
+            const displayName = isSelfContact ? selfDisplayName : `${contact.first_name} ${contact.last_name}`;
+            
+            return (
+              <TableCellComponents.PrimaryText>
+                {displayName}
+              </TableCellComponents.PrimaryText>
+            );
+          },
+          size: 180,
+        }),
+        contactsColumnHelper.accessor('relationship_to_owner', {
+          id: 'relationship',
+          header: 'Relationship',
+          cell: ({ row }) => (
+            <TableCellComponents.SecondaryText>
+              {row.original.relationship_to_owner || '-'}
+            </TableCellComponents.SecondaryText>
+          ),
+          size: 140,
+        }),
+        contactsColumnHelper.accessor('email', {
+          id: 'email',
+          header: 'Email',
+          cell: ({ row }) => (
+            <TableCellComponents.SecondaryText sx={{ fontSize: '13px' }}>
+              {row.original.email || '-'}
+            </TableCellComponents.SecondaryText>
+          ),
+          size: 200,
+        }),
+        contactsColumnHelper.accessor('phone', {
+          id: 'phone',
+          header: 'Phone',
+          cell: ({ row }) => (
+            <TableCellComponents.SecondaryText sx={{ fontSize: '13px' }}>
+              {row.original.phone || '-'}
+            </TableCellComponents.SecondaryText>
+          ),
+          size: 140,
+        }),
+        contactsColumnHelper.display({
+          id: 'actions',
+          header: 'Actions',
+          cell: ({ row }) => {
+            const contact = row.original;
+            
+            return (
+              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                <TableCellComponents.ActionButton 
+                  onClick={(e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    editContactInList(contact);
+                  }}
+                >
+                  <EditIcon sx={{ fontSize: 18 }} />
+                </TableCellComponents.ActionButton>
+                <TableCellComponents.ActionButton
+                  onClick={(e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    removeContactFromList(contact.id);
+                  }}
+                  sx={{ 
+                    '&:hover': {
+                      backgroundColor: 'error.light',
+                      borderColor: 'error.main'
+                    }
+                  }}
+                >
+                  <DeleteIcon sx={{ fontSize: 18, color: 'error.main' }} />
+                </TableCellComponents.ActionButton>
+              </Box>
+            );
+          },
+          size: 100,
+          enableSorting: false,
+        }),
+      ];
+    }
+  }, [isMobile, relationshipTypeMap, editContactInList, removeContactFromList]);
+
+  // Define dignitaries table columns
+  const dignitariesTableColumns = useMemo(() => {
+    if (isMobile) {
+      // Mobile: only show name with title and actions
+      return [
+        dignitariesColumnHelper.accessor('first_name', {
+          id: 'nameAndTitle',
+          header: 'Dignitary',
+          cell: ({ row }) => {
+            const dignitary = row.original;
+            const displayName = `${formatHonorificTitle(dignitary.honorific_title || '')} ${dignitary.first_name} ${dignitary.last_name}`;
+            const titleCompany = [dignitary.title_in_organization, dignitary.organization].filter(Boolean).join(', ');
+            
+            return (
+              <Box>
+                <TableCellComponents.PrimaryText sx={{ fontSize: '14px', fontWeight: 500 }}>
+                  {displayName}
+                </TableCellComponents.PrimaryText>
+                {titleCompany && (
+                  <TableCellComponents.SecondaryText sx={{ fontSize: '12px', mt: 0.5 }}>
+                    {titleCompany}
+                  </TableCellComponents.SecondaryText>
+                )}
+              </Box>
+            );
+          },
+          size: undefined, // Auto-size on mobile
+        }),
+        dignitariesColumnHelper.display({
+          id: 'actions',
+          header: 'Actions',
+          cell: ({ row }) => {
+            const dignitary = row.original;
+            const index = selectedDignitaries.findIndex(d => d.id === dignitary.id);
+            
+            return (
+              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                <TableCellComponents.ActionButton 
+                  onClick={(e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    handleDignitaryEdit(dignitary);
+                  }}
+                  sx={{ width: 32, height: 32 }}
+                >
+                  <EditIcon sx={{ fontSize: 16 }} />
+                </TableCellComponents.ActionButton>
+                <TableCellComponents.ActionButton
+                  onClick={(e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    handleDignitaryRemove(index);
+                  }}
+                  sx={{ 
+                    width: 32, 
+                    height: 32,
+                    '&:hover': {
+                      backgroundColor: 'error.light',
+                      borderColor: 'error.main'
+                    }
+                  }}
+                >
+                  <DeleteIcon sx={{ fontSize: 16, color: 'error.main' }} />
+                </TableCellComponents.ActionButton>
+              </Box>
+            );
+          },
+          size: 80,
+          enableSorting: false,
+        }),
+      ];
+    } else {
+      // Desktop: show more details in separate columns
+      return [
+        dignitariesColumnHelper.accessor('first_name', {
+          id: 'name',
+          header: 'Name',
+          cell: ({ row }) => {
+            const dignitary = row.original;
+            const displayName = `${formatHonorificTitle(dignitary.honorific_title || '')} ${dignitary.first_name} ${dignitary.last_name}`;
+            
+            return (
+              <TableCellComponents.PrimaryText>
+                {displayName}
+              </TableCellComponents.PrimaryText>
+            );
+          },
+          size: 200,
+        }),
+        dignitariesColumnHelper.accessor('title_in_organization', {
+          id: 'title',
+          header: 'Title',
+          cell: ({ row }) => (
+            <TableCellComponents.SecondaryText>
+              {row.original.title_in_organization || '-'}
+            </TableCellComponents.SecondaryText>
+          ),
+          size: 160,
+        }),
+        dignitariesColumnHelper.accessor('organization', {
+          id: 'organization',
+          header: 'Organization',
+          cell: ({ row }) => (
+            <TableCellComponents.SecondaryText>
+              {row.original.organization || '-'}
+            </TableCellComponents.SecondaryText>
+          ),
+          size: 180,
+        }),
+        dignitariesColumnHelper.accessor('email', {
+          id: 'email',
+          header: 'Email',
+          cell: ({ row }) => (
+            <TableCellComponents.SecondaryText sx={{ fontSize: '13px' }}>
+              {row.original.email || '-'}
+            </TableCellComponents.SecondaryText>
+          ),
+          size: 200,
+        }),
+        dignitariesColumnHelper.display({
+          id: 'actions',
+          header: 'Actions',
+          cell: ({ row }) => {
+            const dignitary = row.original;
+            const index = selectedDignitaries.findIndex(d => d.id === dignitary.id);
+            
+            return (
+              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                <TableCellComponents.ActionButton 
+                  onClick={(e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    handleDignitaryEdit(dignitary);
+                  }}
+                >
+                  <EditIcon sx={{ fontSize: 18 }} />
+                </TableCellComponents.ActionButton>
+                <TableCellComponents.ActionButton
+                  onClick={(e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    handleDignitaryRemove(index);
+                  }}
+                  sx={{ 
+                    '&:hover': {
+                      backgroundColor: 'error.light',
+                      borderColor: 'error.main'
+                    }
+                  }}
+                >
+                  <DeleteIcon sx={{ fontSize: 18, color: 'error.main' }} />
+                </TableCellComponents.ActionButton>
+              </Box>
+            );
+          },
+          size: 100,
+          enableSorting: false,
+        }),
+      ];
+    }
+  }, [isMobile, formatHonorificTitle, selectedDignitaries, handleDignitaryRemove]);
 
       return (
       <Box sx={{ width: '100%' }}>
@@ -2646,6 +3139,46 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
       
       {renderConfirmationDialog()}
       {renderExistingAppointmentsDialog()}
+
+      {/* Edit Dignitary Dialog */}
+      <Dialog
+        open={showDignitaryEditDialog}
+        onClose={handleDignitaryEditCancel}
+        maxWidth="md"
+        fullWidth
+        fullScreen={isMobile}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box>
+            <Typography variant="h6" component="div">
+              Editing Dignitary Contact
+            </Typography>
+            {editingDignitary && (
+              <Typography variant="body2" color="text.secondary">
+                {formatHonorificTitle(editingDignitary.honorific_title || '')} {editingDignitary.first_name} {editingDignitary.last_name}
+              </Typography>
+            )}
+          </Box>
+          <IconButton
+            edge="end"
+            color="inherit"
+            onClick={handleDignitaryEditCancel}
+            aria-label="close"
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          {editingDignitary && (
+            <DignitaryForm
+              mode="edit"
+              dignitary={editingDignitary}
+              onSave={handleDignitaryUpdate}
+              onCancel={handleDignitaryEditCancel}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };

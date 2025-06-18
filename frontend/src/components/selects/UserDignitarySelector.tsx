@@ -22,6 +22,7 @@ const userConfig: DignitarySelectorConfig = {
   maxDignitaries: 8,
   title: "Select Dignitaries",
   description: "Select existing dignitaries or create new ones for this appointment request.",
+  hideSelectedList: false,
 };
 
 // Props interface for UserDignitarySelector
@@ -39,6 +40,7 @@ export interface UserDignitarySelectorProps {
   required?: boolean;
   disabled?: boolean;
   error?: string;
+  hideSelectedList?: boolean;
 }
 
 export const UserDignitarySelector: React.FC<UserDignitarySelectorProps> = ({
@@ -52,6 +54,7 @@ export const UserDignitarySelector: React.FC<UserDignitarySelectorProps> = ({
   required = false,
   disabled = false,
   error,
+  hideSelectedList = false,
 }) => {
   const api = useApi();
   const { enqueueSnackbar } = useSnackbar();
@@ -111,6 +114,7 @@ export const UserDignitarySelector: React.FC<UserDignitarySelectorProps> = ({
     ...(maxDignitaries && { maxDignitaries }),
     ...(title && { title }),
     ...(description && { description }),
+    hideSelectedList,
   };
 
   return (

@@ -90,6 +90,7 @@ export interface DignitarySelectorConfig {
   maxDignitaries?: number;
   title?: string;
   description?: string;
+  hideSelectedList?: boolean;
 }
 
 // Props interface for the generic component
@@ -427,7 +428,7 @@ export const GenericDignitarySelector: React.FC<GenericDignitarySelectorProps> =
       </Grid>
 
       {/* Selected Dignitaries Display */}
-      {selectedDignitaries.length > 0 && (
+      {!finalConfig.hideSelectedList && selectedDignitaries.length > 0 && (
         <Grid item xs={12}>
           <Typography variant="subtitle1" gutterBottom sx={{ mb: 2 }}>
             Selected Dignitaries ({selectedDignitaries.length} of {finalConfig.maxDignitaries})
