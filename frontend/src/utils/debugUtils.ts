@@ -21,7 +21,7 @@ const getCallerInfo = () => {
     // - Regular function names: "at functionName ("
     // - Component render functions: "at ComponentName.render ("
     // - Anonymous functions in components: "at ComponentName ("
-    const functionMatch = callerLine.match(/at\s+([\w.]+)\s*[\(\.]/) || [];
+    const functionMatch = callerLine.match(/at\s+([\w.]+)\s*[(.]/) || [];
     let caller = functionMatch[1] || 'unknown';
     
     // Clean up common patterns

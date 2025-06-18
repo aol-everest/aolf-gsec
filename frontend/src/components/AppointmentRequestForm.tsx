@@ -80,6 +80,10 @@ import { SubdivisionStateDropdown } from './selects/SubdivisionStateDropdown';
 import { HonorificTitleSelect } from './selects/HonorificTitleSelect';
 import { UserDignitarySelector } from './selects/UserDignitarySelector';
 import { DignitaryForm } from './DignitaryForm';
+import { ContactForm } from './ContactForm';
+import { AppointmentContactFields } from './AppointmentContactFields';
+import { ExistingContactSelector } from './ExistingContactSelector';
+import { UserContactSelector } from './UserContactSelector';
 
 import { SelectedDignitary as UserSelectedDignitary } from './selects/GenericDignitarySelector';
 
@@ -280,7 +284,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
   const [contactEngagementFields, setContactEngagementFields] = useState<Record<number, EngagementFields>>({});
   
   // State for selected contact in dropdown (before adding)
-  const [selectedContactForAdding, setSelectedContactForAdding] = useState<number | null>(null);
+
   
   // State for selected request type configuration
   const [selectedRequestTypeConfig, setSelectedRequestTypeConfig] = useState<RequestTypeConfig | null>(null);
@@ -304,13 +308,18 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
   // State for user contacts integration
   const [userContacts, setUserContacts] = useState<UserContact[]>([]);
   const [selectedUserContacts, setSelectedUserContacts] = useState<UserContact[]>([]);
-  const [isContactFormExpanded, setIsContactFormExpanded] = useState(false);
-  const [contactFormMode, setContactFormMode] = useState<'select' | 'create'>('select');
-  const [editingContactId, setEditingContactId] = useState<number | null>(null);
+  
+  // State for contact dialog management
+  const [showContactDialog, setShowContactDialog] = useState(false);
+  const [contactDialogMode, setContactDialogMode] = useState<'create' | 'edit'>('create');
+  const [editingContact, setEditingContact] = useState<UserContact | null>(null);
+  const [contactSelectionMode, setContactSelectionMode] = useState<'none' | 'existing' | 'new' | 'self'>('none');
+  
+
   
   // State for self-attendance feature
   const [isUserAttending, setIsUserAttending] = useState(true);  // Changed to default to true
-  const [emailValidationWarnings, setEmailValidationWarnings] = useState<string[]>([]);
+
   
   // These state variables are no longer needed as they're handled by UserDignitarySelector
 
@@ -478,15 +487,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
     }
   }, [fetchedUserContacts]);
 
-  // Update contact form mode based on available contacts
-  useEffect(() => {
-    if (isContactFormExpanded) {
-      const availableContacts = userContacts.filter(c => !selectedUserContacts.some(sc => sc.id === c.id));
-      if (availableContacts.length === 0 && contactFormMode === 'select') {
-        setContactFormMode('create');
-      }
-    }
-  }, [isContactFormExpanded, userContacts, selectedUserContacts, contactFormMode]);
+
 
   // Check if user is already attending when contacts change
   useEffect(() => {
@@ -502,26 +503,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
     }
   }, [selectedUserContacts, relationshipTypeMap]);
 
-  // Auto-add user as attendee for new appointments
-  // This useEffect runs when necessary data is loaded and handles the default self-attendance
-  useEffect(() => {
-    // Only run this effect if:
-    // 1. We have user info (for creating self contact)
-    // 2. We have relationship type mapping (needed for self contact creation)
-    // 3. We have request type config (to check if it's non-dignitary)
-    // 4. User is marked as attending but not yet in the contacts list
-    // 5. We haven't selected any contacts yet (fresh form)
-    if (userInfo && 
-        relationshipTypeMap['SELF'] && 
-        selectedRequestTypeConfig &&
-        selectedRequestTypeConfig.attendee_type !== attendeeTypeMap['DIGNITARY'] &&
-        isUserAttending && 
-        selectedUserContacts.length === 0) {
-      
-      // Automatically add the user as an attendee
-      handleSelfAttendanceChange(true);
-    }
-  }, [userInfo, relationshipTypeMap, selectedRequestTypeConfig, attendeeTypeMap, isUserAttending, selectedUserContacts.length]);
+
 
   // These functions are no longer needed as they're handled by UserDignitarySelector
 
@@ -765,7 +747,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
       isDoingSeva: null,
       sevaType: '',
     });
-    setEmailValidationWarnings([]); // Clear email warnings
+
   };
 
   // Email validation helper function
@@ -922,77 +904,91 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
   const createAndAddContact = async (contactData: UserContactCreateData) => {
     try {
       const newContact = await createUserContactMutation.mutateAsync(contactData);
-      
-      // Get engagement fields from the form
-      const formData = personalAttendeeForm.getValues();
-      setContactEngagementFields(prev => ({
-        ...prev,
-        [newContact.id]: {
-          hasMetGurudevRecently: formData.hasMetGurudevRecently,  // Keep null if not answered
-          isAttendingCourse: formData.isAttendingCourse,          // Keep null if not answered
-          courseAttending: formData.courseAttending || '',
-          isDoingSeva: formData.isDoingSeva,                      // Keep null if not answered
-          sevaType: formData.sevaType || ''
-        }
-      }));
-      
       addContactToList(newContact);
-      setIsContactFormExpanded(false);
-      setContactFormMode('select');
     } catch (error) {
       console.error('Error creating contact:', error);
     }
   };
 
-  const editContactInList = (contact: UserContact) => {
-    setEditingContactId(contact.id);
-    setIsContactFormExpanded(true);
-    setContactFormMode('create');
-    
-    // Populate the form with contact data
-    personalAttendeeForm.setValue('firstName', contact.first_name);
-    personalAttendeeForm.setValue('lastName', contact.last_name);
-    personalAttendeeForm.setValue('email', contact.email || '');
-    personalAttendeeForm.setValue('phone', contact.phone || '');
-    personalAttendeeForm.setValue('relationshipToRequester', contact.relationship_to_owner || '');
-    personalAttendeeForm.setValue('comments', contact.notes || '');
+  // New contact dialog handlers
+  const handleAddNewContact = () => {
+    setContactSelectionMode('new');
   };
 
-  const updateContactInList = async (contactData: UserContactCreateData) => {
-    try {
-      if (!editingContactId) return;
-      
-      // Prepare update data (convert undefined to null for backend)
-      const updateData: UserContactUpdateData = {
-        first_name: contactData.first_name,
-        last_name: contactData.last_name,
-        email: contactData.email || undefined,
-        phone: contactData.phone || undefined,
-        relationship_to_owner: contactData.relationship_to_owner || undefined,
-        notes: contactData.notes || undefined,
-      };
-      
-      // Call the API to update the contact
-      const updatedContact = await updateUserContactMutation.mutateAsync({ 
-        id: editingContactId, 
-        data: updateData 
+  const handleSelectExistingContact = () => {
+    setContactSelectionMode('existing');
+    
+    // Check if there are available contacts
+    const availableContacts = userContacts.filter(c => 
+      !selectedUserContacts.some(sc => sc.id === c.id)
+    );
+    
+    if (availableContacts.length === 0) {
+      enqueueSnackbar('All your contacts have already been added to this appointment', { 
+        variant: 'info' 
       });
-      
-      // Update in the selected contacts list
-      setSelectedUserContacts(prev => 
-        prev.map(contact => 
-          contact.id === editingContactId ? updatedContact : contact
-        )
-      );
-      
-      setIsContactFormExpanded(false);
-      setEditingContactId(null);
-      setContactFormMode('select');
-      resetPersonalAttendeeForm();
-    } catch (error) {
-      console.error('Failed to update contact:', error);
-      // The mutation already handles the error notification
+      return;
     }
+  };
+
+  const handleAddSelfToAppointment = async () => {
+    const selfContact = await createSelfContact();
+    if (selfContact) {
+      addContactToList(selfContact);
+      setContactSelectionMode('none');
+    }
+  };
+
+  const handleEditContact = (contact: UserContact) => {
+    // Don't allow editing self contacts
+    const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
+    const isSelfContact = contact.relationship_to_owner === relationshipTypeMap['SELF'] ||
+      (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName);
+    
+    if (isSelfContact) {
+      return; // Don't allow editing self contacts
+    }
+
+    setContactDialogMode('edit');
+    setEditingContact(contact);
+    setShowContactDialog(true);
+  };
+
+  const handleContactDialogClose = () => {
+    setShowContactDialog(false);
+    setContactDialogMode('create');
+    setEditingContact(null);
+    setContactSelectionMode('none');
+  };
+
+  const handleContactDialogSuccess = (contact: UserContact) => {
+    if (contactDialogMode === 'create') {
+      addContactToList(contact);
+    } else if (contactDialogMode === 'edit') {
+      // Update the contact in the list
+      setSelectedUserContacts(prev => 
+        prev.map(c => c.id === contact.id ? contact : c)
+      );
+    }
+    handleContactDialogClose();
+  };
+
+  const handleExistingContactSelect = (contact: UserContact) => {
+    addContactToList(contact);
+    setContactSelectionMode('none');
+  };
+
+  const handleContactSelectionCancel = () => {
+    setContactSelectionMode('none');
+  };
+
+  // Check if self contact is already added
+  const isSelfContactAdded = () => {
+    const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
+    return selectedUserContacts.some(contact => 
+      contact.relationship_to_owner === relationshipTypeMap['SELF'] ||
+      (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName)
+    );
   };
 
   const handleNext = async (skipExistingCheck: boolean = false) => {
@@ -1296,36 +1292,74 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
             pb: 2,
           }}>
             <Grid item xs={12} md={4} lg={3}>
-              <FormControl component="fieldset" required>
-                <FormLabel component="legend">
-                  {isRequester ? "Have you met Gurudev in last 2 weeks?" : "Have they met Gurudev in last 2 weeks?"}
-                </FormLabel>
-                <RadioGroup
-                  row
-                  value={engagementData.hasMetGurudevRecently?.toString() || ''}
-                  onChange={(e) => updateEngagementField('hasMetGurudevRecently', e.target.value === 'true')}
-                >
-                  <FormControlLabel value="true" control={<Radio />} label="Yes" />
-                  <FormControlLabel value="false" control={<Radio />} label="No" />
-                </RadioGroup>
-              </FormControl>
-            </Grid>
+          <FormControl component="fieldset" required>
+            <FormLabel component="legend">
+              {isRequester ? "Have you met Gurudev in last 2 weeks?" : "Have they met Gurudev in last 2 weeks?"}
+            </FormLabel>
+            <RadioGroup
+              row
+              value={engagementData.hasMetGurudevRecently?.toString() || ''}
+              onChange={(e) => updateEngagementField('hasMetGurudevRecently', e.target.value === 'true')}
+            >
+              <FormControlLabel value="true" control={<Radio />} label="Yes" />
+              <FormControlLabel value="false" control={<Radio />} label="No" />
+            </RadioGroup>
+          </FormControl>
+        </Grid>
 
             <Grid item xs={12} md={4} lg={3}>
+          <FormControl component="fieldset" required>
+            <FormLabel component="legend">
+              {isRequester ? "Are you attending a course?" : "Are they attending a course?"}
+            </FormLabel>
+            <RadioGroup
+              row
+              value={engagementData.isAttendingCourse?.toString() || ''}
+              onChange={(e) => {
+                const isAttending = e.target.value === 'true';
+                updateEngagementField('isAttendingCourse', isAttending);
+                
+                // Clear course selection if not attending
+                if (!isAttending) {
+                  updateEngagementField('isDoingSeva', null);
+                  updateEngagementField('sevaType', '');
+                }
+              }}
+            >
+              <FormControlLabel value="true" control={<Radio />} label="Yes" />
+              <FormControlLabel value="false" control={<Radio />} label="No" />
+            </RadioGroup>
+          </FormControl>
+        </Grid>
+
+        {engagementData.isAttendingCourse && (
+              <Grid item xs={12} md={4} lg={3}>
+            <EnumSelect
+              enumType="courseType"
+              label="Course Attending"
+              value={engagementData.courseAttending}
+              onChange={(e) => updateEngagementField('courseAttending', e.target.value as string)}
+              fullWidth
+            />
+          </Grid>
+        )}
+
+        {engagementData.isAttendingCourse !== null && !engagementData.isAttendingCourse && (
+          <>
+                <Grid item xs={12} md={4} lg={3}>
               <FormControl component="fieldset" required>
                 <FormLabel component="legend">
-                  {isRequester ? "Are you attending a course?" : "Are they attending a course?"}
+                  {isRequester ? "Are you doing seva?" : "Are they doing seva?"}
                 </FormLabel>
                 <RadioGroup
                   row
-                  value={engagementData.isAttendingCourse?.toString() || ''}
+                  value={engagementData.isDoingSeva?.toString() || ''}
                   onChange={(e) => {
-                    const isAttending = e.target.value === 'true';
-                    updateEngagementField('isAttendingCourse', isAttending);
+                    const isDoingSeva = e.target.value === 'true';
+                    updateEngagementField('isDoingSeva', isDoingSeva);
                     
-                    // Clear course selection if not attending
-                    if (!isAttending) {
-                      updateEngagementField('isDoingSeva', null);
+                    // Clear seva type if not doing seva
+                    if (!isDoingSeva) {
                       updateEngagementField('sevaType', '');
                     }
                   }}
@@ -1336,57 +1370,19 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
               </FormControl>
             </Grid>
 
-            {engagementData.isAttendingCourse && (
-              <Grid item xs={12} md={4} lg={3}>
+            {engagementData.isDoingSeva && (
+                  <Grid item xs={12} md={4} lg={3}>
                 <EnumSelect
-                  enumType="courseType"
-                  label="Course Attending"
-                  value={engagementData.courseAttending}
-                  onChange={(e) => updateEngagementField('courseAttending', e.target.value as string)}
+                  enumType="sevaType"
+                  label="Type of Seva"
+                  value={engagementData.sevaType}
+                  onChange={(e) => updateEngagementField('sevaType', e.target.value as string)}
                   fullWidth
                 />
               </Grid>
             )}
-
-            {engagementData.isAttendingCourse !== null && !engagementData.isAttendingCourse && (
-              <>
-                <Grid item xs={12} md={4} lg={3}>
-                  <FormControl component="fieldset" required>
-                    <FormLabel component="legend">
-                      {isRequester ? "Are you doing seva?" : "Are they doing seva?"}
-                    </FormLabel>
-                    <RadioGroup
-                      row
-                      value={engagementData.isDoingSeva?.toString() || ''}
-                      onChange={(e) => {
-                        const isDoingSeva = e.target.value === 'true';
-                        updateEngagementField('isDoingSeva', isDoingSeva);
-                        
-                        // Clear seva type if not doing seva
-                        if (!isDoingSeva) {
-                          updateEngagementField('sevaType', '');
-                        }
-                      }}
-                    >
-                      <FormControlLabel value="true" control={<Radio />} label="Yes" />
-                      <FormControlLabel value="false" control={<Radio />} label="No" />
-                    </RadioGroup>
-                  </FormControl>
-                </Grid>
-
-                {engagementData.isDoingSeva && (
-                  <Grid item xs={12} md={4} lg={3}>
-                    <EnumSelect
-                      enumType="sevaType"
-                      label="Type of Seva"
-                      value={engagementData.sevaType}
-                      onChange={(e) => updateEngagementField('sevaType', e.target.value as string)}
-                      fullWidth
-                    />
-                  </Grid>
-                )}
-              </>
-            )}
+          </>
+        )}
           </Grid> 
         </Grid>
       </>
@@ -1526,7 +1522,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                 </Typography>
               </Grid>
 
-                            {/* Show dignitary form for dignitary requests */}
+              {/* Show dignitary form for dignitary requests */}
               {selectedRequestTypeConfig?.attendee_type === attendeeTypeMap['DIGNITARY'] ? (
                 <>
                   {/* Table of selected dignitaries */}
@@ -1567,14 +1563,14 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                   {dignitarySelectionMode === 'none' && selectedDignitaries.length < requiredDignitariesCount && (
                     <Grid item xs={12}>
                       <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' }, alignItems: 'center', justifyContent: 'center' }}>
-                        <PrimaryButton
-                          size="medium"
-                          startIcon={<AddIcon />}
+                      <PrimaryButton
+                        size="medium"
+                        startIcon={<AddIcon />}
                           onClick={() => setDignitarySelectionMode('new')}
                           // sx={{ flex: 1 }}
                         >
                           Add a New Dignitary
-                        </PrimaryButton>
+                      </PrimaryButton>
                         <SecondaryButton
                           size="medium"
                           startIcon={<DropdownBarIconV2 />}
@@ -1589,21 +1585,21 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
 
                   {/* Existing dignitary selector */}
                   {dignitarySelectionMode === 'existing' && (
-                    <Grid item xs={12}>
-                      <Divider sx={{ my: 2 }} />
+                      <Grid item xs={12}>
+                        <Divider sx={{ my: 2 }} />
                       <Typography variant="subtitle1" gutterBottom>
                         Select an Existing Dignitary
-                      </Typography>
+                          </Typography>
                       <Typography variant="body2" color="text.secondary" gutterBottom>
                         Choose from existing dignitaries in the system.
-                      </Typography>
+                            </Typography>
                       
                       <FormControl fullWidth sx={{ mt: 2 }}>
                         <InputLabel>Select Dignitary</InputLabel>
-                        <Select
+                              <Select
                           label="Select Dignitary"
                           value=""
-                          onChange={(e) => {
+                                onChange={(e) => {
                             const dignitaryId = Number(e.target.value);
                             const dignitary = dignitaries.find(d => d.id === dignitaryId);
                             if (dignitary) {
@@ -1621,28 +1617,28 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                             .filter(d => !selectedDignitaries.some(sd => sd.id === d.id))
                             .map((dignitary) => (
                               <MenuItem key={dignitary.id} value={dignitary.id}>
-                                <Box>
-                                  <Typography variant="body1">
+                                    <Box>
+                                      <Typography variant="body1">
                                     {formatHonorificTitle(dignitary.honorific_title || '')} {dignitary.first_name} {dignitary.last_name}
-                                  </Typography>
-                                  <Typography variant="body2" color="text.secondary">
+                                      </Typography>
+                                      <Typography variant="body2" color="text.secondary">
                                     {[dignitary.title_in_organization, dignitary.organization, dignitary.email].filter(Boolean).join(' | ') || 'No additional info'}
-                                  </Typography>
-                                </Box>
-                              </MenuItem>
-                            ))}
-                        </Select>
-                      </FormControl>
+                                      </Typography>
+                                    </Box>
+                                  </MenuItem>
+                                ))}
+                            </Select>
+                          </FormControl>
                       
                       <Box sx={{ display: 'flex', gap: 2, mt: 2, justifyContent: 'flex-end' }}>
                         <SecondaryButton
                           onClick={handleDignitarySelectionCancel}
-                        >
-                          Cancel
+                              >
+                                Cancel
                         </SecondaryButton>
-                      </Box>
-                    </Grid>
-                  )}
+                            </Box>
+                          </Grid>
+                        )}
 
                   {/* New dignitary form */}
                   {dignitarySelectionMode === 'new' && (
@@ -1654,49 +1650,12 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                       }}
                       onCancel={handleDignitarySelectionCancel}
                     />
-                  )}
-                </>
-                            ) : (
+                        )}
+                        </>
+                      ) : (
                 /* Contact management for non-dignitary requests */
                 <>
-                  {/* Self-attendance option */}
-                  <Grid item xs={12} md={12} lg={12}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-                      <Typography variant="body1" component="span">
-                        Are you attending this appointment?
-                      </Typography>
-                      <RadioGroup
-                        row
-                        value={isUserAttending.toString()}
-                        onChange={(e) => handleSelfAttendanceChange(e.target.value === 'true')}
-                      >
-                        <FormControlLabel 
-                          value="true" 
-                          control={<Radio />} 
-                          label="Yes, I am attending" 
-                        />
-                        <FormControlLabel 
-                          value="false" 
-                          control={<Radio />} 
-                          label="No, I am not attending" 
-                        />
-                      </RadioGroup>
-                    </Box>
-                  </Grid>
 
-                  {/* Engagement fields for self-attendance */}
-                  {isUserAttending && selectedRequestTypeConfig?.attendee_type !== attendeeTypeMap['DIGNITARY'] && (
-                    <>
-                      {(() => {
-                        const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
-                        const selfContact = selectedUserContacts.find(contact => 
-                          contact.relationship_to_owner === relationshipTypeMap['SELF'] || 
-                          (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName)
-                        );
-                        return selfContact ? renderEngagementFields(selfContact.id, true) : null;
-                      })()}
-                    </>
-                  )}
 
                   {/* Table of selected contacts */}
                   {selectedUserContacts.length > 0 && (
@@ -1728,358 +1687,89 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                             }
                           }}
                         />
-                      </Box>
-                    </Grid>
-                  )}
-
-                  {/* Button to expand the contact form when it's collapsed */}
-                  {!isContactFormExpanded && (
-                    <Grid item xs={12}>
-                      <PrimaryButton
-                        size="medium"
-                        startIcon={<AddIcon />}
-                        onClick={() => {
-                          setIsContactFormExpanded(true);
-                          // Set mode based on available contacts
-                          const availableContacts = userContacts.filter(c => !selectedUserContacts.some(sc => sc.id === c.id));
-                          setContactFormMode(availableContacts.length > 0 ? 'select' : 'create');
-                        }}
-                        sx={{ mt: 2 }}
-                        disabled={selectedUserContacts.length >= requiredDignitariesCount}
-                      >
-                        {selectedUserContacts.length < requiredDignitariesCount
-                          ? `Add ${selectedRequestTypeConfig?.attendee_label_singular || 'Contact'} ${selectedUserContacts.length + 1} of ${requiredDignitariesCount}`
-                          : `All ${requiredDignitariesCount} ${selectedRequestTypeConfig?.attendee_label_plural?.toLowerCase() || 'contacts'} added`}
-                      </PrimaryButton>
-                    </Grid>
-                  )}
-
-                  {/* Contact form when expanded */}
-                  {isContactFormExpanded && (
-                    <>
-                      <Grid item xs={12}>
-                        <Divider sx={{ my: 2 }} />
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                          <Typography variant="subtitle1">
-                            {editingContactId 
-                              ? `Editing Contact: ${(() => {
-                                  const contact = selectedUserContacts.find(c => c.id === editingContactId);
-                                  if (!contact) return '';
-                                  const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
-                                  const isSelfContact = contact.relationship_to_owner === relationshipTypeMap['SELF'] ||
-                                    (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName);
-                                  return isSelfContact ? selfDisplayName : `${contact.first_name} ${contact.last_name}`;
-                                })()}`
-                              : `Add a ${selectedRequestTypeConfig?.attendee_label_singular || 'Contact'}`
-                            }
-                          </Typography>
-                          {!editingContactId && (
-                            <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
-                              Adding {selectedRequestTypeConfig?.attendee_label_singular?.toLowerCase() || 'contact'} {selectedUserContacts.length + 1} of {requiredDignitariesCount}
-                            </Typography>
-                          )}
-                        </Box>
-                      </Grid>
-
-                      {/* Mode selection - only show when not editing */}
-                      {!editingContactId && (
-                        <Grid item xs={12}>
-                          <FormControl component="fieldset">
-                            <RadioGroup
-                              row
-                              value={contactFormMode}
-                              onChange={(e) => setContactFormMode(e.target.value as 'select' | 'create')}
-                            >
-                              <FormControlLabel 
-                                value="select" 
-                                control={<Radio />} 
-                                label="Select existing contact" 
-                                disabled={userContacts.filter(c => !selectedUserContacts.some(sc => sc.id === c.id)).length === 0}
-                              />
-                              <FormControlLabel 
-                                value="create" 
-                                control={<Radio />} 
-                                label="Create new contact" 
-                              />
-                            </RadioGroup>
-                          </FormControl>
-                        </Grid>
-                      )}
-
-                      {(contactFormMode === 'select' && !editingContactId) ? (
-                        /* Contact selection */
-                        <>
-                          <Grid item xs={12} md={6} lg={4}>
-                            <FormControl fullWidth>
-                              <InputLabel>Select Contact</InputLabel>
-                              <Select
-                                label="Select Contact"
-                                value={selectedContactForAdding || ''}
-                                onChange={(e) => {
-                                  const contactId = Number(e.target.value);
-                                  setSelectedContactForAdding(contactId);
-                                  
-                                  // Initialize engagement fields for this contact
-                                  if (contactId) {
-                                    setContactEngagementFields(prev => ({
-                                      ...prev,
-                                      [contactId]: {
-                                        hasMetGurudevRecently: null,
-                                        isAttendingCourse: null,
-                                        courseAttending: '',
-                                        isDoingSeva: null,
-                                        sevaType: ''
-                                      }
-                                    }));
-                                  }
-                                }}
-                              >
-                              {userContacts
-                                .filter(contact => !selectedUserContacts.some(selected => selected.id === contact.id))
-                                .map((contact) => (
-                                  <MenuItem key={contact.id} value={contact.id}>
-                                    <Box>
-                                      <Typography variant="body1">
-                                        {(() => {
-                                          const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
-                                          const isSelfContact = contact.relationship_to_owner === relationshipTypeMap['SELF'] ||
-                                            (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName);
-                                          return isSelfContact ? selfDisplayName : `${contact.first_name} ${contact.last_name}`;
-                                        })()}
-                                      </Typography>
-                                      <Typography variant="body2" color="text.secondary">
-                                        {[
-                                          contact.relationship_to_owner,
-                                          contact.email
-                                        ].filter(Boolean).join(' | ') || 'No additional info'}
-                                      </Typography>
-                                    </Box>
-                                  </MenuItem>
-                                ))}
-                            </Select>
-                            {userContacts.filter(c => !selectedUserContacts.some(sc => sc.id === c.id)).length === 0 && (
-                              <FormHelperText>All contacts have been added to this appointment</FormHelperText>
-                            )}
-                          </FormControl>
-                        </Grid>
-                        
-                        {/* Show engagement fields for selected contact */}
-                        {selectedContactForAdding && renderEngagementFields(selectedContactForAdding)}
-                        
-                        {/* Add button for selected contact */}
-                        {selectedContactForAdding && (
-                          <Grid item xs={12}>
-                            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-                              <Button
-                                variant="outlined"
-                                onClick={() => {
-                                  setSelectedContactForAdding(null);
-                                  setContactEngagementFields(prev => {
-                                    const newFields = { ...prev };
-                                    delete newFields[selectedContactForAdding];
-                                    return newFields;
-                                  });
-                                }}
-                              >
-                                Cancel
-                              </Button>
-                              <Button
-                                variant="contained"
-                                onClick={() => {
-                                  const contact = userContacts.find(c => c.id === selectedContactForAdding);
-                                  if (contact) {
-                                    addContactToList(contact);
-                                    setSelectedContactForAdding(null);
-                                    setIsContactFormExpanded(false);
-                                  }
-                                }}
-                                disabled={!selectedContactForAdding}
-                              >
-                                Add Contact
-                              </Button>
-                            </Box>
-                          </Grid>
-                        )}
-                        </>
-                      ) : (
-                        /* Contact creation form */
-                        <>
-                          <Grid item xs={12} md={6} lg={4}>
-                            <TextField
-                              fullWidth
-                              label="First Name"
-                              InputLabelProps={{ shrink: true }}
-                              {...personalAttendeeForm.register('firstName', { required: 'First name is required' })}
-                              error={!!personalAttendeeForm.formState.errors.firstName}
-                              helperText={personalAttendeeForm.formState.errors.firstName?.message}
-                              required
-                            />
-                          </Grid>
-                          
-                          <Grid item xs={12} md={6} lg={4}>
-                            <TextField
-                              fullWidth
-                              label="Last Name"
-                              InputLabelProps={{ shrink: true }}
-                              {...personalAttendeeForm.register('lastName', { required: 'Last name is required' })}
-                              error={!!personalAttendeeForm.formState.errors.lastName}
-                              helperText={personalAttendeeForm.formState.errors.lastName?.message}
-                              required
-                            />
-                          </Grid>
-                          
-                          <Grid item xs={12} md={6} lg={4}>
-                            <TextField
-                              fullWidth
-                              label="Email"
-                              type="email"
-                              InputLabelProps={{ shrink: true }}
-                              {...personalAttendeeForm.register('email', { 
-                                required: 'Email is required',
-                                pattern: {
-                                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                                  message: 'Please enter a valid email address'
-                                }
-                              })}
-                              error={!!personalAttendeeForm.formState.errors.email}
-                              helperText={personalAttendeeForm.formState.errors.email?.message}
-                              onChange={(e) => {
-                                personalAttendeeForm.setValue('email', e.target.value);
-                                // Validate for duplicates and show warnings
-                                const warnings = validateEmailForDuplicates(e.target.value, editingContactId || undefined);
-                                setEmailValidationWarnings(warnings);
-                              }}
-                              required
-                            />
-                            {/* Show email validation warnings */}
-                            {emailValidationWarnings.length > 0 && (
-                              <Box sx={{ mt: 1 }}>
-                                {emailValidationWarnings.map((warning, index) => (
-                                  <Typography 
-                                    key={index}
-                                    variant="caption" 
-                                    color="warning.main"
-                                    sx={{ display: 'block', fontSize: '0.75rem' }}
-                                  >
-                                    ⚠️ {warning}
-                                  </Typography>
-                                ))}
                               </Box>
-                            )}
-                          </Grid>
-                          
-                          <Grid item xs={12} md={6} lg={4}>
-                            <TextField
-                              fullWidth
-                              label="Phone Number"
-                              InputLabelProps={{ shrink: true }}
-                              {...personalAttendeeForm.register('phone')}
-                              error={!!personalAttendeeForm.formState.errors.phone}
-                              helperText={personalAttendeeForm.formState.errors.phone?.message}
-                            />
-                          </Grid>
-
-                          {/* Conditional fields based on attendee type */}
-                          {selectedRequestTypeConfig?.attendee_type === attendeeTypeMap['PERSONAL'] && (
-                            <Grid item xs={12} md={6} lg={4}>
-                              <Controller
-                                name="relationshipToRequester"
-                                control={personalAttendeeForm.control}
-                                render={({ field }) => (
-                                  <EnumSelect
-                                    enumType="personRelationshipType"
-                                    label="Relationship to You"
-                                    error={!!personalAttendeeForm.formState.errors.relationshipToRequester}
-                                    helperText={personalAttendeeForm.formState.errors.relationshipToRequester?.message}
-                                    value={field.value}
-                                    onChange={field.onChange}
-                                  />
-                                )}
-                              />
                             </Grid>
                           )}
 
-                          {/* Engagement and participation fields for non-dignitary appointments */}
-                          {selectedRequestTypeConfig?.attendee_type !== attendeeTypeMap['DIGNITARY'] && 
-                            renderEngagementFields(-1, false, 'personalAttendee')
-                          }
-
+                  {/* New 3-button layout for adding contacts */}
+                  {selectedUserContacts.length < requiredDignitariesCount && (
                           <Grid item xs={12}>
-                            <TextField
-                              fullWidth
-                              multiline
-                              rows={3}
-                              label="Notes"
-                              InputLabelProps={{ shrink: true }}
-                              {...personalAttendeeForm.register('comments')}
-                              error={!!personalAttendeeForm.formState.errors.comments}
-                              helperText={personalAttendeeForm.formState.errors.comments?.message}
-                            />
-                          </Grid>
-                        </>
-                      )}
-
-                      {/* Action buttons */}
-                      <Grid item xs={12}>
-                        <Box 
-                          sx={{ 
+                      <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600 }}>
+                        Add {selectedRequestTypeConfig?.attendee_label_plural || 'Contacts'}
+                      </Typography>
+                      <Box sx={{ 
                             display: 'flex', 
-                            flexDirection: { xs: 'column', sm: 'row' },
-                            alignItems: { xs: 'stretch', sm: 'center' },
-                            justifyContent: 'flex-end',
+                        flexDirection: { xs: 'column', md: 'row' },
                             gap: 2,
-                            mt: 2 
-                          }}
+                        mb: 2
+                      }}>
+                        {/* Add New Contact Button */}
+                        <PrimaryButton
+                          startIcon={<AddIcon />}
+                          onClick={handleAddNewContact}
+                          disabled={selectedUserContacts.length >= requiredDignitariesCount}
+                          sx={{ flex: { md: 1 } }}
                         >
-                          {/* Cancel button */}
+                          Add New Contact
+                        </PrimaryButton>
+
+                        {/* Select Existing Contact Button */}
                           <SecondaryButton
-                            size="medium"
-                            startIcon={<CancelIcon />}
-                            onClick={() => {
-                              resetPersonalAttendeeForm();
-                              setIsContactFormExpanded(false);
-                              setEditingContactId(null);
-                              setContactFormMode('select');
-                            }}
-                            sx={{ width: { xs: '100%', sm: 'auto' } }}
-                          >
-                            Cancel
+                          startIcon={<DropdownBarIconV2 />}
+                          onClick={handleSelectExistingContact}
+                          disabled={
+                            selectedUserContacts.length >= requiredDignitariesCount ||
+                            userContacts.filter(c => !selectedUserContacts.some(sc => sc.id === c.id)).length === 0
+                          }
+                          sx={{ flex: { md: 1 } }}
+                        >
+                          Select Existing Contact
                           </SecondaryButton>
                           
-                          {/* Add/Create/Update button */}
-                          {contactFormMode === 'create' && (
-                            <PrimaryButton
-                              size="medium"
-                              startIcon={editingContactId ? <EditIcon /> : <AddIcon />}
-                              onClick={async () => {
-                                const isValid = await personalAttendeeForm.trigger();
-                                if (!isValid) return;
-
-                                const formData = personalAttendeeForm.getValues();
-                                const contactData: UserContactCreateData = {
-                                  first_name: formData.firstName,
-                                  last_name: formData.lastName,
-                                  email: formData.email || undefined,
-                                  phone: formData.phone || undefined,
-                                  relationship_to_owner: formData.relationshipToRequester || undefined,
-                                  notes: formData.comments || undefined,
-                                };
-
-                                if (editingContactId) {
-                                  await updateContactInList(contactData);
-                                } else {
-                                  await createAndAddContact(contactData);
-                                }
-                              }}
-                              sx={{ width: { xs: '100%', sm: 'auto' } }}
-                            >
-                              {editingContactId ? 'Update' : 'Create and Add'}
-                            </PrimaryButton>
+                        {/* Add Yourself Button */}
+                        {!isSelfContactAdded() && (
+                          <SecondaryButton
+                            startIcon={<AddIcon />}
+                            onClick={handleAddSelfToAppointment}
+                            disabled={selectedUserContacts.length >= requiredDignitariesCount}
+                            sx={{ flex: { md: 1 } }}
+                          >
+                            Add Yourself to Appointment
+                          </SecondaryButton>
                           )}
                         </Box>
                       </Grid>
-                    </>
                   )}
+
+                  {/* New contact form */}
+                  {contactSelectionMode === 'new' && (
+                    <ContactForm
+                      mode="create"
+                      inline={true}
+                      onSuccess={(contact) => {
+                        addContactToList(contact);
+                        setContactSelectionMode('none');
+                      }}
+                      onCancel={handleContactSelectionCancel}
+                    />
+                  )}
+
+                  {/* Existing contact selector */}
+                  {contactSelectionMode === 'existing' && (
+                    <Grid item xs={12}>
+                      <UserContactSelector
+                        userContacts={userContacts}
+                        selectedContacts={selectedUserContacts}
+                        relationshipTypeMap={relationshipTypeMap}
+                        onContactAdd={(contact) => {
+                          addContactToList(contact);
+                          setContactSelectionMode('none');
+                        }}
+                        onCancel={handleContactSelectionCancel}
+                      />
+                    </Grid>
+                  )}
+
                 </>
               )}
             </Grid>
@@ -2793,15 +2483,17 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
             
             return (
               <Box sx={{ display: 'flex', gap: 0.5 }}>
-                <TableCellComponents.ActionButton 
-                  onClick={(e: React.MouseEvent) => {
-                    e.stopPropagation();
-                    editContactInList(contact);
-                  }}
-                  sx={{ width: 32, height: 32 }}
-                >
-                  <EditIconV2 sx={{ fontSize: 16 }} />
-                </TableCellComponents.ActionButton>
+                {!isSelfContact && (
+                  <TableCellComponents.ActionButton 
+                    onClick={(e: React.MouseEvent) => {
+                      e.stopPropagation();
+                      handleEditContact(contact);
+                    }}
+                    sx={{ width: 32, height: 32 }}
+                  >
+                    <EditIconV2 sx={{ fontSize: 16 }} />
+                  </TableCellComponents.ActionButton>
+                )}
                 <TableCellComponents.ActionButton
                   onClick={(e: React.MouseEvent) => {
                     e.stopPropagation();
@@ -2882,17 +2574,22 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
           header: 'Actions',
           cell: ({ row }) => {
             const contact = row.original;
+            const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
+            const isSelfContact = contact.relationship_to_owner === relationshipTypeMap['SELF'] || 
+                                 (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName);
             
             return (
               <Box sx={{ display: 'flex', gap: 0.5 }}>
-                <TableCellComponents.ActionButton 
-                  onClick={(e: React.MouseEvent) => {
-                    e.stopPropagation();
-                    editContactInList(contact);
-                  }}
-                >
-                  <EditIconV2 sx={{ fontSize: 18 }} />
-                </TableCellComponents.ActionButton>
+                {!isSelfContact && (
+                  <TableCellComponents.ActionButton 
+                    onClick={(e: React.MouseEvent) => {
+                      e.stopPropagation();
+                      handleEditContact(contact);
+                    }}
+                  >
+                    <EditIconV2 sx={{ fontSize: 18 }} />
+                  </TableCellComponents.ActionButton>
+                )}
                 <TableCellComponents.ActionButton
                   onClick={(e: React.MouseEvent) => {
                     e.stopPropagation();
@@ -2915,7 +2612,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
         }),
       ];
     }
-  }, [isMobile, relationshipTypeMap, editContactInList, removeContactFromList]);
+  }, [isMobile, relationshipTypeMap, removeContactFromList]);
 
   // Define dignitaries table columns
   const dignitariesTableColumns = useMemo(() => {
@@ -3111,7 +2808,6 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                 <SecondaryButton 
                   onClick={handleBack} 
                   sx={{ mr: 1 }}
-                  disabled={(activeStep === 1 && isContactFormExpanded)}
                 >
                   Back
                 </SecondaryButton>
@@ -3121,8 +2817,6 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                 disabled={
                   // At step 0 with profile required, check if form is valid
                   (activeStep === 0 && wizardState.isProfileRequired && !isProfileFormValid) ||
-                  // At attendee step, if contact form is expanded, disable navigation
-                  (activeStep === 1 && isContactFormExpanded) || 
                   // At attendee step, if no attendees are selected (dignitary or contacts), disable the next button
                   (activeStep === 1 && selectedRequestTypeConfig?.attendee_type === attendeeTypeMap['DIGNITARY'] && selectedDignitaries.length === 0) ||
                   (activeStep === 1 && selectedRequestTypeConfig?.attendee_type !== attendeeTypeMap['DIGNITARY'] && selectedUserContacts.length === 0) ||
@@ -3194,6 +2888,17 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Contact Form Dialog */}
+      <ContactForm
+        open={showContactDialog}
+        onClose={handleContactDialogClose}
+        contact={editingContact}
+        mode={contactDialogMode}
+        onSuccess={handleContactDialogSuccess}
+      />
+
+
     </Box>
   );
 };

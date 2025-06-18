@@ -7,7 +7,7 @@ import { useApi } from './useApi';
 export type EnumType = 'userRole' | 'appointmentStatus' | 'appointmentSubStatus' | 
   'appointmentType' | 'appointmentTimeOfDay' | 'honorificTitle' | 'primaryDomain' | 
   'relationshipType' | 'personRelationshipType' | 'attachmentType' | 'accessLevel' | 'entityType' |
-  'courseType' | 'sevaType';
+  'courseType' | 'sevaType' | 'roleInTeamProject';
 
 // Map enum types to their endpoint paths
 const enumEndpoints: Record<EnumType, string> = {
@@ -24,7 +24,8 @@ const enumEndpoints: Record<EnumType, string> = {
   accessLevel: '/admin/access-level-options',
   entityType: '/admin/entity-type-options',
   courseType: '/user-contacts/course-type-options',
-  sevaType: '/user-contacts/seva-type-options'
+  sevaType: '/user-contacts/seva-type-options',
+  roleInTeamProject: '/appointments/role-in-team-project-options'
 };
 
 /**
@@ -76,7 +77,8 @@ const enumMapEndpoints: Record<EnumType, string> = {
   accessLevel: '/admin/access-level-options-map',
   entityType: '/admin/entity-type-options-map',
   courseType: '/user-contacts/course-type-options-map',
-  sevaType: '/user-contacts/seva-type-options-map'
+  sevaType: '/user-contacts/seva-type-options-map',
+  roleInTeamProject: '/appointments/role-in-team-project-options-map'
 };
 
 export const useEnumsMap = (enumType: EnumType) => {
