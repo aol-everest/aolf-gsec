@@ -36,6 +36,8 @@ interface DignitaryFormProps {
 export const DignitaryForm: React.FC<DignitaryFormProps> = ({ mode, dignitary, onSave, onCancel }) => {
   const api = useApi();
   const { enqueueSnackbar } = useSnackbar();
+
+//   console.log('Dignitary for edit:', dignitary);
   
   // Initialize form with appropriate default values based on mode
   const dignitaryForm = useForm({
@@ -55,7 +57,7 @@ export const DignitaryForm: React.FC<DignitaryFormProps> = ({ mode, dignitary, o
       state: dignitary.state || '',
       city: dignitary.city || '',
       hasMetGurudev: dignitary.has_dignitary_met_gurudev || false,
-      pocRelationshipType: dignitary.poc_relationship_type || '',
+      pocRelationshipType: dignitary.poc_relationship_type || dignitary.relationship_type || '',
       gurudevMeetingDate: dignitary.gurudev_meeting_date || '',
       gurudevMeetingLocation: dignitary.gurudev_meeting_location || '',
       gurudevMeetingNotes: dignitary.gurudev_meeting_notes || '',
