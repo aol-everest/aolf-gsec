@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import {
   Dialog,
@@ -62,14 +62,7 @@ export const ContactForm: React.FC<ContactFormProps> = ({
   const relationshipTypeMap = (enums as any)?.relationshipType || {};
 
   const contactForm = useForm<UserContactCreateData>({
-    defaultValues: mode === 'edit' && contact ? {
-      first_name: contact.first_name || '',
-      last_name: contact.last_name || '',
-      email: contact.email || '',
-      phone: contact.phone || '',
-      relationship_to_owner: contact.relationship_to_owner || '',
-      notes: contact.notes || '',
-    } : {
+    defaultValues: {
       first_name: '',
       last_name: '',
       email: '',
@@ -78,6 +71,29 @@ export const ContactForm: React.FC<ContactFormProps> = ({
       notes: '',
     }
   });
+
+  // Update form values when contact prop changes (for edit mode)
+  useEffect(() => {
+    if (mode === 'edit' && contact) {
+      contactForm.reset({
+        first_name: contact.first_name || '',
+        last_name: contact.last_name || '',
+        email: contact.email || '',
+        phone: contact.phone || '',
+        relationship_to_owner: contact.relationship_to_owner || '',
+        notes: contact.notes || '',
+      });
+    } else if (mode === 'create') {
+      contactForm.reset({
+        first_name: '',
+        last_name: '',
+        email: '',
+        phone: '',
+        relationship_to_owner: '',
+        notes: '',
+      });
+    }
+  }, [contact, mode, contactForm]);
 
   // Create mutation
   const createContactMutation = useMutation<UserContact, Error, UserContactCreateData>({

@@ -60,9 +60,10 @@ export const UserContactSelector: React.FC<UserContactSelectorProps> = ({
   const finalConfig = { ...defaultConfig, ...config };
   const [selectedContactId, setSelectedContactId] = useState<number | ''>('');
 
-  // Filter out already selected contacts
+  // Filter out already selected contacts and self contacts
   const availableContacts = userContacts.filter(
-    contact => !selectedContacts.some(selected => selected.id === contact.id)
+    contact => !selectedContacts.some(selected => selected.id === contact.id) &&
+               contact.relationship_to_owner !== relationshipTypeMap['SELF']
   );
 
   const handleContactSelect = () => {
