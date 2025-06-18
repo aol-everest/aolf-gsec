@@ -72,7 +72,7 @@ import { StepNavigation } from './appointment/StepNavigation';
 import { AttendeeList } from './appointment/AttendeeList';
 import { ProfileOverlay } from './appointment/ProfileOverlay';
 import { InitialInfoStep } from './appointment/steps/InitialInfoStep';
-import { CheckSquareCircleFilledIconV2, CheckCircleIconV2, CloseIconFilledCircleV2 } from './iconsv2';
+import { CheckSquareCircleFilledIconV2, CheckCircleIconV2, CloseIconFilledCircleV2, DropdownBarIconV2 } from './iconsv2';
 import { useAppointmentSummary, hasExistingAppointments } from '../hooks/useAppointmentSummary';
 import { CountrySelect } from './selects/CountrySelect';
 import { PrimaryDomainSelect } from './selects/PrimaryDomainSelect';
@@ -1561,19 +1561,20 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                   {/* Action buttons for dignitary selection */}
                   {dignitarySelectionMode === 'none' && selectedDignitaries.length < requiredDignitariesCount && (
                     <Grid item xs={12}>
-                      <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+                      <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' }, alignItems: 'center', justifyContent: 'center' }}>
                         <PrimaryButton
                           size="medium"
                           startIcon={<AddIcon />}
                           onClick={() => setDignitarySelectionMode('new')}
-                          sx={{ flex: 1 }}
+                          // sx={{ flex: 1 }}
                         >
                           Add a New Dignitary
                         </PrimaryButton>
                         <SecondaryButton
                           size="medium"
+                          startIcon={<DropdownBarIconV2 />}
                           onClick={() => setDignitarySelectionMode('existing')}
-                          sx={{ flex: 1 }}
+                          // sx={{ flex: 1 }}
                         >
                           Select an Existing Dignitary
                         </SecondaryButton>
@@ -3079,7 +3080,15 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
           ))}
         </Stepper>
 
-      <Paper sx={{ p: 3 }}>
+      <Paper sx={{ 
+        pt: 3,
+        pb: 0,
+        px: 0,
+        boxShadow: 'none',
+        borderRadius: '0px',
+        borderTop: '1px solid #E9E9E9',
+        
+      }}>
         {renderStepContent(activeStep)}
         
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
