@@ -3149,24 +3149,25 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
         fullScreen={isMobile}
       >
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Box>
-            <Typography variant="h6" component="div">
-              Editing Dignitary Contact
-            </Typography>
+          <Box sx={{ width: '100%' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+              <Typography variant="h2">
+                Editing Dignitary Contact
+              </Typography>
+              <IconButton
+                edge="end"
+                onClick={handleDignitaryEditCancel}
+                aria-label="close"
+              >
+                <CloseIconFilledCircleV2 sx={{ fontSize: '1.5rem' }} />
+              </IconButton>
+            </Box>
             {editingDignitary && (
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="subtitle2" color="text.secondary">
                 {formatHonorificTitle(editingDignitary.honorific_title || '')} {editingDignitary.first_name} {editingDignitary.last_name}
               </Typography>
             )}
           </Box>
-          <IconButton
-            edge="end"
-            color="inherit"
-            onClick={handleDignitaryEditCancel}
-            aria-label="close"
-          >
-            <CloseIcon />
-          </IconButton>
         </DialogTitle>
         <DialogContent>
           {editingDignitary && (
