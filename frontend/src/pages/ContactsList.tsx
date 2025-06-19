@@ -1,35 +1,20 @@
-import React, { useMemo } from 'react';
-import { Container, Typography, Paper, Box, useMediaQuery } from '@mui/material';
+import React, { useMemo, useState } from 'react';
+import { Container, Typography, Paper, Box, useMediaQuery, Dialog, DialogTitle, DialogContent, IconButton, Tooltip } from '@mui/material';
+import { Close as CloseIcon } from '@mui/icons-material';
 import { createColumnHelper, ColumnDef } from '@tanstack/react-table';
 import Layout from '../components/Layout';
 import { useApi } from '../hooks/useApi';
 import { useTheme } from '@mui/material/styles';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { GenericTable, TableCellComponents, standardColumnSizes, createGenericColumnHelper } from '../components/GenericTable';
 import { useEnumsMap } from '../hooks/useEnums';
-
-interface Contact {
-  id: number;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string;
-  relationship_to_owner: string;
-  notes: string;
-  appointment_usage_count: number;
-  last_used_at?: string;
-  created_at: string;
-  updated_at: string;
-  contact_user?: {
-    id: number;
-    first_name: string;
-    last_name: string;
-    email: string;
-  };
-}
+import { ContactForm } from '../components/ContactForm';
+import { UserContact } from '../models/types';
+import { ActionButton } from '../components/ActionButton';
+import { CloseIconFilledCircleV2, EditIconV2 } from '../components/iconsv2';
 
 interface ContactsResponse {
-  contacts: Contact[];
+  contacts: UserContact[];
   total: number;
   page: number;
   per_page: number;
@@ -41,9 +26,14 @@ interface ContactsResponse {
 const ContactsList: React.FC = () => {
   const api = useApi();
   const theme = useTheme();
+  const queryClient = useQueryClient();
   
   // Check if we're on mobile
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
+  // Dialog state for editing contacts
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedContact, setSelectedContact] = useState<UserContact | null>(null);
 
   // Fetch relationship type map for display
   const { values: relationshipTypeMap = {} } = useEnumsMap('personRelationshipType');
@@ -69,8 +59,28 @@ const ContactsList: React.FC = () => {
     );
   }, [contactsResponse?.contacts, relationshipTypeMap]);
 
+  // Handle edit contact
+  const handleEditContact = (contact: UserContact) => {
+    setSelectedContact(contact);
+    setEditDialogOpen(true);
+  };
+
+  // Handle save contact
+  const handleSaveContact = () => {
+    setEditDialogOpen(false);
+    setSelectedContact(null);
+    // Refetch contacts to get updated data
+    queryClient.invalidateQueries({ queryKey: ['contacts'] });
+  };
+
+  // Handle cancel edit
+  const handleCancelEdit = () => {
+    setEditDialogOpen(false);
+    setSelectedContact(null);
+  };
+
   // Create column helper for contacts
-  const columnHelper = createGenericColumnHelper<Contact>();
+  const columnHelper = createGenericColumnHelper<UserContact>();
   
   const columns = useMemo(() => [
     columnHelper.accessor((row) => `${row.first_name} ${row.last_name}`, {
@@ -140,11 +150,14 @@ const ContactsList: React.FC = () => {
     }),
     columnHelper.accessor('relationship_to_owner', {
       header: 'Relationship',
-      cell: (info) => (
-        <TableCellComponents.SecondaryText>
-          {relationshipTypeMap[info.getValue()] || info.getValue() || '-'}
-        </TableCellComponents.SecondaryText>
-      ),
+      cell: (info) => {
+        const value = info.getValue();
+        return (
+          <TableCellComponents.SecondaryText>
+            {value ? (relationshipTypeMap[value] || value) : '-'}
+          </TableCellComponents.SecondaryText>
+        );
+      },
       size: 130,
       minSize: 100,
       maxSize: 160,
@@ -235,12 +248,32 @@ const ContactsList: React.FC = () => {
       minSize: 150,
       maxSize: 300,
     }),
+    // Actions column
+    columnHelper.display({
+      id: 'actions',
+      header: 'Actions',
+      cell: ({ row }) => (
+        <Tooltip title="Edit Contact">
+          <ActionButton
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEditContact(row.original);
+            }}
+          >
+            <EditIconV2 sx={{ width: 20, height: 20 }} />
+          </ActionButton>
+        </Tooltip>
+      ),
+      size: 80,
+      minSize: 80,
+      maxSize: 80,
+    }),
   ], [relationshipTypeMap]);
 
   // Define responsive column visibility
   const getColumnVisibility = () => {
     if (isMobile) {
-      // Mobile: show combined Name & Email, and combined Usage Info
+      // Mobile: show combined Name & Email, combined Usage Info, and Actions
       return {
         'name': false,
         'name_email': true,
@@ -252,6 +285,7 @@ const ContactsList: React.FC = () => {
         'last_used_at': false,
         'created_at': false,
         'notes': false,
+        'actions': true,
       };
     } else {
       // Desktop: show separate fields but hide the combined columns
@@ -266,6 +300,7 @@ const ContactsList: React.FC = () => {
         'last_used_at': true,
         'created_at': false,
         'notes': false,
+        'actions': true,
       };
     }
   };
@@ -301,6 +336,42 @@ const ContactsList: React.FC = () => {
           />
         </Box>
       </Container>
+
+      {/* Edit Contact Dialog */}
+      <Dialog
+        open={editDialogOpen}
+        onClose={handleCancelEdit}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: { minHeight: '500px' }
+        }}
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h2">Edit Contact</Typography>
+            <IconButton
+                edge="end"
+                onClick={handleCancelEdit}
+                aria-label="close"
+            >
+                <CloseIconFilledCircleV2 sx={{ fontSize: '1.5rem' }} />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        
+        <DialogContent>
+          {selectedContact && (
+            <ContactForm
+              contact={selectedContact}
+              mode="edit"
+              fieldsToShow="contact"
+              onSave={handleSaveContact}
+              onCancel={handleCancelEdit}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 };
