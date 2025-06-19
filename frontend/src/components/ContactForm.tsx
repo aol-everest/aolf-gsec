@@ -20,7 +20,7 @@ import { useSnackbar } from 'notistack';
 import { useApi } from '../hooks/useApi';
 import { UserContact } from '../models/types';
 import { EnumSelect } from './EnumSelect';
-import { useEnums } from '../hooks/useEnums';
+import { useEnums, useEnumsMap } from '../hooks/useEnums';
 import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
 
@@ -49,6 +49,7 @@ interface ContactFormProps {
   contact?: UserContact | null;
   mode: 'create' | 'edit';
   request_type?: string;
+  fieldsToShow?: 'contact' | 'appointment' | 'both';
   onSave: (contact: UserContact, appointmentInstanceData?: AppointmentInstanceFields) => void;
   onCancel: () => void;
 }
@@ -57,6 +58,7 @@ export const ContactForm: React.FC<ContactFormProps> = ({
   contact,
   mode,
   request_type,
+  fieldsToShow = 'both',
   onSave,
   onCancel
 }) => {
@@ -65,6 +67,9 @@ export const ContactForm: React.FC<ContactFormProps> = ({
 
   // Fetch role enum values
   const { values: roleValues } = useEnums('roleInTeamProject');
+
+  // Fetch relationship type map
+  const { values: relationshipTypeMap = {} } = useEnumsMap('personRelationshipType');
 
   // State for appointment instance fields
   const [appointmentInstanceFields, setAppointmentInstanceFields] = useState<AppointmentInstanceFields>({
@@ -132,6 +137,31 @@ export const ContactForm: React.FC<ContactFormProps> = ({
       ...prev,
       [field]: value
     }));
+  };
+
+  // Helper function to check if this is a self-contact
+  const isSelfContact = () => {
+    if (!contact || !relationshipTypeMap) return false;
+    const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
+    return contact.relationship_to_owner === relationshipTypeMap['SELF'] ||
+           (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName);
+  };
+
+  // Helper function to get the correct pronoun
+  const getPersonPronoun = () => {
+    return isSelfContact() ? 'you' : 'they';
+  };
+
+  const getPersonPronounCapitalized = () => {
+    return isSelfContact() ? 'You' : 'They';
+  };
+
+  const getHaveVerb = () => {
+    return isSelfContact() ? 'Have you' : 'Have they';
+  };
+
+  const getAreVerb = () => {
+    return isSelfContact() ? 'Are you' : 'Are they';
   };
 
   // Render appointment instance fields based on request type
@@ -210,7 +240,7 @@ export const ContactForm: React.FC<ContactFormProps> = ({
                 <Grid item xs={12} md={4} lg={3}>
                   <FormControl component="fieldset" required>
                     <FormLabel component="legend">
-                      Have they met Gurudev in last 2 weeks?
+                      {getHaveVerb()} met Gurudev in last 2 weeks?
                     </FormLabel>
                     <RadioGroup
                       row
@@ -226,7 +256,7 @@ export const ContactForm: React.FC<ContactFormProps> = ({
                 <Grid item xs={12} md={4} lg={3}>
                   <FormControl component="fieldset" required>
                     <FormLabel component="legend">
-                      Are they attending a course?
+                      {getAreVerb()} attending a course?
                     </FormLabel>
                     <RadioGroup
                       row
@@ -283,7 +313,7 @@ export const ContactForm: React.FC<ContactFormProps> = ({
                     <Grid item xs={12} md={4} lg={3}>
                       <FormControl component="fieldset" required>
                         <FormLabel component="legend">
-                          Are they doing seva?
+                          {getAreVerb()} doing seva?
                         </FormLabel>
                         <RadioGroup
                           row
@@ -364,7 +394,22 @@ export const ContactForm: React.FC<ContactFormProps> = ({
   });
 
   const handleSave = async () => {
-    const isValid = await contactForm.trigger();
+    // Only validate visible fields
+    const fieldsToValidate: (keyof UserContactCreateData)[] = [];
+    
+    if (fieldsToShow !== 'appointment') {
+      // Validate contact fields when they're visible
+      fieldsToValidate.push('first_name', 'last_name', 'relationship_to_owner');
+      // Email validation is handled in the register options, only add if it has a value
+      const emailValue = contactForm.getValues('email');
+      if (emailValue) {
+        fieldsToValidate.push('email');
+      }
+    }
+    
+    // Trigger validation only for visible fields
+    const isValid = fieldsToValidate.length > 0 ? await contactForm.trigger(fieldsToValidate) : true;
+    
     if (!isValid) {
       enqueueSnackbar('Please fill in all required fields', { variant: 'error' });
       return;
@@ -390,105 +435,115 @@ export const ContactForm: React.FC<ContactFormProps> = ({
   return (
     <Grid item xs={12}>
       <Divider sx={{ my: 2 }} />
-      <Typography variant="subtitle1" gutterBottom>
-        {mode === 'create' ? 'Add a New Contact' : 'Edit Contact'}
-      </Typography>
-      <Typography variant="body2" color="text.secondary" gutterBottom>
-        {mode === 'create' 
-          ? 'Enter the contact\'s information and click "Save and Add" at the bottom.' 
-          : 'Update contact information and click "Save Changes" at the bottom.'
-        }
-      </Typography>
+      {fieldsToShow !== 'appointment' && (
+        <>
+          <Typography variant="subtitle1" gutterBottom>
+            {mode === 'create' ? 'Add a New Contact' : 'Edit Contact'}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            {mode === 'create' 
+              ? 'Enter the contact\'s information and click "Save and Add" at the bottom.' 
+              : 'Update contact information and click "Save Changes" at the bottom.'
+            }
+          </Typography>
+        </>
+      )}
 
       <Grid container spacing={3} sx={{ mt: 1 }}>
-        {/* Relationship Type */}
-        <Grid item xs={12} md={6} lg={4}>
-          <Controller
-            name="relationship_to_owner"
-            control={contactForm.control}
-            rules={{ required: 'Relationship type is required' }}
-            render={({ field }) => (
-              <EnumSelect
-                enumType="personRelationshipType"
-                label="Relationship to You"
-                error={!!contactForm.formState.errors.relationship_to_owner}
-                helperText={contactForm.formState.errors.relationship_to_owner?.message}
-                value={field.value}
-                onChange={field.onChange}
-                required
+        {/* Contact Fields Section - Hidden when fieldsToShow='appointment' */}
+        <Grid item xs={12} sx={{ display: fieldsToShow === 'appointment' ? 'none' : 'block' }}>
+          <Grid container spacing={3}>
+            {/* Relationship Type */}
+            <Grid item xs={12} md={6} lg={4}>
+              <Controller
+                name="relationship_to_owner"
+                control={contactForm.control}
+                rules={{ required: fieldsToShow !== 'appointment' ? 'Relationship type is required' : false }}
+                render={({ field }) => (
+                  <EnumSelect
+                    enumType="personRelationshipType"
+                    label="Relationship to You"
+                    error={!!contactForm.formState.errors.relationship_to_owner}
+                    helperText={contactForm.formState.errors.relationship_to_owner?.message}
+                    value={field.value}
+                    onChange={field.onChange}
+                    required={fieldsToShow !== 'appointment'}
+                  />
+                )}
               />
-            )}
-          />
+            </Grid>
+
+            {/* First Name */}
+            <Grid item xs={12} md={6} lg={4}>
+              <TextField
+                fullWidth
+                label="First Name"
+                {...contactForm.register('first_name', { required: fieldsToShow !== 'appointment' ? 'First name is required' : false })}
+                error={!!contactForm.formState.errors.first_name}
+                helperText={contactForm.formState.errors.first_name?.message}
+                required={fieldsToShow !== 'appointment'}
+              />
+            </Grid>
+
+            {/* Last Name */}
+            <Grid item xs={12} md={6} lg={4}>
+              <TextField
+                fullWidth
+                label="Last Name"
+                {...contactForm.register('last_name', { required: fieldsToShow !== 'appointment' ? 'Last name is required' : false })}
+                error={!!contactForm.formState.errors.last_name}
+                helperText={contactForm.formState.errors.last_name?.message}
+                required={fieldsToShow !== 'appointment'}
+              />
+            </Grid>
+
+            {/* Email */}
+            <Grid item xs={12} md={6} lg={4}>
+              <TextField
+                fullWidth
+                label="Email"
+                type="email"
+                {...contactForm.register('email', {
+                  pattern: fieldsToShow !== 'appointment' ? {
+                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                    message: 'Please enter a valid email address'
+                  } : undefined
+                })}
+                error={!!contactForm.formState.errors.email}
+                helperText={contactForm.formState.errors.email?.message}
+              />
+            </Grid>
+
+            {/* Phone */}
+            <Grid item xs={12} md={6} lg={4}>
+              <TextField
+                fullWidth
+                label="Phone Number"
+                {...contactForm.register('phone')}
+                error={!!contactForm.formState.errors.phone}
+                helperText={contactForm.formState.errors.phone?.message}
+              />
+            </Grid>
+
+            {/* Notes */}
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                multiline
+                rows={3}
+                label="Notes"
+                {...contactForm.register('notes')}
+                error={!!contactForm.formState.errors.notes}
+                helperText={contactForm.formState.errors.notes?.message}
+              />
+            </Grid>
+          </Grid>
         </Grid>
 
-        {/* First Name */}
-        <Grid item xs={12} md={6} lg={4}>
-          <TextField
-            fullWidth
-            label="First Name"
-            {...contactForm.register('first_name', { required: 'First name is required' })}
-            error={!!contactForm.formState.errors.first_name}
-            helperText={contactForm.formState.errors.first_name?.message}
-            required
-          />
-        </Grid>
-
-        {/* Last Name */}
-        <Grid item xs={12} md={6} lg={4}>
-          <TextField
-            fullWidth
-            label="Last Name"
-            {...contactForm.register('last_name', { required: 'Last name is required' })}
-            error={!!contactForm.formState.errors.last_name}
-            helperText={contactForm.formState.errors.last_name?.message}
-            required
-          />
-        </Grid>
-
-        {/* Email */}
-        <Grid item xs={12} md={6} lg={4}>
-          <TextField
-            fullWidth
-            label="Email"
-            type="email"
-            {...contactForm.register('email', {
-              pattern: {
-                value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                message: 'Please enter a valid email address'
-              }
-            })}
-            error={!!contactForm.formState.errors.email}
-            helperText={contactForm.formState.errors.email?.message}
-          />
-        </Grid>
-
-        {/* Phone */}
-        <Grid item xs={12} md={6} lg={4}>
-          <TextField
-            fullWidth
-            label="Phone Number"
-            {...contactForm.register('phone')}
-            error={!!contactForm.formState.errors.phone}
-            helperText={contactForm.formState.errors.phone?.message}
-          />
-        </Grid>
-
-        {/* Notes */}
-        <Grid item xs={12}>
-          <TextField
-            fullWidth
-            multiline
-            rows={3}
-            label="Notes"
-            {...contactForm.register('notes')}
-            error={!!contactForm.formState.errors.notes}
-            helperText={contactForm.formState.errors.notes?.message}
-          />
-        </Grid>
-
-        <Grid item xs={12}>
-            {/* Appointment Instance Fields */}
-            {renderAppointmentInstanceFields()}
+        {/* Appointment Instance Fields Section - Hidden when fieldsToShow='contact' */}
+        <Grid item xs={12} sx={{ display: fieldsToShow === 'contact' ? 'none' : 'block' }}>
+          {/* Appointment Instance Fields */}
+          {renderAppointmentInstanceFields()}
         </Grid>
 
         {/* Action Buttons */}

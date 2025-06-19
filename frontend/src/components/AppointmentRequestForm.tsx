@@ -315,8 +315,10 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
   const [showContactDialog, setShowContactDialog] = useState(false);
   const [contactDialogMode, setContactDialogMode] = useState<'create' | 'edit'>('create');
   const [editingContact, setEditingContact] = useState<UserContact | null>(null);
-  const [contactSelectionMode, setContactSelectionMode] = useState<'none' | 'existing' | 'new' | 'self'>('none');
+  const [contactSelectionMode, setContactSelectionMode] = useState<'none' | 'existing' | 'new' | 'self' | 'appointment-instance'>('none');
   
+  // State for collecting appointment instance data
+  const [pendingContactForAppointmentInstance, setPendingContactForAppointmentInstance] = useState<UserContact | null>(null);
 
   
   // State for self-attendance feature
@@ -961,8 +963,8 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
   const handleAddSelfToAppointment = async () => {
     const selfContact = await createSelfContact();
     if (selfContact) {
-      addContactToList(selfContact);
-      setContactSelectionMode('none');
+      setPendingContactForAppointmentInstance(selfContact);
+      setContactSelectionMode('appointment-instance');
     }
   };
 
@@ -1001,11 +1003,28 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
   };
 
   const handleExistingContactSelect = (contact: UserContact) => {
-    addContactToList(contact);
-    setContactSelectionMode('none');
+    setPendingContactForAppointmentInstance(contact);
+    setContactSelectionMode('appointment-instance');
   };
 
   const handleContactSelectionCancel = () => {
+    setContactSelectionMode('none');
+    setPendingContactForAppointmentInstance(null);
+  };
+
+  const handleAppointmentInstanceComplete = (contact: UserContact, appointmentInstanceData?: AppointmentInstanceFields) => {
+    addContactToList(contact);
+    
+    // Store appointment instance data if provided
+    if (appointmentInstanceData) {
+      setContactAppointmentInstanceFields(prev => ({
+        ...prev,
+        [contact.id]: appointmentInstanceData
+      }));
+    }
+    
+    // Reset state
+    setPendingContactForAppointmentInstance(null);
     setContactSelectionMode('none');
   };
 
@@ -1642,13 +1661,23 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                         userContacts={userContacts}
                         selectedContacts={selectedUserContacts}
                         relationshipTypeMap={relationshipTypeMap}
-                        onContactAdd={(contact) => {
-                          addContactToList(contact);
-                          setContactSelectionMode('none');
-                        }}
+                        onContactAdd={handleExistingContactSelect}
                         onCancel={handleContactSelectionCancel}
+                        autoSelect={true}
                       />
                     </Grid>
+                  )}
+
+                  {/* Appointment Instance Form for selected/self contact */}
+                  {contactSelectionMode === 'appointment-instance' && pendingContactForAppointmentInstance && (
+                    <ContactForm
+                      contact={pendingContactForAppointmentInstance}
+                      mode="edit"
+                      fieldsToShow="appointment"
+                      request_type={selectedRequestTypeConfig?.request_type}
+                      onSave={handleAppointmentInstanceComplete}
+                      onCancel={handleContactSelectionCancel}
+                    />
                   )}
 
                 </>

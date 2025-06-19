@@ -40,6 +40,7 @@ export interface UserContactSelectorProps {
   
   // UI State
   disabled?: boolean;
+  autoSelect?: boolean;
 }
 
 const defaultConfig: UserContactSelectorConfig = {
@@ -56,6 +57,7 @@ export const UserContactSelector: React.FC<UserContactSelectorProps> = ({
   onCancel,
   config = {},
   disabled = false,
+  autoSelect = false,
 }) => {
   const finalConfig = { ...defaultConfig, ...config };
   const [selectedContactId, setSelectedContactId] = useState<number | ''>('');
@@ -95,6 +97,10 @@ export const UserContactSelector: React.FC<UserContactSelectorProps> = ({
           value={availableContacts.find(c => c.id === selectedContactId) || undefined}
           onChange={(_, newValue) => {
             setSelectedContactId(newValue?.id || '');
+            if (autoSelect && newValue) {
+              // Reuse the existing handleContactSelect logic
+              handleContactSelect();
+            }
           }}
           getOptionLabel={(contact) => {
             const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
@@ -165,23 +171,25 @@ export const UserContactSelector: React.FC<UserContactSelectorProps> = ({
         />
       </Grid>
 
-      <Grid item xs={12}>
-        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-          <SecondaryButton
-            startIcon={<CancelIcon />}
-            onClick={onCancel}
-          >
-            Cancel
-          </SecondaryButton>
-          <PrimaryButton
-            startIcon={<AddIcon />}
-            onClick={handleContactSelect}
-            disabled={!selectedContactId || disabled}
-          >
-            Add
-          </PrimaryButton>
-        </Box>
-      </Grid>
+      {!autoSelect && (
+        <Grid item xs={12}>
+          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+            <SecondaryButton
+              startIcon={<CancelIcon />}
+              onClick={onCancel}
+            >
+              Cancel
+            </SecondaryButton>
+            <PrimaryButton
+              startIcon={<AddIcon />}
+              onClick={handleContactSelect}
+              disabled={!selectedContactId || disabled}
+            >
+              Add
+            </PrimaryButton>
+          </Box>
+        </Grid>
+      )}
     </Grid>
   );
 };
