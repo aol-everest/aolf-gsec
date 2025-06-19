@@ -9,6 +9,7 @@ import Home from '../pages/Home';
 import AppointmentRequest from '../pages/AppointmentRequest';
 import AppointmentStatus from '../pages/AppointmentStatus';
 import DignitaryList from '../pages/DignitaryList';
+import ContactsList from '../pages/ContactsList';
 import Profile from '../pages/Profile';
 import AdminManageUsers from '../pages/AdminManageUsers';
 import AdminDignitaryList from '../pages/AdminDignitaryList';
@@ -83,6 +84,14 @@ export const DignitariesRoute: RouteConfig = {
   icon: PersonListMenuIconV2,
   showInSidebar: true,
   component: DignitaryList
+}
+
+export const ContactsRoute: RouteConfig = {
+  path: '/contacts',
+  label: 'My Contacts',
+  icon: PeopleMenuIconV2,
+  showInSidebar: true,
+  component: ContactsList
 }
 
 export const ProfileRoute: RouteConfig = {
@@ -243,6 +252,7 @@ export const userRoutes: RouteConfig[] = [
   AppointmentRequestRoute,
   AppointmentsRoute,
   DignitariesRoute,
+  ContactsRoute,
   ProfileRoute,
   LocationAttachmentViewRoute,
   AppointmentDetailRoute,
