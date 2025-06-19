@@ -1526,7 +1526,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
               {selectedRequestTypeConfig?.attendee_type === attendeeTypeMap['DIGNITARY'] ? (
                 <>
                   {/* Table of selected dignitaries */}
-                  {selectedDignitaries.length > 0 && (
+                  {selectedDignitaries.length >= 0 && (
                     <Grid item xs={12}>
                       <Typography variant="subtitle1" gutterBottom>
                         Selected Dignitaries ({selectedDignitaries.length} of {requiredDignitariesCount})
@@ -1658,7 +1658,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
 
 
                   {/* Table of selected contacts */}
-                  {selectedUserContacts.length > 0 && (
+                  {selectedUserContacts.length >= 0 && (
                     <Grid item xs={12}>
                       <Typography variant="subtitle1" gutterBottom>
                         Selected {selectedRequestTypeConfig?.attendee_label_plural || 'Attendees'} ({selectedUserContacts.length} of {requiredDignitariesCount})
