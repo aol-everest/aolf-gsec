@@ -643,6 +643,9 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
       // Don't show popup dialog, just update state to show confirmation on review page
       setIsUploading(false);
       
+      // Scroll to top to show the submitted message
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      
       // Clear all relevant appointment and related data caches
       queryClient.invalidateQueries({ queryKey: ['my-appointments'] });
       queryClient.invalidateQueries({ queryKey: ['appointment-summary'] });
