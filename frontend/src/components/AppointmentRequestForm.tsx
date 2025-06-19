@@ -1986,7 +1986,8 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                   <Paper 
                     elevation={2} 
                     sx={{ 
-                      p: 3, 
+                      p: 1, 
+                      pb: 2,
                       mb: 3, 
                       bgcolor: alpha(theme.palette.success.light, 0.1),
                       color: 'success.contrastText',
@@ -1995,36 +1996,48 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                       alignItems: 'center',
                     }}
                   >
-                    <Typography variant="h6" gutterBottom sx={{ 
-                      fontWeight: 600,
+                    <Typography variant="h2" gutterBottom sx={{ 
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       textAlign: 'center',
-                      mb: 2,
+                      mb: 0,
                     }}>
-                      <CheckCircleIconV2 sx={{ fontSize: '2rem', mr: 1, color: 'success.main' }} /> Submitted!
+                      Submitted! <CheckCircleIconV2 sx={{ fontSize: '2rem', ml: 1, color: 'success.main' }} />
                     </Typography>
-                    <Typography variant="h6" gutterBottom>
-                      Request ID: <strong>{submittedAppointment.id}</strong>
+                    <Typography variant="h6" gutterBottom sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      textAlign: 'center',
+                      color: 'primary.main',
+                    }}>
+                      Request: <Typography variant="h6" sx={{ fontWeight: 700 }}>#{submittedAppointment.id}</Typography>
                     </Typography>
-                    <Typography variant="body2">
-                      Please save this ID for future reference and communication with the secretariat.
+                    <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+                      Please save this number for future reference and communication with the secretariat.
                       You will receive email updates about your appointment status.
                     </Typography>
                   </Paper>
                 </Grid>
               )}
 
-              <Grid item xs={12}>
-                <Typography variant="h6" gutterBottom>
-                  Review Your Appointment Request
-                </Typography>
-                <Typography variant="body2" color="text.secondary" gutterBottom sx={{ mb: 3 }}>
-                  Please review all the details below before submitting your appointment request.
-                </Typography>
-              </Grid>
-
+              {submittedAppointment ? (
+                <Grid item xs={12}>
+                  <Typography variant="h6" gutterBottom>
+                    Submitted Appointment Request
+                  </Typography>
+                </Grid>
+              ) : (
+                <Grid item xs={12}>
+                  <Typography variant="h6" gutterBottom>
+                    Review Your Appointment Request
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" gutterBottom sx={{ mb: 3 }}>
+                    Please review all the details below before submitting your appointment request.
+                  </Typography>
+                </Grid>
+              )}
               {/* Request Summary */}
                 {/* Request Type */}
                 <Grid item xs={12} md={6}>

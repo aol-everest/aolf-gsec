@@ -144,7 +144,7 @@ const typography = {
     letterSpacing: '0.00714em',
     fontFamily: 'Work Sans',
     fontWeight: 500,
-    color: colors.primary.dark,
+    color: colors.primary.main,
     textTransform: 'uppercase' as const,
   },
   body1: {
