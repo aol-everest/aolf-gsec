@@ -67,6 +67,7 @@ interface GenericTableProps<T extends Record<string, any>> {
   pageSizeOptions?: number[];
   enableColumnVisibility?: boolean;
   initialColumnVisibility?: VisibilityState;
+  initialSorting?: SortingState;
   tableProps?: {
     stickyHeader?: boolean;
     size?: 'small' | 'medium';
@@ -266,12 +267,13 @@ export function GenericTable<T extends Record<string, any>>({
   pageSizeOptions = [5, 10, 25, 50, 100],
   enableColumnVisibility = false,
   initialColumnVisibility,
+  initialSorting = [],
   tableProps = {},
   containerProps = {}
 }: GenericTableProps<T>) {
   const logger = createDebugLogger('GenericTable');
   const theme = useTheme();
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>(initialSorting);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [globalFilter, setGlobalFilter] = useState(searchValue);
   const [pagination, setPagination] = useState<PaginationState>({

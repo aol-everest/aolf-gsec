@@ -76,7 +76,6 @@ const Home: React.FC = () => {
         });
       });
     });
-    // CalendarDayIconV2
 
     return allAppointments;
   }, [appointmentSummary]);
@@ -197,6 +196,7 @@ const Home: React.FC = () => {
                   enablePagination={tableData.length > 5}
                   pageSize={5}
                   pageSizeOptions={[5, 10, 25]}
+                  initialSorting={[{ id: 'id', desc: true }]}
                   tableProps={{
                     stickyHeader: true,
                     size: 'medium',
