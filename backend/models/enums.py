@@ -529,7 +529,7 @@ class CourseType(str, enum.Enum):
     SILENCE = "Part 2 (Silence)"
     WISDOM_SERIES = "Wisdom Series"
     KIDS_TEENS_COURSE = "Kids/Teens Course"
-    OTHER_COURSE = "Other Course"
+    OTHER = "Other"
 
     def __str__(self):
         return self.value

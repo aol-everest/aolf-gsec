@@ -131,13 +131,16 @@ type PartialDignitary = Partial<Dignitary>;
 // Use the SelectedDignitary interface from the generic component
 type SelectedDignitary = UserSelectedDignitary;
 
-// Engagement fields interface
-interface EngagementFields {
+// Appointment instance fields interface
+interface AppointmentInstanceFields {
   hasMetGurudevRecently: boolean | null;
   isAttendingCourse: boolean | null;
   courseAttending: string;
+  courseAttendingOther: string;
   isDoingSeva: boolean | null;
   sevaType: string;
+  roleInTeamProject: string;
+  roleInTeamProjectOther: string;
 }
 
 // Personal Attendee Form Data
@@ -154,6 +157,7 @@ interface PersonalAttendeeFormData {
   hasMetGurudevRecently: boolean | null;
   isAttendingCourse: boolean | null;
   courseAttending: string;
+  courseAttendingOther: string;
   isDoingSeva: boolean | null;
   sevaType: string;
 }
@@ -278,8 +282,8 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
   // State to track the required number of dignitaries/attendees
   const [requiredDignitariesCount, setRequiredDignitariesCount] = useState<number>(1);
   
-  // State to track engagement fields for each contact
-  const [contactEngagementFields, setContactEngagementFields] = useState<Record<number, EngagementFields>>({});
+  // State to track appointment instance fields for each contact
+  const [contactAppointmentInstanceFields, setContactAppointmentInstanceFields] = useState<Record<number, AppointmentInstanceFields>>({});
   
   // State for selected contact in dropdown (before adding)
 
@@ -466,6 +470,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
       hasMetGurudevRecently: null,
       isAttendingCourse: null,
       courseAttending: '',
+      courseAttendingOther: '',
       isDoingSeva: null,
       sevaType: '',
     }
@@ -742,6 +747,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
       hasMetGurudevRecently: null,
       isAttendingCourse: null,
       courseAttending: '',
+      courseAttendingOther: '',
       isDoingSeva: null,
       sevaType: '',
     });
@@ -863,15 +869,18 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
     
     setSelectedUserContacts(prev => [...prev, contact]);
     
-    // Initialize engagement fields for this contact
-    setContactEngagementFields(prev => ({
+    // Initialize appointment instance fields for this contact
+    setContactAppointmentInstanceFields(prev => ({
       ...prev,
       [contact.id]: {
         hasMetGurudevRecently: null,  // Not answered by default
         isAttendingCourse: null,      // Not answered by default
         courseAttending: '',
+        courseAttendingOther: '',
         isDoingSeva: null,            // Not answered by default
-        sevaType: ''
+        sevaType: '',
+        roleInTeamProject: '',
+        roleInTeamProjectOther: ''
       }
     }));
     
@@ -889,8 +898,8 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
   const removeContactFromList = (contactId: number) => {
     setSelectedUserContacts(prev => prev.filter(c => c.id !== contactId));
     
-    // Clean up engagement fields for this contact
-    setContactEngagementFields(prev => {
+    // Clean up appointment instance fields for this contact
+    setContactAppointmentInstanceFields(prev => {
       const newFields = { ...prev };
       delete newFields[contactId];
       return newFields;
@@ -1146,27 +1155,33 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
               return;
             }
             
-            // Build contacts with engagement fields
-            const contactsWithEngagement = contactIds.map((contactId: number) => {
-              const engagementData = contactEngagementFields[contactId] || {
+            // Build contacts with appointment instance fields
+            const contactsWithAppointmentInstance = contactIds.map((contactId: number) => {
+              const appointmentInstanceData = contactAppointmentInstanceFields[contactId] || {
                 hasMetGurudevRecently: null,  // Not answered by default
                 isAttendingCourse: null,      // Not answered by default
                 courseAttending: '',
+                courseAttendingOther: '',
                 isDoingSeva: null,            // Not answered by default
-                sevaType: ''
+                sevaType: '',
+                roleInTeamProject: '',
+                roleInTeamProjectOther: ''
               };
               
               return {
                 contact_id: contactId,
-                has_met_gurudev_recently: engagementData.hasMetGurudevRecently,
-                is_attending_course: engagementData.isAttendingCourse,
-                course_attending: engagementData.courseAttending || null,
-                is_doing_seva: engagementData.isDoingSeva,
-                seva_type: engagementData.sevaType || null
+                has_met_gurudev_recently: appointmentInstanceData.hasMetGurudevRecently,
+                is_attending_course: appointmentInstanceData.isAttendingCourse,
+                course_attending: appointmentInstanceData.courseAttending || null,
+                course_attending_other: appointmentInstanceData.courseAttendingOther || null,
+                is_doing_seva: appointmentInstanceData.isDoingSeva,
+                seva_type: appointmentInstanceData.sevaType || null,
+                role_in_team_project: appointmentInstanceData.roleInTeamProject || null,
+                role_in_team_project_other: appointmentInstanceData.roleInTeamProjectOther || null
               };
             });
             
-            appointmentCreateData.contacts_with_engagement = contactsWithEngagement;
+            appointmentCreateData.contacts_with_engagement = contactsWithAppointmentInstance;
             appointmentCreateData.number_of_attendees = contactIds.length;
           }
           
@@ -1583,14 +1598,14 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                     <ContactForm
                       mode="create"
                       request_type={selectedRequestTypeConfig?.request_type}
-                      onSave={(contact, engagementData) => {
+                      onSave={(contact, appointmentInstanceData) => {
                         addContactToList(contact);
                         
-                        // Store engagement data if provided
-                        if (engagementData) {
-                          setContactEngagementFields(prev => ({
+                        // Store appointment instance data if provided
+                        if (appointmentInstanceData) {
+                          setContactAppointmentInstanceFields(prev => ({
                             ...prev,
-                            [contact.id]: engagementData
+                            [contact.id]: appointmentInstanceData
                           }));
                         }
                         
@@ -2775,14 +2790,14 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
             contact={editingContact}
             mode={contactDialogMode}
             request_type={selectedRequestTypeConfig?.request_type}
-            onSave={(contact, engagementData) => {
+            onSave={(contact, appointmentInstanceData) => {
               handleContactDialogSuccess(contact);
               
-              // Store engagement data if provided for edit mode
-              if (engagementData && contactDialogMode === 'edit') {
-                setContactEngagementFields(prev => ({
+              // Store appointment instance data if provided for edit mode
+              if (appointmentInstanceData && contactDialogMode === 'edit') {
+                setContactAppointmentInstanceFields(prev => ({
                   ...prev,
-                  [contact.id]: engagementData
+                  [contact.id]: appointmentInstanceData
                 }));
               }
             }}

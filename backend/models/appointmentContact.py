@@ -31,6 +31,7 @@ class AppointmentContact(Base):
     has_met_gurudev_recently = Column(Boolean, nullable=True)
     is_attending_course = Column(Boolean, nullable=True)
     course_attending = Column(Enum(CourseType), nullable=True)
+    course_attending_other = Column(String(255), nullable=True)
     is_doing_seva = Column(Boolean, nullable=True)
     seva_type = Column(Enum(SevaType), nullable=True)
     

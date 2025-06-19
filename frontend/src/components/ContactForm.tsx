@@ -29,20 +29,23 @@ export interface UserContactCreateData {
   notes?: string;
 }
 
-// Engagement fields interface
-interface EngagementFields {
+// Appointment instance fields interface
+interface AppointmentInstanceFields {
   hasMetGurudevRecently: boolean | null;
   isAttendingCourse: boolean | null;
   courseAttending: string;
+  courseAttendingOther: string;
   isDoingSeva: boolean | null;
   sevaType: string;
+  roleInTeamProject: string;
+  roleInTeamProjectOther: string;
 }
 
 interface ContactFormProps {
   contact?: UserContact | null;
   mode: 'create' | 'edit';
   request_type?: string;
-  onSave: (contact: UserContact, engagementData?: EngagementFields) => void;
+  onSave: (contact: UserContact, appointmentInstanceData?: AppointmentInstanceFields) => void;
   onCancel: () => void;
 }
 
@@ -56,13 +59,16 @@ export const ContactForm: React.FC<ContactFormProps> = ({
   const api = useApi();
   const { enqueueSnackbar } = useSnackbar();
 
-  // State for engagement fields
-  const [engagementFields, setEngagementFields] = useState<EngagementFields>({
+  // State for appointment instance fields
+  const [appointmentInstanceFields, setAppointmentInstanceFields] = useState<AppointmentInstanceFields>({
     hasMetGurudevRecently: null,
     isAttendingCourse: null,
     courseAttending: '',
+    courseAttendingOther: '',
     isDoingSeva: null,
-    sevaType: ''
+    sevaType: '',
+    roleInTeamProject: '',
+    roleInTeamProjectOther: ''
   });
 
   // Fetch relationship type map from the API
@@ -70,6 +76,15 @@ export const ContactForm: React.FC<ContactFormProps> = ({
     queryKey: ['relationship-type-map'],
     queryFn: async () => {
       const { data } = await api.get<Record<string, string>>('/user-contacts/relationship-type-options-map');
+      return data;
+    },
+  });
+
+  // Fetch request type map from the API
+  const { data: requestTypeMap = {} } = useQuery<Record<string, string>>({
+    queryKey: ['request-type-map'],
+    queryFn: async () => {
+      const { data } = await api.get<Record<string, string>>('/appointments/request-type-options-map');
       return data;
     },
   });
@@ -111,26 +126,70 @@ export const ContactForm: React.FC<ContactFormProps> = ({
     }
   }, [contact, mode, contactForm]);
 
-  // Helper function to update engagement field
-  const updateEngagementField = (field: keyof EngagementFields, value: any) => {
-    setEngagementFields(prev => ({
+  // Helper function to update appointment instance field
+  const updateAppointmentInstanceField = (field: keyof AppointmentInstanceFields, value: any) => {
+    setAppointmentInstanceFields(prev => ({
       ...prev,
       [field]: value
     }));
   };
 
   // Render appointment instance fields based on request type
-  const appointmentInstanceFields = () => {
+  const renderAppointmentInstanceFields = () => {
     if (!request_type) return null;
 
     // Case statement for different request types
     switch (request_type) {
-      case 'Personal':
-      case 'Dignitary':
-      case 'Project':
-      case 'Team':
+      case requestTypeMap['PROJECT_TEAM_MEETING']:
+        // For project/team meetings, only show role fields
+        return (
+          <Grid container spacing={3}>
+            <Grid item xs={12}>
+              <Typography variant="subtitle1" gutterBottom>
+                Project/Team Role Information
+              </Typography>
+            </Grid>
+            <Grid item xs={12} md={6} lg={4}>
+              <EnumSelect
+                enumType="roleInTeamProject"
+                label="Role in Project/Team"
+                value={appointmentInstanceFields.roleInTeamProject}
+                onChange={(e) => {
+                  updateAppointmentInstanceField('roleInTeamProject', e.target.value as string);
+                  // Clear other field when role changes
+                  if (e.target.value !== 'Other') {
+                    updateAppointmentInstanceField('roleInTeamProjectOther', '');
+                  }
+                }}
+                fullWidth
+                required
+                helperText={
+                  appointmentInstanceFields.roleInTeamProject === 'Lead Member' ? '(owns initiative)' :
+                  appointmentInstanceFields.roleInTeamProject === 'Core Team Member' ? '(involved 80%)' :
+                  ''
+                }
+              />
+            </Grid>
+            {appointmentInstanceFields.roleInTeamProject === 'Other' && (
+              <Grid item xs={12} md={6} lg={4}>
+                <TextField
+                  fullWidth
+                  label="Please specify role"
+                  value={appointmentInstanceFields.roleInTeamProjectOther}
+                  onChange={(e) => updateAppointmentInstanceField('roleInTeamProjectOther', e.target.value)}
+                  placeholder="Enter role details"
+                  required
+                />
+              </Grid>
+            )}
+          </Grid>
+        );
+      
+      case requestTypeMap['PERSONAL']:
+      case requestTypeMap['DIGNITARY']:
+      case requestTypeMap['OTHER']:
       default:
-        // For now, all request types get the same fields
+        // For other request types, show engagement fields
         return (
           <Grid container spacing={3}>
             <Grid item xs={12}>
@@ -147,8 +206,8 @@ export const ContactForm: React.FC<ContactFormProps> = ({
                     </FormLabel>
                     <RadioGroup
                       row
-                      value={engagementFields.hasMetGurudevRecently?.toString() || ''}
-                      onChange={(e) => updateEngagementField('hasMetGurudevRecently', e.target.value === 'true')}
+                      value={appointmentInstanceFields.hasMetGurudevRecently?.toString() || ''}
+                      onChange={(e) => updateAppointmentInstanceField('hasMetGurudevRecently', e.target.value === 'true')}
                     >
                       <FormControlLabel value="true" control={<Radio />} label="Yes" />
                       <FormControlLabel value="false" control={<Radio />} label="No" />
@@ -163,15 +222,15 @@ export const ContactForm: React.FC<ContactFormProps> = ({
                     </FormLabel>
                     <RadioGroup
                       row
-                      value={engagementFields.isAttendingCourse?.toString() || ''}
+                      value={appointmentInstanceFields.isAttendingCourse?.toString() || ''}
                       onChange={(e) => {
                         const isAttending = e.target.value === 'true';
-                        updateEngagementField('isAttendingCourse', isAttending);
+                        updateAppointmentInstanceField('isAttendingCourse', isAttending);
                         
                         // Clear course selection if not attending
                         if (!isAttending) {
-                          updateEngagementField('isDoingSeva', null);
-                          updateEngagementField('sevaType', '');
+                          updateAppointmentInstanceField('isDoingSeva', null);
+                          updateAppointmentInstanceField('sevaType', '');
                         }
                       }}
                     >
@@ -181,19 +240,37 @@ export const ContactForm: React.FC<ContactFormProps> = ({
                   </FormControl>
                 </Grid>
 
-                {engagementFields.isAttendingCourse && (
+                {appointmentInstanceFields.isAttendingCourse && (
                   <Grid item xs={12} md={4} lg={3}>
                     <EnumSelect
                       enumType="courseType"
                       label="Course Attending"
-                      value={engagementFields.courseAttending}
-                      onChange={(e) => updateEngagementField('courseAttending', e.target.value as string)}
+                      value={appointmentInstanceFields.courseAttending}
+                      onChange={(e) => {
+                        updateAppointmentInstanceField('courseAttending', e.target.value as string);
+                        // Clear other field when course type changes
+                        if (e.target.value !== 'OTHER') {
+                          updateAppointmentInstanceField('courseAttendingOther', '');
+                        }
+                      }}
                       fullWidth
                     />
                   </Grid>
                 )}
 
-                {engagementFields.isAttendingCourse !== null && !engagementFields.isAttendingCourse && (
+                {appointmentInstanceFields.isAttendingCourse && appointmentInstanceFields.courseAttending === 'OTHER' && (
+                  <Grid item xs={12} md={4} lg={3}>
+                    <TextField
+                      fullWidth
+                      label="Please specify course"
+                      value={appointmentInstanceFields.courseAttendingOther}
+                      onChange={(e) => updateAppointmentInstanceField('courseAttendingOther', e.target.value)}
+                      placeholder="Enter course name"
+                    />
+                  </Grid>
+                )}
+
+                {appointmentInstanceFields.isAttendingCourse !== null && !appointmentInstanceFields.isAttendingCourse && (
                   <>
                     <Grid item xs={12} md={4} lg={3}>
                       <FormControl component="fieldset" required>
@@ -202,14 +279,14 @@ export const ContactForm: React.FC<ContactFormProps> = ({
                         </FormLabel>
                         <RadioGroup
                           row
-                          value={engagementFields.isDoingSeva?.toString() || ''}
+                          value={appointmentInstanceFields.isDoingSeva?.toString() || ''}
                           onChange={(e) => {
                             const isDoingSeva = e.target.value === 'true';
-                            updateEngagementField('isDoingSeva', isDoingSeva);
+                            updateAppointmentInstanceField('isDoingSeva', isDoingSeva);
                             
                             // Clear seva type if not doing seva
                             if (!isDoingSeva) {
-                              updateEngagementField('sevaType', '');
+                              updateAppointmentInstanceField('sevaType', '');
                             }
                           }}
                         >
@@ -219,13 +296,13 @@ export const ContactForm: React.FC<ContactFormProps> = ({
                       </FormControl>
                     </Grid>
 
-                    {engagementFields.isDoingSeva && (
+                    {appointmentInstanceFields.isDoingSeva && (
                       <Grid item xs={12} md={4} lg={3}>
                         <EnumSelect
                           enumType="sevaType"
                           label="Type of Seva"
-                          value={engagementFields.sevaType}
-                          onChange={(e) => updateEngagementField('sevaType', e.target.value as string)}
+                          value={appointmentInstanceFields.sevaType}
+                          onChange={(e) => updateAppointmentInstanceField('sevaType', e.target.value as string)}
                           fullWidth
                         />
                       </Grid>
@@ -246,7 +323,7 @@ export const ContactForm: React.FC<ContactFormProps> = ({
       return response;
     },
     onSuccess: (newContact) => {
-      onSave(newContact, engagementFields);
+      onSave(newContact, appointmentInstanceFields);
       enqueueSnackbar('Contact created successfully', { variant: 'success' });
     },
     onError: (error: any) => {
@@ -266,7 +343,7 @@ export const ContactForm: React.FC<ContactFormProps> = ({
       return response;
     },
     onSuccess: (updatedContact) => {
-      onSave(updatedContact, engagementFields);
+      onSave(updatedContact, appointmentInstanceFields);
       enqueueSnackbar('Contact updated successfully', { variant: 'success' });
     },
     onError: (error: any) => {
@@ -403,7 +480,7 @@ export const ContactForm: React.FC<ContactFormProps> = ({
 
         <Grid item xs={12}>
             {/* Appointment Instance Fields */}
-            {appointmentInstanceFields()}
+            {renderAppointmentInstanceFields()}
         </Grid>
 
         {/* Action Buttons */}
