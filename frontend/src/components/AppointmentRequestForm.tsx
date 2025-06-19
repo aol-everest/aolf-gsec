@@ -2468,7 +2468,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
               </Box>
             );
           },
-          size: undefined, // Auto-size on mobile
+          // size: undefined, // Auto-size on mobile
         }),
         contactsColumnHelper.display({
           id: 'actions',
@@ -2791,7 +2791,13 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
       }}>
         {renderStepContent(activeStep)}
         
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'flex-end', 
+          mt: 3,
+          borderTop: '1px solid #E9E9E9',
+          pt: 3,
+        }}>
           {/* Show different buttons based on whether appointment is submitted */}
           {submittedAppointment ? (
             <PrimaryButton
@@ -2854,7 +2860,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
         fullWidth
         fullScreen={isMobile}
       >
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0, pb: 0, pt: 2, px: 3 }}>
           <Box sx={{ width: '100%' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
               <Typography variant="h2">
@@ -2875,7 +2881,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
             )}
           </Box>
         </DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ px: 3, py: 3 }}>
           {editingDignitary && (
             <DignitaryForm
               mode="edit"
@@ -2895,7 +2901,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
         fullWidth
         fullScreen={isMobile}
       >
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0, pb: 0, pt: 2, px: 3 }}>
           <Box sx={{ width: '100%' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
               <Typography variant="h2">
@@ -2916,7 +2922,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
             )}
           </Box>
         </DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ px: 3, py: 3 }}>
           <ContactForm
             contact={editingContact}
             mode={contactDialogMode}

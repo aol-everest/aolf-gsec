@@ -178,7 +178,7 @@ export const UserContactSelector: React.FC<UserContactSelectorProps> = ({
             onClick={handleContactSelect}
             disabled={!selectedContactId || disabled}
           >
-            Add Contact
+            Add
           </PrimaryButton>
         </Box>
       </Grid>
