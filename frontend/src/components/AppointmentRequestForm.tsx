@@ -1003,7 +1003,8 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
 
   const handleExistingContactSelect = (contact: UserContact) => {
     setPendingContactForAppointmentInstance(contact);
-    setContactSelectionMode('appointment-instance');
+    // Keep contactSelectionMode as 'existing' to show both selector and form
+    // setContactSelectionMode('appointment-instance');
   };
 
   const handleContactSelectionCancel = () => {
@@ -1954,6 +1955,22 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
 
                   {/* Appointment Instance Form for selected/self contact */}
                   {contactSelectionMode === 'appointment-instance' && pendingContactForAppointmentInstance && (
+                    <ContactForm
+                      contact={pendingContactForAppointmentInstance}
+                      mode="edit"
+                      fieldsToShow="appointment"
+                      request_type={selectedRequestTypeConfig?.request_type}
+                      formData={{
+                        ...pocForm.getValues(),
+                        ...appointmentForm.getValues()
+                      }}
+                      onSave={handleAppointmentInstanceComplete}
+                      onCancel={handleContactSelectionCancel}
+                    />
+                  )}
+
+                  {/* Show ContactForm below UserContactSelector when contact is selected in existing mode */}
+                  {contactSelectionMode === 'existing' && pendingContactForAppointmentInstance && (
                     <ContactForm
                       contact={pendingContactForAppointmentInstance}
                       mode="edit"
