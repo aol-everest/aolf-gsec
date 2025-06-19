@@ -146,17 +146,6 @@ export const AppointmentCard: React.FC<{
         logger(`Editing dignitary with ID: ${dignitaryId}`);
     };
 
-
-
-
-
-
-
-
-
-
-
-
     return (
         <Card 
             elevation={1}
@@ -221,7 +210,7 @@ export const AppointmentCard: React.FC<{
                         // p: isMobile ? 2 : 3, 
                     }}>
                         <Box>
-                            <Typography variant="h3">
+                            <Typography variant="h4">
                                 Request #{appointment.id}
                             </Typography>
                         </Box>
