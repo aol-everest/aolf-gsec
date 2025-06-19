@@ -532,8 +532,28 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
   useEffect(() => {
     const requestType = pocForm.watch('requestType');
     const config = requestTypeConfigs.find(c => c.request_type === requestType);
+    
+    // Clear attendee lists when request type changes to avoid incompatible field data
+    if (selectedRequestTypeConfig && config && selectedRequestTypeConfig.request_type !== config.request_type) {
+      // Clear dignitaries for dignitary appointments
+      if (selectedDignitaries.length > 0) {
+        setSelectedDignitaries([]);
+      }
+      
+      // Clear contacts for non-dignitary appointments
+      if (selectedUserContacts.length > 0) {
+        setSelectedUserContacts([]);
+      }
+      
+      // Clear appointment instance fields
+      setContactAppointmentInstanceFields({});
+      
+      // Reset user attendance state
+      setIsUserAttending(true);
+    }
+    
     setSelectedRequestTypeConfig(config || null);
-  }, [pocForm.watch('requestType'), requestTypeConfigs]);
+  }, [pocForm.watch('requestType'), requestTypeConfigs, selectedRequestTypeConfig, selectedDignitaries.length, selectedUserContacts.length]);
 
   // These functions are no longer needed as they're handled by UserDignitarySelector
 

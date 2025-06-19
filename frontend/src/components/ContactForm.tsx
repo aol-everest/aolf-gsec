@@ -11,12 +11,16 @@ import {
   RadioGroup,
   FormControlLabel,
   Radio,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useSnackbar } from 'notistack';
 import { useApi } from '../hooks/useApi';
 import { UserContact } from '../models/types';
 import { EnumSelect } from './EnumSelect';
+import { useEnums } from '../hooks/useEnums';
 import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
 
@@ -59,6 +63,9 @@ export const ContactForm: React.FC<ContactFormProps> = ({
   const api = useApi();
   const { enqueueSnackbar } = useSnackbar();
 
+  // Fetch role enum values
+  const { values: roleValues } = useEnums('roleInTeamProject');
+
   // State for appointment instance fields
   const [appointmentInstanceFields, setAppointmentInstanceFields] = useState<AppointmentInstanceFields>({
     hasMetGurudevRecently: null,
@@ -71,14 +78,7 @@ export const ContactForm: React.FC<ContactFormProps> = ({
     roleInTeamProjectOther: ''
   });
 
-  // Fetch relationship type map from the API
-  const { data: relationshipTypeMap = {} } = useQuery<Record<string, string>>({
-    queryKey: ['relationship-type-map'],
-    queryFn: async () => {
-      const { data } = await api.get<Record<string, string>>('/user-contacts/relationship-type-options-map');
-      return data;
-    },
-  });
+
 
   // Fetch request type map from the API
   const { data: requestTypeMap = {} } = useQuery<Record<string, string>>({
@@ -150,25 +150,33 @@ export const ContactForm: React.FC<ContactFormProps> = ({
               </Typography>
             </Grid>
             <Grid item xs={12} md={6} lg={4}>
-              <EnumSelect
-                enumType="roleInTeamProject"
-                label="Role in Project/Team"
-                value={appointmentInstanceFields.roleInTeamProject}
-                onChange={(e) => {
-                  updateAppointmentInstanceField('roleInTeamProject', e.target.value as string);
-                  // Clear other field when role changes
-                  if (e.target.value !== 'Other') {
-                    updateAppointmentInstanceField('roleInTeamProjectOther', '');
-                  }
-                }}
-                fullWidth
-                required
-                helperText={
-                  appointmentInstanceFields.roleInTeamProject === 'Lead Member' ? '(owns initiative)' :
-                  appointmentInstanceFields.roleInTeamProject === 'Core Team Member' ? '(involved 80%)' :
-                  ''
-                }
-              />
+              <FormControl fullWidth required>
+                <InputLabel>Role in Project/Team</InputLabel>
+                <Select
+                  label="Role in Project/Team"
+                  value={appointmentInstanceFields.roleInTeamProject}
+                  onChange={(e) => {
+                    updateAppointmentInstanceField('roleInTeamProject', e.target.value as string);
+                    // Clear other field when role changes
+                    if (e.target.value !== 'Other') {
+                      updateAppointmentInstanceField('roleInTeamProjectOther', '');
+                    }
+                  }}
+                >
+                  {roleValues.map((value) => (
+                    <MenuItem key={value} value={value}>
+                      <Box>
+                        <Typography variant="body1">{value}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {value === 'Lead Member' ? '(owns initiative)' :
+                           value === 'Core Team Member' ? '(involved 80%)' :
+                           ''}
+                        </Typography>
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Grid>
             {appointmentInstanceFields.roleInTeamProject === 'Other' && (
               <Grid item xs={12} md={6} lg={4}>
