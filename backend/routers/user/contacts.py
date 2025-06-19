@@ -252,7 +252,7 @@ async def get_contact(
         raise HTTPException(status_code=500, detail="Failed to fetch contact")
 
 
-@router.put("/contacts/{contact_id}", response_model=schemas.UserContactResponse)
+@router.patch("/contacts/{contact_id}", response_model=schemas.UserContactResponse)
 async def update_contact(
     contact_id: int,
     contact_update: schemas.UserContactUpdate,

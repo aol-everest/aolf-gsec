@@ -1687,9 +1687,9 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                             }
                           }}
                         />
-                              </Box>
-                            </Grid>
-                          )}
+                      </Box>
+                    </Grid>
+                  )}
 
                   {/* New 3-button layout for adding contacts */}
                   {selectedUserContacts.length < requiredDignitariesCount && (
@@ -2772,15 +2772,15 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
     }
   }, [isMobile, formatHonorificTitle, selectedDignitaries, handleDignitaryRemove]);
 
-      return (
-      <Box sx={{ width: '100%' }}>
-        <Stepper activeStep={activeStep} sx={{ mb: 4 }} alternativeLabel>
-          {getDisplaySteps(selectedRequestTypeConfig).map((label: string) => (
-            <Step key={label}>
-              <StepLabel>{label}</StepLabel>
-            </Step>
-          ))}
-        </Stepper>
+  return (
+    <Box sx={{ width: '100%' }}>
+      <Stepper activeStep={activeStep} sx={{ mb: 4 }} alternativeLabel>
+        {getDisplaySteps(selectedRequestTypeConfig).map((label: string) => (
+          <Step key={label}>
+            <StepLabel>{label}</StepLabel>
+          </Step>
+        ))}
+      </Stepper>
 
       <Paper sx={{ 
         pt: 3,
@@ -2833,7 +2833,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
           )}
         </Box>
       </Paper>
-      
+    
       {/* Profile dialog when profile completion is required */}
       <ProfileOverlay
         open={wizardState.isProfileRequired}
@@ -2844,7 +2844,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
         fieldsToShow={getProfileCompletionFields(userInfo)}
         onClose={handleProfileOverlayClose}
       />
-      
+    
       {renderConfirmationDialog()}
       {renderExistingAppointmentsDialog()}
 
@@ -2897,7 +2897,6 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
         mode={contactDialogMode}
         onSuccess={handleContactDialogSuccess}
       />
-
 
     </Box>
   );

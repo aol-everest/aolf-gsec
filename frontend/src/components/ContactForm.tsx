@@ -50,16 +50,14 @@ export const ContactForm: React.FC<ContactFormProps> = ({
   const api = useApi();
   const { enqueueSnackbar } = useSnackbar();
 
-  // Get relationship type mapping for validation
-  const { data: enums } = useQuery({
-    queryKey: ['enums'],
+  // Fetch relationship type map from the API
+  const { data: relationshipTypeMap = {} } = useQuery<Record<string, string>>({
+    queryKey: ['relationship-type-map'],
     queryFn: async () => {
-      const { data } = await api.get('/enums');
+      const { data } = await api.get<Record<string, string>>('/user-contacts/relationship-type-options-map');
       return data;
-    }
+    },
   });
-
-  const relationshipTypeMap = (enums as any)?.relationshipType || {};
 
   const contactForm = useForm<UserContactCreateData>({
     defaultValues: {
@@ -74,6 +72,9 @@ export const ContactForm: React.FC<ContactFormProps> = ({
 
   // Update form values when contact prop changes (for edit mode)
   useEffect(() => {
+
+    console.log('contact to edit', contact);
+
     if (mode === 'edit' && contact) {
       contactForm.reset({
         first_name: contact.first_name || '',
@@ -98,7 +99,7 @@ export const ContactForm: React.FC<ContactFormProps> = ({
   // Create mutation
   const createContactMutation = useMutation<UserContact, Error, UserContactCreateData>({
     mutationFn: async (data: UserContactCreateData) => {
-      const { data: response } = await api.post<UserContact>('/user-contacts/new', data);
+      const { data: response } = await api.post<UserContact>('/contacts', data);
       return response;
     },
     onSuccess: (newContact) => {
@@ -119,7 +120,7 @@ export const ContactForm: React.FC<ContactFormProps> = ({
   const updateContactMutation = useMutation<UserContact, Error, UserContactCreateData>({
     mutationFn: async (data: UserContactCreateData) => {
       if (!contact?.id) throw new Error('Contact ID is required for update');
-      const { data: response } = await api.patch<UserContact>(`/user-contacts/update/${contact.id}`, data);
+      const { data: response } = await api.patch<UserContact>(`/contacts/${contact.id}`, data);
       return response;
     },
     onSuccess: (updatedContact) => {
@@ -169,7 +170,7 @@ export const ContactForm: React.FC<ContactFormProps> = ({
   };
 
   const formContent = (
-    <Grid container spacing={3}>
+    <Grid container spacing={3} sx={{ mx: 0 }}>
       {/* Form title and description for inline mode */}
       {inline && (
         <>
@@ -196,7 +197,7 @@ export const ContactForm: React.FC<ContactFormProps> = ({
           rules={{ required: 'Relationship type is required' }}
           render={({ field }) => (
             <EnumSelect
-              enumType="relationshipType"
+              enumType="personRelationshipType"
               label="Relationship to You"
               error={!!contactForm.formState.errors.relationship_to_owner}
               helperText={contactForm.formState.errors.relationship_to_owner?.message}
