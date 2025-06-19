@@ -103,14 +103,14 @@ const typography = {
   },
   h3: {
     fontWeight: 600,
-    fontSize: '1.3rem',
-    lineHeight: 1.5,
+    fontSize: '1.7rem',
+    lineHeight: 2.1,
     letterSpacing: '0em',
   },
   h4: {
     fontWeight: 600,
-    fontSize: '1.1rem',
-    lineHeight: 1.3,
+    fontSize: '1.5rem',
+    lineHeight: 1.9,
     letterSpacing: '0em',
     marginBottom: '16px',
     fontFamily: 'Work Sans',
@@ -118,8 +118,8 @@ const typography = {
   },
   h5: {
     fontWeight: 600,
-    fontSize: '1rem',
-    lineHeight: 1.3,
+    fontSize: '1.3rem',
+    lineHeight: 1.7,
     letterSpacing: '0em',
     color: colors.secondary.dark,
     marginBottom: '16px',
@@ -127,7 +127,7 @@ const typography = {
   h6: {
     fontWeight: 400,
     fontSize: '1.1rem',
-    lineHeight: 1.7,
+    lineHeight: 1.6,
     letterSpacing: '0.0075em',
     // marginBottom: '16px',
   },

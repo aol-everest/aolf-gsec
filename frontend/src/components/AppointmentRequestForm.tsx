@@ -1693,14 +1693,14 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
 
                   {/* New 3-button layout for adding contacts */}
                   {selectedUserContacts.length < requiredDignitariesCount && (
-                          <Grid item xs={12}>
-                      <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600 }}>
+                    <Grid item xs={12}>
+                      <Typography variant="h6" sx={{ mb: 2 }}>
                         Add {selectedRequestTypeConfig?.attendee_label_plural || 'Contacts'}
                       </Typography>
                       <Box sx={{ 
-                            display: 'flex', 
+                        display: 'flex', 
                         flexDirection: { xs: 'column', md: 'row' },
-                            gap: 2,
+                        gap: 2,
                         mb: 2
                       }}>
                         {/* Add New Contact Button */}
@@ -2394,8 +2394,8 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>Existing Appointment Request Found</DialogTitle>
-        <DialogContent>
+        <DialogTitle variant="h5" color="primary" sx={{ fontWeight: 600 }}>Existing Appointment Request Found</DialogTitle>
+        <DialogContent sx={{ px: 3, py: 3 }}>
           <Typography gutterBottom>
             Dear {userInfo?.first_name},
           </Typography>
@@ -2410,7 +2410,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
             Please note that submitting multiple requests for the same type may cause delays in processing.
           </Typography>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ px: 3, pb: 3, pt: 0 }}>
           <SecondaryButton 
             onClick={() => {
               setShowExistingAppointmentsDialog(false);
