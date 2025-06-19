@@ -1700,6 +1700,8 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                       <Box sx={{ 
                         display: 'flex', 
                         flexDirection: { xs: 'column', md: 'row' },
+                        alignItems: 'center',
+                        justifyContent: 'center',
                         gap: 2,
                         mb: 2
                       }}>
@@ -1708,20 +1710,18 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                           startIcon={<AddIcon />}
                           onClick={handleAddNewContact}
                           disabled={selectedUserContacts.length >= requiredDignitariesCount}
-                          sx={{ flex: { md: 1 } }}
                         >
                           Add New Contact
                         </PrimaryButton>
 
                         {/* Select Existing Contact Button */}
-                          <SecondaryButton
+                        <SecondaryButton
                           startIcon={<DropdownBarIconV2 />}
                           onClick={handleSelectExistingContact}
                           disabled={
                             selectedUserContacts.length >= requiredDignitariesCount ||
                             userContacts.filter(c => !selectedUserContacts.some(sc => sc.id === c.id)).length === 0
                           }
-                          sx={{ flex: { md: 1 } }}
                         >
                           Select Existing Contact
                           </SecondaryButton>
