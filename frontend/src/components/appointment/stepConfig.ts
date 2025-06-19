@@ -53,14 +53,14 @@ export const getMainSteps = (requestTypeConfig: RequestTypeConfig | null): Omit<
     description: 'Basic information about your appointment request'
   },
   {
-    id: 'attendee-info',
-    title: requestTypeConfig?.step_2_title || 'Add Attendee Information',
-    description: requestTypeConfig?.step_2_description || 'Add attendees to this appointment request'
-  },
-  {
     id: 'appointment-details',
     title: 'Appointment Details',
     description: 'Specify appointment preferences and details'
+  },
+  {
+    id: 'attendee-info',
+    title: requestTypeConfig?.step_2_title || 'Add Attendee Information',
+    description: requestTypeConfig?.step_2_description || 'Add attendees to this appointment request'
   },
   {
     id: 'review-submit',

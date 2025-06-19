@@ -314,7 +314,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
   const [showContactDialog, setShowContactDialog] = useState(false);
   const [contactDialogMode, setContactDialogMode] = useState<'create' | 'edit'>('create');
   const [editingContact, setEditingContact] = useState<UserContact | null>(null);
-  const [contactSelectionMode, setContactSelectionMode] = useState<'none' | 'existing' | 'new'>('none');
+  const [contactSelectionMode, setContactSelectionMode] = useState<'none' | 'existing' | 'new' | 'self'>('none');
   
   // State for collecting appointment instance data
   const [pendingContactForAppointmentInstance, setPendingContactForAppointmentInstance] = useState<UserContact | null>(null);
@@ -963,7 +963,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
     const selfContact = await createSelfContact();
     if (selfContact) {
       setPendingContactForAppointmentInstance(selfContact);
-      setContactSelectionMode('existing');
+      setContactSelectionMode('self');
     }
   };
 
@@ -1067,8 +1067,6 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
       const pocData = await pocForm.handleSubmit(async (data) => {
         try {
           // Phone number is now handled in the profile step, so no need to update here
-          // Set the required number of dignitaries
-          setRequiredDignitariesCount(data.numberOfAttendees);
           
           // Check for existing appointments for non-dignitary requests
           if (!skipExistingCheck && 
@@ -1289,11 +1287,11 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
             <Grid container spacing={3}>
               <Grid item xs={12}>
                 <Typography variant="h6" gutterBottom>
-                  Point of Contact Information
+                  Your Information
                 </Typography>
               </Grid>
               
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={6} lg={4}>
                 <TextField
                   fullWidth
                   label="First Name"
@@ -1302,7 +1300,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                 />
               </Grid>
               
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={6} lg={4}>
                 <TextField
                   fullWidth
                   label="Last Name"
@@ -1311,7 +1309,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                 />
               </Grid>
               
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={6} lg={4}>
                 <TextField
                   fullWidth
                   label="Email"
@@ -1323,11 +1321,11 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
               
               <Grid item xs={12}>
                 <Typography variant="h6" gutterBottom>
-                  Appointment Information
+                  What type of appointment are you requesting?
                 </Typography>
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12}>
                 <FormControl fullWidth required error={!!pocForm.formState.errors.requestType}>
                   <InputLabel>Request Type</InputLabel>
                   <Controller
@@ -1361,39 +1359,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12} md={6}>
-                <Controller
-                  name="numberOfAttendees"
-                  control={pocForm.control}
-                  rules={{
-                    required: `Number of ${selectedRequestTypeConfig?.attendee_label_plural?.toLowerCase() || 'attendees'} is required`,
-                    min: {
-                      value: 1,
-                      message: `At least 1 ${selectedRequestTypeConfig?.attendee_label_singular?.toLowerCase() || 'attendee'} is required`
-                    },
-                    max: {
-                      value: selectedRequestTypeConfig?.max_attendees || 15,
-                      message: `Maximum ${selectedRequestTypeConfig?.max_attendees || 15} ${selectedRequestTypeConfig?.attendee_label_plural?.toLowerCase() || 'attendees'} allowed`
-                    }
-                  }}
-                  render={({ field }) => (
-                    <NumberInput
-                      value={field.value || 1}
-                      onChange={field.onChange}
-                      min={1}
-                      max={selectedRequestTypeConfig?.max_attendees || 15}
-                      increment={1}
-                      label={selectedRequestTypeConfig ? 
-                        `Total number of ${selectedRequestTypeConfig.attendee_label_plural}` : 
-                        "Total number of Attendees"
-                      }
-                      error={!!pocForm.formState.errors.numberOfAttendees}
-                      helperText={pocForm.formState.errors.numberOfAttendees?.message}
-                      required
-                    />
-                  )}
-                />
-              </Grid>
+
             </Grid>
           </Box>
         );
@@ -1683,15 +1649,54 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
         return (
           <Box>
             <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <Typography variant="h6" gutterBottom>
+                  Total number of Attendees
+                </Typography>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Controller
+                  name="numberOfAttendees"
+                  control={pocForm.control}
+                  rules={{
+                    required: `Number of ${selectedRequestTypeConfig?.attendee_label_plural?.toLowerCase() || 'attendees'} is required`,
+                    min: {
+                      value: 1,
+                      message: `At least 1 ${selectedRequestTypeConfig?.attendee_label_singular?.toLowerCase() || 'attendee'} is required`
+                    },
+                    max: {
+                      value: selectedRequestTypeConfig?.max_attendees || 15,
+                      message: `Maximum ${selectedRequestTypeConfig?.max_attendees || 15} ${selectedRequestTypeConfig?.attendee_label_plural?.toLowerCase() || 'attendees'} allowed`
+                    }
+                  }}
+                  render={({ field }) => (
+                    <NumberInput
+                      value={field.value || 1}
+                      onChange={(value) => {
+                        field.onChange(value);
+                        setRequiredDignitariesCount(value);
+                      }}
+                      min={1}
+                      max={selectedRequestTypeConfig?.max_attendees || 15}
+                      increment={1}
+                      label={selectedRequestTypeConfig ? 
+                        `Total number of ${selectedRequestTypeConfig.attendee_label_plural}` : 
+                        "Total number of Attendees"
+                      }
+                      error={!!pocForm.formState.errors.numberOfAttendees}
+                      helperText={pocForm.formState.errors.numberOfAttendees?.message}
+                      required
+                    />
+                  )}
+                />
+              </Grid>
+
               <Grid item xs={12}>
                 <Typography variant="h6" gutterBottom>
                   {selectedRequestTypeConfig?.step_2_title || 'Attendee Information'}
                 </Typography>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
                   {selectedRequestTypeConfig?.step_2_description || 'Add attendees to this appointment request.'}
-                  {requiredDignitariesCount > 0 && (
-                    <span> You need to add {requiredDignitariesCount} {selectedRequestTypeConfig?.attendee_label_singular?.toLowerCase() || 'attendee'}(s) in total.</span>
-                  )}
                 </Typography>
               </Grid>
 
@@ -1702,7 +1707,10 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                   {selectedDignitaries.length >= 0 && (
                     <Grid item xs={12}>
                       <Typography variant="subtitle1" gutterBottom>
-                        Selected Dignitaries ({selectedDignitaries.length} of {requiredDignitariesCount})
+                        {requiredDignitariesCount > 0 && (
+                          <span>You need to add {requiredDignitariesCount} dignitaries in total</span>
+                        )}
+                        {' '}({selectedDignitaries.length} of {requiredDignitariesCount} added)
                       </Typography>
                       <Box sx={{ mt: 2 }}>
                         <GenericTable
@@ -1834,7 +1842,12 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                   {selectedUserContacts.length >= 0 && (
                     <Grid item xs={12}>
                       <Typography variant="subtitle1" gutterBottom>
-                        Selected {selectedRequestTypeConfig?.attendee_label_plural || 'Attendees'} ({selectedUserContacts.length} of {requiredDignitariesCount})
+                        {requiredDignitariesCount > 0 && 
+                          (
+                            <span>You need to add {requiredDignitariesCount} {selectedRequestTypeConfig?.attendee_label_singular?.toLowerCase() || 'attendee'}(s) in total</span>
+                          )
+                        }
+                        {' '}({selectedUserContacts.length} of {requiredDignitariesCount} added)
                       </Typography>
                       <Box sx={{ mt: 2 }}>
                         <GenericTable
