@@ -75,7 +75,7 @@ export const DignitariesSection: React.FC<DignitariesSectionProps> = memo(({
                             pb: 0.5,
                             mb: 1.3
                         }}>
-                            <Typography variant="h5" sx={{ 
+                            <Typography variant="h6" sx={{ 
                                 fontWeight: 600, 
                                 p: 0,
                                 m: 0,
