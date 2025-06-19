@@ -202,8 +202,8 @@ REQUEST_TYPE_CONFIGS: Dict[RequestType, RequestTypeConfig] = {
         description="Request a personal meeting or darshan with Gurudev for yourself and family/friends",
         attendee_type=AttendeeType.PERSONAL,
         max_attendees=10,
-        attendee_label_singular="Person",
-        attendee_label_plural="People",
+        attendee_label_singular="Attendee",
+        attendee_label_plural="Attendees",
         step_2_title="Attendees",
         step_2_description="Add yourself and any family members or friends who will attend."
     ),

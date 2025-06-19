@@ -69,7 +69,6 @@ import { getMainSteps, getDisplaySteps, shouldShowProfileOverlay, WizardState, S
 import { StepNavigation } from './appointment/StepNavigation';
 import { AttendeeList } from './appointment/AttendeeList';
 import { ProfileOverlay } from './appointment/ProfileOverlay';
-import { InitialInfoStep } from './appointment/steps/InitialInfoStep';
 import { EditIconV2, CheckSquareCircleFilledIconV2, CheckCircleIconV2, CloseIconFilledCircleV2, DropdownBarIconV2, TrashIconV2 } from './iconsv2';
 import { useAppointmentSummary, hasExistingAppointments } from '../hooks/useAppointmentSummary';
 import { CountrySelect } from './selects/CountrySelect';
@@ -1089,6 +1088,19 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
         }
       })();
     } else if (activeStep === 1) {
+      // Validate appointment form
+      const isValid = await appointmentForm.trigger();
+      if (!isValid) {
+        // Show error notification
+        enqueueSnackbar('Please fill in all required fields', { 
+          variant: 'error',
+          autoHideDuration: 3000
+        });
+        return;
+      }
+      
+      setActiveStep(2);
+    } else if (activeStep === 2) {
       // Handle different attendee types based on request type
       if (selectedRequestTypeConfig?.attendee_type === attendeeTypeMap['DIGNITARY']) {
         // For dignitary requests, check dignitaries
@@ -1137,19 +1149,6 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
         // Store the list of contact IDs for appointment creation
         const contactIds = selectedUserContacts.map(contact => contact.id);
         sessionStorage.setItem('appointmentContactIds', JSON.stringify(contactIds));
-      }
-      
-      setActiveStep(2);
-    } else if (activeStep === 2) {
-      // Validate appointment form
-      const isValid = await appointmentForm.trigger();
-      if (!isValid) {
-        // Show error notification
-        enqueueSnackbar('Please fill in all required fields', { 
-          variant: 'error',
-          autoHideDuration: 3000
-        });
-        return;
       }
       
       // Move to review step instead of submitting
@@ -1384,8 +1383,8 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                       max={selectedRequestTypeConfig?.max_attendees || 15}
                       increment={1}
                       label={selectedRequestTypeConfig ? 
-                        `Number of ${selectedRequestTypeConfig.attendee_label_plural} (including yourself if attending)` : 
-                        "Number of Attendees (including yourself if attending)"
+                        `Total number of ${selectedRequestTypeConfig.attendee_label_plural}` : 
+                        "Total number of Attendees"
                       }
                       error={!!pocForm.formState.errors.numberOfAttendees}
                       helperText={pocForm.formState.errors.numberOfAttendees?.message}
@@ -1399,6 +1398,575 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
         );
 
       case 1:
+        return (
+          <Box component="form" onSubmit={appointmentForm.handleSubmit(() => handleNext(false))}>
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <Typography variant="h6" gutterBottom>
+                  Appointment Information
+                </Typography>
+              </Grid>
+
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={4}
+                  label="Purpose of Meeting"
+                  {...appointmentForm.register('purpose', { required: 'Purpose is required' })}
+                  error={!!appointmentForm.formState.errors.purpose}
+                  helperText={appointmentForm.formState.errors.purpose?.message}
+                  required
+                />
+              </Grid>
+
+              {/* Conditional date fields based on request type */}
+              {selectedRequestTypeConfig?.request_type === requestTypeMap['DIGNITARY'] ? (
+                // Single date picker for dignitary appointments
+                <Grid item xs={12} md={6} lg={4}>
+                  <TextField
+                    fullWidth
+                    type="date"
+                    label="Preferred Date"
+                    InputLabelProps={{ shrink: true }}
+                    inputProps={{ 
+                      min: getLocalDateString(0),
+                      max: getLocalDateString(60),
+                    }}
+                    {...appointmentForm.register('preferredDate', { 
+                      required: 'Preferred date is required',
+                      validate: (value) => {
+                        const validation = validateSingleDate(value);
+                        return validation.isValid || validation.error;
+                      }
+                    })}
+                    error={!!appointmentForm.formState.errors.preferredDate}
+                    helperText={appointmentForm.formState.errors.preferredDate?.message}
+                    required
+                  />
+                </Grid>
+              ) : (
+                // Date range picker for non-dignitary appointments
+                <>
+                  <Grid item xs={12} md={6} lg={4}>
+                    <TextField
+                      fullWidth
+                      type="date"
+                      label="Preferred Start Date"
+                      InputLabelProps={{ shrink: true }}
+                      inputProps={{ 
+                        min: getLocalDateString(0),
+                        max: getLocalDateString(60),
+                      }}
+                      {...appointmentForm.register('preferredStartDate', { 
+                        required: 'Preferred start date is required',
+                        validate: (value) => {
+                          const endDate = appointmentForm.getValues('preferredEndDate');
+                          if (endDate) {
+                            const validation = validateDateRange(value, endDate);
+                            return validation.isValid || validation.error;
+                          }
+                          return true;
+                        }
+                      })}
+                      error={!!appointmentForm.formState.errors.preferredStartDate}
+                      helperText={appointmentForm.formState.errors.preferredStartDate?.message}
+                      required
+                      onChange={(e) => {
+                        appointmentForm.setValue('preferredStartDate', e.target.value);
+                        const currentEndDate = appointmentForm.getValues('preferredEndDate');
+                        
+                        // Auto-set end date to same as start date if not set, or if end date is before new start date
+                        if (!currentEndDate || new Date(currentEndDate + 'T00:00:00') < new Date(e.target.value + 'T00:00:00')) {
+                          appointmentForm.setValue('preferredEndDate', e.target.value);
+                        }
+                        // Trigger validation
+                        appointmentForm.trigger(['preferredStartDate', 'preferredEndDate']);
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6} lg={4}>
+                    <TextField
+                      fullWidth
+                      type="date"
+                      label="Preferred End Date"
+                      InputLabelProps={{ shrink: true }}
+                      inputProps={{ 
+                        min: appointmentForm.watch('preferredStartDate') || getLocalDateString(0),
+                        max: getLocalDateString(60),
+                      }}
+                      {...appointmentForm.register('preferredEndDate', { 
+                        required: 'Preferred end date is required',
+                        validate: (value) => {
+                          const startDate = appointmentForm.getValues('preferredStartDate');
+                          if (startDate) {
+                            const validation = validateDateRange(startDate, value);
+                            return validation.isValid || validation.error;
+                          }
+                          return true;
+                        }
+                      })}
+                      error={!!appointmentForm.formState.errors.preferredEndDate}
+                      helperText={appointmentForm.formState.errors.preferredEndDate?.message}
+                      required
+                      onChange={(e) => {
+                        appointmentForm.setValue('preferredEndDate', e.target.value);
+                        // Trigger validation
+                        appointmentForm.trigger(['preferredStartDate', 'preferredEndDate']);
+                      }}
+                    />
+                  </Grid>
+                </>
+              )}
+
+              <Grid item xs={12} md={6} lg={4}>
+              <FormControl fullWidth required error={!!appointmentForm.formState.errors.preferredTimeOfDay}>
+                  <InputLabel>Preferred Time of Day</InputLabel>
+                  <Select
+                    label="Preferred Time of Day *"
+                    value={appointmentForm.watch('preferredTimeOfDay')}
+                    {...appointmentForm.register('preferredTimeOfDay', { 
+                      required: 'Preferred time of day is required' 
+                    })}
+                  >
+                    {timeOfDayOptions.map((type) => (
+                      <MenuItem key={type} value={type}>
+                        {type}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  {appointmentForm.formState.errors.preferredTimeOfDay && (
+                    <FormHelperText>
+                      {appointmentForm.formState.errors.preferredTimeOfDay.message}
+                    </FormHelperText>
+                  )}
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} md={6} lg={4}>
+                <FormControl fullWidth required error={!!appointmentForm.formState.errors.location_id}>
+                  <InputLabel>Location</InputLabel>
+                  <Controller
+                    name="location_id"
+                    control={appointmentForm.control}
+                    rules={{ 
+                      required: 'Location is required',
+                      validate: value => (value && value > 0) || 'Please select a location'
+                    }}
+                    render={({ field }) => (
+                      <Select
+                        label="Location *"
+                        {...field}
+                        displayEmpty
+                      >
+                        <MenuItem value="" disabled>
+                          Select a location
+                        </MenuItem>
+                        {locations.map((location) => (
+                          <MenuItem key={location.id} value={location.id}>
+                            {`${location.name} - ${location.city}, ${location.state}, ${location.country}`}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    )}
+                  />
+                  {appointmentForm.formState.errors.location_id && (
+                    <FormHelperText>
+                      {appointmentForm.formState.errors.location_id.message}
+                    </FormHelperText>
+                  )}
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={4}
+                  label="Notes to Secretariat"
+                  {...appointmentForm.register('requesterNotesToSecretariat')}
+                  error={!!appointmentForm.formState.errors.requesterNotesToSecretariat}
+                  helperText={appointmentForm.formState.errors.requesterNotesToSecretariat?.message}
+                />
+              </Grid>
+              
+              {/* Add attachment section */}
+              <Grid item xs={12}>
+                <Divider sx={{ my: 2 }} />
+                <Typography variant="h6" gutterBottom>
+                  Attachments
+                </Typography>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  Upload relevant documents or images for this appointment request.
+                </Typography>
+                
+                <Box sx={{ mt: 2 }}>
+                  <input
+                    type="file"
+                    multiple
+                    onChange={handleFileSelect}
+                    style={{ display: 'none' }}
+                    ref={fileInputRef}
+                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+                  />
+                  <SecondaryButton
+                    size="medium"
+                    onClick={() => fileInputRef.current?.click()}
+                    startIcon={<Box component="span" sx={{ fontSize: '1.25rem' }}>📎</Box>}
+                  >
+                    Select Files
+                  </SecondaryButton>
+                </Box>
+                
+                {selectedFiles.length > 0 && (
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Selected Files ({selectedFiles.length})
+                    </Typography>
+                    <Paper variant="outlined" sx={{ p: 2 }}>
+                      {selectedFiles.map((file, index) => (
+                        <Box 
+                          key={index} 
+                          sx={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center',
+                            py: 1,
+                            borderBottom: index < selectedFiles.length - 1 ? '1px solid #eee' : 'none'
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <Box component="span" sx={{ mr: 1, fontSize: '1.25rem' }}>
+                              {file.type.includes('image') ? '🖼️' : 
+                               file.type.includes('pdf') ? '📄' : 
+                               file.type.includes('word') ? '📝' : 
+                               file.type.includes('excel') ? '📊' : 
+                               file.type.includes('presentation') ? '📽️' : '📁'}
+                            </Box>
+                            <Box>
+                              <Typography variant="body2" noWrap sx={{ maxWidth: '300px' }}>
+                                {file.name}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {(file.size / 1024).toFixed(1)} KB
+                              </Typography>
+                            </Box>
+                          </Box>
+                          <Button 
+                            size="small" 
+                            color="error" 
+                            onClick={() => handleRemoveFile(index)}
+                          >
+                            Remove
+                          </Button>
+                        </Box>
+                      ))}
+                    </Paper>
+                  </Box>
+                )}
+              </Grid>
+            </Grid>
+            
+            {isUploading && (
+              <Box sx={{ width: '100%', mt: 2 }}>
+                <Typography variant="body2" gutterBottom>
+                  Uploading attachments... {uploadProgress.toFixed(0)}%
+                </Typography>
+                <LinearProgress variant="determinate" value={uploadProgress} />
+              </Box>
+            )}
+          </Box>
+        );
+
+      case 2:
+        return (
+          <Box>
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <Typography variant="h6" gutterBottom>
+                  {selectedRequestTypeConfig?.step_2_title || 'Attendee Information'}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  {selectedRequestTypeConfig?.step_2_description || 'Add attendees to this appointment request.'}
+                  {requiredDignitariesCount > 0 && (
+                    <span> You need to add {requiredDignitariesCount} {selectedRequestTypeConfig?.attendee_label_singular?.toLowerCase() || 'attendee'}(s) in total.</span>
+                  )}
+                </Typography>
+              </Grid>
+
+              {/* Show dignitary form for dignitary requests */}
+              {selectedRequestTypeConfig?.attendee_type === attendeeTypeMap['DIGNITARY'] ? (
+                <>
+                  {/* Table of selected dignitaries */}
+                  {selectedDignitaries.length >= 0 && (
+                    <Grid item xs={12}>
+                      <Typography variant="subtitle1" gutterBottom>
+                        Selected Dignitaries ({selectedDignitaries.length} of {requiredDignitariesCount})
+                      </Typography>
+                      <Box sx={{ mt: 2 }}>
+                        <GenericTable
+                          data={selectedDignitaries}
+                          columns={dignitariesTableColumns}
+                          getRowId={(dignitary) => dignitary.id.toString()}
+                          emptyMessage="No dignitaries added yet"
+                          enableSearch={false}
+                          enablePagination={false}
+                          enableColumnVisibility={false}
+                          tableProps={{
+                            size: isMobile ? 'small' : 'medium',
+                            stickyHeader: false,
+                          }}
+                          containerProps={{
+                            sx: {
+                              border: '1px solid',
+                              borderColor: 'divider',
+                              borderRadius: 1,
+                              '& .MuiTableContainer-root': {
+                                boxShadow: 'none',
+                              }
+                            }
+                          }}
+                        />
+                      </Box>
+                    </Grid>
+                  )}
+
+                  {/* Action buttons for dignitary selection */}
+                  {dignitarySelectionMode === 'none' && selectedDignitaries.length < requiredDignitariesCount && (
+                    <Grid item xs={12}>
+                      <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' }, alignItems: 'center', justifyContent: 'center' }}>
+                      <PrimaryButton
+                        size="medium"
+                        startIcon={<AddIcon />}
+                          onClick={() => setDignitarySelectionMode('new')}
+                          // sx={{ flex: 1 }}
+                        >
+                          Add a New Dignitary
+                      </PrimaryButton>
+                        <SecondaryButton
+                          size="medium"
+                          startIcon={<DropdownBarIconV2 />}
+                          onClick={() => setDignitarySelectionMode('existing')}
+                          // sx={{ flex: 1 }}
+                        >
+                          Select an Existing Dignitary
+                        </SecondaryButton>
+                      </Box>
+                    </Grid>
+                  )}
+
+                  {/* Existing dignitary selector */}
+                  {dignitarySelectionMode === 'existing' && (
+                      <Grid item xs={12}>
+                        <Divider sx={{ my: 2 }} />
+                      <Typography variant="subtitle1" gutterBottom>
+                        Select an Existing Dignitary
+                          </Typography>
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                        Choose from existing dignitaries in the system.
+                            </Typography>
+                      
+                      <FormControl fullWidth sx={{ mt: 2 }}>
+                        <InputLabel>Select Dignitary</InputLabel>
+                              <Select
+                          label="Select Dignitary"
+                          value=""
+                                onChange={(e) => {
+                            const dignitaryId = Number(e.target.value);
+                            const dignitary = dignitaries.find(d => d.id === dignitaryId);
+                            if (dignitary) {
+                              const selectedDignitary: SelectedDignitary = {
+                                ...dignitary,
+                                id: dignitary.id,
+                                first_name: dignitary.first_name,
+                                last_name: dignitary.last_name,
+                              };
+                              handleAddExistingDignitary(selectedDignitary);
+                            }
+                          }}
+                        >
+                          {dignitaries
+                            .filter(d => !selectedDignitaries.some(sd => sd.id === d.id))
+                            .map((dignitary) => (
+                              <MenuItem key={dignitary.id} value={dignitary.id}>
+                                    <Box>
+                                      <Typography variant="body1">
+                                    {formatHonorificTitle(dignitary.honorific_title || '')} {dignitary.first_name} {dignitary.last_name}
+                                      </Typography>
+                                      <Typography variant="body2" color="text.secondary">
+                                    {[dignitary.title_in_organization, dignitary.organization, dignitary.email].filter(Boolean).join(' | ') || 'No additional info'}
+                                      </Typography>
+                                    </Box>
+                                  </MenuItem>
+                                ))}
+                            </Select>
+                          </FormControl>
+                      
+                      <Box sx={{ display: 'flex', gap: 2, mt: 2, justifyContent: 'flex-end' }}>
+                        <SecondaryButton
+                          onClick={handleDignitarySelectionCancel}
+                              >
+                                Cancel
+                        </SecondaryButton>
+                            </Box>
+                          </Grid>
+                        )}
+
+                  {/* New dignitary form */}
+                  {dignitarySelectionMode === 'new' && (
+                    <DignitaryForm
+                      mode="create"
+                      onSave={(dignitary) => {
+                        handleDignitaryAdd(dignitary);
+                        setDignitarySelectionMode('none');
+                      }}
+                      onCancel={handleDignitarySelectionCancel}
+                    />
+                        )}
+                        </>
+                      ) : (
+                /* Contact management for non-dignitary requests */
+                <>
+
+
+                  {/* Table of selected contacts */}
+                  {selectedUserContacts.length >= 0 && (
+                    <Grid item xs={12}>
+                      <Typography variant="subtitle1" gutterBottom>
+                        Selected {selectedRequestTypeConfig?.attendee_label_plural || 'Attendees'} ({selectedUserContacts.length} of {requiredDignitariesCount})
+                      </Typography>
+                      <Box sx={{ mt: 2 }}>
+                        <GenericTable
+                          data={selectedUserContacts}
+                          columns={contactsTableColumns}
+                          getRowId={(contact) => contact.id.toString()}
+                          emptyMessage={`No ${selectedRequestTypeConfig?.attendee_label_plural?.toLowerCase() || 'attendees'} added yet. Please add ${selectedRequestTypeConfig?.attendee_label_plural?.toLowerCase() || 'attendees'} by choosing the option below.`}
+                          enableSearch={false}
+                          enablePagination={false}
+                          enableColumnVisibility={false}
+                          tableProps={{
+                            size: isMobile ? 'small' : 'medium',
+                            stickyHeader: false,
+                          }}
+                          containerProps={{
+                            sx: {
+                              border: '1px solid',
+                              borderColor: 'divider',
+                              borderRadius: 1,
+                              '& .MuiTableContainer-root': {
+                                boxShadow: 'none',
+                              }
+                            }
+                          }}
+                        />
+                      </Box>
+                    </Grid>
+                  )}
+
+                  {/* New 3-button layout for adding contacts */}
+                  {selectedUserContacts.length < requiredDignitariesCount && (
+                    <Grid item xs={12}>
+                      <Typography variant="h6" sx={{ mb: 2 }}>
+                        Add {selectedRequestTypeConfig?.attendee_label_plural || 'Contacts'}
+                      </Typography>
+                      <Box sx={{ 
+                        display: 'flex', 
+                        flexDirection: { xs: 'column', md: 'row' },
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 2,
+                        mb: 2
+                      }}>
+                        {/* Add New Contact Button */}
+                        <PrimaryButton
+                          startIcon={<AddIcon />}
+                          onClick={handleAddNewContact}
+                          disabled={selectedUserContacts.length >= requiredDignitariesCount}
+                        >
+                          Add New Contact
+                        </PrimaryButton>
+
+                        {/* Select Existing Contact Button */}
+                        <SecondaryButton
+                          startIcon={<DropdownBarIconV2 />}
+                          onClick={handleSelectExistingContact}
+                          disabled={
+                            selectedUserContacts.length >= requiredDignitariesCount ||
+                            userContacts.filter(c => !selectedUserContacts.some(sc => sc.id === c.id)).length === 0
+                          }
+                        >
+                          Select Existing Contact
+                          </SecondaryButton>
+                          
+                        {/* Add Yourself Button */}
+                        {!isSelfContactAdded() && (
+                          <SecondaryButton
+                            startIcon={<AddIcon />}
+                            onClick={handleAddSelfToAppointment}
+                            disabled={selectedUserContacts.length >= requiredDignitariesCount}
+                          >
+                            Add Yourself
+                          </SecondaryButton>
+                        )}
+                        </Box>
+                      </Grid>
+                  )}
+
+                  {/* New contact form */}
+                  {contactSelectionMode === 'new' && (
+                    <ContactForm
+                      mode="create"
+                      request_type={selectedRequestTypeConfig?.request_type}
+                      onSave={(contact, appointmentInstanceData) => {
+                        addContactToList(contact);
+                        
+                        // Store appointment instance data if provided
+                        if (appointmentInstanceData) {
+                          setContactAppointmentInstanceFields(prev => ({
+                            ...prev,
+                            [contact.id]: appointmentInstanceData
+                          }));
+                        }
+                        
+                        setContactSelectionMode('none');
+                      }}
+                      onCancel={handleContactSelectionCancel}
+                    />
+                  )}
+
+                  {/* Existing contact selector */}
+                  {contactSelectionMode === 'existing' && (
+                    <Grid item xs={12}>
+                      <UserContactSelector
+                        userContacts={userContacts}
+                        selectedContacts={selectedUserContacts}
+                        relationshipTypeMap={relationshipTypeMap}
+                        onContactAdd={handleExistingContactSelect}
+                        onCancel={handleContactSelectionCancel}
+                        autoSelect={true}
+                      />
+                    </Grid>
+                  )}
+
+                  {/* Appointment Instance Form for selected/self contact */}
+                  {contactSelectionMode === 'appointment-instance' && pendingContactForAppointmentInstance && (
+                    <ContactForm
+                      contact={pendingContactForAppointmentInstance}
+                      mode="edit"
+                      fieldsToShow="appointment"
+                      request_type={selectedRequestTypeConfig?.request_type}
+                      onSave={handleAppointmentInstanceComplete}
+                      onCancel={handleContactSelectionCancel}
+                    />
+                  )}
+
+                </>
+              )}
+            </Grid>
+          </Box>
+        );
+
+      case 2:
         return (
           <Box>
             <Grid container spacing={3}>
@@ -1683,287 +2251,6 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                 </>
               )}
             </Grid>
-          </Box>
-        );
-
-      case 2:
-        return (
-          <Box component="form" onSubmit={appointmentForm.handleSubmit(() => handleNext(false))}>
-            <Grid container spacing={3}>
-              <Grid item xs={12}>
-                <Typography variant="h6" gutterBottom>
-                  Appointment Information
-                </Typography>
-              </Grid>
-
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  multiline
-                  rows={4}
-                  label="Purpose of Meeting"
-                  {...appointmentForm.register('purpose', { required: 'Purpose is required' })}
-                  error={!!appointmentForm.formState.errors.purpose}
-                  helperText={appointmentForm.formState.errors.purpose?.message}
-                  required
-                />
-              </Grid>
-
-              {/* Conditional date fields based on request type */}
-              {selectedRequestTypeConfig?.request_type === requestTypeMap['DIGNITARY'] ? (
-                // Single date picker for dignitary appointments
-                <Grid item xs={12} md={6} lg={4}>
-                  <TextField
-                    fullWidth
-                    type="date"
-                    label="Preferred Date"
-                    InputLabelProps={{ shrink: true }}
-                    inputProps={{ 
-                      min: getLocalDateString(0),
-                      max: getLocalDateString(60),
-                    }}
-                    {...appointmentForm.register('preferredDate', { 
-                      required: 'Preferred date is required',
-                      validate: (value) => {
-                        const validation = validateSingleDate(value);
-                        return validation.isValid || validation.error;
-                      }
-                    })}
-                    error={!!appointmentForm.formState.errors.preferredDate}
-                    helperText={appointmentForm.formState.errors.preferredDate?.message}
-                    required
-                  />
-                </Grid>
-              ) : (
-                // Date range picker for non-dignitary appointments
-                <>
-                  <Grid item xs={12} md={6} lg={4}>
-                    <TextField
-                      fullWidth
-                      type="date"
-                      label="Preferred Start Date"
-                      InputLabelProps={{ shrink: true }}
-                      inputProps={{ 
-                        min: getLocalDateString(0),
-                        max: getLocalDateString(60),
-                      }}
-                      {...appointmentForm.register('preferredStartDate', { 
-                        required: 'Preferred start date is required',
-                        validate: (value) => {
-                          const endDate = appointmentForm.getValues('preferredEndDate');
-                          if (endDate) {
-                            const validation = validateDateRange(value, endDate);
-                            return validation.isValid || validation.error;
-                          }
-                          return true;
-                        }
-                      })}
-                      error={!!appointmentForm.formState.errors.preferredStartDate}
-                      helperText={appointmentForm.formState.errors.preferredStartDate?.message}
-                      required
-                      onChange={(e) => {
-                        appointmentForm.setValue('preferredStartDate', e.target.value);
-                        const currentEndDate = appointmentForm.getValues('preferredEndDate');
-                        
-                        // Auto-set end date to same as start date if not set, or if end date is before new start date
-                        if (!currentEndDate || new Date(currentEndDate + 'T00:00:00') < new Date(e.target.value + 'T00:00:00')) {
-                          appointmentForm.setValue('preferredEndDate', e.target.value);
-                        }
-                        // Trigger validation
-                        appointmentForm.trigger(['preferredStartDate', 'preferredEndDate']);
-                      }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} md={6} lg={4}>
-                    <TextField
-                      fullWidth
-                      type="date"
-                      label="Preferred End Date"
-                      InputLabelProps={{ shrink: true }}
-                      inputProps={{ 
-                        min: appointmentForm.watch('preferredStartDate') || getLocalDateString(0),
-                        max: getLocalDateString(60),
-                      }}
-                      {...appointmentForm.register('preferredEndDate', { 
-                        required: 'Preferred end date is required',
-                        validate: (value) => {
-                          const startDate = appointmentForm.getValues('preferredStartDate');
-                          if (startDate) {
-                            const validation = validateDateRange(startDate, value);
-                            return validation.isValid || validation.error;
-                          }
-                          return true;
-                        }
-                      })}
-                      error={!!appointmentForm.formState.errors.preferredEndDate}
-                      helperText={appointmentForm.formState.errors.preferredEndDate?.message}
-                      required
-                      onChange={(e) => {
-                        appointmentForm.setValue('preferredEndDate', e.target.value);
-                        // Trigger validation
-                        appointmentForm.trigger(['preferredStartDate', 'preferredEndDate']);
-                      }}
-                    />
-                  </Grid>
-                </>
-              )}
-
-              <Grid item xs={12} md={6} lg={4}>
-              <FormControl fullWidth required error={!!appointmentForm.formState.errors.preferredTimeOfDay}>
-                  <InputLabel>Preferred Time of Day</InputLabel>
-                  <Select
-                    label="Preferred Time of Day *"
-                    value={appointmentForm.watch('preferredTimeOfDay')}
-                    {...appointmentForm.register('preferredTimeOfDay', { 
-                      required: 'Preferred time of day is required' 
-                    })}
-                  >
-                    {timeOfDayOptions.map((type) => (
-                      <MenuItem key={type} value={type}>
-                        {type}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {appointmentForm.formState.errors.preferredTimeOfDay && (
-                    <FormHelperText>
-                      {appointmentForm.formState.errors.preferredTimeOfDay.message}
-                    </FormHelperText>
-                  )}
-                </FormControl>
-              </Grid>
-
-              <Grid item xs={12} md={6} lg={4}>
-                <FormControl fullWidth required error={!!appointmentForm.formState.errors.location_id}>
-                  <InputLabel>Location</InputLabel>
-                  <Controller
-                    name="location_id"
-                    control={appointmentForm.control}
-                    rules={{ 
-                      required: 'Location is required',
-                      validate: value => (value && value > 0) || 'Please select a location'
-                    }}
-                    render={({ field }) => (
-                      <Select
-                        label="Location *"
-                        {...field}
-                        displayEmpty
-                      >
-                        <MenuItem value="" disabled>
-                          Select a location
-                        </MenuItem>
-                        {locations.map((location) => (
-                          <MenuItem key={location.id} value={location.id}>
-                            {`${location.name} - ${location.city}, ${location.state}, ${location.country}`}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    )}
-                  />
-                  {appointmentForm.formState.errors.location_id && (
-                    <FormHelperText>
-                      {appointmentForm.formState.errors.location_id.message}
-                    </FormHelperText>
-                  )}
-                </FormControl>
-              </Grid>
-
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  multiline
-                  rows={4}
-                  label="Notes to Secretariat"
-                  {...appointmentForm.register('requesterNotesToSecretariat')}
-                  error={!!appointmentForm.formState.errors.requesterNotesToSecretariat}
-                  helperText={appointmentForm.formState.errors.requesterNotesToSecretariat?.message}
-                />
-              </Grid>
-              
-              {/* Add attachment section */}
-              <Grid item xs={12}>
-                <Divider sx={{ my: 2 }} />
-                <Typography variant="h6" gutterBottom>
-                  Attachments
-                </Typography>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Upload relevant documents or images for this appointment request.
-                </Typography>
-                
-                <Box sx={{ mt: 2 }}>
-                  <input
-                    type="file"
-                    multiple
-                    onChange={handleFileSelect}
-                    style={{ display: 'none' }}
-                    ref={fileInputRef}
-                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
-                  />
-                  <SecondaryButton
-                    size="medium"
-                    onClick={() => fileInputRef.current?.click()}
-                    startIcon={<Box component="span" sx={{ fontSize: '1.25rem' }}>📎</Box>}
-                  >
-                    Select Files
-                  </SecondaryButton>
-                </Box>
-                
-                {selectedFiles.length > 0 && (
-                  <Box sx={{ mt: 2 }}>
-                    <Typography variant="subtitle2" gutterBottom>
-                      Selected Files ({selectedFiles.length})
-                    </Typography>
-                    <Paper variant="outlined" sx={{ p: 2 }}>
-                      {selectedFiles.map((file, index) => (
-                        <Box 
-                          key={index} 
-                          sx={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            alignItems: 'center',
-                            py: 1,
-                            borderBottom: index < selectedFiles.length - 1 ? '1px solid #eee' : 'none'
-                          }}
-                        >
-                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <Box component="span" sx={{ mr: 1, fontSize: '1.25rem' }}>
-                              {file.type.includes('image') ? '🖼️' : 
-                               file.type.includes('pdf') ? '📄' : 
-                               file.type.includes('word') ? '📝' : 
-                               file.type.includes('excel') ? '📊' : 
-                               file.type.includes('presentation') ? '📽️' : '📁'}
-                            </Box>
-                            <Box>
-                              <Typography variant="body2" noWrap sx={{ maxWidth: '300px' }}>
-                                {file.name}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {(file.size / 1024).toFixed(1)} KB
-                              </Typography>
-                            </Box>
-                          </Box>
-                          <Button 
-                            size="small" 
-                            color="error" 
-                            onClick={() => handleRemoveFile(index)}
-                          >
-                            Remove
-                          </Button>
-                        </Box>
-                      ))}
-                    </Paper>
-                  </Box>
-                )}
-              </Grid>
-            </Grid>
-            
-            {isUploading && (
-              <Box sx={{ width: '100%', mt: 2 }}>
-                <Typography variant="body2" gutterBottom>
-                  Uploading attachments... {uploadProgress.toFixed(0)}%
-                </Typography>
-                <LinearProgress variant="determinate" value={uploadProgress} />
-              </Box>
-            )}
           </Box>
         );
 
@@ -2733,12 +3020,12 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                 disabled={
                   // At step 0 with profile required, check if form is valid
                   (activeStep === 0 && wizardState.isProfileRequired && !isProfileFormValid) ||
-                  // At attendee step, if no attendees are selected (dignitary or contacts), disable the next button
-                  (activeStep === 1 && selectedRequestTypeConfig?.attendee_type === attendeeTypeMap['DIGNITARY'] && selectedDignitaries.length === 0) ||
-                  (activeStep === 1 && selectedRequestTypeConfig?.attendee_type !== attendeeTypeMap['DIGNITARY'] && selectedUserContacts.length === 0) ||
-                  // At attendee step, if not enough attendees are added, disable the next button
-                  (activeStep === 1 && selectedRequestTypeConfig?.attendee_type === attendeeTypeMap['DIGNITARY'] && selectedDignitaries.length < requiredDignitariesCount) ||
-                  (activeStep === 1 && selectedRequestTypeConfig?.attendee_type !== attendeeTypeMap['DIGNITARY'] && selectedUserContacts.length < requiredDignitariesCount) ||
+                  // At attendee step (now step 2), if no attendees are selected (dignitary or contacts), disable the next button
+                  (activeStep === 2 && selectedRequestTypeConfig?.attendee_type === attendeeTypeMap['DIGNITARY'] && selectedDignitaries.length === 0) ||
+                  (activeStep === 2 && selectedRequestTypeConfig?.attendee_type !== attendeeTypeMap['DIGNITARY'] && selectedUserContacts.length === 0) ||
+                  // At attendee step (now step 2), if not enough attendees are added, disable the next button
+                  (activeStep === 2 && selectedRequestTypeConfig?.attendee_type === attendeeTypeMap['DIGNITARY'] && selectedDignitaries.length < requiredDignitariesCount) ||
+                  (activeStep === 2 && selectedRequestTypeConfig?.attendee_type !== attendeeTypeMap['DIGNITARY'] && selectedUserContacts.length < requiredDignitariesCount) ||
                   // Disable submit button while uploading
                   isUploading
                 }
