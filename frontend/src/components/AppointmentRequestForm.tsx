@@ -642,7 +642,20 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
       
       // Don't show popup dialog, just update state to show confirmation on review page
       setIsUploading(false);
+      
+      // Clear all relevant appointment and related data caches
       queryClient.invalidateQueries({ queryKey: ['my-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['appointment-summary'] });
+      
+      // Clear dignitary cache if dignitaries were used
+      if (selectedRequestTypeConfig?.attendee_type === attendeeTypeMap['DIGNITARY']) {
+        queryClient.invalidateQueries({ queryKey: ['assigned-dignitaries'] });
+      }
+      
+      // Clear contacts cache if contacts were used/updated
+      if (selectedRequestTypeConfig?.attendee_type !== attendeeTypeMap['DIGNITARY']) {
+        queryClient.invalidateQueries({ queryKey: ['user-contacts'] });
+      }
     },
     onError: (error: any) => {
       console.error('Error creating appointment:', error);
@@ -1649,12 +1662,12 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
         return (
           <Box>
             <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={8}>
                 <Typography variant="h6" gutterBottom>
                   Total number of Attendees
                 </Typography>
               </Grid>
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={4}>
                 <Controller
                   name="numberOfAttendees"
                   control={pocForm.control}
@@ -1707,10 +1720,12 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                   {selectedDignitaries.length >= 0 && (
                     <Grid item xs={12}>
                       <Typography variant="subtitle1" gutterBottom>
-                        {requiredDignitariesCount > 0 && (
-                          <span>You need to add {requiredDignitariesCount} dignitaries in total</span>
+                        {requiredDignitariesCount > 0 && selectedDignitaries.length < requiredDignitariesCount && (
+                          <span>You need to add {requiredDignitariesCount} dignitaries in total{' '}({selectedDignitaries.length} of {requiredDignitariesCount} added)</span>
                         )}
-                        {' '}({selectedDignitaries.length} of {requiredDignitariesCount} added)
+                        {requiredDignitariesCount > 0 && selectedDignitaries.length === requiredDignitariesCount && (
+                          <span>All dignitaries added. Click next to continue.</span>
+                        )}
                       </Typography>
                       <Box sx={{ mt: 2 }}>
                         <GenericTable
@@ -1842,12 +1857,12 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                   {selectedUserContacts.length >= 0 && (
                     <Grid item xs={12}>
                       <Typography variant="subtitle1" gutterBottom>
-                        {requiredDignitariesCount > 0 && 
-                          (
-                            <span>You need to add {requiredDignitariesCount} {selectedRequestTypeConfig?.attendee_label_singular?.toLowerCase() || 'attendee'}(s) in total</span>
-                          )
-                        }
-                        {' '}({selectedUserContacts.length} of {requiredDignitariesCount} added)
+                        {requiredDignitariesCount > 0 && selectedUserContacts.length < requiredDignitariesCount && (
+                          <span>You need to add {requiredDignitariesCount} {selectedRequestTypeConfig?.attendee_label_singular?.toLowerCase() || 'attendee'}(s) in total{' '}({selectedUserContacts.length} of {requiredDignitariesCount} added)</span>
+                        )}
+                        {requiredDignitariesCount > 0 && selectedUserContacts.length === requiredDignitariesCount && (
+                          <span>All {selectedRequestTypeConfig?.attendee_label_plural?.toLowerCase() || 'attendees'} added. Click next to continue.</span>
+                        )}
                       </Typography>
                       <Box sx={{ mt: 2 }}>
                         <GenericTable
@@ -1967,7 +1982,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                   )}
 
                   {/* Show ContactForm below UserContactSelector when contact is selected in existing mode */}
-                  {contactSelectionMode === 'existing' && pendingContactForAppointmentInstance && (
+                  {(contactSelectionMode === 'existing' || contactSelectionMode === 'self') && pendingContactForAppointmentInstance && (
                     <ContactForm
                       contact={pendingContactForAppointmentInstance}
                       mode="edit"
