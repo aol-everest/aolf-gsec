@@ -424,6 +424,7 @@ export const AdminAppointmentTable: React.FC<AdminAppointmentTableProps> = ({
       emptyMessage="No appointments found for the selected filters."
       selectionMessage={`${selectedRows.length} appointment${selectedRows.length === 1 ? '' : 's'} selected`}
       searchableFields={searchableFields}
+      initialSorting={[{ id: 'id', desc: true }]}
       tableProps={{
         stickyHeader: true,
         size: 'medium',

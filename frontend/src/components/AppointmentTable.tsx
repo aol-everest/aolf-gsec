@@ -323,6 +323,7 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
       pageSizeOptions={[5, 10, 25]}
       enableColumnVisibility={enableColumnVisibility}
       initialColumnVisibility={initialColumnVisibility}
+      initialSorting={[{ id: 'id', desc: true }]}
       tableProps={{
         stickyHeader: true,
         size: 'medium',
