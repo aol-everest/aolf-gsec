@@ -78,6 +78,11 @@ export const UserContactSelector: React.FC<UserContactSelectorProps> = ({
     }
   };
 
+  const handleAutoSelect = (contact: UserContact) => {
+    onContactAdd(contact);
+    setSelectedContactId('');
+  };
+
   return (
     <Grid container spacing={3}>
       <Grid item xs={12}>
@@ -98,8 +103,8 @@ export const UserContactSelector: React.FC<UserContactSelectorProps> = ({
           onChange={(_, newValue) => {
             setSelectedContactId(newValue?.id || '');
             if (autoSelect && newValue) {
-              // Reuse the existing handleContactSelect logic
-              handleContactSelect();
+              // Use the direct contact for auto-selection
+              handleAutoSelect(newValue);
             }
           }}
           getOptionLabel={(contact) => {

@@ -164,6 +164,10 @@ export const ContactForm: React.FC<ContactFormProps> = ({
     return isSelfContact() ? 'Are you' : 'Are they';
   };
 
+  const getPersonName = () => {
+    return isSelfContact() ? 'yourself' : (contact?.first_name + ' ' + contact?.last_name);
+  };
+
   // Render appointment instance fields based on request type
   const renderAppointmentInstanceFields = () => {
     if (!request_type) return null;
@@ -232,7 +236,7 @@ export const ContactForm: React.FC<ContactFormProps> = ({
           <Grid container spacing={3}>
             <Grid item xs={12}>
               <Typography variant="subtitle1" gutterBottom>
-                Details required for the appointment
+                Please provide the following details for {getPersonName()}
               </Typography>
             </Grid>
             <Grid item xs={12}>
@@ -434,9 +438,9 @@ export const ContactForm: React.FC<ContactFormProps> = ({
 
   return (
     <Grid item xs={12}>
-      <Divider sx={{ my: 2 }} />
       {fieldsToShow !== 'appointment' && (
         <>
+          <Divider sx={{ my: 2 }} />
           <Typography variant="subtitle1" gutterBottom>
             {mode === 'create' ? 'Add a New Contact' : 'Edit Contact'}
           </Typography>
