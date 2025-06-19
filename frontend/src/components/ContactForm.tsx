@@ -18,7 +18,7 @@ import {
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useSnackbar } from 'notistack';
 import { useApi } from '../hooks/useApi';
-import { UserContact } from '../models/types';
+import { UserContact, Location } from '../models/types';
 import { EnumSelect } from './EnumSelect';
 import { useEnums, useEnumsMap } from '../hooks/useEnums';
 import PrimaryButton from './PrimaryButton';
@@ -50,6 +50,7 @@ interface ContactFormProps {
   mode: 'create' | 'edit';
   request_type?: string;
   fieldsToShow?: 'contact' | 'appointment' | 'both';
+  formData?: any;
   onSave: (contact: UserContact, appointmentInstanceData?: AppointmentInstanceFields) => void;
   onCancel: () => void;
 }
@@ -59,6 +60,7 @@ export const ContactForm: React.FC<ContactFormProps> = ({
   mode,
   request_type,
   fieldsToShow = 'both',
+  formData,
   onSave,
   onCancel
 }) => {
@@ -90,6 +92,15 @@ export const ContactForm: React.FC<ContactFormProps> = ({
     queryKey: ['request-type-map'],
     queryFn: async () => {
       const { data } = await api.get<Record<string, string>>('/appointments/request-type-options-map');
+      return data;
+    },
+  });
+
+  // Fetch locations
+  const { data: locations = [] } = useQuery<Location[]>({
+    queryKey: ['locations'],
+    queryFn: async () => {
+      const { data } = await api.get<Location[]>('/locations/all');
       return data;
     },
   });
@@ -260,7 +271,7 @@ export const ContactForm: React.FC<ContactFormProps> = ({
                 <Grid item xs={12} md={4} lg={3}>
                   <FormControl component="fieldset" required>
                     <FormLabel component="legend">
-                      {getAreVerb()} attending a course?
+                      {getAreVerb()} attending a course{formData?.location_id && locations.find(l => l.id === formData.location_id) ? ` during Gurudev's visit in ${locations.find(l => l.id === formData.location_id)?.city}, ${locations.find(l => l.id === formData.location_id)?.state}` : ''}?
                     </FormLabel>
                     <RadioGroup
                       row
@@ -317,7 +328,7 @@ export const ContactForm: React.FC<ContactFormProps> = ({
                     <Grid item xs={12} md={4} lg={3}>
                       <FormControl component="fieldset" required>
                         <FormLabel component="legend">
-                          {getAreVerb()} doing seva?
+                          {getAreVerb()} doing seva{formData?.location_id && locations.find(l => l.id === formData.location_id) ? ` for Gurudev's visit in ${locations.find(l => l.id === formData.location_id)?.city}, ${locations.find(l => l.id === formData.location_id)?.state}` : ''}?
                         </FormLabel>
                         <RadioGroup
                           row

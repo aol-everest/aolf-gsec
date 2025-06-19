@@ -1917,6 +1917,10 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                     <ContactForm
                       mode="create"
                       request_type={selectedRequestTypeConfig?.request_type}
+                      formData={{
+                        ...pocForm.getValues(),
+                        ...appointmentForm.getValues()
+                      }}
                       onSave={(contact, appointmentInstanceData) => {
                         addContactToList(contact);
                         
@@ -1955,6 +1959,10 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                       mode="edit"
                       fieldsToShow="appointment"
                       request_type={selectedRequestTypeConfig?.request_type}
+                      formData={{
+                        ...pocForm.getValues(),
+                        ...appointmentForm.getValues()
+                      }}
                       onSave={handleAppointmentInstanceComplete}
                       onCancel={handleContactSelectionCancel}
                     />
@@ -2205,6 +2213,10 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                     <ContactForm
                       mode="create"
                       request_type={selectedRequestTypeConfig?.request_type}
+                      formData={{
+                        ...pocForm.getValues(),
+                        ...appointmentForm.getValues()
+                      }}
                       onSave={(contact, appointmentInstanceData) => {
                         addContactToList(contact);
                         
@@ -2243,6 +2255,10 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                       mode="edit"
                       fieldsToShow="appointment"
                       request_type={selectedRequestTypeConfig?.request_type}
+                      formData={{
+                        ...pocForm.getValues(),
+                        ...appointmentForm.getValues()
+                      }}
                       onSave={handleAppointmentInstanceComplete}
                       onCancel={handleContactSelectionCancel}
                     />
@@ -3126,6 +3142,10 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
             contact={editingContact}
             mode={contactDialogMode}
             request_type={selectedRequestTypeConfig?.request_type}
+            formData={{
+              ...pocForm.getValues(),
+              ...appointmentForm.getValues()
+            }}
             onSave={(contact, appointmentInstanceData) => {
               handleContactDialogSuccess(contact);
               
