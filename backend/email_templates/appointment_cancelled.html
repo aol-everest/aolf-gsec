@@ -5,11 +5,18 @@
 <div class="content">
     <p>Dear {{ user_name }},</p>
 
-    <p>We regret to inform you that, due to unforeseen changes in Gurudev's schedule, we are unable to proceed with your scheduled appointment.</p>
+    {% if recipient_type == 'contact' %}
+        <p>We regret to inform you that, due to unforeseen changes in Gurudev's schedule, the appointment you were scheduled to attend (requested by {{ requester_name }}) cannot proceed as planned.</p>
+    {% else %}
+        <p>We regret to inform you that, due to unforeseen changes in Gurudev's schedule, we are unable to proceed with your scheduled appointment.</p>
+    {% endif %}
 
-    <p>Please find the details of your appointment below for reference:</p>
+    <p>Please find the details of the appointment below for reference:</p>
     <ul>
         <li><strong>Meeting Request ID:</strong> {{ appointment.id }}</li>
+        {% if recipient_type == 'contact' %}
+            <li><strong>Requested by:</strong> {{ requester_name }}</li>
+        {% endif %}
         <li><strong>Appointment Requested For:</strong> 
             {% for app_dignitary in appointment.appointment_dignitaries %}
                 {% set dignitary = app_dignitary.dignitary %}
@@ -30,7 +37,11 @@
     {% endif %}
     <p>We sincerely apologize for any inconvenience this may cause and understand the impact of this change. At this time, we are unable to reschedule your meeting.</p>
 
-    <p>If you have any questions or require further assistance, please feel free to reach out.</p>
+    {% if recipient_type == 'contact' %}
+        <p>If you have any questions about this cancellation, please contact {{ requester_name }} or reach out to us directly.</p>
+    {% else %}
+        <p>If you have any questions or require further assistance, please feel free to reach out.</p>
+    {% endif %}
 
     <p>Thank you for your understanding, and we hope to have the opportunity to connect with you in the future.</p>
 

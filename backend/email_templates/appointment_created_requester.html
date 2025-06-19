@@ -7,24 +7,37 @@
 <div class="content">
     <p>Dear {{ user_name }},</p>
 
-    <p>Thank you for your request to meet with Gurudev.</p>
-
-    <p>We have received your meeting request and it is currently under review. Please note that this is not a confirmation of the appointment. Our team is carefully considering the request and will provide an update as soon as possible.</p>
+    {% if recipient_type == 'contact' %}
+        <p>You have been included in a meeting request with Gurudev, submitted by {{ requester_name }}. The request is currently under review.</p>
+        
+        <p>Please note that this is not a confirmation of the appointment. Our team is carefully considering the request and will provide an update as soon as possible.</p>
+    {% else %}
+        <p>Thank you for your request to meet with Gurudev.</p>
+        
+        <p>We have received your meeting request and it is currently under review. Please note that this is not a confirmation of the appointment. Our team is carefully considering the request and will provide an update as soon as possible.</p>
+    {% endif %}
 
     <p>
-        <strong>Below are the details of your request:</strong>
+        <strong>Below are the details of the request:</strong>
         <ul>
             <li><strong>Meeting ID:</strong> {{ appointment.id }}</li>
+            {% if recipient_type == 'contact' %}
+                <li><strong>Requested by:</strong> {{ requester_name }}</li>
+            {% endif %}
             <li><strong>{{ get_date_label(appointment) }}:</strong> {{ format_appointment_date(appointment) }}</li>
             <li><strong>Location:</strong> {{ appointment.location.name }} - {{ appointment.location.city }}, {{ appointment.location.state }}</li>
             <li><strong>Group Size:</strong> {{ attendee_count(appointment) }} attendee(s)</li>
             <li><strong>Attendees:</strong>
-                {{ render_attendees(appointment, 'list') }}
+                {{ render_attendees(appointment, 'list', recipient_type) }}
             </li>
         </ul>
     </p>
 
-    <p>If we require any additional information, we will reach out to you.</p>
+    {% if recipient_type == 'contact' %}
+        <p>If we require any additional information, we will reach out to {{ requester_name }}.</p>
+    {% else %}
+        <p>If we require any additional information, we will reach out to you.</p>
+    {% endif %}
 
     <p>Warm regards,</p>
     <p>Office of Gurudev Sri Sri Ravi Shankar, USA</p>

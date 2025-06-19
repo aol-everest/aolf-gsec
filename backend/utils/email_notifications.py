@@ -37,6 +37,19 @@ ENABLE_EMAIL = str_to_bool(os.getenv('ENABLE_EMAIL'))
 EMAIL_TEMPLATES_DIR = os.getenv('EMAIL_TEMPLATES_DIR', os.path.join(os.path.dirname(__file__), '../email_templates'))
 APP_BASE_URL = os.getenv('APP_BASE_URL', 'https://meetgurudev.aolf.app')
 
+# Contact notification configuration
+ENABLE_CONTACT_NOTIFICATIONS = str_to_bool(os.getenv('ENABLE_CONTACT_NOTIFICATIONS', 'true'))
+CONTACT_NOTIFICATIONS_CONFIG = {
+    'appointment_created': str_to_bool(os.getenv('CONTACT_NOTIFY_CREATED', 'false')),
+    'appointment_updated': str_to_bool(os.getenv('CONTACT_NOTIFY_UPDATED', 'false')),
+    'appointment_confirmed': str_to_bool(os.getenv('CONTACT_NOTIFY_CONFIRMED', 'true')),
+    'appointment_cancelled': str_to_bool(os.getenv('CONTACT_NOTIFY_CANCELLED', 'false')),
+    'appointment_rescheduled': str_to_bool(os.getenv('CONTACT_NOTIFY_RESCHEDULED', 'false')),
+    'appointment_more_info_needed': str_to_bool(os.getenv('CONTACT_NOTIFY_MORE_INFO', 'false')),
+    'appointment_rejected_low_priority': str_to_bool(os.getenv('CONTACT_NOTIFY_REJECTED_LOW_PRIORITY', 'false')),
+    'appointment_rejected_met_already': str_to_bool(os.getenv('CONTACT_NOTIFY_REJECTED_MET_ALREADY', 'false')),
+}
+
 # Create email templates directory if it doesn't exist
 Path(EMAIL_TEMPLATES_DIR).mkdir(parents=True, exist_ok=True)
 
@@ -516,6 +529,10 @@ def send_notification_email(
         'user_role': recipient.role.value
     })
     
+    # Set default recipient_type if not provided
+    if 'recipient_type' not in context:
+        context['recipient_type'] = 'requester'
+    
     # Get subject from parameter or format it from the template
     if subject is None:
         # Add context values to kwargs for subject formatting
@@ -550,6 +567,120 @@ def send_notification_email(
     # Send email using template
     send_email_from_template(recipient.email, template_name.value, subject, context, bcc_emails)
     logger.info(f"Notification email ({trigger_type.value}) queued for {recipient.email}")
+
+def get_appointment_contacts_with_emails(db: Session, appointment: Appointment) -> List[UserContact]:
+    """Get appointment contacts that have email addresses and are not SELF contacts."""
+    if not hasattr(appointment, 'appointment_contacts') or not appointment.appointment_contacts:
+        return []
+    
+    contact_ids = [ac.contact_id for ac in appointment.appointment_contacts]
+    if not contact_ids:
+        return []
+    
+    # Get contacts with emails, excluding SELF contacts
+    contacts = db.query(UserContact).filter(
+        UserContact.id.in_(contact_ids),
+        UserContact.email.isnot(None),
+        UserContact.email != '',
+        UserContact.relationship_to_owner != PersonRelationshipType.SELF
+    ).all()
+    
+    # Additional filter for contacts with SELF as name (fallback check)
+    filtered_contacts = []
+    for contact in contacts:
+        if not (contact.first_name == PersonRelationshipType.SELF and contact.last_name == PersonRelationshipType.SELF):
+            filtered_contacts.append(contact)
+    
+    return filtered_contacts
+
+def should_notify_contacts_for_trigger(trigger_type: EmailTrigger) -> bool:
+    """Check if contact notifications are enabled for a specific trigger type."""
+    if not ENABLE_CONTACT_NOTIFICATIONS:
+        return False
+    
+    # Map trigger types to config keys
+    trigger_to_config = {
+        EmailTrigger.APPOINTMENT_CREATED: 'appointment_created',
+        EmailTrigger.APPOINTMENT_UPDATED: 'appointment_updated',
+        EmailTrigger.APPOINTMENT_CONFIRMED: 'appointment_confirmed',
+        EmailTrigger.APPOINTMENT_CANCELLED: 'appointment_cancelled',
+        EmailTrigger.APPOINTMENT_RESCHEDULED: 'appointment_rescheduled',
+        EmailTrigger.APPOINTMENT_MORE_INFO_NEEDED: 'appointment_more_info_needed',
+        EmailTrigger.APPOINTMENT_REJECTED_LOW_PRIORITY: 'appointment_rejected_low_priority',
+        EmailTrigger.APPOINTMENT_REJECTED_MET_ALREADY: 'appointment_rejected_met_already',
+    }
+    
+    config_key = trigger_to_config.get(trigger_type)
+    if not config_key:
+        return False
+    
+    return CONTACT_NOTIFICATIONS_CONFIG.get(config_key, False)
+
+def notify_appointment_contacts(
+    db: Session, 
+    appointment: Appointment, 
+    trigger_type: EmailTrigger,
+    old_data: Dict[str, Any] = None,
+    new_data: Dict[str, Any] = None
+):
+    """Send notifications to appointment contacts for specific trigger types."""
+    
+    # Check if notifications are enabled for this trigger type
+    if not should_notify_contacts_for_trigger(trigger_type):
+        logger.debug(f"Contact notifications disabled for trigger {trigger_type.value}")
+        return
+    
+    # Get contacts with email addresses (excluding SELF contacts)
+    contacts = get_appointment_contacts_with_emails(db, appointment)
+    
+    if not contacts:
+        logger.debug(f"No contacts with emails found for appointment {appointment.id}")
+        return
+    
+    # Prepare base context
+    context = {
+        'appointment': appointment_to_dict(appointment),
+        'recipient_type': 'contact',
+        'requester_name': f"{appointment.requester.first_name} {appointment.requester.last_name}".strip() if appointment.requester else "Unknown"
+    }
+    
+    # Add change context for update notifications
+    if old_data and new_data:
+        context.update({
+            'old_data': old_data,
+            'new_data': new_data
+        })
+    
+    # Send notification to each contact
+    for contact in contacts:
+        try:
+            # Create a temporary recipient object for the contact
+            class ContactRecipient:
+                def __init__(self, contact_obj):
+                    self.email = contact_obj.email
+                    self.first_name = contact_obj.first_name or 'Contact'
+                    self.role = UserRole.GENERAL
+                    self.email_notification_preferences = {"appointment_created": True}
+            
+            recipient = ContactRecipient(contact)
+            
+            # Update context with contact-specific information
+            contact_context = context.copy()
+            contact_context['user_name'] = recipient.first_name
+            
+            send_notification_email(
+                db=db,
+                trigger_type=trigger_type,
+                recipient=recipient,
+                context=contact_context,
+                appointment_id=appointment.id
+            )
+            
+            logger.info(f"Contact notification ({trigger_type.value}) sent to {contact.email} for appointment {appointment.id}")
+            
+        except Exception as e:
+            logger.error(f"Error sending contact notification to {contact.email}: {str(e)}", exc_info=True)
+            continue
 
 def get_appointment_summary(appointment: Appointment) -> str:
     """Generate a summary of the appointment for email notifications."""
@@ -714,6 +845,13 @@ def notify_appointment_creation(db: Session, appointment: Appointment):
             context=context,
             appointment_id=appointment.id
         )
+
+    # Notify appointment contacts
+    notify_appointment_contacts(
+        db=db,
+        appointment=appointment,
+        trigger_type=EmailTrigger.APPOINTMENT_CREATED
+    )
 
     # Notify all SECRETARIAT users who have enabled new appointment notifications
     secretariat_users = db.query(User).filter(
@@ -883,6 +1021,14 @@ def notify_appointment_update(db: Session, appointment: Appointment, old_data: D
                 context=context,
                 appointment_id=appointment.id
             )
+            # Notify contacts for "Need more info" case
+            notify_appointment_contacts(
+                db=db,
+                appointment=appointment,
+                trigger_type=EmailTrigger.APPOINTMENT_MORE_INFO_NEEDED,
+                old_data=old_data,
+                new_data=new_data
+            )
         elif is_cancelled:
             # Special handling for "Cancelled" case
             send_notification_email(
@@ -891,6 +1037,14 @@ def notify_appointment_update(db: Session, appointment: Appointment, old_data: D
                 recipient=requester,
                 context=context,
                 appointment_id=appointment.id
+            )
+            # Notify contacts for "Cancelled" case
+            notify_appointment_contacts(
+                db=db,
+                appointment=appointment,
+                trigger_type=EmailTrigger.APPOINTMENT_CANCELLED,
+                old_data=old_data,
+                new_data=new_data
             )
         elif is_rescheduled:
             # Special handling for "Rescheduled" case
@@ -902,6 +1056,14 @@ def notify_appointment_update(db: Session, appointment: Appointment, old_data: D
                 context=context,
                 appointment_id=appointment.id
             )
+            # Notify contacts for "Rescheduled" case
+            notify_appointment_contacts(
+                db=db,
+                appointment=appointment,
+                trigger_type=EmailTrigger.APPOINTMENT_RESCHEDULED,
+                old_data=old_data,
+                new_data=new_data
+            )
         elif is_confirmed:
             # Special handling for "Confirmed" case
             send_notification_email(
@@ -910,6 +1072,14 @@ def notify_appointment_update(db: Session, appointment: Appointment, old_data: D
                 recipient=requester,
                 context=context,
                 appointment_id=appointment.id
+            )
+            # Notify contacts for "Confirmed" case
+            notify_appointment_contacts(
+                db=db,
+                appointment=appointment,
+                trigger_type=EmailTrigger.APPOINTMENT_CONFIRMED,
+                old_data=old_data,
+                new_data=new_data
             )
         elif is_rejected_low_priority:
             # Special handling for "Rejected - Low priority" case
@@ -920,6 +1090,14 @@ def notify_appointment_update(db: Session, appointment: Appointment, old_data: D
                 context=context,
                 appointment_id=appointment.id
             )
+            # Notify contacts for "Rejected - Low priority" case
+            notify_appointment_contacts(
+                db=db,
+                appointment=appointment,
+                trigger_type=EmailTrigger.APPOINTMENT_REJECTED_LOW_PRIORITY,
+                old_data=old_data,
+                new_data=new_data
+            )
         elif is_rejected_met_already:
             # Special handling for "Rejected - Met Gurudev already" case
             send_notification_email(
@@ -928,6 +1106,14 @@ def notify_appointment_update(db: Session, appointment: Appointment, old_data: D
                 recipient=requester,
                 context=context,
                 appointment_id=appointment.id
+            )
+            # Notify contacts for "Rejected - Met Gurudev already" case
+            notify_appointment_contacts(
+                db=db,
+                appointment=appointment,
+                trigger_type=EmailTrigger.APPOINTMENT_REJECTED_MET_ALREADY,
+                old_data=old_data,
+                new_data=new_data
             )
         else:
             logger.info(f"Skipped sending email for appointment update (ID: {appointment.id})")

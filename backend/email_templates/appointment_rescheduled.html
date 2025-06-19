@@ -7,7 +7,11 @@
 <div class="content">
     <p>Dear {{ user_name }},</p>
 
-    <p>This is to inform you that your appointment request (Meeting Request ID: {{ appointment.id }}) for
+    {% if recipient_type == 'contact' %}
+        <p>This is to inform you that the appointment you were scheduled to attend (Meeting Request ID: {{ appointment.id }}) has been rescheduled. This appointment was requested by {{ requester_name }} for
+    {% else %}
+        <p>This is to inform you that your appointment request (Meeting Request ID: {{ appointment.id }}) for
+    {% endif %}
     {% for app_dignitary in appointment.appointment_dignitaries %}
         {% set dignitary = app_dignitary.dignitary %}
         {{ dignitary.honorific_title|format_honorific_title }} {{ dignitary.first_name }} {{ dignitary.last_name }}{% if not loop.last %}{% if loop.index == appointment.appointment_dignitaries|length - 1 %} and {% else %}, {% endif %}{% endif %}
@@ -16,6 +20,9 @@
     
     <p>
         <strong>{{ get_date_label(appointment) }}:</strong> {{ format_appointment_date(appointment) }}<br>
+        {% if recipient_type == 'contact' %}
+            <strong>Requested by:</strong> {{ requester_name }}<br>
+        {% endif %}
         <strong>Appointment Requested For:</strong>
         {% for app_dignitary in appointment.appointment_dignitaries %}
             {% set dignitary = app_dignitary.dignitary %}
@@ -55,7 +62,11 @@
     </p>
     {% endif %}
 
-    <p>If you have any questions about this change, please contact the Global Secretariat Office.</p>
+    {% if recipient_type == 'contact' %}
+        <p>If you have any questions about this change, please contact {{ requester_name }} or the Global Secretariat Office.</p>
+    {% else %}
+        <p>If you have any questions about this change, please contact the Global Secretariat Office.</p>
+    {% endif %}
 
     <p>Warm regards,</p>
     <p>Office of Gurudev Sri Sri Ravi Shankar, USA</p>

@@ -1,5 +1,5 @@
 {# Macro to render attendees (both dignitaries and contacts) #}
-{% macro render_attendees(appointment, format='list') %}
+{% macro render_attendees(appointment, format='list', recipient_type='requester') %}
     {% set attendees = [] %}
     
     {# Collect dignitaries #}
@@ -19,7 +19,12 @@
         {% for app_contact in appointment.appointment_contacts %}
             {% set contact = app_contact.contact %}
             {% if contact.relationship_to_owner | lower == "self" %}
-                {% set attendee_name = "Self" %}
+                {# For contacts receiving emails, show requester's full name instead of "Self" #}
+                {% if recipient_type == 'contact' and appointment.requester %}
+                    {% set attendee_name = appointment.requester.first_name + " " + appointment.requester.last_name %}
+                {% else %}
+                    {% set attendee_name = "Self" %}
+                {% endif %}
                 {% set _ = attendees.append({'name': attendee_name.strip(), 'type': 'contact'}) %}
             {% else %}
                 {% set attendee_name = contact.first_name + " " + contact.last_name %}

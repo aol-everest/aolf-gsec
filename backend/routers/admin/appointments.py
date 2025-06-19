@@ -986,7 +986,8 @@ def update_calendar_event_for_appointment(
                 updated_fields.append('meeting_place_id')
     else:
         # For admin-created or imported events, don't update status or core fields
-        logger.debug(f"Skipping status/core field updates for {calendar_event.creation_context.value}-created calendar event {calendar_event.id}")
+        creation_context_str = calendar_event.creation_context.value if calendar_event.creation_context else "unknown"
+        logger.debug(f"Skipping status/core field updates for {creation_context_str}-created calendar event {calendar_event.id}")
     
     # Always check and update description and title if purpose changed (for all creation contexts)
     new_description = appointment.purpose

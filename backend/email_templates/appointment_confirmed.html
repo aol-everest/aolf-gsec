@@ -5,12 +5,19 @@
 <div class="content">
     <p>Dear {{ user_name }},</p>
 
-    <p>We are pleased to confirm your meeting request with Gurudev. Please find the appointment details below:</p>
+    {% if recipient_type == 'contact' %}
+        <p>You have been included in a confirmed meeting with Gurudev, requested by {{ requester_name }}. Please find the appointment details below:</p>
+    {% else %}
+        <p>We are pleased to confirm your meeting request with Gurudev. Please find the appointment details below:</p>
+    {% endif %}
     
     <ul>
         <li><strong>Meeting Request ID:</strong> {{ appointment.id }}</li>
+        {% if recipient_type == 'contact' %}
+            <li><strong>Requested by:</strong> {{ requester_name }}</li>
+        {% endif %}
         <li><strong>Appointment Requested For:</strong>
-            {{ render_attendees(appointment, 'inline') }}
+            {{ render_attendees(appointment, 'inline', recipient_type) }}
         </li>
         <li><strong>{{ get_date_label(appointment) }}:</strong> {{ format_appointment_date(appointment) }}</li>
         <li><strong>Location:</strong> 
@@ -46,7 +53,11 @@
     </p>
     {% endif %}
 
-    <p>If you have any questions or need to make changes to your appointment, please contact us as soon as possible.</p>
+    {% if recipient_type == 'contact' %}
+        <p>If you have any questions about this appointment, please contact {{ requester_name }} or the Global Secretariat Office.</p>
+    {% else %}
+        <p>If you have any questions or need to make changes to your appointment, please contact us as soon as possible.</p>
+    {% endif %}
 
     <p>Warm regards,</p>
     <p>Office of Gurudev Sri Sri Ravi Shankar, USA</p>
