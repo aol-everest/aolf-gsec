@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import {
   Typography,
@@ -6,6 +6,11 @@ import {
   TextField,
   Grid,
   Divider,
+  FormControl,
+  FormLabel,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
 } from '@mui/material';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useSnackbar } from 'notistack';
@@ -24,21 +29,41 @@ export interface UserContactCreateData {
   notes?: string;
 }
 
+// Engagement fields interface
+interface EngagementFields {
+  hasMetGurudevRecently: boolean | null;
+  isAttendingCourse: boolean | null;
+  courseAttending: string;
+  isDoingSeva: boolean | null;
+  sevaType: string;
+}
+
 interface ContactFormProps {
   contact?: UserContact | null;
   mode: 'create' | 'edit';
-  onSave: (contact: UserContact) => void;
+  request_type?: string;
+  onSave: (contact: UserContact, engagementData?: EngagementFields) => void;
   onCancel: () => void;
 }
 
 export const ContactForm: React.FC<ContactFormProps> = ({
   contact,
   mode,
+  request_type,
   onSave,
   onCancel
 }) => {
   const api = useApi();
   const { enqueueSnackbar } = useSnackbar();
+
+  // State for engagement fields
+  const [engagementFields, setEngagementFields] = useState<EngagementFields>({
+    hasMetGurudevRecently: null,
+    isAttendingCourse: null,
+    courseAttending: '',
+    isDoingSeva: null,
+    sevaType: ''
+  });
 
   // Fetch relationship type map from the API
   const { data: relationshipTypeMap = {} } = useQuery<Record<string, string>>({
@@ -86,6 +111,134 @@ export const ContactForm: React.FC<ContactFormProps> = ({
     }
   }, [contact, mode, contactForm]);
 
+  // Helper function to update engagement field
+  const updateEngagementField = (field: keyof EngagementFields, value: any) => {
+    setEngagementFields(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  // Render appointment instance fields based on request type
+  const appointmentInstanceFields = () => {
+    if (!request_type) return null;
+
+    // Case statement for different request types
+    switch (request_type) {
+      case 'Personal':
+      case 'Dignitary':
+      case 'Project':
+      case 'Team':
+      default:
+        // For now, all request types get the same fields
+        return (
+          <Grid container spacing={3}>
+            <Grid item xs={12}>
+              <Typography variant="subtitle1" gutterBottom>
+                Details required for the appointment
+              </Typography>
+            </Grid>
+            <Grid item xs={12}>
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={4} lg={3}>
+                  <FormControl component="fieldset" required>
+                    <FormLabel component="legend">
+                      Have they met Gurudev in last 2 weeks?
+                    </FormLabel>
+                    <RadioGroup
+                      row
+                      value={engagementFields.hasMetGurudevRecently?.toString() || ''}
+                      onChange={(e) => updateEngagementField('hasMetGurudevRecently', e.target.value === 'true')}
+                    >
+                      <FormControlLabel value="true" control={<Radio />} label="Yes" />
+                      <FormControlLabel value="false" control={<Radio />} label="No" />
+                    </RadioGroup>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12} md={4} lg={3}>
+                  <FormControl component="fieldset" required>
+                    <FormLabel component="legend">
+                      Are they attending a course?
+                    </FormLabel>
+                    <RadioGroup
+                      row
+                      value={engagementFields.isAttendingCourse?.toString() || ''}
+                      onChange={(e) => {
+                        const isAttending = e.target.value === 'true';
+                        updateEngagementField('isAttendingCourse', isAttending);
+                        
+                        // Clear course selection if not attending
+                        if (!isAttending) {
+                          updateEngagementField('isDoingSeva', null);
+                          updateEngagementField('sevaType', '');
+                        }
+                      }}
+                    >
+                      <FormControlLabel value="true" control={<Radio />} label="Yes" />
+                      <FormControlLabel value="false" control={<Radio />} label="No" />
+                    </RadioGroup>
+                  </FormControl>
+                </Grid>
+
+                {engagementFields.isAttendingCourse && (
+                  <Grid item xs={12} md={4} lg={3}>
+                    <EnumSelect
+                      enumType="courseType"
+                      label="Course Attending"
+                      value={engagementFields.courseAttending}
+                      onChange={(e) => updateEngagementField('courseAttending', e.target.value as string)}
+                      fullWidth
+                    />
+                  </Grid>
+                )}
+
+                {engagementFields.isAttendingCourse !== null && !engagementFields.isAttendingCourse && (
+                  <>
+                    <Grid item xs={12} md={4} lg={3}>
+                      <FormControl component="fieldset" required>
+                        <FormLabel component="legend">
+                          Are they doing seva?
+                        </FormLabel>
+                        <RadioGroup
+                          row
+                          value={engagementFields.isDoingSeva?.toString() || ''}
+                          onChange={(e) => {
+                            const isDoingSeva = e.target.value === 'true';
+                            updateEngagementField('isDoingSeva', isDoingSeva);
+                            
+                            // Clear seva type if not doing seva
+                            if (!isDoingSeva) {
+                              updateEngagementField('sevaType', '');
+                            }
+                          }}
+                        >
+                          <FormControlLabel value="true" control={<Radio />} label="Yes" />
+                          <FormControlLabel value="false" control={<Radio />} label="No" />
+                        </RadioGroup>
+                      </FormControl>
+                    </Grid>
+
+                    {engagementFields.isDoingSeva && (
+                      <Grid item xs={12} md={4} lg={3}>
+                        <EnumSelect
+                          enumType="sevaType"
+                          label="Type of Seva"
+                          value={engagementFields.sevaType}
+                          onChange={(e) => updateEngagementField('sevaType', e.target.value as string)}
+                          fullWidth
+                        />
+                      </Grid>
+                    )}
+                  </>
+                )}
+              </Grid> 
+            </Grid>
+          </Grid>
+        );
+    }
+  };
+
   // Create mutation
   const createContactMutation = useMutation<UserContact, Error, UserContactCreateData>({
     mutationFn: async (data: UserContactCreateData) => {
@@ -93,7 +246,7 @@ export const ContactForm: React.FC<ContactFormProps> = ({
       return response;
     },
     onSuccess: (newContact) => {
-      onSave(newContact);
+      onSave(newContact, engagementFields);
       enqueueSnackbar('Contact created successfully', { variant: 'success' });
     },
     onError: (error: any) => {
@@ -113,7 +266,7 @@ export const ContactForm: React.FC<ContactFormProps> = ({
       return response;
     },
     onSuccess: (updatedContact) => {
-      onSave(updatedContact);
+      onSave(updatedContact, engagementFields);
       enqueueSnackbar('Contact updated successfully', { variant: 'success' });
     },
     onError: (error: any) => {
@@ -246,6 +399,11 @@ export const ContactForm: React.FC<ContactFormProps> = ({
             error={!!contactForm.formState.errors.notes}
             helperText={contactForm.formState.errors.notes?.message}
           />
+        </Grid>
+
+        <Grid item xs={12}>
+            {/* Appointment Instance Fields */}
+            {appointmentInstanceFields()}
         </Grid>
 
         {/* Action Buttons */}

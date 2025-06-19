@@ -16,9 +16,7 @@ import {
   Step,
   StepLabel,
   Paper,
-  Radio,
-  RadioGroup,
-  FormControlLabel,
+
   Dialog,
   DialogTitle,
   DialogContent,
@@ -1227,167 +1225,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
     }
   };
 
-  // Component to render engagement fields
-  const renderEngagementFields = (
-    contactId: number, 
-    isRequester: boolean = false,
-    formPrefix: string = ''
-  ) => {
-    // Handle different data sources based on formPrefix
-    let engagementData: EngagementFields;
-    let updateEngagementField: (field: keyof EngagementFields, value: any) => void;
 
-    if (formPrefix === 'personalAttendee') {
-      // Use personalAttendeeForm for contact creation
-      engagementData = {
-        hasMetGurudevRecently: personalAttendeeForm.watch('hasMetGurudevRecently'),
-        isAttendingCourse: personalAttendeeForm.watch('isAttendingCourse'),
-        courseAttending: personalAttendeeForm.watch('courseAttending') || '',
-        isDoingSeva: personalAttendeeForm.watch('isDoingSeva'),
-        sevaType: personalAttendeeForm.watch('sevaType') || ''
-      };
-
-      updateEngagementField = (field: keyof EngagementFields, value: any) => {
-        if (field === 'hasMetGurudevRecently') {
-          personalAttendeeForm.setValue('hasMetGurudevRecently', value);
-        } else if (field === 'isAttendingCourse') {
-          personalAttendeeForm.setValue('isAttendingCourse', value);
-        } else if (field === 'courseAttending') {
-          personalAttendeeForm.setValue('courseAttending', value);
-        } else if (field === 'isDoingSeva') {
-          personalAttendeeForm.setValue('isDoingSeva', value);
-        } else if (field === 'sevaType') {
-          personalAttendeeForm.setValue('sevaType', value);
-        }
-      };
-    } else {
-      // Use contactEngagementFields for existing contacts and self-attendance
-      engagementData = contactEngagementFields[contactId] || {
-        hasMetGurudevRecently: null,
-        isAttendingCourse: null,
-        courseAttending: '',
-        isDoingSeva: null,
-        sevaType: ''
-      };
-
-      updateEngagementField = (field: keyof EngagementFields, value: any) => {
-        setContactEngagementFields(prev => ({
-          ...prev,
-          [contactId]: {
-            ...prev[contactId],
-            [field]: value
-          }
-        }));
-      };
-    }
-
-    return (
-      <>
-        <Grid item xs={12} sx={{ p: 0, pl: 0 }}>
-          <Grid container spacing={3} sx={{ 
-            border: '1px solid',
-            borderColor: 'divider',
-            borderRadius: 2,
-            pt: 0,
-            pb: 2,
-          }}>
-            <Grid item xs={12} md={4} lg={3}>
-          <FormControl component="fieldset" required>
-            <FormLabel component="legend">
-              {isRequester ? "Have you met Gurudev in last 2 weeks?" : "Have they met Gurudev in last 2 weeks?"}
-            </FormLabel>
-            <RadioGroup
-              row
-              value={engagementData.hasMetGurudevRecently?.toString() || ''}
-              onChange={(e) => updateEngagementField('hasMetGurudevRecently', e.target.value === 'true')}
-            >
-              <FormControlLabel value="true" control={<Radio />} label="Yes" />
-              <FormControlLabel value="false" control={<Radio />} label="No" />
-            </RadioGroup>
-          </FormControl>
-        </Grid>
-
-            <Grid item xs={12} md={4} lg={3}>
-          <FormControl component="fieldset" required>
-            <FormLabel component="legend">
-              {isRequester ? "Are you attending a course?" : "Are they attending a course?"}
-            </FormLabel>
-            <RadioGroup
-              row
-              value={engagementData.isAttendingCourse?.toString() || ''}
-              onChange={(e) => {
-                const isAttending = e.target.value === 'true';
-                updateEngagementField('isAttendingCourse', isAttending);
-                
-                // Clear course selection if not attending
-                if (!isAttending) {
-                  updateEngagementField('isDoingSeva', null);
-                  updateEngagementField('sevaType', '');
-                }
-              }}
-            >
-              <FormControlLabel value="true" control={<Radio />} label="Yes" />
-              <FormControlLabel value="false" control={<Radio />} label="No" />
-            </RadioGroup>
-          </FormControl>
-        </Grid>
-
-        {engagementData.isAttendingCourse && (
-              <Grid item xs={12} md={4} lg={3}>
-            <EnumSelect
-              enumType="courseType"
-              label="Course Attending"
-              value={engagementData.courseAttending}
-              onChange={(e) => updateEngagementField('courseAttending', e.target.value as string)}
-              fullWidth
-            />
-          </Grid>
-        )}
-
-        {engagementData.isAttendingCourse !== null && !engagementData.isAttendingCourse && (
-          <>
-                <Grid item xs={12} md={4} lg={3}>
-              <FormControl component="fieldset" required>
-                <FormLabel component="legend">
-                  {isRequester ? "Are you doing seva?" : "Are they doing seva?"}
-                </FormLabel>
-                <RadioGroup
-                  row
-                  value={engagementData.isDoingSeva?.toString() || ''}
-                  onChange={(e) => {
-                    const isDoingSeva = e.target.value === 'true';
-                    updateEngagementField('isDoingSeva', isDoingSeva);
-                    
-                    // Clear seva type if not doing seva
-                    if (!isDoingSeva) {
-                      updateEngagementField('sevaType', '');
-                    }
-                  }}
-                >
-                  <FormControlLabel value="true" control={<Radio />} label="Yes" />
-                  <FormControlLabel value="false" control={<Radio />} label="No" />
-                </RadioGroup>
-              </FormControl>
-            </Grid>
-
-            {engagementData.isDoingSeva && (
-                  <Grid item xs={12} md={4} lg={3}>
-                <EnumSelect
-                  enumType="sevaType"
-                  label="Type of Seva"
-                  value={engagementData.sevaType}
-                  onChange={(e) => updateEngagementField('sevaType', e.target.value as string)}
-                  fullWidth
-                />
-              </Grid>
-            )}
-          </>
-        )}
-          </Grid> 
-        </Grid>
-      </>
-    );
-  };
 
   const renderStepContent = (step: number) => {
     switch (step) {
@@ -1744,8 +1582,18 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                   {contactSelectionMode === 'new' && (
                     <ContactForm
                       mode="create"
-                      onSave={(contact) => {
+                      request_type={selectedRequestTypeConfig?.request_type}
+                      onSave={(contact, engagementData) => {
                         addContactToList(contact);
+                        
+                        // Store engagement data if provided
+                        if (engagementData) {
+                          setContactEngagementFields(prev => ({
+                            ...prev,
+                            [contact.id]: engagementData
+                          }));
+                        }
+                        
                         setContactSelectionMode('none');
                       }}
                       onCancel={handleContactSelectionCancel}
@@ -2926,7 +2774,18 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
           <ContactForm
             contact={editingContact}
             mode={contactDialogMode}
-            onSave={handleContactDialogSuccess}
+            request_type={selectedRequestTypeConfig?.request_type}
+            onSave={(contact, engagementData) => {
+              handleContactDialogSuccess(contact);
+              
+              // Store engagement data if provided for edit mode
+              if (engagementData && contactDialogMode === 'edit') {
+                setContactEngagementFields(prev => ({
+                  ...prev,
+                  [contact.id]: engagementData
+                }));
+              }
+            }}
             onCancel={handleContactDialogClose}
           />
         </DialogContent>
