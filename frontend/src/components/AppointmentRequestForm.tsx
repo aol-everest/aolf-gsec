@@ -1732,11 +1732,10 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                             startIcon={<AddIcon />}
                             onClick={handleAddSelfToAppointment}
                             disabled={selectedUserContacts.length >= requiredDignitariesCount}
-                            sx={{ flex: { md: 1 } }}
                           >
-                            Add Yourself to Appointment
+                            Add Yourself
                           </SecondaryButton>
-                          )}
+                        )}
                         </Box>
                       </Grid>
                   )}
@@ -1745,8 +1744,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                   {contactSelectionMode === 'new' && (
                     <ContactForm
                       mode="create"
-                      inline={true}
-                      onSuccess={(contact) => {
+                      onSave={(contact) => {
                         addContactToList(contact);
                         setContactSelectionMode('none');
                       }}
@@ -2890,13 +2888,43 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
       </Dialog>
 
       {/* Contact Form Dialog */}
-      <ContactForm
+      <Dialog
         open={showContactDialog}
         onClose={handleContactDialogClose}
-        contact={editingContact}
-        mode={contactDialogMode}
-        onSuccess={handleContactDialogSuccess}
-      />
+        maxWidth="md"
+        fullWidth
+        fullScreen={isMobile}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box sx={{ width: '100%' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+              <Typography variant="h2">
+                {contactDialogMode === 'create' ? 'Add New Contact' : 'Edit Contact'}
+              </Typography>
+              <IconButton
+                edge="end"
+                onClick={handleContactDialogClose}
+                aria-label="close"
+              >
+                <CloseIconFilledCircleV2 sx={{ fontSize: '1.5rem' }} />
+              </IconButton>
+            </Box>
+            {editingContact && contactDialogMode === 'edit' && (
+              <Typography variant="subtitle2" color="text.secondary">
+                {editingContact.first_name} {editingContact.last_name}
+              </Typography>
+            )}
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <ContactForm
+            contact={editingContact}
+            mode={contactDialogMode}
+            onSave={handleContactDialogSuccess}
+            onCancel={handleContactDialogClose}
+          />
+        </DialogContent>
+      </Dialog>
 
     </Box>
   );
