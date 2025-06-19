@@ -69,6 +69,7 @@ export const ContactForm: React.FC<ContactFormProps> = ({
 
   // Fetch role enum values
   const { values: roleValues } = useEnums('roleInTeamProject');
+  const { values: courseTypeMap } = useEnumsMap('courseType');
 
   // Fetch relationship type map
   const { values: relationshipTypeMap = {} } = useEnumsMap('personRelationshipType');
@@ -311,17 +312,26 @@ export const ContactForm: React.FC<ContactFormProps> = ({
                   </Grid>
                 )}
 
-                {appointmentInstanceFields.isAttendingCourse && appointmentInstanceFields.courseAttending === 'OTHER' && (
-                  <Grid item xs={12} md={4} lg={3}>
-                    <TextField
-                      fullWidth
-                      label="Please specify course"
-                      value={appointmentInstanceFields.courseAttendingOther}
-                      onChange={(e) => updateAppointmentInstanceField('courseAttendingOther', e.target.value)}
-                      placeholder="Enter course name"
-                    />
-                  </Grid>
-                )}
+                {appointmentInstanceFields.isAttendingCourse && 
+                  (
+                    (
+                      courseTypeMap && 
+                      appointmentInstanceFields.courseAttending === courseTypeMap['OTHER']
+                    ) || 
+                    appointmentInstanceFields.courseAttending.toLowerCase() === 'other'
+                  ) && 
+                  (
+                    <Grid item xs={12} md={4} lg={3}>
+                      <TextField
+                        fullWidth
+                        label="Please specify course"
+                        value={appointmentInstanceFields.courseAttendingOther}
+                        onChange={(e) => updateAppointmentInstanceField('courseAttendingOther', e.target.value)}
+                        placeholder="Enter course name"
+                      />
+                    </Grid>
+                  )
+                }
 
                 {appointmentInstanceFields.isAttendingCourse !== null && !appointmentInstanceFields.isAttendingCourse && (
                   <>
