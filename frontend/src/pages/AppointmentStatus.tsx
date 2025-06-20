@@ -27,6 +27,7 @@ const AppointmentStatus: React.FC = () => {
   const [filteredAppointments, setFilteredAppointments] = useState<Appointment[]>([]);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<number | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const theme = useTheme();
   const api = useApi();
   const navigate = useNavigate();
@@ -91,7 +92,7 @@ const AppointmentStatus: React.FC = () => {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  const { data: appointments = [], isLoading } = useQuery<Appointment[]>({
+  const { data: appointments = [], isLoading, refetch: refetchAppointments } = useQuery<Appointment[]>({
     queryKey: ['my-appointments'],
     queryFn: async () => {
       try {
@@ -156,6 +157,15 @@ const AppointmentStatus: React.FC = () => {
   const handleDialogClose = () => {
     setDialogOpen(false);
     setSelectedAppointmentId(null);
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refetchAppointments();
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   // Define responsive column visibility
@@ -266,6 +276,8 @@ const AppointmentStatus: React.FC = () => {
             relationshipTypeMap={relationshipTypeMap}
             enableColumnVisibility={true}
             initialColumnVisibility={getColumnVisibility()}
+            onRefresh={handleRefresh}
+            refreshing={isRefreshing}
           />
         </Box>
       </Container>

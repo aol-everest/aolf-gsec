@@ -16,6 +16,8 @@ interface AppointmentTableProps {
   relationshipTypeMap?: Record<string, string>;
   enableColumnVisibility?: boolean;
   initialColumnVisibility?: VisibilityState;
+  onRefresh?: () => void;
+  refreshing?: boolean;
 }
 
 // Create a column helper for appointments
@@ -279,7 +281,9 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
   subStatusMap = {},
   relationshipTypeMap = {},
   enableColumnVisibility = false,
-  initialColumnVisibility = {}
+  initialColumnVisibility = {},
+  onRefresh,
+  refreshing = false
 }) => {
   // Create appointment-specific columns
   const columns = useMemo(
@@ -324,6 +328,10 @@ export const AppointmentTable: React.FC<AppointmentTableProps> = ({
       enableColumnVisibility={enableColumnVisibility}
       initialColumnVisibility={initialColumnVisibility}
       initialSorting={[{ id: 'id', desc: true }]}
+      // showHeader={true}
+      // header="Appointment Status"
+      onRefresh={onRefresh}
+      refreshing={refreshing}
       tableProps={{
         stickyHeader: true,
         size: 'medium',

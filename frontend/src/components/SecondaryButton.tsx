@@ -2,6 +2,7 @@ import React from 'react';
 import { Button as MuiButton, ButtonProps as MuiButtonProps, styled } from '@mui/material';
 
 export interface SecondaryButtonProps extends Omit<MuiButtonProps, 'variant' | 'size'> {
+  icon?: React.ReactNode;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   size?: 'small' | 'medium' | 'large';
@@ -9,11 +10,12 @@ export interface SecondaryButtonProps extends Omit<MuiButtonProps, 'variant' | '
 
 interface StyledButtonProps {
   customSize?: 'small' | 'medium' | 'large';
+  hasChildren?: boolean;
 }
 
 const StyledSecondaryButton = styled(MuiButton, {
   shouldForwardProp: (prop) => prop !== 'customSize',
-})<StyledButtonProps>(({ theme, customSize = 'large' }) => ({
+})<StyledButtonProps>(({ theme, customSize = 'large', hasChildren = true }) => ({
   boxSizing: 'border-box',
   display: 'flex',
   flexDirection: 'row',
@@ -36,29 +38,33 @@ const StyledSecondaryButton = styled(MuiButton, {
   },
   
   ...(customSize === 'small' && {
-    padding: '3px 20px',
-    height: '40px',
+    padding: hasChildren ? '3px 20px' : '3px 8px',
+    height: '36px',
     fontSize: '13px',
     lineHeight: '20px',
+    minWidth: hasChildren ? 'auto' : '36px',
   }),
   
   ...(customSize === 'medium' && {
-    padding: '6px 25px',
+    padding: hasChildren ? '6px 25px' : '6px 10px',
     height: '42px',
     fontSize: '15px',
     lineHeight: '22px',
+    minWidth: hasChildren ? 'auto' : '42px',
   }),
   
   ...(customSize === 'large' && {
-    padding: '10px 30px',
+    padding: hasChildren ? '10px 30px' : '10px 10px',
     height: '44px',
     fontSize: '17px',
     lineHeight: '24px',
+    minWidth: hasChildren ? 'auto' : '44px',
   }),
 }));
 
 export const SecondaryButton: React.FC<SecondaryButtonProps> = ({
   children,
+  icon,
   leftIcon,
   rightIcon,
   size = 'large',
@@ -68,6 +74,7 @@ export const SecondaryButton: React.FC<SecondaryButtonProps> = ({
     <StyledSecondaryButton 
       variant="outlined" 
       customSize={size}
+      hasChildren={!!children}
       {...props}
     >
       {leftIcon && (
@@ -75,7 +82,16 @@ export const SecondaryButton: React.FC<SecondaryButtonProps> = ({
           {leftIcon}
         </span>
       )}
-      {children}
+      {icon && (
+        <span style={{ display: 'flex',  margin: 0, padding: 0 }}>
+          {icon}
+        </span>
+      )}
+      {children && (
+        <span style={{ display: 'flex', margin: 0, padding: 0 }}>
+          {children}
+        </span>
+      )}
       {rightIcon && (
         <span style={{ display: 'flex', marginLeft: rightIcon && !children ? 0 : 8 }}>
           {rightIcon}

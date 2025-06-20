@@ -65,7 +65,26 @@ import { getMainSteps, getDisplaySteps, shouldShowProfileOverlay, WizardState, S
 import { StepNavigation } from './appointment/StepNavigation';
 import { AttendeeList } from './appointment/AttendeeList';
 import { ProfileOverlay } from './appointment/ProfileOverlay';
-import { EditIconV2, CheckSquareCircleFilledIconV2, CheckCircleIconV2, CloseIconFilledCircleV2, DropdownBarIconV2, TrashIconV2, ImageIconV2, PDFIconV2, TextFileIconV2, PowerPointIconV2, SpreadsheetIconV2, GenericFileIconV2, AddCircleIconV2, FileFilledIconV2, PowerPointFilledIconV2, SpreadsheetFilledIconV2, ClipIconV2 } from './iconsv2';
+import { 
+  EditIconV2, 
+  CheckSquareCircleFilledIconV2, 
+  CheckCircleIconV2, 
+  CloseIconFilledCircleV2, 
+  DropdownBarIconV2, 
+  TrashIconV2, 
+  ImageIconV2, 
+  PDFIconV2, 
+  TextFileIconV2, 
+  PowerPointIconV2, 
+  SpreadsheetIconV2, 
+  GenericFileIconV2, 
+  AddCircleIconV2, 
+  FileFilledIconV2, 
+  PowerPointFilledIconV2, 
+  SpreadsheetFilledIconV2, 
+  ClipIconV2,
+  AddCircleFilledIconV2
+} from './iconsv2';
 import { useAppointmentSummary, hasExistingAppointments } from '../hooks/useAppointmentSummary';
 import { CountrySelect } from './selects/CountrySelect';
 import { PrimaryDomainSelect } from './selects/PrimaryDomainSelect';
@@ -1832,20 +1851,20 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                       <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' }, alignItems: 'center', justifyContent: 'center' }}>
                       <PrimaryButton
                         size="medium"
-                        startIcon={<AddIcon />}
-                          onClick={() => setDignitarySelectionMode('new')}
-                          // sx={{ flex: 1 }}
-                        >
-                          Add a New Dignitary
+                        startIcon={<AddCircleFilledIconV2 />}
+                        onClick={() => setDignitarySelectionMode('new')}
+                        // sx={{ flex: 1 }}
+                      >
+                        Add a New Dignitary
                       </PrimaryButton>
-                        <SecondaryButton
-                          size="medium"
-                          startIcon={<DropdownBarIconV2 />}
-                          onClick={() => setDignitarySelectionMode('existing')}
-                          // sx={{ flex: 1 }}
-                        >
-                          Select an Existing Dignitary
-                        </SecondaryButton>
+                      <SecondaryButton
+                        size="medium"
+                        startIcon={<DropdownBarIconV2 />}
+                        onClick={() => setDignitarySelectionMode('existing')}
+                        // sx={{ flex: 1 }}
+                      >
+                        Select an Existing Dignitary
+                      </SecondaryButton>
                       </Box>
                     </Grid>
                   )}
@@ -1979,7 +1998,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                       }}>
                         {/* Add New Contact Button */}
                         <PrimaryButton
-                          startIcon={<AddIcon />}
+                          startIcon={<AddCircleFilledIconV2 />}
                           onClick={handleAddNewContact}
                           disabled={selectedUserContacts.length >= requiredDignitariesCount}
                           size="medium"
@@ -2003,7 +2022,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                         {/* Add Yourself Button */}
                         {!isSelfContactAdded() && (
                           <SecondaryButton
-                            startIcon={<AddIcon />}
+                            startIcon={<AddCircleFilledIconV2 />}
                             onClick={handleAddSelfToAppointment}
                             disabled={selectedUserContacts.length >= requiredDignitariesCount}
                             size="medium"

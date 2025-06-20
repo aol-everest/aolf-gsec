@@ -19,9 +19,11 @@ import {
   MenuItem,
   FormControlLabel,
   Divider,
+  CircularProgress,
 } from '@mui/material';
 import { SearchBox } from './SearchBox';
 import ViewColumnIcon from '@mui/icons-material/ViewColumn';
+import { RefreshIconV2 } from './iconsv2';
 import {
   useReactTable,
   getCoreRowModel,
@@ -77,6 +79,10 @@ interface GenericTableProps<T extends Record<string, any>> {
     maxHeight?: number | string;
     sx?: any;
   };
+  header?: React.ReactNode;
+  showHeader?: boolean;
+  onRefresh?: () => void;
+  refreshing?: boolean;
 }
 
 // Create a generic column helper factory
@@ -269,7 +275,11 @@ export function GenericTable<T extends Record<string, any>>({
   initialColumnVisibility,
   initialSorting = [],
   tableProps = {},
-  containerProps = {}
+  containerProps = {},
+  header,
+  showHeader = false,
+  onRefresh,
+  refreshing = false,
 }: GenericTableProps<T>) {
   const logger = createDebugLogger('GenericTable');
   const theme = useTheme();
@@ -510,7 +520,7 @@ export function GenericTable<T extends Record<string, any>>({
   return (
     <Box sx={{ width: '100%' }}>
       {/* Search bar and controls */}
-      {(enableSearch || enableColumnVisibility) && (
+      {(enableSearch || enableColumnVisibility || onRefresh) && (
         <Box sx={{ mb: 2, display: 'flex', gap: 2, alignItems: 'flex-start' }}>
           {enableSearch && (
             <SearchBox
@@ -531,7 +541,7 @@ export function GenericTable<T extends Record<string, any>>({
           {enableColumnVisibility && (
             <>
               <SecondaryButton
-                size="small"
+                size="medium"
                 startIcon={<ColumnsFilledIconV2 />}
                 onClick={(e) => setColumnVisibilityMenuAnchor(e.currentTarget)}
                 sx={{
@@ -584,6 +594,15 @@ export function GenericTable<T extends Record<string, any>>({
               </Menu>
             </>
           )}
+
+          {!showHeader && onRefresh && (
+            <SecondaryButton
+              size="medium"
+              onClick={onRefresh}
+              disabled={refreshing}
+              icon={refreshing ? <CircularProgress size={20} /> : <RefreshIconV2 sx={{ fontSize: 20 }} />}
+            />
+          )}
         </Box>
       )}
 
@@ -602,139 +621,170 @@ export function GenericTable<T extends Record<string, any>>({
         </Box>
       )}
 
-      <TableContainer 
-        component={Paper} 
-        sx={{ 
-          borderRadius: 2,
-          border: '1px solid rgba(56, 56, 56, 0.1)',
-          boxShadow: '0px 12px 16px -4px rgba(81, 77, 74, 0.08), 0px -1px 6px -2px rgba(81, 77, 74, 0.03)',
-          width: '100%',
-          overflow: 'auto',
-          backgroundColor: '#fff',
-          ...containerProps.sx,
-          ...(containerProps.maxHeight && { maxHeight: containerProps.maxHeight })
-        }}
-      >
-        <Table 
-          stickyHeader={stickyHeader}
-          size={size}
+      {/* Table with optional header */}
+      <Box sx={{ 
+        borderRadius: 2,
+        border: '1px solid rgba(56, 56, 56, 0.1)',
+        boxShadow: '0px 12px 16px -4px rgba(81, 77, 74, 0.08), 0px -1px 6px -2px rgba(81, 77, 74, 0.03)',
+        width: '100%',
+        overflow: 'hidden',
+        backgroundColor: '#fff',
+        ...containerProps.sx,
+      }}>
+        {/* Optional Header */}
+        {showHeader && header && (
+          <Box sx={{
+            px: 2,
+            py: 1,
+            backgroundColor: '#f7f7f7',
+            borderBottom: '1px solid rgba(56, 56, 56, 0.1)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}>
+            <Typography variant="h6">
+              {header}
+            </Typography>
+            {onRefresh && (
+              <SecondaryButton
+                size="small"
+                onClick={onRefresh}
+                disabled={refreshing}
+                icon={refreshing ? <CircularProgress size={16} /> : <RefreshIconV2 sx={{ fontSize: 18 }} />}
+              />
+            )}
+          </Box>
+        )}
+
+        <TableContainer 
           sx={{ 
             width: '100%',
-            tableLayout: 'fixed',
+            overflow: 'auto',
+            backgroundColor: '#fff',
+            ...(containerProps.maxHeight && { maxHeight: containerProps.maxHeight })
           }}
         >
-          <TableHead>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableCell
-                    key={header.id}
-                    sx={{ 
-                      width: header.column.columnDef.size,
-                      minWidth: header.column.columnDef.minSize,
-                      maxWidth: header.column.columnDef.maxSize,
-                      padding: padding === 'normal' ? '12px 16px' : '8px 12px',
-                      fontSize: '12px',
-                      color: '#6f7283',
-                      fontWeight: 500,
-                      fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
-                      backgroundColor: '#f7f7f7',
-                      borderBottom: '1px solid #e9e9e9',
-                      cursor: header.column.getCanSort() ? 'pointer' : 'default',
-                      userSelect: 'none',
-                      '&:hover': header.column.getCanSort() ? {
-                        backgroundColor: 'rgba(0, 0, 0, 0.04)'
-                      } : {}
-                    }}
-                    onClick={header.column.getToggleSortingHandler()}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      {flexRender(header.column.columnDef.header, header.getContext())}
-                      {header.column.getCanSort() && (
-                        <Box sx={{ display: 'flex', flexDirection: 'column', opacity: 0.5 }}>
-                          {header.column.getIsSorted() === 'asc' ? (
-                            <ArrowUpwardIcon sx={{ fontSize: 16 }} />
-                          ) : header.column.getIsSorted() === 'desc' ? (
-                            <ArrowDownwardIcon sx={{ fontSize: 16 }} />
-                          ) : (
-                            <>
-                              <ArrowUpwardIcon sx={{ fontSize: 12, marginBottom: '-2px' }} />
-                              <ArrowDownwardIcon sx={{ fontSize: 12, marginTop: '-2px' }} />
-                            </>
-                          )}
-                        </Box>
-                      )}
-                    </Box>
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableHead>
-          <TableBody>
-            {table.getRowModel().rows.map((row) => (
-              <TableRow 
-                key={row.id}
-                hover 
-                onClick={() => onRowClick?.(row.original)}
-                sx={{ 
-                  cursor: onRowClick ? 'pointer' : 'default',
-                  '&:hover': onRowClick ? {
-                    backgroundColor: theme.palette.action.hover,
-                  } : {},
-                  '&:last-child td': {
-                    borderBottom: 'none',
-                  },
-                  backgroundColor: row.getIsSelected() ? theme.palette.action.selected : 'inherit',
-                }}
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell 
-                    key={cell.id}
-                    sx={{
-                      width: cell.column.columnDef.size,
-                      minWidth: cell.column.columnDef.minSize,
-                      maxWidth: cell.column.columnDef.maxSize,
-                      padding: padding === 'normal' ? '16px' : '12px',
-                      borderBottom: '1px solid #e9e9e9',
-                      verticalAlign: 'middle',
-                    }}
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+          <Table 
+            stickyHeader={stickyHeader}
+            size={size}
+            sx={{ 
+              width: '100%',
+              tableLayout: 'fixed',
+            }}
+          >
+            <TableHead>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableCell
+                      key={header.id}
+                      sx={{ 
+                        width: header.column.columnDef.size,
+                        minWidth: header.column.columnDef.minSize,
+                        maxWidth: header.column.columnDef.maxSize,
+                        padding: padding === 'normal' ? '12px 16px' : '8px 12px',
+                        fontSize: '12px',
+                        color: '#6f7283',
+                        fontWeight: 500,
+                        fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
+                        backgroundColor: '#f7f7f7',
+                        borderBottom: '1px solid #e9e9e9',
+                        cursor: header.column.getCanSort() ? 'pointer' : 'default',
+                        userSelect: 'none',
+                        '&:hover': header.column.getCanSort() ? {
+                          backgroundColor: 'rgba(0, 0, 0, 0.04)'
+                        } : {}
+                      }}
+                      onClick={header.column.getToggleSortingHandler()}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        {flexRender(header.column.columnDef.header, header.getContext())}
+                        {header.column.getCanSort() && (
+                          <Box sx={{ display: 'flex', flexDirection: 'column', opacity: 0.5 }}>
+                            {header.column.getIsSorted() === 'asc' ? (
+                              <ArrowUpwardIcon sx={{ fontSize: 16 }} />
+                            ) : header.column.getIsSorted() === 'desc' ? (
+                              <ArrowDownwardIcon sx={{ fontSize: 16 }} />
+                            ) : (
+                              <>
+                                <ArrowUpwardIcon sx={{ fontSize: 12, marginBottom: '-2px' }} />
+                                <ArrowDownwardIcon sx={{ fontSize: 12, marginTop: '-2px' }} />
+                              </>
+                            )}
+                          </Box>
+                        )}
+                      </Box>
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableHead>
+            <TableBody>
+              {table.getRowModel().rows.map((row) => (
+                <TableRow 
+                  key={row.id}
+                  hover 
+                  onClick={() => onRowClick?.(row.original)}
+                  sx={{ 
+                    cursor: onRowClick ? 'pointer' : 'default',
+                    '&:hover': onRowClick ? {
+                      backgroundColor: theme.palette.action.hover,
+                    } : {},
+                    '&:last-child td': {
+                      borderBottom: 'none',
+                    },
+                    backgroundColor: row.getIsSelected() ? theme.palette.action.selected : 'inherit',
+                  }}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell 
+                      key={cell.id}
+                      sx={{
+                        width: cell.column.columnDef.size,
+                        minWidth: cell.column.columnDef.minSize,
+                        maxWidth: cell.column.columnDef.maxSize,
+                        padding: padding === 'normal' ? '16px' : '12px',
+                        borderBottom: '1px solid #e9e9e9',
+                        verticalAlign: 'middle',
+                      }}
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
 
-      {/* Pagination */}
-      {enablePagination && (
-        <TablePagination
-          component="div"
-          count={table.getFilteredRowModel().rows.length}
-          page={table.getState().pagination.pageIndex}
-          onPageChange={(_, page) => table.setPageIndex(page)}
-          rowsPerPage={table.getState().pagination.pageSize}
-          onRowsPerPageChange={(e) => table.setPageSize(Number(e.target.value))}
-          rowsPerPageOptions={pageSizeOptions}
-          showFirstButton
-          showLastButton
-          sx={{
-            borderTop: '1px solid rgba(56, 56, 56, 0.1)',
-            backgroundColor: '#fff',
-            '& .MuiTablePagination-toolbar': {
-              paddingLeft: 2,
-              paddingRight: 2,
-            },
-            '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
-              fontSize: '14px',
-              color: '#6f7283',
-              fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
-            },
-          }}
-        />
-      )}
+        {/* Pagination */}
+        {enablePagination && (
+          <TablePagination
+            component="div"
+            count={table.getFilteredRowModel().rows.length}
+            page={table.getState().pagination.pageIndex}
+            onPageChange={(_, page) => table.setPageIndex(page)}
+            rowsPerPage={table.getState().pagination.pageSize}
+            onRowsPerPageChange={(e) => table.setPageSize(Number(e.target.value))}
+            rowsPerPageOptions={pageSizeOptions}
+            showFirstButton
+            showLastButton
+            sx={{
+              borderTop: '1px solid rgba(56, 56, 56, 0.1)',
+              backgroundColor: '#fff',
+              '& .MuiTablePagination-toolbar': {
+                paddingLeft: 2,
+                paddingRight: 2,
+              },
+              '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
+                fontSize: '14px',
+                color: '#6f7283',
+                fontFamily: 'Work Sans, -apple-system, Roboto, Helvetica, sans-serif',
+              },
+            }}
+          />
+        )}
+      </Box>
     </Box>
   );
 }

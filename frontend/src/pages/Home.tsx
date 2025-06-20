@@ -29,9 +29,10 @@ interface AppointmentTableRow {
 const Home: React.FC = () => {
   const { userInfo } = useAuth();
   const navigate = useNavigate();
-  const { data: appointmentSummary, isLoading: summaryLoading } = useAppointmentSummary();
+  const { data: appointmentSummary, isLoading: summaryLoading, refetch: refetchAppointments } = useAppointmentSummary();
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<number | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Status mapping as requested
   const getStatusDisplay = (status: string): string => {
@@ -130,6 +131,15 @@ const Home: React.FC = () => {
     setSelectedAppointmentId(null);
   };
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refetchAppointments();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   return (
     <Layout>
       <Container maxWidth="md">
@@ -182,36 +192,30 @@ const Home: React.FC = () => {
 
             {/* Appointment Summary Table */}
             {!summaryLoading && tableData.length > 0 && (
-              <Box>
-                <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
-                  Your Appointment Requests
-                </Typography>
-                <GenericTable
-                  data={tableData}
-                  columns={columns}
-                  onRowClick={handleRowClick}
-                  loading={summaryLoading}
-                  emptyMessage="No open appointment requests found. Click 'Create New Request' to get started."
-                  enableSearch={false}
-                  enablePagination={tableData.length > 5}
-                  pageSize={5}
-                  pageSizeOptions={[5, 10, 25]}
-                  initialSorting={[{ id: 'id', desc: true }]}
-                  tableProps={{
-                    stickyHeader: true,
-                    size: 'medium',
-                    padding: 'normal',
-                  }}
-                  containerProps={{
-                    maxHeight: 600,
-                    sx: {
-                      borderRadius: 2,
-                      border: '1px solid rgba(56, 56, 56, 0.1)',
-                      boxShadow: '0px 12px 16px -4px rgba(81, 77, 74, 0.08), 0px -1px 6px -2px rgba(81, 77, 74, 0.03)',
-                    }
-                  }}
-                />
-              </Box>
+              <GenericTable
+                data={tableData}
+                columns={columns}
+                onRowClick={handleRowClick}
+                loading={summaryLoading}
+                emptyMessage="No open appointment requests found. Click 'Create New Request' to get started."
+                enableSearch={false}
+                enablePagination={tableData.length > 5}
+                pageSize={5}
+                pageSizeOptions={[5, 10, 25]}
+                initialSorting={[{ id: 'id', desc: true }]}
+                showHeader={true}
+                header="Your Appointment Requests"
+                onRefresh={handleRefresh}
+                refreshing={isRefreshing}
+                tableProps={{
+                  stickyHeader: true,
+                  size: 'medium',
+                  padding: 'normal',
+                }}
+                containerProps={{
+                  maxHeight: 600,
+                }}
+              />
             )}
 
             {/* No appointments message */}
