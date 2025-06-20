@@ -37,6 +37,7 @@ import {
     LocationThinMenuIconV2,
     EditMenuIconV2,
     CalendarMenuIconV2,
+    PeopleStarMenuIconV2,
 } from '../components/iconsv2';
 
 export const SECRETARIAT_ROLE = 'SECRETARIAT';
@@ -81,14 +82,14 @@ export const AppointmentsRoute: RouteConfig = {
 export const DignitariesRoute: RouteConfig = {
   path: '/dignitaries',
   label: 'Dignitaries',
-  icon: PersonListMenuIconV2,
+  icon: PeopleStarMenuIconV2,
   showInSidebar: true,
   component: DignitaryList
 }
 
 export const ContactsRoute: RouteConfig = {
   path: '/contacts',
-  label: 'My Contacts',
+  label: 'Contacts',
   icon: PeopleMenuIconV2,
   showInSidebar: true,
   component: ContactsList
@@ -96,7 +97,7 @@ export const ContactsRoute: RouteConfig = {
 
 export const ProfileRoute: RouteConfig = {
   path: '/profile',
-  label: 'My Profile',
+  label: 'Profile',
   icon: PersonMenuIconV2,
   showInSidebar: true,
   component: Profile
