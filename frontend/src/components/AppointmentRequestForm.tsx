@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { formatDate, getLocalDateString, validateDateRange, validateSingleDate, formatDateRange } from '../utils/dateUtils';
 import { alpha } from '@mui/material/styles';
+import AddIcon from '@mui/icons-material/Add';
 import {
   Box,
   Button,
@@ -49,12 +50,7 @@ import { useSnackbar } from 'notistack';
 import { Location, Dignitary, Appointment, RequestTypeConfig, PersonalAttendee, UserContact, UserContactCreateData, UserContactUpdateData, UserContactListResponse } from '../models/types';
 import { EnumSelect } from './EnumSelect';
 import { useEnums } from '../hooks/useEnums';
-import DeleteIcon from '@mui/icons-material/Delete';
-import AddIcon from '@mui/icons-material/LibraryAdd';
-import EditIcon from '@mui/icons-material/Edit';
-import SaveIcon from '@mui/icons-material/Save';
-import CancelIcon from '@mui/icons-material/Cancel';
-import CloseIcon from '@mui/icons-material/Close';
+
 import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
 import { AppointmentStatusChip } from './AppointmentStatusChip';
@@ -69,7 +65,7 @@ import { getMainSteps, getDisplaySteps, shouldShowProfileOverlay, WizardState, S
 import { StepNavigation } from './appointment/StepNavigation';
 import { AttendeeList } from './appointment/AttendeeList';
 import { ProfileOverlay } from './appointment/ProfileOverlay';
-import { EditIconV2, CheckSquareCircleFilledIconV2, CheckCircleIconV2, CloseIconFilledCircleV2, DropdownBarIconV2, TrashIconV2 } from './iconsv2';
+import { EditIconV2, CheckSquareCircleFilledIconV2, CheckCircleIconV2, CloseIconFilledCircleV2, DropdownBarIconV2, TrashIconV2, ImageIconV2, PDFIconV2, TextFileIconV2, PowerPointIconV2, SpreadsheetIconV2, GenericFileIconV2, AddCircleIconV2, FileFilledIconV2, PowerPointFilledIconV2, SpreadsheetFilledIconV2, ClipIconV2 } from './iconsv2';
 import { useAppointmentSummary, hasExistingAppointments } from '../hooks/useAppointmentSummary';
 import { CountrySelect } from './selects/CountrySelect';
 import { PrimaryDomainSelect } from './selects/PrimaryDomainSelect';
@@ -178,6 +174,23 @@ interface AppointmentFormData {
 interface AppointmentRequestFormProps {
   showProfileStep?: boolean;
 }
+
+// Helper function to get file icon based on file type
+const getFileIcon = (fileType: string, size: number = 20) => {
+  if (fileType.includes('image')) {
+    return <ImageIconV2 sx={{ width: size, height: size }} />;
+  } else if (fileType.includes('pdf')) {
+    return <PDFIconV2 sx={{ width: size, height: size }} />;
+  } else if (fileType.includes('word') || fileType.includes('text')) {
+    return <TextFileIconV2 sx={{ width: size, height: size }} />;
+  } else if (fileType.includes('excel') || fileType.includes('spreadsheet')) {
+    return <SpreadsheetFilledIconV2 sx={{ width: size, height: size }} />;
+  } else if (fileType.includes('presentation') || fileType.includes('powerpoint')) {
+    return <PowerPointFilledIconV2 sx={{ width: size, height: size }} />;
+  } else {
+    return <FileFilledIconV2 sx={{ width: size, height: size }} />;
+  }
+};
 
 export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({ 
   showProfileStep = false 
@@ -1639,7 +1652,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                   <SecondaryButton
                     size="small"
                     onClick={() => fileInputRef.current?.click()}
-                    startIcon={<Box component="span" sx={{ fontSize: '1.25rem' }}>📎</Box>}
+                    startIcon={<ClipIconV2 sx={{ width: 20, height: 20 }} />}
                   >
                     Select Files
                   </SecondaryButton>
@@ -1675,12 +1688,8 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                           }}
                         >
                           <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <Box component="span" sx={{ mr: 1, fontSize: '1.25rem' }}>
-                              {file.type.includes('image') ? '🖼️' : 
-                               file.type.includes('pdf') ? '📄' : 
-                               file.type.includes('word') ? '📝' : 
-                               file.type.includes('excel') ? '📊' : 
-                               file.type.includes('presentation') ? '📽️' : '📁'}
+                            <Box sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
+                              {getFileIcon(file.type, 24)}
                             </Box>
                             <Box>
                               <Typography variant="body2" noWrap sx={{ maxWidth: '300px' }}>
@@ -2277,15 +2286,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                           label={file.name} 
                           variant="outlined" 
                           size="small"
-                          icon={
-                            <Box component="span" sx={{ fontSize: '1rem' }}>
-                              {file.type.includes('image') ? '🖼️' : 
-                                file.type.includes('pdf') ? '📄' : 
-                                file.type.includes('word') ? '📝' : 
-                                file.type.includes('excel') ? '📊' : 
-                                file.type.includes('presentation') ? '📽️' : '📁'}
-                            </Box>
-                          }
+                          icon={getFileIcon(file.type, 16)}
                         />
                       ))}
                     </Box>
