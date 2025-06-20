@@ -15,7 +15,8 @@ import {
   CircularProgress,
   Divider,
   Switch,
-  FormControlLabel
+  FormControlLabel,
+  FormHelperText
 } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { useApi } from '../hooks/useApi';
@@ -158,6 +159,7 @@ export const ProfileFieldsForm = forwardRef<ProfileFieldsFormRef, ProfileFieldsF
   const [aolAffiliations, setAolAffiliations] = useState<string[]>(initialData?.aol_affiliations || []);
   const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>(DEFAULT_PREFERENCES);
   const [isFormValid, setIsFormValid] = useState(false);
+  const [missingFields, setMissingFields] = useState<string[]>([]);
 
   // Update form state when initialData changes
   useEffect(() => {
@@ -200,7 +202,8 @@ export const ProfileFieldsForm = forwardRef<ProfileFieldsFormRef, ProfileFieldsF
       programs_taught: programsTaught
     };
     
-    const requiredFields = [];
+    const requiredFields: string[] = [];
+    const missingFieldNames: string[] = [];
     
     // Check basic mandatory fields
     MANDATORY_PROFILE_FIELDS.basic.forEach(field => {
@@ -208,6 +211,7 @@ export const ProfileFieldsForm = forwardRef<ProfileFieldsFormRef, ProfileFieldsF
         const value = currentData[field as keyof typeof currentData];
         if (!value || (typeof value === 'string' && value.trim() === '')) {
           requiredFields.push(getFieldDisplayName(field));
+          missingFieldNames.push(field);
         }
       }
     });
@@ -218,17 +222,25 @@ export const ProfileFieldsForm = forwardRef<ProfileFieldsFormRef, ProfileFieldsF
         const value = currentData[field as keyof typeof currentData];
         if (!value || (Array.isArray(value) && value.length === 0)) {
           requiredFields.push(getFieldDisplayName(field));
+          missingFieldNames.push(field);
         }
       }
     });
     
-    return requiredFields.length === 0;
+    // Update missing fields state
+    setMissingFields(missingFieldNames);
+    
+    return {
+      isValid: requiredFields.length === 0,
+      missingFieldsDisplay: requiredFields,
+      missingFieldNames: missingFieldNames
+    };
   }, [phoneNumber, countryCode, titleInOrganization, organization, teacherStatus, programsTaught, shouldShowField]);
 
   // Update validation state when form fields change
   useEffect(() => {
-    const isValid = validateForm();
-    setIsFormValid(isValid);
+    const validation = validateForm();
+    setIsFormValid(validation.isValid);
   }, [validateForm]);
 
   const getFormData = useCallback((): UserUpdateData => {
@@ -249,20 +261,31 @@ export const ProfileFieldsForm = forwardRef<ProfileFieldsFormRef, ProfileFieldsF
   }, [phoneNumber, countryCode, notificationPreferences, titleInOrganization, organization, stateProvince, stateProvinceCode, city, teacherStatus, teacherCode, programsTaught, aolAffiliations]);
 
   const handleSubmit = useCallback(() => {
-    if (validateForm()) {
+    const validation = validateForm();
+    if (validation.isValid) {
       onSubmit(getFormData());
     } else {
-      enqueueSnackbar('Please complete all required fields', { variant: 'error' });
+      const fieldsList = validation.missingFieldsDisplay.join(', ');
+      enqueueSnackbar(`Please complete the following required fields: ${fieldsList}`, { 
+        variant: 'error',
+        autoHideDuration: 6000
+      });
     }
   }, [validateForm, getFormData, onSubmit, enqueueSnackbar]);
 
+  // Helper function for external validation calls
+  const isValidForm = useCallback(() => {
+    const validation = validateForm();
+    return validation.isValid;
+  }, [validateForm]);
+
   // Expose methods via ref
   useImperativeHandle(ref, () => ({
-    validate: validateForm,
+    validate: isValidForm,
     submit: handleSubmit,
     isValid: () => isFormValid,
     getFormData
-  }), [validateForm, handleSubmit, getFormData, isFormValid]);
+  }), [isValidForm, handleSubmit, getFormData, isFormValid]);
 
   const handleNotificationChange = (key: keyof NotificationPreferences) => (
     event: React.ChangeEvent<HTMLInputElement>
@@ -298,25 +321,28 @@ export const ProfileFieldsForm = forwardRef<ProfileFieldsFormRef, ProfileFieldsF
           </Typography>
           
           <Grid container spacing={3}>
-            {shouldShowField('phone_number') && (
-              <Grid item xs={12} md={6}>
-                <TextField
-                  label="Phone Number"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  fullWidth
-                  required
-                />
-              </Grid>
-            )}
+                          {shouldShowField('phone_number') && (
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    label="Phone Number"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    fullWidth
+                    required
+                    error={missingFields.includes('phone_number')}
+                    helperText={missingFields.includes('phone_number') ? 'Phone number is required' : ''}
+                  />
+                </Grid>
+              )}
             {shouldShowField('country_code') && (
               <Grid item xs={12} md={6}>
                 <CountrySelect
                   label="Country"
                   value={countryCode}
                   onChange={setCountryCode}
-                  helperText=""
+                  helperText={missingFields.includes('country_code') ? 'Country is required' : ''}
                   required
+                  error={missingFields.includes('country_code')}
                 />
               </Grid>
             )}
@@ -364,6 +390,8 @@ export const ProfileFieldsForm = forwardRef<ProfileFieldsFormRef, ProfileFieldsF
                     onChange={(e) => setTitleInOrganization(e.target.value)}
                     fullWidth
                     required
+                    error={missingFields.includes('title_in_organization')}
+                    helperText={missingFields.includes('title_in_organization') ? 'Title in organization is required' : ''}
                   />
                 </Grid>
               )}
@@ -375,6 +403,8 @@ export const ProfileFieldsForm = forwardRef<ProfileFieldsFormRef, ProfileFieldsF
                     onChange={(e) => setOrganization(e.target.value)}
                     fullWidth
                     required
+                    error={missingFields.includes('organization')}
+                    helperText={missingFields.includes('organization') ? 'Organization is required' : ''}
                   />
                 </Grid>
               )}
@@ -403,8 +433,9 @@ export const ProfileFieldsForm = forwardRef<ProfileFieldsFormRef, ProfileFieldsF
                     value={teacherStatus || ''}
                     onChange={(e) => setTeacherStatus(e.target.value || null)}
                     disabled={teacherStatusLoading}
-                    helperText={teacherStatusLoading ? "Loading options..." : ""}
+                    helperText={teacherStatusLoading ? "Loading options..." : (missingFields.includes('teacher_status') ? 'Teacher status selection is required' : '')}
                     required
+                    error={missingFields.includes('teacher_status')}
                   >
                     <MenuItem value="" sx={{ color: 'text.secondary' }}>
                       <em>Unselect</em>
@@ -431,7 +462,7 @@ export const ProfileFieldsForm = forwardRef<ProfileFieldsFormRef, ProfileFieldsF
 
             {teacherStatus && teacherStatus !== teacherStatusMap['NOT_TEACHER'] && shouldShowField('programs_taught') && (
               <Box sx={{ mt: 3 }}>
-                <FormControl fullWidth disabled={programTypeLoading} required>
+                <FormControl fullWidth disabled={programTypeLoading} required error={missingFields.includes('programs_taught')}>
                   <InputLabel>Programs you teach</InputLabel>
                   <Select
                     multiple
@@ -453,6 +484,9 @@ export const ProfileFieldsForm = forwardRef<ProfileFieldsFormRef, ProfileFieldsF
                       </MenuItem>
                     ))}
                   </Select>
+                  {missingFields.includes('programs_taught') && (
+                    <FormHelperText>At least one program is required for teachers</FormHelperText>
+                  )}
                 </FormControl>
               </Box>
             )}
