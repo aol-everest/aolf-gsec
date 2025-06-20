@@ -165,7 +165,7 @@ interface AppointmentFormData {
   preferredStartDate: string;  // For non-dignitary appointments
   preferredEndDate: string;    // For non-dignitary appointments
   preferredTimeOfDay: string;
-  location_id: number;
+  location_id: number | undefined;  // Allow undefined for initial state
   requesterNotesToSecretariat: string;
   objective: string;  // What would you like to get out of the meeting? (expected outcome)
   attachmentsComment: string;  // Generic field for attachment-related comments/metadata
@@ -454,13 +454,15 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
   // Forms for each step
   const pocForm = useForm<PocFormData>({
     defaultValues: {
-          pocFirstName: userInfo?.first_name || '',
-    pocLastName: userInfo?.last_name || '',
-    pocEmail: userInfo?.email || '',
-    requestType: 'Personal', // Default to personal request
-    numberOfAttendees: 1,
+      pocFirstName: userInfo?.first_name || '',
+      pocLastName: userInfo?.last_name || '',
+      pocEmail: userInfo?.email || '',
+      requestType: 'Personal', // Start with empty value to avoid out-of-range error
+      numberOfAttendees: 1,
     }
   });
+
+  const watchRequestType = pocForm.watch('requestType') || '';
 
   // dignitaryForm is no longer needed as dignitary management is handled by UserDignitarySelector
 
@@ -538,17 +540,19 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
       pocForm.setValue('pocFirstName', userInfo.first_name || '');
       pocForm.setValue('pocLastName', userInfo.last_name || '');
       pocForm.setValue('pocEmail', userInfo.email || '');
-  
     }
   }, [userInfo, pocForm]);
 
   // Set default request type when configs are loaded
   useEffect(() => {
-    if (requestTypeConfigs.length > 0 && !pocForm.getValues('requestType')) {
-      const defaultConfig = requestTypeConfigs.find(c => c.request_type === requestTypeMap['PERSONAL']) || requestTypeConfigs[0];
-      pocForm.setValue('requestType', defaultConfig.request_type);
+    if (requestTypeConfigs.length > 0) {
+      const currentValue = pocForm.getValues('requestType');
+      if (!currentValue || !requestTypeConfigs.find(c => c.request_type === currentValue)) {
+        const defaultConfig = requestTypeConfigs.find(c => c.request_type === requestTypeMap['PERSONAL']) || requestTypeConfigs[0];
+        pocForm.setValue('requestType', defaultConfig.request_type);
+      }
     }
-  }, [requestTypeConfigs, pocForm]);
+  }, [requestTypeConfigs, pocForm, requestTypeMap]);
 
   // Update selected request type config when form value changes
   useEffect(() => {
@@ -1422,10 +1426,10 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                   fullWidth
                   multiline
                   rows={4}
-                  label={selectedRequestTypeConfig?.request_type === requestTypeMap['PROJECT_TEAM_MEETING'] 
+                  label={watchRequestType === requestTypeMap['PROJECT_TEAM_MEETING'] 
                     ? "What is this specific project or team meeting about?" 
                     : "Purpose of Meeting"}
-                  placeholder={selectedRequestTypeConfig?.request_type === requestTypeMap['PROJECT_TEAM_MEETING'] 
+                  placeholder={watchRequestType === requestTypeMap['PROJECT_TEAM_MEETING'] 
                     ? "Please describe the specific project, initiative, or team matter you'd like to discuss with Gurudev..." 
                     : undefined}
                   {...appointmentForm.register('purpose', { required: 'Purpose is required' })}
@@ -1436,7 +1440,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
               </Grid>
 
               {/* Project/Team Meeting specific fields */}
-              {selectedRequestTypeConfig?.request_type === requestTypeMap['PROJECT_TEAM_MEETING'] && (
+              {watchRequestType === requestTypeMap['PROJECT_TEAM_MEETING'] && (
                 <Grid item xs={12}>
                   <TextField
                     fullWidth
@@ -1451,13 +1455,13 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                     })}
                     error={!!appointmentForm.formState.errors.objective}
                     helperText={appointmentForm.formState.errors.objective?.message || "Please describe what you hope to accomplish and what outcome you're seeking from this meeting."}
-                    required={selectedRequestTypeConfig?.request_type === requestTypeMap['PROJECT_TEAM_MEETING']}
+                    required={watchRequestType === requestTypeMap['PROJECT_TEAM_MEETING']}
                   />
                 </Grid>
               )}
 
               {/* Conditional date fields based on request type */}
-              {selectedRequestTypeConfig?.request_type === requestTypeMap['DIGNITARY'] ? (
+              {watchRequestType === requestTypeMap['DIGNITARY'] ? (
                 // Single date picker for dignitary appointments
                 <Grid item xs={12} md={6} lg={4}>
                   <TextField
@@ -1555,7 +1559,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                 </>
               )}
 
-              <Grid item xs={12} md={6} lg={4}>
+              <Grid item xs={12} md={6} lg={4} key="time-of-day-grid-item">
               <FormControl fullWidth required error={!!appointmentForm.formState.errors.preferredTimeOfDay}>
                   <InputLabel>Preferred Time of Day</InputLabel>
                   <Select
@@ -1579,7 +1583,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12} md={6} lg={4}>
+              <Grid item xs={12} md={6} lg={4} key="location-selector-grid-item">
                 <FormControl fullWidth required error={!!appointmentForm.formState.errors.location_id}>
                   <InputLabel>Location</InputLabel>
                   <Controller
@@ -1614,7 +1618,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12}>
+              <Grid item xs={12} key="notes-grid-item">
                 <TextField
                   fullWidth
                   multiline
@@ -1627,15 +1631,15 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
               </Grid>
               
               {/* Add attachment section */}
-              <Grid item xs={12}>
+              <Grid item xs={12} key="attachments-grid-item">
                 <Divider sx={{ my: 2 }} />
                 <Typography variant="h6" color="text.primary" gutterBottom>
-                  {selectedRequestTypeConfig?.request_type === requestTypeMap['PROJECT_TEAM_MEETING'] 
+                  {watchRequestType === requestTypeMap['PROJECT_TEAM_MEETING'] 
                     ? "Project Documentation & Presentations" 
                     : "Attachments"}
                 </Typography>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
-                  {selectedRequestTypeConfig?.request_type === requestTypeMap['PROJECT_TEAM_MEETING'] 
+                  {watchRequestType === requestTypeMap['PROJECT_TEAM_MEETING'] 
                     ? "Please upload or add links to any material you plan to present to Gurudev." 
                     : "Upload relevant documents or images for this appointment request."}
                 </Typography>
@@ -1659,7 +1663,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                 </Box>
                 
                 {/* Additional questions for project/team meetings */}
-                {selectedRequestTypeConfig?.request_type === requestTypeMap['PROJECT_TEAM_MEETING'] && (
+                {watchRequestType === requestTypeMap['PROJECT_TEAM_MEETING'] && (
                   <SelectableChipGroup
                     title="Material Completion Status"
                     description="What is the current completion status of the material you plan to present?"
@@ -2191,7 +2195,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                 {/* Purpose */}
                 <Grid item xs={12}>
                   <Typography variant="subtitle2">
-                    {selectedRequestTypeConfig?.request_type === requestTypeMap['PROJECT_TEAM_MEETING'] 
+                    {watchRequestType === requestTypeMap['PROJECT_TEAM_MEETING'] 
                       ? "Project/Team Meeting About" 
                       : "Purpose of Meeting"}
                   </Typography>
@@ -2201,7 +2205,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                 </Grid>
 
                 {/* Meeting Objective for Project/Team Meetings */}
-                {selectedRequestTypeConfig?.request_type === requestTypeMap['PROJECT_TEAM_MEETING'] && appointmentForm.getValues('objective') && (
+                {watchRequestType === requestTypeMap['PROJECT_TEAM_MEETING'] && appointmentForm.getValues('objective') && (
                   <Grid item xs={12}>
                     <Typography variant="subtitle2">
                       Meeting Objective
@@ -2213,7 +2217,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                 )}
 
                 {/* Material Completion Status for Project/Team Meetings */}
-                {selectedRequestTypeConfig?.request_type === requestTypeMap['PROJECT_TEAM_MEETING'] && materialCompletionStatus && (
+                {watchRequestType === requestTypeMap['PROJECT_TEAM_MEETING'] && materialCompletionStatus && (
                   <Grid item xs={12}>
                     <Typography variant="subtitle2">
                       Material Completion Status
@@ -2230,7 +2234,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                     Preferred Date{selectedRequestTypeConfig?.request_type !== requestTypeMap['DIGNITARY'] ? ' Range' : ''}
                   </Typography>
                   <Typography variant="body1">
-                    {selectedRequestTypeConfig?.request_type === requestTypeMap['DIGNITARY'] 
+                    {watchRequestType === requestTypeMap['DIGNITARY'] 
                       ? appointmentForm.getValues('preferredDate')
                       : formatDateRange(appointmentForm.getValues('preferredStartDate'), appointmentForm.getValues('preferredEndDate'))
                     }
@@ -2362,7 +2366,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
             <Grid item xs={12}>
               <Typography variant="body1">
                 <strong>Preferred Date{selectedRequestTypeConfig?.request_type !== requestTypeMap['DIGNITARY'] ? ' Range' : ''}:</strong>{' '}
-                {selectedRequestTypeConfig?.request_type === requestTypeMap['DIGNITARY'] 
+                {watchRequestType === requestTypeMap['DIGNITARY'] 
                   ? submittedAppointment.preferred_date
                   : formatDateRange(submittedAppointment.preferred_start_date || '', submittedAppointment.preferred_end_date || '')
                 }
