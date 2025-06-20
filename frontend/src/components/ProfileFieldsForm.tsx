@@ -102,6 +102,20 @@ export const ProfileFieldsForm = forwardRef<ProfileFieldsFormRef, ProfileFieldsF
     },
   });
 
+  // Fetch AOL Teacher Status map
+  const { data: teacherStatusMap = {} } = useQuery<Record<string, string>>({
+    queryKey: ['aol-teacher-status-options-map'],
+    queryFn: async () => {
+      try {
+        const { data } = await api.get<Record<string, string>>('/users/aol-teacher-status-options-map');
+        return data;
+      } catch (error) {
+        console.error('Error fetching teacher status map:', error);
+        return {};
+      }
+    },
+  });
+
   // Fetch AOL Program Type options
   const { data: programTypeOptions = [], isLoading: programTypeLoading } = useQuery({
     queryKey: ['aol-program-type-options'],
@@ -138,7 +152,7 @@ export const ProfileFieldsForm = forwardRef<ProfileFieldsFormRef, ProfileFieldsF
   const [stateProvince, setStateProvince] = useState(initialData?.state_province || '');
   const [stateProvinceCode, setStateProvinceCode] = useState(initialData?.state_province_code || '');
   const [city, setCity] = useState(initialData?.city || '');
-  const [teacherStatus, setTeacherStatus] = useState(initialData?.teacher_status || 'Not a Teacher');
+  const [teacherStatus, setTeacherStatus] = useState(initialData?.teacher_status || null);
   const [teacherCode, setTeacherCode] = useState(initialData?.teacher_code || '');
   const [programsTaught, setProgramsTaught] = useState<string[]>(initialData?.programs_taught || []);
   const [aolAffiliations, setAolAffiliations] = useState<string[]>(initialData?.aol_affiliations || []);
@@ -155,7 +169,7 @@ export const ProfileFieldsForm = forwardRef<ProfileFieldsFormRef, ProfileFieldsF
       setStateProvince(initialData.state_province || '');
       setStateProvinceCode(initialData.state_province_code || '');
       setCity(initialData.city || '');
-      setTeacherStatus(initialData.teacher_status || 'Not a Teacher');
+      setTeacherStatus(initialData.teacher_status || null);
       setTeacherCode(initialData.teacher_code || '');
       setProgramsTaught(initialData.programs_taught || []);
       setAolAffiliations(initialData.aol_affiliations || []);
@@ -386,12 +400,15 @@ export const ProfileFieldsForm = forwardRef<ProfileFieldsFormRef, ProfileFieldsF
                     select
                     fullWidth
                     label="Are you an Art of Living teacher?"
-                    value={teacherStatus}
-                    onChange={(e) => setTeacherStatus(e.target.value)}
+                    value={teacherStatus || ''}
+                    onChange={(e) => setTeacherStatus(e.target.value || null)}
                     disabled={teacherStatusLoading}
                     helperText={teacherStatusLoading ? "Loading options..." : ""}
                     required
                   >
+                    <MenuItem value="">
+                      <em>Select an option</em>
+                    </MenuItem>
                     {teacherStatusOptions.map((option) => (
                       <MenuItem key={option.value} value={option.value}>
                         {option.label}
@@ -400,7 +417,7 @@ export const ProfileFieldsForm = forwardRef<ProfileFieldsFormRef, ProfileFieldsF
                   </TextField>
                 </Grid>
               )}
-              {teacherStatus !== 'Not a Teacher' && shouldShowField('teacher_code') && (
+              {teacherStatus && teacherStatus !== teacherStatusMap['NOT_TEACHER'] && shouldShowField('teacher_code') && (
                 <Grid item xs={12} md={6}>
                   <TextField
                     label="Teacher Code"
@@ -412,7 +429,7 @@ export const ProfileFieldsForm = forwardRef<ProfileFieldsFormRef, ProfileFieldsF
               )}
             </Grid>
 
-            {teacherStatus !== 'Not a Teacher' && shouldShowField('programs_taught') && (
+            {teacherStatus && teacherStatus !== teacherStatusMap['NOT_TEACHER'] && shouldShowField('programs_taught') && (
               <Box sx={{ mt: 3 }}>
                 <FormControl fullWidth disabled={programTypeLoading} required>
                   <InputLabel>Programs you teach</InputLabel>
