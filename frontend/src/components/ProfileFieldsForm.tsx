@@ -406,8 +406,8 @@ export const ProfileFieldsForm = forwardRef<ProfileFieldsFormRef, ProfileFieldsF
                     helperText={teacherStatusLoading ? "Loading options..." : ""}
                     required
                   >
-                    <MenuItem value="">
-                      <em>Select an option</em>
+                    <MenuItem value="" sx={{ color: 'text.secondary' }}>
+                      <em>Unselect</em>
                     </MenuItem>
                     {teacherStatusOptions.map((option) => (
                       <MenuItem key={option.value} value={option.value}>
