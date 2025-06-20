@@ -665,3 +665,70 @@ export const PeopleStarMenuIconV2: React.FC<IconProps> = React.memo(({ width = "
     </SvgIcon>
 ));
 
+export const MinusCircleFilledIconV2: React.FC<IconProps> = React.memo(({ ...props }) => (
+    <SvgIcon xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" {...props}>
+        <path fill="currentColor" d="m12,0C5.383,0,0,5.383,0,12s5.383,12,12,12,12-5.383,12-12S18.617,0,12,0Zm4,13h-8c-.552,0-1-.448-1-1s.448-1,1-1h8c.552,0,1,.448,1,1s-.448,1-1,1Z"/>
+    </SvgIcon>
+));
+
+export const MinusCircleIconV2: React.FC<IconProps> = React.memo(({ ...props }) => (
+    <SvgIcon xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" {...props}>
+        <path fill="currentColor" d="m12,0C5.383,0,0,5.383,0,12s5.383,12,12,12,12-5.383,12-12S18.617,0,12,0Zm0,22c-5.514,0-10-4.486-10-10S6.486,2,12,2s10,4.486,10,10-4.486,10-10,10Zm5-10c0,.552-.448,1-1,1h-8c-.552,0-1-.448-1-1s.448-1,1-1h8c.552,0,1,.448,1,1Z"/>
+    </SvgIcon>
+));
+
+export const MinusSquareCircleFilledIconV2: React.FC<IconProps> = React.memo(({ ...props }) => (
+    <SvgIcon xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" {...props}>
+        <path fill="currentColor" d="m12 1c-7.71 0-11 3.29-11 11s3.29 11 11 11 11-3.29 11-11-3.29-11-11-11zm4 12h-8c-.552 0-1-.447-1-1s.448-1 1-1h8c.553 0 1 .447 1 1s-.447 1-1 1z"/>
+    </SvgIcon>
+));
+
+export const MinusSquareCircleIconV2: React.FC<IconProps> = React.memo(({ ...props }) => (
+    <SvgIcon xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" {...props}>
+        <path fill="currentColor" d="m12 1c-7.71 0-11 3.29-11 11s3.29 11 11 11 11-3.29 11-11-3.29-11-11-11zm0 20c-6.561 0-9-2.439-9-9s2.439-9 9-9 9 2.439 9 9-2.439 9-9 9zm5-9c0 .553-.447 1-1 1h-8c-.552 0-1-.447-1-1s.448-1 1-1h8c.553 0 1 .447 1 1z"/>
+    </SvgIcon>
+));
+
+export const MinusSquareFilledIconV2: React.FC<IconProps> = React.memo(({ ...props }) => (
+    <SvgIcon xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" {...props}>
+        <path fill="currentColor" d="m19,0H5C2.243,0,0,2.243,0,5v14c0,2.757,2.243,5,5,5h14c2.757,0,5-2.243,5-5V5c0-2.757-2.243-5-5-5Zm-3,13h-8c-.552,0-1-.448-1-1s.448-1,1-1h8c.552,0,1,.448,1,1s-.448,1-1,1Z"/>
+    </SvgIcon>
+));
+
+export const MinusSquareIconV2: React.FC<IconProps> = React.memo(({ ...props }) => (
+    <SvgIcon xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" {...props}>
+        <path fill="currentColor" d="m17,12c0,.552-.448,1-1,1h-8c-.552,0-1-.448-1-1s.448-1,1-1h8c.552,0,1,.448,1,1Zm7-7v14c0,2.757-2.243,5-5,5H5c-2.757,0-5-2.243-5-5V5C0,2.243,2.243,0,5,0h14c2.757,0,5,2.243,5,5Zm-2,0c0-1.654-1.346-3-3-3H5c-1.654,0-3,1.346-3,3v14c0,1.654,1.346,3,3,3h14c1.654,0,3-1.346,3-3V5Z"/>
+    </SvgIcon>
+));
+
+export const AddSquareCircleThinIconV2: React.FC<IconProps> = React.memo(({ ...props }) => (
+    <SvgIcon xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" {...props}>
+        <path fill="currentColor" d="M14.958,11.5h-2.458v-2.466c0-.276-.224-.5-.5-.5s-.5,.224-.5,.5v2.466h-2.458c-.276,0-.5,.224-.5,.5s.224,.5,.5,.5h2.458v2.466c0,.276,.224,.5,.5,.5s.5-.224,.5-.5v-2.466h2.458c.276,0,.5-.224,.5-.5s-.224-.5-.5-.5Z"/>
+        <path fill="currentColor" d="M11.997,1C4.947,1.044,1.026,5.202,1.026,11.991c0,6.966,3.823,10.967,10.977,11.009,7.147-.042,10.839-3.74,10.971-11.009-.122-7.042-4.018-10.946-10.977-10.991Zm.006,21c-6.588-.039-9.852-3.31-9.977-10,.12-6.595,3.477-9.959,9.97-10,4.473,.029,9.835,1.79,9.977,9.991-.122,6.696-3.385,9.97-9.971,10.009Z"/>
+    </SvgIcon>
+));
+
+export const MinusSquareCircleThinIconV2: React.FC<IconProps> = React.memo(({ ...props }) => (
+    <SvgIcon xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" {...props}>
+        <path fill="currentColor" d="m12 1c-7.813 0-11 3.187-11 11s3.187 11 11 11 11-3.187 11-11-3.187-11-11-11zm0 21c-7.196 0-10-2.804-10-10s2.804-10 10-10 10 2.804 10 10-2.804 10-10 10zm5-10c0 .276-.224.5-.5.5h-9c-.276 0-.5-.224-.5-.5s.224-.5.5-.5h9c.276 0 .5.224.5.5z"/>
+    </SvgIcon>
+));
+
+export const MinusSquareThinIconV2: React.FC<IconProps> = React.memo(({ ...props }) => (
+    <SvgIcon xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" {...props}>
+        <path fill="currentColor" d="m17,12c0,.276-.224.5-.5.5H7.5c-.276,0-.5-.224-.5-.5s.224-.5.5-.5h9c.276,0,.5.224.5.5Zm7-7.5v15c0,2.481-2.019,4.5-4.5,4.5H4.5c-2.481,0-4.5-2.019-4.5-4.5V4.5C0,2.019,2.019,0,4.5,0h15c2.481,0,4.5,2.019,4.5,4.5Zm-1,0c0-1.93-1.57-3.5-3.5-3.5H4.5c-1.93,0-3.5,1.57-3.5,3.5v15c0,1.93,1.57,3.5,3.5,3.5h15c1.93,0,3.5-1.57,3.5-3.5V4.5Z"/>
+    </SvgIcon>
+));
+
+export const AddSquareThinIconV2: React.FC<IconProps> = React.memo(({ ...props }) => (
+    <SvgIcon xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" {...props}>
+        <path fill="currentColor" d="M17,12c0,.276-.224,.5-.5,.5h-4v4c0,.276-.224,.5-.5,.5s-.5-.224-.5-.5v-4H7.5c-.276,0-.5-.224-.5-.5s.224-.5,.5-.5h4V7.5c0-.276,.224-.5,.5-.5s.5,.224,.5,.5v4h4c.276,0,.5,.224,.5,.5Zm7-7.5v15c0,2.481-2.019,4.5-4.5,4.5H4.5c-2.481,0-4.5-2.019-4.5-4.5V4.5C0,2.019,2.019,0,4.5,0h15c2.481,0,4.5,2.019,4.5,4.5Zm-1,0c0-1.93-1.57-3.5-3.5-3.5H4.5c-1.93,0-3.5,1.57-3.5,3.5v15c0,1.93,1.57,3.5,3.5,3.5h15c1.93,0,3.5-1.57,3.5-3.5V4.5Z"/>
+    </SvgIcon>
+));
+
+export const AddMultipleIconV2: React.FC<IconProps> = React.memo(({ ...props }) => (
+    <SvgIcon xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" {...props}>
+        <path fill="currentColor" d="m5,10c0-.552.448-1,1-1h3v-3c0-.552.448-1,1-1s1,.448,1,1v3h3c.552,0,1,.448,1,1s-.448,1-1,1h-3v3c0,.552-.448,1-1,1s-1-.448-1-1v-3h-3c-.552,0-1-.448-1-1Zm19-1v10c0,2.757-2.243,5-5,5h-10c-2.446,0-4.479-1.768-4.908-4.092-2.324-.429-4.092-2.462-4.092-4.908V5C0,2.243,2.243,0,5,0h10c2.446,0,4.479,1.768,4.908,4.092,2.324.429,4.092,2.462,4.092,4.908ZM5,18h10c1.654,0,3-1.346,3-3V5c0-1.654-1.346-3-3-3H5c-1.654,0-3,1.346-3,3v10c0,1.654,1.346,3,3,3Zm17-9c0-1.302-.839-2.402-2-2.816v8.816c0,2.757-2.243,5-5,5H6.184c.414,1.161,1.514,2,2.816,2h10c1.654,0,3-1.346,3-3v-10Z"/>
+    </SvgIcon>
+));
+

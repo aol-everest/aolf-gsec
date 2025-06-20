@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
+import { AddSquareCircleThinIconV2, MinusSquareCircleIconV2, MinusSquareCircleThinIconV2 } from './iconsv2';
 
 interface NumberInputProps {
   value: number;
@@ -73,6 +74,11 @@ export const NumberInput: React.FC<NumberInputProps> = ({
         style: { textAlign: 'center' }
       }}
       sx={{
+        '& .MuiInputBase-root': {
+          // borderRadius: '21px',
+          // borderRadius: 2,
+          px: 1,
+        },
         '& input[type=number]': {
           '-moz-appearance': 'textfield',
         },
@@ -91,16 +97,11 @@ export const NumberInput: React.FC<NumberInputProps> = ({
             <IconButton
               onClick={handleDecrement}
               disabled={disabled || value <= min}
-              size="small"
-              sx={{ 
-                border: '1px solid',
-                borderColor: 'divider',
-                borderRadius: '4px',
-                width: 32,
-                height: 32,
+              sx={{
+                color: 'error.main',
               }}
             >
-              <RemoveIcon fontSize="small" />
+              <MinusSquareCircleThinIconV2 sx={{ fontSize: 30 }} />
             </IconButton>
           </InputAdornment>
         ),
@@ -109,16 +110,11 @@ export const NumberInput: React.FC<NumberInputProps> = ({
             <IconButton
               onClick={handleIncrement}
               disabled={disabled || value >= max}
-              size="small"
-              sx={{ 
-                border: '1px solid',
-                borderColor: 'divider',
-                borderRadius: '4px',
-                width: 32,
-                height: 32,
+              sx={{
+                color: 'success.main',
               }}
             >
-              <AddIcon fontSize="small" />
+              <AddSquareCircleThinIconV2 sx={{ fontSize: 30 }} />
             </IconButton>
           </InputAdornment>
         ),

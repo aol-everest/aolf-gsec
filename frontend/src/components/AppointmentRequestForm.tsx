@@ -1752,12 +1752,12 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
         return (
           <Box>
             <Grid container spacing={3}>
-              <Grid item xs={12} md={8}>
+              <Grid item xs={12} sm={6} md={7} lg={8} xl={9}>
                 <Typography variant="h6" gutterBottom>
                   Total number of Attendees
                 </Typography>
               </Grid>
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} sm={6} md={5} lg={4} xl={3}>
                 <Controller
                   name="numberOfAttendees"
                   control={form.control}
