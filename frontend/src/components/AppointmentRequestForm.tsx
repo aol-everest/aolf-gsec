@@ -109,17 +109,23 @@ interface Country {
   is_enabled: boolean;
 }
 
-// Step 1: POC Information
-interface PocFormData {
+// Main form data interface combining all steps
+interface AppointmentRequestFormData {
   pocFirstName: string;
   pocLastName: string;
   pocEmail: string;
   requestType: string;
-  numberOfAttendees: number; // Changed from numberOfDignitaries to be generic
+  numberOfAttendees: number;
+  purpose: string;
+  preferredDate: string;
+  preferredStartDate: string;
+  preferredEndDate: string;
+  preferredTimeOfDay: string;
+  location_id: number | undefined;
+  requesterNotesToSecretariat: string;
+  objective: string;
+  attachmentsComment: string;
 }
-
-// Step 2: Dignitary Information
-// DignitaryFormData interface is no longer needed as dignitary management is handled by UserDignitarySelector
 
 // Create a type that makes all fields in Dignitary optional
 type PartialDignitary = Partial<Dignitary>;
@@ -156,19 +162,6 @@ interface PersonalAttendeeFormData {
   courseAttendingOther: string;
   isDoingSeva: boolean | null;
   sevaType: string;
-}
-
-// Step 3: Appointment Information
-interface AppointmentFormData {
-  purpose: string;
-  preferredDate: string;  // For dignitary appointments only
-  preferredStartDate: string;  // For non-dignitary appointments
-  preferredEndDate: string;    // For non-dignitary appointments
-  preferredTimeOfDay: string;
-  location_id: number | undefined;  // Allow undefined for initial state
-  requesterNotesToSecretariat: string;
-  objective: string;  // What would you like to get out of the meeting? (expected outcome)
-  attachmentsComment: string;  // Generic field for attachment-related comments/metadata
 }
 
 interface AppointmentRequestFormProps {
@@ -451,34 +444,27 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
     }
   });
   
-  // Forms for each step
-  const pocForm = useForm<PocFormData>({
+  // A single, unified form for the entire appointment request wizard
+  const form = useForm<AppointmentRequestFormData>({
     defaultValues: {
       pocFirstName: userInfo?.first_name || '',
       pocLastName: userInfo?.last_name || '',
       pocEmail: userInfo?.email || '',
-      requestType: 'Personal', // Start with empty value to avoid out-of-range error
+      requestType: 'Personal', // User has set this back
       numberOfAttendees: 1,
-    }
-  });
-
-  const watchRequestType = pocForm.watch('requestType') || '';
-
-  // dignitaryForm is no longer needed as dignitary management is handled by UserDignitarySelector
-
-  const appointmentForm = useForm<AppointmentFormData>({
-    defaultValues: {
       purpose: '',
-      preferredDate: '',  // For dignitary appointments only
-      preferredStartDate: '',  // For non-dignitary appointments
-      preferredEndDate: '',    // For non-dignitary appointments
+      preferredDate: '',
+      preferredStartDate: '',
+      preferredEndDate: '',
       preferredTimeOfDay: '',
-      location_id: undefined,  // Changed from 0 to undefined
+      location_id: undefined,
       requesterNotesToSecretariat: '',
-      objective: '',  // What would you like to get out of the meeting? (expected outcome)
-      attachmentsComment: '',  // Generic field for attachment-related comments/metadata
+      objective: '',
+      attachmentsComment: '',
     }
   });
+
+  const watchRequestType = form.watch('requestType') || '';
 
   const personalAttendeeForm = useForm<PersonalAttendeeFormData>({
     defaultValues: {
@@ -537,27 +523,29 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
   // Update form values when userInfo changes
   useEffect(() => {
     if (userInfo) {
-      pocForm.setValue('pocFirstName', userInfo.first_name || '');
-      pocForm.setValue('pocLastName', userInfo.last_name || '');
-      pocForm.setValue('pocEmail', userInfo.email || '');
+      form.setValue('pocFirstName', userInfo.first_name || '');
+      form.setValue('pocLastName', userInfo.last_name || '');
+      form.setValue('pocEmail', userInfo.email || '');
     }
-  }, [userInfo, pocForm]);
+  }, [userInfo, form]);
 
   // Set default request type when configs are loaded
   useEffect(() => {
     if (requestTypeConfigs.length > 0) {
-      const currentValue = pocForm.getValues('requestType');
+      const currentValue = form.getValues('requestType');
+      // If the current value is not present or not valid, set a default.
       if (!currentValue || !requestTypeConfigs.find(c => c.request_type === currentValue)) {
         const defaultConfig = requestTypeConfigs.find(c => c.request_type === requestTypeMap['PERSONAL']) || requestTypeConfigs[0];
-        pocForm.setValue('requestType', defaultConfig.request_type);
+        if (defaultConfig) {
+          form.setValue('requestType', defaultConfig.request_type);
+        }
       }
     }
-  }, [requestTypeConfigs, pocForm, requestTypeMap]);
+  }, [requestTypeConfigs, form, requestTypeMap]);
 
   // Update selected request type config when form value changes
   useEffect(() => {
-    const requestType = pocForm.watch('requestType');
-    const config = requestTypeConfigs.find(c => c.request_type === requestType);
+    const config = requestTypeConfigs.find(c => c.request_type === watchRequestType);
     
     // Clear attendee lists when request type changes to avoid incompatible field data
     if (selectedRequestTypeConfig && config && selectedRequestTypeConfig.request_type !== config.request_type) {
@@ -579,7 +567,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
     }
     
     setSelectedRequestTypeConfig(config || null);
-  }, [pocForm.watch('requestType'), requestTypeConfigs, selectedRequestTypeConfig, selectedDignitaries.length, selectedUserContacts.length]);
+  }, [watchRequestType, requestTypeConfigs]);
 
   // These functions are no longer needed as they're handled by UserDignitarySelector
 
@@ -805,7 +793,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
       roleInTeamProject: '',
       roleInTeamProjectOther: '',
       comments: '',
-      // Engagement and participation fields - reset to not answered
+      // Engagement and participation fields - default to not answered
       hasMetGurudevRecently: null,
       isAttendingCourse: null,
       courseAttending: '',
@@ -1095,7 +1083,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
       }
     } else if (activeStep === 0) {
       // Validate POC form
-      const isValid = await pocForm.trigger();
+      const isValid = await form.trigger(['pocFirstName', 'pocLastName', 'pocEmail', 'requestType']);
       if (!isValid) {
         // Show error notification
         enqueueSnackbar('Please fill in all required fields', { 
@@ -1105,31 +1093,40 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
         return;
       }
       
-      const pocData = await pocForm.handleSubmit(async (data) => {
-        try {
-          // Phone number is now handled in the profile step, so no need to update here
-          
-          // Check for existing appointments for non-dignitary requests
-          if (!skipExistingCheck && 
-              selectedRequestTypeConfig?.attendee_type !== attendeeTypeMap['DIGNITARY']) {
-            const { hasExisting, count } = hasExistingAppointments(appointmentSummary, data.requestType);
-            
-            if (hasExisting) {
-              // Show confirmation dialog
-              setShowExistingAppointmentsDialog(true);
-              setPendingStepTransition(true);
-              return;
-            }
-          }
-          
-          setActiveStep(1);
-        } catch (error) {
-          console.error('Error updating user:', error);
+      const pocData = form.getValues();
+      
+      // Check for existing appointments for non-dignitary requests
+      if (!skipExistingCheck && 
+          selectedRequestTypeConfig?.attendee_type !== attendeeTypeMap['DIGNITARY']) {
+        const { hasExisting, count } = hasExistingAppointments(appointmentSummary, pocData.requestType);
+        
+        if (hasExisting) {
+          // Show confirmation dialog
+          setShowExistingAppointmentsDialog(true);
+          setPendingStepTransition(true);
+          return;
         }
-      })();
+      }
+      
+      setActiveStep(1);
     } else if (activeStep === 1) {
-      // Validate appointment form
-      const isValid = await appointmentForm.trigger();
+      // Define fields for step 1 validation based on request type
+      const step1Fields: (keyof AppointmentRequestFormData)[] = [
+        'purpose', 'preferredTimeOfDay', 'location_id'
+      ];
+
+      if (watchRequestType === requestTypeMap['DIGNITARY']) {
+        step1Fields.push('preferredDate');
+      } else {
+        step1Fields.push('preferredStartDate', 'preferredEndDate');
+      }
+
+      if (watchRequestType === requestTypeMap['PROJECT_TEAM_MEETING']) {
+        step1Fields.push('objective');
+      }
+      
+      // Validate appointment form fields for step 1
+      const isValid = await form.trigger(step1Fields);
       if (!isValid) {
         // Show error notification
         enqueueSnackbar('Please fill in all required fields', { 
@@ -1141,6 +1138,9 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
       
       setActiveStep(2);
     } else if (activeStep === 2) {
+      const isValid = await form.trigger(['numberOfAttendees']);
+      if (!isValid) return;
+
       // Handle different attendee types based on request type
       if (selectedRequestTypeConfig?.attendee_type === attendeeTypeMap['DIGNITARY']) {
         // For dignitary requests, check dignitaries
@@ -1195,85 +1195,84 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
       setActiveStep(3);
     } else if (activeStep === 3) {
       // Review & Submit step - actually submit the appointment
-      const appointmentData = await appointmentForm.handleSubmit(async (data) => {
-        try {
-          let appointmentCreateData: any = {
-            purpose: data.purpose,
-            preferred_time_of_day: data.preferredTimeOfDay,
-            location_id: data.location_id,
-            requester_notes_to_secretariat: data.requesterNotesToSecretariat,
-            status: statusOptions[0],
-            request_type: selectedRequestTypeConfig?.request_type || requestTypeMap['DIGNITARY'],
-          };
+      const formData = form.getValues();
+      try {
+        let appointmentCreateData: any = {
+          purpose: formData.purpose,
+          preferred_time_of_day: formData.preferredTimeOfDay,
+          location_id: formData.location_id,
+          requester_notes_to_secretariat: formData.requesterNotesToSecretariat,
+          status: statusOptions[0],
+          request_type: selectedRequestTypeConfig?.request_type || requestTypeMap['DIGNITARY'],
+        };
 
-          // Add meeting goal for project/team meetings
-          if (selectedRequestTypeConfig?.request_type === requestTypeMap['PROJECT_TEAM_MEETING']) {
-            appointmentCreateData.objective = data.objective;
-            appointmentCreateData.attachments_comment = materialCompletionStatus;
-          }
+        // Add meeting goal for project/team meetings
+        if (selectedRequestTypeConfig?.request_type === requestTypeMap['PROJECT_TEAM_MEETING']) {
+          appointmentCreateData.objective = formData.objective;
+          appointmentCreateData.attachments_comment = materialCompletionStatus;
+        }
 
-          // Add appropriate date fields based on request type
-          if (selectedRequestTypeConfig?.request_type === requestTypeMap['DIGNITARY']) {
-            appointmentCreateData.preferred_date = data.preferredDate;
-          } else {
-            appointmentCreateData.preferred_start_date = data.preferredStartDate;
-            appointmentCreateData.preferred_end_date = data.preferredEndDate;
-          }
+        // Add appropriate date fields based on request type
+        if (selectedRequestTypeConfig?.request_type === requestTypeMap['DIGNITARY']) {
+          appointmentCreateData.preferred_date = formData.preferredDate;
+        } else {
+          appointmentCreateData.preferred_start_date = formData.preferredStartDate;
+          appointmentCreateData.preferred_end_date = formData.preferredEndDate;
+        }
 
-          if (selectedRequestTypeConfig?.attendee_type === attendeeTypeMap['DIGNITARY']) {
-            // Get dignitary IDs from storage
-            const dignitary_ids = JSON.parse(sessionStorage.getItem('appointmentDignitaryIds') || '[]');
-            
-            if (dignitary_ids.length === 0) {
-              enqueueSnackbar('No dignitaries selected for appointment', { variant: 'error' });
-              return;
-            }
-            
-            appointmentCreateData.dignitary_ids = dignitary_ids;
-          } else {
-            // Get contact IDs from storage
-            const contactIds = JSON.parse(sessionStorage.getItem('appointmentContactIds') || '[]');
-            
-            if (contactIds.length === 0) {
-              enqueueSnackbar(`No ${selectedRequestTypeConfig?.attendee_label_plural?.toLowerCase() || 'attendees'} selected for appointment`, { variant: 'error' });
-              return;
-            }
-            
-            // Build contacts with appointment instance fields
-            const contactsWithAppointmentInstance = contactIds.map((contactId: number) => {
-              const appointmentInstanceData = contactAppointmentInstanceFields[contactId] || {
-                hasMetGurudevRecently: null,  // Not answered by default
-                isAttendingCourse: null,      // Not answered by default
-                courseAttending: '',
-                courseAttendingOther: '',
-                isDoingSeva: null,            // Not answered by default
-                sevaType: '',
-                roleInTeamProject: '',
-                roleInTeamProjectOther: ''
-              };
-              
-              return {
-                contact_id: contactId,
-                has_met_gurudev_recently: appointmentInstanceData.hasMetGurudevRecently,
-                is_attending_course: appointmentInstanceData.isAttendingCourse,
-                course_attending: appointmentInstanceData.courseAttending || null,
-                course_attending_other: appointmentInstanceData.courseAttendingOther || null,
-                is_doing_seva: appointmentInstanceData.isDoingSeva,
-                seva_type: appointmentInstanceData.sevaType || null,
-                role_in_team_project: appointmentInstanceData.roleInTeamProject || null,
-                role_in_team_project_other: appointmentInstanceData.roleInTeamProjectOther || null
-              };
-            });
-            
-            appointmentCreateData.contacts_with_engagement = contactsWithAppointmentInstance;
-            appointmentCreateData.number_of_attendees = contactIds.length;
+        if (selectedRequestTypeConfig?.attendee_type === attendeeTypeMap['DIGNITARY']) {
+          // Get dignitary IDs from storage
+          const dignitary_ids = JSON.parse(sessionStorage.getItem('appointmentDignitaryIds') || '[]');
+          
+          if (dignitary_ids.length === 0) {
+            enqueueSnackbar('No dignitaries selected for appointment', { variant: 'error' });
+            return;
           }
           
-          await createAppointmentMutation.mutateAsync(appointmentCreateData);
-        } catch (error) {
-          console.error('Error creating appointment:', error);
+          appointmentCreateData.dignitary_ids = dignitary_ids;
+        } else {
+          // Get contact IDs from storage
+          const contactIds = JSON.parse(sessionStorage.getItem('appointmentContactIds') || '[]');
+          
+          if (contactIds.length === 0) {
+            enqueueSnackbar(`No ${selectedRequestTypeConfig?.attendee_label_plural?.toLowerCase() || 'attendees'} selected for appointment`, { variant: 'error' });
+            return;
+          }
+          
+          // Build contacts with appointment instance fields
+          const contactsWithAppointmentInstance = contactIds.map((contactId: number) => {
+            const appointmentInstanceData = contactAppointmentInstanceFields[contactId] || {
+              hasMetGurudevRecently: null,  // Not answered by default
+              isAttendingCourse: null,      // Not answered by default
+              courseAttending: '',
+              courseAttendingOther: '',
+              isDoingSeva: null,            // Not answered by default
+              sevaType: '',
+              roleInTeamProject: '',
+              roleInTeamProjectOther: ''
+            };
+            
+            return {
+              contact_id: contactId,
+              has_met_gurudev_recently: appointmentInstanceData.hasMetGurudevRecently,
+              is_attending_course: appointmentInstanceData.isAttendingCourse,
+              course_attending: appointmentInstanceData.courseAttending || null,
+              course_attending_other: appointmentInstanceData.courseAttendingOther || null,
+              is_doing_seva: appointmentInstanceData.isDoingSeva,
+              seva_type: appointmentInstanceData.sevaType || null,
+              role_in_team_project: appointmentInstanceData.roleInTeamProject || null,
+              role_in_team_project_other: appointmentInstanceData.roleInTeamProjectOther || null
+            };
+          });
+          
+          appointmentCreateData.contacts_with_engagement = contactsWithAppointmentInstance;
+          appointmentCreateData.number_of_attendees = contactIds.length;
         }
-      })();
+        
+        await createAppointmentMutation.mutateAsync(appointmentCreateData);
+      } catch (error) {
+        console.error('Error creating appointment:', error);
+      }
     }
   };
 
@@ -1330,7 +1329,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
     switch (step) {
       case 0:
         return (
-          <Box component="form" onSubmit={pocForm.handleSubmit(() => handleNext(false))}>
+          <Box component="form" onSubmit={(e) => { e.preventDefault(); handleNext(false); }}>
             <Grid container spacing={3}>
               <Grid item xs={12}>
                 <Typography variant="h6" gutterBottom>
@@ -1342,7 +1341,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                 <TextField
                   fullWidth
                   label="First Name"
-                  {...pocForm.register('pocFirstName')}
+                  {...form.register('pocFirstName')}
                   disabled
                 />
               </Grid>
@@ -1351,7 +1350,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                 <TextField
                   fullWidth
                   label="Last Name"
-                  {...pocForm.register('pocLastName')}
+                  {...form.register('pocLastName')}
                   disabled
                 />
               </Grid>
@@ -1361,7 +1360,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                   fullWidth
                   label="Email"
                   type="email"
-                  {...pocForm.register('pocEmail')}
+                  {...form.register('pocEmail')}
                   disabled
                 />
               </Grid>
@@ -1373,11 +1372,11 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
               </Grid>
 
               <Grid item xs={12}>
-                <FormControl fullWidth required error={!!pocForm.formState.errors.requestType}>
+                <FormControl fullWidth required error={!!form.formState.errors.requestType}>
                   <InputLabel>Request Type</InputLabel>
                   <Controller
                     name="requestType"
-                    control={pocForm.control}
+                    control={form.control}
                     rules={{ required: 'Request type is required' }}
                     render={({ field }) => (
                       <Select
@@ -1398,9 +1397,9 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                       </Select>
                     )}
                   />
-                  {pocForm.formState.errors.requestType && (
+                  {form.formState.errors.requestType && (
                     <FormHelperText>
-                      {pocForm.formState.errors.requestType.message}
+                      {form.formState.errors.requestType.message}
                     </FormHelperText>
                   )}
                 </FormControl>
@@ -1413,7 +1412,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
 
       case 1:
         return (
-          <Box component="form" onSubmit={appointmentForm.handleSubmit(() => handleNext(false))}>
+          <Box component="form" onSubmit={(e) => { e.preventDefault(); handleNext(false); }}>
             <Grid container spacing={3}>
               <Grid item xs={12}>
                 <Typography variant="h6" gutterBottom>
@@ -1432,9 +1431,9 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                   placeholder={watchRequestType === requestTypeMap['PROJECT_TEAM_MEETING'] 
                     ? "Please describe the specific project, initiative, or team matter you'd like to discuss with Gurudev..." 
                     : undefined}
-                  {...appointmentForm.register('purpose', { required: 'Purpose is required' })}
-                  error={!!appointmentForm.formState.errors.purpose}
-                  helperText={appointmentForm.formState.errors.purpose?.message}
+                  {...form.register('purpose', { required: 'Purpose is required' })}
+                  error={!!form.formState.errors.purpose}
+                  helperText={form.formState.errors.purpose?.message}
                   required
                 />
               </Grid>
@@ -1448,13 +1447,13 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                     rows={3}
                     label="What is your goal for the meeting?"
                     placeholder="What would you like to achieve from this meeting? What is your expected outcome?"
-                    {...appointmentForm.register('objective', { 
+                    {...form.register('objective', { 
                       required: selectedRequestTypeConfig?.request_type === requestTypeMap['PROJECT_TEAM_MEETING'] 
                         ? 'Meeting objective is required for project/team meetings' 
                         : false 
                     })}
-                    error={!!appointmentForm.formState.errors.objective}
-                    helperText={appointmentForm.formState.errors.objective?.message || "Please describe what you hope to accomplish and what outcome you're seeking from this meeting."}
+                    error={!!form.formState.errors.objective}
+                    helperText={form.formState.errors.objective?.message || "Please describe what you hope to accomplish and what outcome you're seeking from this meeting."}
                     required={watchRequestType === requestTypeMap['PROJECT_TEAM_MEETING']}
                   />
                 </Grid>
@@ -1473,15 +1472,15 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                       min: getLocalDateString(0),
                       max: getLocalDateString(60),
                     }}
-                    {...appointmentForm.register('preferredDate', { 
+                    {...form.register('preferredDate', { 
                       required: 'Preferred date is required',
                       validate: (value) => {
                         const validation = validateSingleDate(value);
                         return validation.isValid || validation.error;
                       }
                     })}
-                    error={!!appointmentForm.formState.errors.preferredDate}
-                    helperText={appointmentForm.formState.errors.preferredDate?.message}
+                    error={!!form.formState.errors.preferredDate}
+                    helperText={form.formState.errors.preferredDate?.message}
                     required
                   />
                 </Grid>
@@ -1498,10 +1497,10 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                         min: getLocalDateString(0),
                         max: getLocalDateString(60),
                       }}
-                      {...appointmentForm.register('preferredStartDate', { 
+                      {...form.register('preferredStartDate', { 
                         required: 'Preferred start date is required',
                         validate: (value) => {
-                          const endDate = appointmentForm.getValues('preferredEndDate');
+                          const endDate = form.getValues('preferredEndDate');
                           if (endDate) {
                             const validation = validateDateRange(value, endDate);
                             return validation.isValid || validation.error;
@@ -1509,19 +1508,19 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                           return true;
                         }
                       })}
-                      error={!!appointmentForm.formState.errors.preferredStartDate}
-                      helperText={appointmentForm.formState.errors.preferredStartDate?.message}
+                      error={!!form.formState.errors.preferredStartDate}
+                      helperText={form.formState.errors.preferredStartDate?.message}
                       required
                       onChange={(e) => {
-                        appointmentForm.setValue('preferredStartDate', e.target.value);
-                        const currentEndDate = appointmentForm.getValues('preferredEndDate');
+                        form.setValue('preferredStartDate', e.target.value);
+                        const currentEndDate = form.getValues('preferredEndDate');
                         
                         // Auto-set end date to same as start date if not set, or if end date is before new start date
                         if (!currentEndDate || new Date(currentEndDate + 'T00:00:00') < new Date(e.target.value + 'T00:00:00')) {
-                          appointmentForm.setValue('preferredEndDate', e.target.value);
+                          form.setValue('preferredEndDate', e.target.value);
                         }
                         // Trigger validation
-                        appointmentForm.trigger(['preferredStartDate', 'preferredEndDate']);
+                        form.trigger(['preferredStartDate', 'preferredEndDate']);
                       }}
                     />
                   </Grid>
@@ -1532,13 +1531,13 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                       label="Preferred End Date"
                       InputLabelProps={{ shrink: true }}
                       inputProps={{ 
-                        min: appointmentForm.watch('preferredStartDate') || getLocalDateString(0),
+                        min: form.watch('preferredStartDate') || getLocalDateString(0),
                         max: getLocalDateString(60),
                       }}
-                      {...appointmentForm.register('preferredEndDate', { 
+                      {...form.register('preferredEndDate', { 
                         required: 'Preferred end date is required',
                         validate: (value) => {
-                          const startDate = appointmentForm.getValues('preferredStartDate');
+                          const startDate = form.getValues('preferredStartDate');
                           if (startDate) {
                             const validation = validateDateRange(startDate, value);
                             return validation.isValid || validation.error;
@@ -1546,13 +1545,13 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                           return true;
                         }
                       })}
-                      error={!!appointmentForm.formState.errors.preferredEndDate}
-                      helperText={appointmentForm.formState.errors.preferredEndDate?.message}
+                      error={!!form.formState.errors.preferredEndDate}
+                      helperText={form.formState.errors.preferredEndDate?.message}
                       required
                       onChange={(e) => {
-                        appointmentForm.setValue('preferredEndDate', e.target.value);
+                        form.setValue('preferredEndDate', e.target.value);
                         // Trigger validation
-                        appointmentForm.trigger(['preferredStartDate', 'preferredEndDate']);
+                        form.trigger(['preferredStartDate', 'preferredEndDate']);
                       }}
                     />
                   </Grid>
@@ -1560,12 +1559,12 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
               )}
 
               <Grid item xs={12} md={6} lg={4} key="time-of-day-grid-item">
-              <FormControl fullWidth required error={!!appointmentForm.formState.errors.preferredTimeOfDay}>
+              <FormControl fullWidth required error={!!form.formState.errors.preferredTimeOfDay}>
                   <InputLabel>Preferred Time of Day</InputLabel>
                   <Select
                     label="Preferred Time of Day *"
-                    value={appointmentForm.watch('preferredTimeOfDay')}
-                    {...appointmentForm.register('preferredTimeOfDay', { 
+                    value={form.watch('preferredTimeOfDay')}
+                    {...form.register('preferredTimeOfDay', { 
                       required: 'Preferred time of day is required' 
                     })}
                   >
@@ -1575,20 +1574,20 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                       </MenuItem>
                     ))}
                   </Select>
-                  {appointmentForm.formState.errors.preferredTimeOfDay && (
+                  {form.formState.errors.preferredTimeOfDay && (
                     <FormHelperText>
-                      {appointmentForm.formState.errors.preferredTimeOfDay.message}
+                      {form.formState.errors.preferredTimeOfDay.message}
                     </FormHelperText>
                   )}
                 </FormControl>
               </Grid>
 
               <Grid item xs={12} md={6} lg={4} key="location-selector-grid-item">
-                <FormControl fullWidth required error={!!appointmentForm.formState.errors.location_id}>
+                <FormControl fullWidth required error={!!form.formState.errors.location_id}>
                   <InputLabel>Location</InputLabel>
                   <Controller
                     name="location_id"
-                    control={appointmentForm.control}
+                    control={form.control}
                     rules={{ 
                       required: 'Location is required',
                       validate: value => (value && value > 0) || 'Please select a location'
@@ -1610,9 +1609,9 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                       </Select>
                     )}
                   />
-                  {appointmentForm.formState.errors.location_id && (
+                  {form.formState.errors.location_id && (
                     <FormHelperText>
-                      {appointmentForm.formState.errors.location_id.message}
+                      {form.formState.errors.location_id.message}
                     </FormHelperText>
                   )}
                 </FormControl>
@@ -1624,9 +1623,9 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                   multiline
                   rows={4}
                   label="Notes to Secretariat"
-                  {...appointmentForm.register('requesterNotesToSecretariat')}
-                  error={!!appointmentForm.formState.errors.requesterNotesToSecretariat}
-                  helperText={appointmentForm.formState.errors.requesterNotesToSecretariat?.message}
+                  {...form.register('requesterNotesToSecretariat')}
+                  error={!!form.formState.errors.requesterNotesToSecretariat}
+                  helperText={form.formState.errors.requesterNotesToSecretariat?.message}
                 />
               </Grid>
               
@@ -1742,7 +1741,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
               <Grid item xs={12} md={4}>
                 <Controller
                   name="numberOfAttendees"
-                  control={pocForm.control}
+                  control={form.control}
                   rules={{
                     required: `Number of ${selectedRequestTypeConfig?.attendee_label_plural?.toLowerCase() || 'attendees'} is required`,
                     min: {
@@ -1768,8 +1767,8 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                         `Total number of ${selectedRequestTypeConfig.attendee_label_plural}` : 
                         "Total number of Attendees"
                       }
-                      error={!!pocForm.formState.errors.numberOfAttendees}
-                      helperText={pocForm.formState.errors.numberOfAttendees?.message}
+                      error={!!form.formState.errors.numberOfAttendees}
+                      helperText={form.formState.errors.numberOfAttendees?.message}
                       required
                     />
                   )}
@@ -1983,6 +1982,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                           startIcon={<AddIcon />}
                           onClick={handleAddNewContact}
                           disabled={selectedUserContacts.length >= requiredDignitariesCount}
+                          size="medium"
                         >
                           Add New Contact
                         </PrimaryButton>
@@ -1995,6 +1995,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                             selectedUserContacts.length >= requiredDignitariesCount ||
                             userContacts.filter(c => !selectedUserContacts.some(sc => sc.id === c.id)).length === 0
                           }
+                          size="medium"
                         >
                           Select Existing Contact
                           </SecondaryButton>
@@ -2005,6 +2006,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                             startIcon={<AddIcon />}
                             onClick={handleAddSelfToAppointment}
                             disabled={selectedUserContacts.length >= requiredDignitariesCount}
+                            size="medium"
                           >
                             Add Yourself
                           </SecondaryButton>
@@ -2019,8 +2021,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                       mode="create"
                       request_type={selectedRequestTypeConfig?.request_type}
                       formData={{
-                        ...pocForm.getValues(),
-                        ...appointmentForm.getValues()
+                        ...form.getValues()
                       }}
                       onSave={(contact, appointmentInstanceData) => {
                         addContactToList(contact);
@@ -2061,8 +2062,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                       fieldsToShow="appointment"
                       request_type={selectedRequestTypeConfig?.request_type}
                       formData={{
-                        ...pocForm.getValues(),
-                        ...appointmentForm.getValues()
+                        ...form.getValues()
                       }}
                       onSave={handleAppointmentInstanceComplete}
                       onCancel={handleContactSelectionCancel}
@@ -2145,7 +2145,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                     Request Type
                   </Typography>
                   <Typography variant="body1">
-                    {selectedRequestTypeConfig?.display_name || pocForm.getValues('requestType')}
+                    {selectedRequestTypeConfig?.display_name || form.getValues('requestType')}
                   </Typography>
                 </Grid>
 
@@ -2155,7 +2155,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                     Number of {selectedRequestTypeConfig?.attendee_label_plural || 'Attendees'}
                   </Typography>
                   <Typography variant="body1">
-                    {pocForm.getValues('numberOfAttendees')}
+                    {form.getValues('numberOfAttendees')}
                   </Typography>
                 </Grid>
 
@@ -2200,18 +2200,18 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                       : "Purpose of Meeting"}
                   </Typography>
                   <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
-                    {appointmentForm.getValues('purpose')}
+                    {form.getValues('purpose')}
                   </Typography>
                 </Grid>
 
                 {/* Meeting Objective for Project/Team Meetings */}
-                {watchRequestType === requestTypeMap['PROJECT_TEAM_MEETING'] && appointmentForm.getValues('objective') && (
+                {watchRequestType === requestTypeMap['PROJECT_TEAM_MEETING'] && form.getValues('objective') && (
                   <Grid item xs={12}>
                     <Typography variant="subtitle2">
                       Meeting Objective
                     </Typography>
                     <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
-                      {appointmentForm.getValues('objective')}
+                      {form.getValues('objective')}
                     </Typography>
                   </Grid>
                 )}
@@ -2235,8 +2235,8 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                   </Typography>
                   <Typography variant="body1">
                     {watchRequestType === requestTypeMap['DIGNITARY'] 
-                      ? appointmentForm.getValues('preferredDate')
-                      : formatDateRange(appointmentForm.getValues('preferredStartDate'), appointmentForm.getValues('preferredEndDate'))
+                      ? form.getValues('preferredDate')
+                      : formatDateRange(form.getValues('preferredStartDate'), form.getValues('preferredEndDate'))
                     }
                   </Typography>
                 </Grid>
@@ -2247,7 +2247,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                     Preferred Time of Day
                   </Typography>
                   <Typography variant="body1">
-                    {appointmentForm.getValues('preferredTimeOfDay')}
+                    {form.getValues('preferredTimeOfDay')}
                   </Typography>
                 </Grid>
 
@@ -2258,7 +2258,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                   </Typography>
                   <Typography variant="body1">
                     {(() => {
-                      const locationId = appointmentForm.getValues('location_id');
+                      const locationId = form.getValues('location_id');
                       const location = locations.find(l => l.id === locationId);
                       return location ? `${location.name} - ${location.city}, ${location.state}, ${location.country}` : 'Not specified';
                     })()}
@@ -2266,13 +2266,13 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                 </Grid>
 
                 {/* Notes */}
-                {appointmentForm.getValues('requesterNotesToSecretariat') && (
+                {form.getValues('requesterNotesToSecretariat') && (
                   <Grid item xs={12}>
                     <Typography variant="subtitle2">
                       Notes to Secretariat
                     </Typography>
                     <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
-                      {appointmentForm.getValues('requesterNotesToSecretariat')}
+                      {form.getValues('requesterNotesToSecretariat')}
                     </Typography>
                   </Grid>
                 )}
@@ -2429,7 +2429,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
   const renderExistingAppointmentsDialog = () => {
     if (!selectedRequestTypeConfig) return null;
 
-    const { hasExisting, count } = hasExistingAppointments(appointmentSummary, pocForm.getValues('requestType'));
+    const { hasExisting, count } = hasExistingAppointments(appointmentSummary, form.getValues('requestType'));
     
     if (!hasExisting) return null;
 
@@ -2979,8 +2979,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
             mode={contactDialogMode}
             request_type={selectedRequestTypeConfig?.request_type}
             formData={{
-              ...pocForm.getValues(),
-              ...appointmentForm.getValues()
+              ...form.getValues()
             }}
             onSave={(contact, appointmentInstanceData) => {
               handleContactDialogSuccess(contact);
