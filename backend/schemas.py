@@ -1038,6 +1038,10 @@ class AppointmentCreateEnhanced(BaseModel):
     secretariat_meeting_notes: Optional[str] = None
     secretariat_follow_up_actions: Optional[str] = None
     
+    # Project/Team Meeting specific fields
+    objective: Optional[str] = None  # What would you like to get out of the meeting? (expected outcome)
+    attachments_comment: Optional[str] = None  # Generic field for attachment-related comments/metadata
+    
     # For dignitary appointments - if present, create AppointmentDignitary records
     dignitary_ids: Optional[List[int]] = None  # All dignitaries for this appointment
     

@@ -48,6 +48,48 @@ export const PurposeSection: React.FC<PurposeSectionProps> = memo(({ appointment
                         </Box>
                     </Grid>
                 )}
+                {appointment.objective && (
+                    <Grid item xs={12}>
+                        <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row' }}>
+                            <Box component="span" sx={{ 
+                                width: isMobile ? '100%' : '150px', 
+                                fontWeight: 'medium',
+                                mb: isMobile ? 0.5 : 0
+                            }}>
+                                Meeting Objective:
+                            </Box>
+                            <Typography component="span" sx={{ 
+                                color: theme.palette.text.primary, 
+                                whiteSpace: 'pre-line' as const,
+                                wordBreak: 'break-word',
+                                overflowWrap: 'break-word'
+                            }}>
+                                {appointment.objective}
+                            </Typography>
+                        </Box>
+                    </Grid>
+                )}
+                {appointment.attachments_comment && (
+                    <Grid item xs={12}>
+                        <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row' }}>
+                            <Box component="span" sx={{ 
+                                width: isMobile ? '100%' : '150px', 
+                                fontWeight: 'medium',
+                                mb: isMobile ? 0.5 : 0
+                            }}>
+                                Material Status:
+                            </Box>
+                            <Typography component="span" sx={{ 
+                                color: theme.palette.text.primary, 
+                                whiteSpace: 'pre-line' as const,
+                                wordBreak: 'break-word',
+                                overflowWrap: 'break-word'
+                            }}>
+                                {appointment.attachments_comment}
+                            </Typography>
+                        </Box>
+                    </Grid>
+                )}
             </Grid>
         </AppointmentCardSection>
     );

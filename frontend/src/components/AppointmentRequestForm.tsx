@@ -83,6 +83,7 @@ import { ExistingContactSelector } from './ExistingContactSelector';
 import { UserContactSelector } from './UserContactSelector';
 
 import { SelectedDignitary as UserSelectedDignitary } from './selects/GenericDignitarySelector';
+import { SelectableChipGroup } from './SelectableChipGroup';
 
 
 
@@ -170,6 +171,8 @@ interface AppointmentFormData {
   preferredTimeOfDay: string;
   location_id: number;
   requesterNotesToSecretariat: string;
+  objective: string;  // What would you like to get out of the meeting? (expected outcome)
+  attachmentsComment: string;  // Generic field for attachment-related comments/metadata
 }
 
 interface AppointmentRequestFormProps {
@@ -277,6 +280,9 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  
+  // Add state for material completion status (for project/team meetings)
+  const [materialCompletionStatus, setMaterialCompletionStatus] = useState<string>('');
   
   // State to track the required number of dignitaries/attendees
   const [requiredDignitariesCount, setRequiredDignitariesCount] = useState<number>(1);
@@ -454,6 +460,8 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
       preferredTimeOfDay: '',
       location_id: undefined,  // Changed from 0 to undefined
       requesterNotesToSecretariat: '',
+      objective: '',  // What would you like to get out of the meeting? (expected outcome)
+      attachmentsComment: '',  // Generic field for attachment-related comments/metadata
     }
   });
 
@@ -1181,6 +1189,12 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
             request_type: selectedRequestTypeConfig?.request_type || requestTypeMap['DIGNITARY'],
           };
 
+          // Add meeting goal for project/team meetings
+          if (selectedRequestTypeConfig?.request_type === requestTypeMap['PROJECT_TEAM_MEETING']) {
+            appointmentCreateData.objective = data.objective;
+            appointmentCreateData.attachments_comment = materialCompletionStatus;
+          }
+
           // Add appropriate date fields based on request type
           if (selectedRequestTypeConfig?.request_type === requestTypeMap['DIGNITARY']) {
             appointmentCreateData.preferred_date = data.preferredDate;
@@ -1395,13 +1409,39 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                   fullWidth
                   multiline
                   rows={4}
-                  label="Purpose of Meeting"
+                  label={selectedRequestTypeConfig?.request_type === requestTypeMap['PROJECT_TEAM_MEETING'] 
+                    ? "What is this specific project or team meeting about?" 
+                    : "Purpose of Meeting"}
+                  placeholder={selectedRequestTypeConfig?.request_type === requestTypeMap['PROJECT_TEAM_MEETING'] 
+                    ? "Please describe the specific project, initiative, or team matter you'd like to discuss with Gurudev..." 
+                    : undefined}
                   {...appointmentForm.register('purpose', { required: 'Purpose is required' })}
                   error={!!appointmentForm.formState.errors.purpose}
                   helperText={appointmentForm.formState.errors.purpose?.message}
                   required
                 />
               </Grid>
+
+              {/* Project/Team Meeting specific fields */}
+              {selectedRequestTypeConfig?.request_type === requestTypeMap['PROJECT_TEAM_MEETING'] && (
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={3}
+                    label="What is your goal for the meeting?"
+                    placeholder="What would you like to achieve from this meeting? What is your expected outcome?"
+                    {...appointmentForm.register('objective', { 
+                      required: selectedRequestTypeConfig?.request_type === requestTypeMap['PROJECT_TEAM_MEETING'] 
+                        ? 'Meeting objective is required for project/team meetings' 
+                        : false 
+                    })}
+                    error={!!appointmentForm.formState.errors.objective}
+                    helperText={appointmentForm.formState.errors.objective?.message || "Please describe what you hope to accomplish and what outcome you're seeking from this meeting."}
+                    required={selectedRequestTypeConfig?.request_type === requestTypeMap['PROJECT_TEAM_MEETING']}
+                  />
+                </Grid>
+              )}
 
               {/* Conditional date fields based on request type */}
               {selectedRequestTypeConfig?.request_type === requestTypeMap['DIGNITARY'] ? (
@@ -1576,14 +1616,18 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
               {/* Add attachment section */}
               <Grid item xs={12}>
                 <Divider sx={{ my: 2 }} />
-                <Typography variant="h6" gutterBottom>
-                  Attachments
+                <Typography variant="h6" color="text.primary" gutterBottom>
+                  {selectedRequestTypeConfig?.request_type === requestTypeMap['PROJECT_TEAM_MEETING'] 
+                    ? "Project Documentation & Presentations" 
+                    : "Attachments"}
                 </Typography>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Upload relevant documents or images for this appointment request.
+                  {selectedRequestTypeConfig?.request_type === requestTypeMap['PROJECT_TEAM_MEETING'] 
+                    ? "Please upload or add links to any material you plan to present to Gurudev." 
+                    : "Upload relevant documents or images for this appointment request."}
                 </Typography>
                 
-                <Box sx={{ mt: 2 }}>
+                <Box sx={{ mt: 2, mb: 2 }}>
                   <input
                     type="file"
                     multiple
@@ -1593,13 +1637,25 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                     accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
                   />
                   <SecondaryButton
-                    size="medium"
+                    size="small"
                     onClick={() => fileInputRef.current?.click()}
                     startIcon={<Box component="span" sx={{ fontSize: '1.25rem' }}>📎</Box>}
                   >
                     Select Files
                   </SecondaryButton>
                 </Box>
+                
+                {/* Additional questions for project/team meetings */}
+                {selectedRequestTypeConfig?.request_type === requestTypeMap['PROJECT_TEAM_MEETING'] && (
+                  <SelectableChipGroup
+                    title="Material Completion Status"
+                    description="What is the current completion status of the material you plan to present?"
+                    options={['≤50% Complete', '~80% Complete', '100% Complete']}
+                    selectedValue={materialCompletionStatus}
+                    onSelectionChange={setMaterialCompletionStatus}
+                    helperText="Please select the option that best describes the current completion status of your material for presentation to Gurudev."
+                  />
+                )}
                 
                 {selectedFiles.length > 0 && (
                   <Box sx={{ mt: 2 }}>
@@ -2126,12 +2182,38 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                 {/* Purpose */}
                 <Grid item xs={12}>
                   <Typography variant="subtitle2">
-                    Purpose of Meeting
+                    {selectedRequestTypeConfig?.request_type === requestTypeMap['PROJECT_TEAM_MEETING'] 
+                      ? "Project/Team Meeting About" 
+                      : "Purpose of Meeting"}
                   </Typography>
                   <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
                     {appointmentForm.getValues('purpose')}
                   </Typography>
                 </Grid>
+
+                {/* Meeting Objective for Project/Team Meetings */}
+                {selectedRequestTypeConfig?.request_type === requestTypeMap['PROJECT_TEAM_MEETING'] && appointmentForm.getValues('objective') && (
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle2">
+                      Meeting Objective
+                    </Typography>
+                    <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
+                      {appointmentForm.getValues('objective')}
+                    </Typography>
+                  </Grid>
+                )}
+
+                {/* Material Completion Status for Project/Team Meetings */}
+                {selectedRequestTypeConfig?.request_type === requestTypeMap['PROJECT_TEAM_MEETING'] && materialCompletionStatus && (
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle2">
+                      Material Completion Status
+                    </Typography>
+                    <Typography variant="body1">
+                      {materialCompletionStatus}
+                    </Typography>
+                  </Grid>
+                )}
 
                 {/* Date */}
                 <Grid item xs={12} md={6}>

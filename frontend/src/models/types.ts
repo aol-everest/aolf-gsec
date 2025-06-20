@@ -161,6 +161,8 @@ interface Appointment {
   request_type: string;
   number_of_attendees?: number;
   calendar_event_id?: number;
+  objective?: string;  // What would you like to get out of the meeting? (expected outcome)
+  attachments_comment?: string;  // Generic field for attachment-related comments/metadata
 }
 
 interface AdminAppointmentUpdate {
@@ -419,6 +421,8 @@ export interface AppointmentSummary {
   appointment_date: string;
   appointment_time: string;
   duration: number;
+  objective?: string;  // What would you like to get out of the meeting? (expected outcome)
+  attachments_comment?: string;  // Generic field for attachment-related comments/metadata
 }
 
 export interface CalendarEventWithAppointments {

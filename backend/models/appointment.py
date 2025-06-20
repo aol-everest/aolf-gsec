@@ -61,6 +61,10 @@ class Appointment(Base):
     created_by = Column(Integer, ForeignKey(f"{schema_prefix}users.id"))
     last_updated_by = Column(Integer, ForeignKey(f"{schema_prefix}users.id"))
     
+    # Project/Team Meeting specific fields
+    objective = Column(Text, nullable=True)  # What would you like to get out of the meeting? (expected outcome)
+    attachments_comment = Column(Text, nullable=True)  # Generic field for attachment-related comments/metadata
+    
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

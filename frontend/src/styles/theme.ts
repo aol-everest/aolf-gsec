@@ -125,11 +125,12 @@ const typography = {
     marginBottom: '16px',
   },
   h6: {
-    fontWeight: 400,
+    fontWeight: 500,
     fontSize: '1.1rem',
     lineHeight: 1.6,
     letterSpacing: '0.0075em',
     // marginBottom: '16px',
+    color: colors.text.primary,
   },
   subtitle1: {
     fontSize: '1rem',
