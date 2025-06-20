@@ -11,7 +11,7 @@ npm cache clean --force
 npm set audit false
 
 # Install frontend dependencies
-npm install
+npm install --legacy-peer-deps
 # npm install react-hook-form @mui/material @emotion/react @emotion/styled @react-oauth/google react-router-dom
 # Clean install frontend dependencies
 npm ci --legacy-peer-deps
