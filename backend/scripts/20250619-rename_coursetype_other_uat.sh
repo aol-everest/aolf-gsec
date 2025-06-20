@@ -14,10 +14,10 @@ echo "=========================================="
 
 # Set environment variables for UAT
 export ENVIRONMENT=uat
-export POSTGRES_HOST=aolf-gsec-uat.postgres.database.azure.com
+export POSTGRES_HOST="aolf-gsec-db-uat.cxg084kkue8o.us-east-2.rds.amazonaws.com"
 export POSTGRES_PORT=5432
 export POSTGRES_DB=aolf_gsec
-export POSTGRES_USER=aolf_gsec_app_user
+export POSTGRES_USER=aolf_gsec_user
 export POSTGRES_SCHEMA=public
 
 echo "Environment: $ENVIRONMENT"
@@ -39,7 +39,7 @@ execute_sql() {
     
     echo "Executing: $description"
     
-    if psql "host=$POSTGRES_HOST port=$POSTGRES_PORT user=$POSTGRES_USER dbname=$POSTGRES_DB sslmode=require" -c "$sql" -q; then
+    if psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c "$sql" -q; then
         echo "✅ Success: $description"
         echo ""
     else
@@ -49,9 +49,36 @@ execute_sql() {
     fi
 }
 
+# Step 0: Grant ownership of the enum to current user (admin permissions)
+echo "Step 0: Granting ownership of coursetype enum to current user..."
+psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c "
+    ALTER TYPE coursetype OWNER TO $POSTGRES_USER;
+" -q
+
+if [ $? -eq 0 ]; then
+    echo "✅ Successfully granted ownership of coursetype enum"
+else
+    echo "❌ Failed to grant ownership - checking if already owned..."
+    # Check if we're already the owner
+    CURRENT_OWNER=$(psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -t -c "
+        SELECT u.usename 
+        FROM pg_type t
+        JOIN pg_user u ON t.typowner = u.usesysid
+        WHERE t.typname = 'coursetype';
+    " | xargs)
+    
+    if [ "$CURRENT_OWNER" = "$POSTGRES_USER" ]; then
+        echo "✅ Current user already owns the enum"
+    else
+        echo "❌ Current owner is: $CURRENT_OWNER"
+        echo "❌ Cannot proceed without ownership. Please run as database admin or contact DBA."
+        exit 1
+    fi
+fi
+
 echo "Step 1: Checking current CourseType enum values..."
 echo "Current CourseType enum values (before changes):"
-psql "host=$POSTGRES_HOST port=$POSTGRES_PORT user=$POSTGRES_USER dbname=$POSTGRES_DB sslmode=require" -c "
+psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c "
     SELECT enumlabel as current_values, enumsortorder
     FROM pg_enum e
     JOIN pg_type t ON e.enumtypid = t.oid
@@ -61,7 +88,7 @@ psql "host=$POSTGRES_HOST port=$POSTGRES_PORT user=$POSTGRES_USER dbname=$POSTGR
 
 echo "Step 2: Checking for existing records with course_attending..."
 # Count existing records in appointment_contacts only (course_attending field doesn't exist in user_contacts)
-APPOINTMENT_CONTACT_COUNT=$(psql "host=$POSTGRES_HOST port=$POSTGRES_PORT user=$POSTGRES_USER dbname=$POSTGRES_DB sslmode=require" -t -c "
+APPOINTMENT_CONTACT_COUNT=$(psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -t -c "
     SELECT COUNT(*) FROM appointment_contacts WHERE course_attending IS NOT NULL;
 " | xargs)
 
@@ -69,7 +96,7 @@ echo "Current appointment_contacts with course_attending: $APPOINTMENT_CONTACT_C
 
 # Count records by course type in appointment_contacts only
 echo "Records by course type in appointment_contacts:"
-psql "host=$POSTGRES_HOST port=$POSTGRES_PORT user=$POSTGRES_USER dbname=$POSTGRES_DB sslmode=require" -c "
+psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c "
     SELECT course_attending, COUNT(*) as count
     FROM appointment_contacts
     WHERE course_attending IS NOT NULL
@@ -77,8 +104,40 @@ psql "host=$POSTGRES_HOST port=$POSTGRES_PORT user=$POSTGRES_USER dbname=$POSTGR
     ORDER BY course_attending;
 "
 
-echo "Step 3: Convert course_attending column to text to remove enum dependency..."
-psql "host=$POSTGRES_HOST port=$POSTGRES_PORT user=$POSTGRES_USER dbname=$POSTGRES_DB sslmode=require" -c "
+echo "Step 3: Remove engagement fields from user_contacts table (they should only be in appointment_contacts)..."
+# First, let's check which engagement fields exist in user_contacts
+ENGAGEMENT_FIELDS_IN_USER_CONTACTS=$(psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -t -c "
+    SELECT column_name 
+    FROM information_schema.columns 
+    WHERE table_name = 'user_contacts' 
+    AND column_name IN ('has_met_gurudev_recently', 'is_attending_course', 'course_attending', 'is_doing_seva', 'seva_type')
+    ORDER BY column_name;
+" | xargs)
+
+if [ ! -z "$ENGAGEMENT_FIELDS_IN_USER_CONTACTS" ]; then
+    echo "Found engagement fields in user_contacts that need to be removed: $ENGAGEMENT_FIELDS_IN_USER_CONTACTS"
+    
+    # Drop the engagement fields from user_contacts (they should only be in appointment_contacts)
+    psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c "
+        ALTER TABLE user_contacts DROP COLUMN IF EXISTS has_met_gurudev_recently;
+        ALTER TABLE user_contacts DROP COLUMN IF EXISTS is_attending_course;
+        ALTER TABLE user_contacts DROP COLUMN IF EXISTS course_attending;
+        ALTER TABLE user_contacts DROP COLUMN IF EXISTS is_doing_seva;
+        ALTER TABLE user_contacts DROP COLUMN IF EXISTS seva_type;
+    " -q
+    
+    if [ $? -eq 0 ]; then
+        echo "✅ Successfully removed engagement fields from user_contacts table"
+    else
+        echo "❌ Failed to remove engagement fields from user_contacts table"
+        exit 1
+    fi
+else
+    echo "No engagement fields found in user_contacts table (good!)"
+fi
+
+echo "Step 4: Convert course_attending column to text to remove enum dependency..."
+psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c "
     ALTER TABLE appointment_contacts 
     ALTER COLUMN course_attending TYPE text 
     USING course_attending::text;
@@ -91,8 +150,8 @@ else
     exit 1
 fi
 
-echo "Step 4: Drop old CourseType enum..."
-psql "host=$POSTGRES_HOST port=$POSTGRES_PORT user=$POSTGRES_USER dbname=$POSTGRES_DB sslmode=require" -c "
+echo "Step 5: Drop old CourseType enum..."
+psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c "
     DROP TYPE coursetype;
 " -q
 
@@ -103,8 +162,8 @@ else
     exit 1
 fi
 
-echo "Step 5: Create new CourseType enum with renamed OTHER value..."
-psql "host=$POSTGRES_HOST port=$POSTGRES_PORT user=$POSTGRES_USER dbname=$POSTGRES_DB sslmode=require" -c "
+echo "Step 6: Create new CourseType enum with renamed OTHER value..."
+psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c "
     CREATE TYPE coursetype AS ENUM (
         'SKY',
         'SAHAJ',
@@ -122,18 +181,18 @@ else
     exit 1
 fi
 
-echo "Step 6: Migrate OTHER_COURSE values to OTHER..."
+echo "Step 7: Migrate OTHER_COURSE values to OTHER..."
 
 # Note: course_attending field only exists in appointment_contacts, not in user_contacts
 
 # Migrate OTHER_COURSE to OTHER in appointment_contacts
-OTHER_COURSE_APPOINTMENT_COUNT=$(psql "host=$POSTGRES_HOST port=$POSTGRES_PORT user=$POSTGRES_USER dbname=$POSTGRES_DB sslmode=require" -t -c "
+OTHER_COURSE_APPOINTMENT_COUNT=$(psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -t -c "
     SELECT COUNT(*) FROM appointment_contacts WHERE course_attending = 'OTHER_COURSE';
 " | xargs)
 
 if [ "$OTHER_COURSE_APPOINTMENT_COUNT" -gt 0 ]; then
     echo "Migrating $OTHER_COURSE_APPOINTMENT_COUNT OTHER_COURSE values to OTHER in appointment_contacts..."
-    psql "host=$POSTGRES_HOST port=$POSTGRES_PORT user=$POSTGRES_USER dbname=$POSTGRES_DB sslmode=require" -c "
+    psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c "
         UPDATE appointment_contacts 
         SET course_attending = 'OTHER'
         WHERE course_attending = 'OTHER_COURSE';
@@ -143,10 +202,10 @@ else
     echo "No OTHER_COURSE values to migrate in appointment_contacts"
 fi
 
-echo "Step 7: Add course_attending_other and role fields to appointment_contacts..."
+echo "Step 8: Add course_attending_other and role fields to appointment_contacts..."
 
 # Add course_attending_other field
-psql "host=$POSTGRES_HOST port=$POSTGRES_PORT user=$POSTGRES_USER dbname=$POSTGRES_DB sslmode=require" -c "
+psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c "
     ALTER TABLE appointment_contacts 
     ADD COLUMN IF NOT EXISTS course_attending_other VARCHAR(255);
 " -q
@@ -159,7 +218,7 @@ else
 fi
 
 # Check if role_in_team_project field exists, if not add it
-ROLE_FIELD_EXISTS=$(psql "host=$POSTGRES_HOST port=$POSTGRES_PORT user=$POSTGRES_USER dbname=$POSTGRES_DB sslmode=require" -t -c "
+ROLE_FIELD_EXISTS=$(psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -t -c "
     SELECT COUNT(*) 
     FROM information_schema.columns 
     WHERE table_name = 'appointment_contacts' 
@@ -168,7 +227,7 @@ ROLE_FIELD_EXISTS=$(psql "host=$POSTGRES_HOST port=$POSTGRES_PORT user=$POSTGRES
 
 if [ "$ROLE_FIELD_EXISTS" -eq 0 ]; then
     echo "Adding role_in_team_project field to appointment_contacts..."
-    psql "host=$POSTGRES_HOST port=$POSTGRES_PORT user=$POSTGRES_USER dbname=$POSTGRES_DB sslmode=require" -c "
+    psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c "
         ALTER TABLE appointment_contacts 
         ADD COLUMN role_in_team_project roleinteamproject;
     " -q
@@ -184,7 +243,7 @@ else
 fi
 
 # Check if role_in_team_project_other field exists, if not add it
-ROLE_OTHER_FIELD_EXISTS=$(psql "host=$POSTGRES_HOST port=$POSTGRES_PORT user=$POSTGRES_USER dbname=$POSTGRES_DB sslmode=require" -t -c "
+ROLE_OTHER_FIELD_EXISTS=$(psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -t -c "
     SELECT COUNT(*) 
     FROM information_schema.columns 
     WHERE table_name = 'appointment_contacts' 
@@ -193,7 +252,7 @@ ROLE_OTHER_FIELD_EXISTS=$(psql "host=$POSTGRES_HOST port=$POSTGRES_PORT user=$PO
 
 if [ "$ROLE_OTHER_FIELD_EXISTS" -eq 0 ]; then
     echo "Adding role_in_team_project_other field to appointment_contacts..."
-    psql "host=$POSTGRES_HOST port=$POSTGRES_PORT user=$POSTGRES_USER dbname=$POSTGRES_DB sslmode=require" -c "
+    psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c "
         ALTER TABLE appointment_contacts 
         ADD COLUMN role_in_team_project_other VARCHAR(255);
     " -q
@@ -208,8 +267,8 @@ else
     echo "✅ role_in_team_project_other field already exists in appointment_contacts"
 fi
 
-echo "Step 8: Convert course_attending column back to enum..."
-psql "host=$POSTGRES_HOST port=$POSTGRES_PORT user=$POSTGRES_USER dbname=$POSTGRES_DB sslmode=require" -c "
+echo "Step 9: Convert course_attending column back to enum..."
+psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c "
     ALTER TABLE appointment_contacts 
     ALTER COLUMN course_attending TYPE coursetype 
     USING course_attending::coursetype;
@@ -222,9 +281,9 @@ else
     exit 1
 fi
 
-echo "Step 9: Verify the new enum values..."
+echo "Step 10: Verify the new enum values..."
 echo "Updated CourseType enum values:"
-psql "host=$POSTGRES_HOST port=$POSTGRES_PORT user=$POSTGRES_USER dbname=$POSTGRES_DB sslmode=require" -c "
+psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c "
     SELECT enumlabel as new_values, enumsortorder
     FROM pg_enum e
     JOIN pg_type t ON e.enumtypid = t.oid
@@ -232,9 +291,9 @@ psql "host=$POSTGRES_HOST port=$POSTGRES_PORT user=$POSTGRES_USER dbname=$POSTGR
     ORDER BY e.enumsortorder;
 "
 
-echo "Step 10: Verify appointment_contacts table structure..."
+echo "Step 11: Verify table structures..."
 echo "appointment_contacts table columns related to course_attending and role fields:"
-psql "host=$POSTGRES_HOST port=$POSTGRES_PORT user=$POSTGRES_USER dbname=$POSTGRES_DB sslmode=require" -c "
+psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c "
     SELECT column_name, data_type, is_nullable
     FROM information_schema.columns
     WHERE table_name = 'appointment_contacts' 
@@ -242,9 +301,18 @@ psql "host=$POSTGRES_HOST port=$POSTGRES_PORT user=$POSTGRES_USER dbname=$POSTGR
     ORDER BY column_name;
 "
 
-echo "Step 11: Test all enum values..."
+echo "Verify user_contacts table no longer has engagement fields:"
+psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c "
+    SELECT column_name, data_type, is_nullable
+    FROM information_schema.columns
+    WHERE table_name = 'user_contacts' 
+    AND column_name IN ('has_met_gurudev_recently', 'is_attending_course', 'course_attending', 'is_doing_seva', 'seva_type')
+    ORDER BY column_name;
+"
+
+echo "Step 12: Test all enum values..."
 echo "Testing enum usage in queries..."
-psql "host=$POSTGRES_HOST port=$POSTGRES_PORT user=$POSTGRES_USER dbname=$POSTGRES_DB sslmode=require" -c "
+psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -c "
     SELECT 'SKY'::coursetype as test1,
            'SAHAJ'::coursetype as test2,
            'SILENCE'::coursetype as test3,
@@ -265,6 +333,7 @@ echo "=========================================="
 echo "✅ Migration completed successfully!"
 echo "=========================================="
 echo "Summary:"
+echo "- Cleaned up user_contacts table by removing engagement fields (they belong only in appointment_contacts)"
 echo "- Renamed CourseType.OTHER_COURSE to OTHER"
 echo "- Added course_attending_other field to appointment_contacts table"
 echo "- Migrated existing OTHER_COURSE values to OTHER"
@@ -279,6 +348,7 @@ echo "   5. KIDS_TEENS_COURSE"
 echo "   6. OTHER (renamed from OTHER_COURSE)"
 echo ""
 echo "🔄 Changes made:"
+echo "   🧹 Cleaned: Removed engagement fields from user_contacts table"
 echo "   📝 Renamed: OTHER_COURSE → OTHER"
 echo "   ➕ Added: course_attending_other field to appointment_contacts"
 echo "   📝 Migrated: All OTHER_COURSE values → OTHER"
@@ -290,7 +360,7 @@ echo "   - role_in_team_project (enum): RoleInTeamProject enum value"
 echo "   - role_in_team_project_other (varchar): Text value when OTHER is selected"
 echo ""
 echo "The CourseType enum is now available for use in:"
-echo "- appointment_contacts.course_attending"
+echo "- appointment_contacts.course_attending (engagement fields are appointment-specific)"
 echo "- Course type API filtering"
 echo "- Frontend course selection dropdowns"
 echo ""
