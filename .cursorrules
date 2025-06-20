@@ -1,0 +1,12 @@
+## Backend Development Rules
+
+When working with @/backend:
+- Always source the virtual environment before running Python commands: `cd backend && source .venv/bin/activate && python ...`
+- Use the virtual environment for all Python operations including testing, running scripts, and debugging
+- Backend uses FastAPI with SQLAlchemy ORM
+- Follow existing patterns for enum definitions and API endpoints
+- Database models are in `/models/` directory
+- API routes are in `/routers/` directory
+- Environment configuration is in `/config/` directory 
+- For any database scripts, create them in `/scripts/` directory. Create one script each for DEV, UAT and PROD (unless otherwise asked by the user). For UAT and PROD prompt the user at the start for the password and reuse that across all commands.
+- For any Enums in the database, use the names for the associated Python Enums. The python backend will automatically translate them to the associated values.

@@ -64,11 +64,12 @@ class UserContact(Base):
 
     # Constraints and indexes for better performance
     __table_args__ = (
-        # Unique email per owner (if email is provided)
-        UniqueConstraint('owner_user_id', 'email', name='unique_owner_email', 
-                        sqlite_on_conflict='IGNORE'),
+        # Note: Removed unique email constraint to allow duplicate emails
+        # This enables scenarios like parents using their email for children's contacts
         Index('idx_user_contacts_owner_id', 'owner_user_id'),
         Index('idx_user_contacts_contact_user_id', 'contact_user_id'),
         Index('idx_user_contacts_owner_usage', 'owner_user_id', 'appointment_usage_count'),
         Index('idx_user_contacts_owner_last_used', 'owner_user_id', 'last_used_at'),
+        # Add index for email lookups since we might have multiple contacts with same email
+        Index('idx_user_contacts_owner_email', 'owner_user_id', 'email'),
     ) 

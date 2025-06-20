@@ -14,15 +14,19 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Alert,
+  FormHelperText
 } from '@mui/material';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useSnackbar } from 'notistack';
 import { useApi } from '../hooks/useApi';
-import { UserContact, Location } from '../models/types';
+import { UserContact, Location, UserContactCreateResponse, SystemWarningCode } from '../models/types';
 import { EnumSelect } from './EnumSelect';
 import { useEnums, useEnumsMap } from '../hooks/useEnums';
 import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
+import { useWarningMessages, getWarningMessage } from '../utils/warningUtils';
+import { useAuth } from '../contexts/AuthContext';
 
 export interface UserContactCreateData {
   first_name: string;
@@ -51,6 +55,7 @@ interface ContactFormProps {
   request_type?: string;
   fieldsToShow?: 'contact' | 'appointment' | 'both';
   formData?: any;
+  initialAppointmentInstanceData?: AppointmentInstanceFields;
   onSave: (contact: UserContact, appointmentInstanceData?: AppointmentInstanceFields) => void;
   onCancel: () => void;
 }
@@ -61,11 +66,13 @@ export const ContactForm: React.FC<ContactFormProps> = ({
   request_type,
   fieldsToShow = 'both',
   formData,
+  initialAppointmentInstanceData,
   onSave,
   onCancel
 }) => {
   const api = useApi();
   const { enqueueSnackbar } = useSnackbar();
+  const { userInfo } = useAuth();
 
   // Fetch role enum values
   const { values: roleValues } = useEnums('roleInTeamProject');
@@ -75,18 +82,27 @@ export const ContactForm: React.FC<ContactFormProps> = ({
   const { values: relationshipTypeMap = {} } = useEnumsMap('personRelationshipType');
 
   // State for appointment instance fields
-  const [appointmentInstanceFields, setAppointmentInstanceFields] = useState<AppointmentInstanceFields>({
-    hasMetGurudevRecently: null,
-    isAttendingCourse: null,
-    courseAttending: '',
-    courseAttendingOther: '',
-    isDoingSeva: null,
-    sevaType: '',
-    roleInTeamProject: '',
-    roleInTeamProjectOther: ''
-  });
+  const [appointmentInstanceFields, setAppointmentInstanceFields] = useState<AppointmentInstanceFields>(
+    initialAppointmentInstanceData || {
+      hasMetGurudevRecently: null,
+      isAttendingCourse: null,
+      courseAttending: '',
+      courseAttendingOther: '',
+      isDoingSeva: null,
+      sevaType: '',
+      roleInTeamProject: '',
+      roleInTeamProjectOther: ''
+    }
+  );
 
+  // State for contact warnings
+  const [contactWarnings, setContactWarnings] = useState<SystemWarningCode[]>([]);
+  
+  // Get warning messages from backend
+  const { values: warningMessages = {} } = useWarningMessages();
 
+  // State for email validation alert
+  const [showEmailAlert, setShowEmailAlert] = useState(false);
 
   // Fetch request type map from the API
   const { data: requestTypeMap = {} } = useQuery<Record<string, string>>({
@@ -119,7 +135,6 @@ export const ContactForm: React.FC<ContactFormProps> = ({
 
   // Update form values when contact prop changes (for edit mode)
   useEffect(() => {
-
     console.log('contact to edit', contact);
 
     if (mode === 'edit' && contact) {
@@ -142,6 +157,13 @@ export const ContactForm: React.FC<ContactFormProps> = ({
       });
     }
   }, [contact, mode, contactForm]);
+
+  // Update appointment instance fields when initialAppointmentInstanceData changes
+  useEffect(() => {
+    if (initialAppointmentInstanceData) {
+      setAppointmentInstanceFields(initialAppointmentInstanceData);
+    }
+  }, [initialAppointmentInstanceData]);
 
   // Helper function to update appointment instance field
   const updateAppointmentInstanceField = (field: keyof AppointmentInstanceFields, value: any) => {
@@ -380,12 +402,23 @@ export const ContactForm: React.FC<ContactFormProps> = ({
   };
 
   // Create mutation
-  const createContactMutation = useMutation<UserContact, Error, UserContactCreateData>({
+  const createContactMutation = useMutation<UserContactCreateResponse, Error, UserContactCreateData>({
     mutationFn: async (data: UserContactCreateData) => {
-      const { data: response } = await api.post<UserContact>('/contacts', data);
+      const { data: response } = await api.post<UserContactCreateResponse>('/contacts', data);
       return response;
     },
-    onSuccess: (newContact) => {
+    onSuccess: (response) => {
+      const newContact = response.contact;
+      
+      // Handle warnings if present
+      if (response.warnings && response.warnings.length > 0) {
+        setContactWarnings(response.warnings);
+        // Show warning messages to user
+        response.warnings.forEach(warning => {
+          enqueueSnackbar(getWarningMessage(warning, warningMessages), { variant: 'warning', autoHideDuration: 8000 });
+        });
+      }
+      
       onSave(newContact, appointmentInstanceFields);
       enqueueSnackbar('Contact created successfully', { variant: 'success' });
     },
@@ -418,6 +451,60 @@ export const ContactForm: React.FC<ContactFormProps> = ({
     }
   });
 
+  // Validate appointment instance fields
+  const validateAppointmentInstanceFields = (): string[] => {
+    const errors: string[] = [];
+    
+    if (!request_type) return errors;
+    
+    // For project/team meetings, only validate role fields
+    if (request_type === requestTypeMap['PROJECT_TEAM_MEETING']) {
+      if (!appointmentInstanceFields.roleInTeamProject) {
+        errors.push("Role in Project/Team is required");
+      }
+      if (appointmentInstanceFields.roleInTeamProject === 'Other' && !appointmentInstanceFields.roleInTeamProjectOther?.trim()) {
+        errors.push("Please specify the role when selecting 'Other'");
+      }
+    } else {
+      // For other request types, validate engagement fields
+      if (appointmentInstanceFields.hasMetGurudevRecently === null) {
+        errors.push("Please answer whether they have met Gurudev in the last 2 weeks");
+      }
+      
+      if (appointmentInstanceFields.isAttendingCourse === null) {
+        errors.push("Please answer whether they are attending a course");
+      }
+      
+      if (appointmentInstanceFields.isAttendingCourse === true) {
+        if (!appointmentInstanceFields.courseAttending) {
+          errors.push("Course type is required when attending a course");
+        }
+        
+        // Check if "Other" is selected for course type
+        const isOtherCourse = (
+          (courseTypeMap && appointmentInstanceFields.courseAttending === courseTypeMap['OTHER']) ||
+          appointmentInstanceFields.courseAttending.toLowerCase() === 'other'
+        );
+        
+        if (isOtherCourse && !appointmentInstanceFields.courseAttendingOther?.trim()) {
+          errors.push("Please specify the course name when selecting 'Other'");
+        }
+      }
+      
+      if (appointmentInstanceFields.isAttendingCourse === false) {
+        if (appointmentInstanceFields.isDoingSeva === null) {
+          errors.push("Please answer whether they are doing seva");
+        }
+        
+        if (appointmentInstanceFields.isDoingSeva === true && !appointmentInstanceFields.sevaType) {
+          errors.push("Please select the type of seva");
+        }
+      }
+    }
+    
+    return errors;
+  };
+
   const handleSave = async () => {
     // Only validate visible fields
     const fieldsToValidate: (keyof UserContactCreateData)[] = [];
@@ -438,6 +525,16 @@ export const ContactForm: React.FC<ContactFormProps> = ({
     if (!isValid) {
       enqueueSnackbar('Please fill in all required fields', { variant: 'error' });
       return;
+    }
+
+    // Validate appointment instance fields when they're visible
+    if (fieldsToShow !== 'contact') {
+      const appointmentErrors = validateAppointmentInstanceFields();
+      if (appointmentErrors.length > 0) {
+        // Show the first error message
+        enqueueSnackbar(appointmentErrors[0], { variant: 'error' });
+        return;
+      }
     }
 
     const formData = contactForm.getValues();
@@ -484,16 +581,26 @@ export const ContactForm: React.FC<ContactFormProps> = ({
                 name="relationship_to_owner"
                 control={contactForm.control}
                 rules={{ required: fieldsToShow !== 'appointment' ? 'Relationship type is required' : false }}
-                render={({ field }) => (
-                  <EnumSelect
-                    enumType="personRelationshipType"
-                    label="Relationship to You"
-                    error={!!contactForm.formState.errors.relationship_to_owner}
-                    helperText={contactForm.formState.errors.relationship_to_owner?.message}
-                    value={field.value}
-                    onChange={field.onChange}
-                    required={fieldsToShow !== 'appointment'}
-                  />
+                render={({ field }: { field: any }) => (
+                  <FormControl fullWidth required={fieldsToShow !== 'appointment'} error={!!contactForm.formState.errors.relationship_to_owner}>
+                    <InputLabel>Relationship to You</InputLabel>
+                    <Select
+                      label="Relationship to You"
+                      value={field.value}
+                      onChange={field.onChange}
+                    >
+                      {Object.entries(relationshipTypeMap).filter(([key, value]) => key !== relationshipTypeMap['SELF'] && key.toLowerCase() !== 'self').map(([key, value]) => (
+                        <MenuItem key={key} value={value}>
+                          {value}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {contactForm.formState.errors.relationship_to_owner && (
+                      <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
+                        {contactForm.formState.errors.relationship_to_owner.message}
+                      </Typography>
+                    )}
+                  </FormControl>
                 )}
               />
             </Grid>
@@ -522,6 +629,19 @@ export const ContactForm: React.FC<ContactFormProps> = ({
               />
             </Grid>
 
+            {/* Email Alert */}
+            {showEmailAlert && (
+              <Grid item xs={12}>
+                <Alert 
+                  severity="warning" 
+                  onClose={() => setShowEmailAlert(false)}
+                  sx={{ mb: 2 }}
+                >
+                  You're entering your own email address for another person. This is recommended only for children or when you manage their communication.
+                </Alert>
+              </Grid>
+            )}
+
             {/* Email */}
             <Grid item xs={12} md={6} lg={4}>
               <TextField
@@ -532,7 +652,15 @@ export const ContactForm: React.FC<ContactFormProps> = ({
                   pattern: fieldsToShow !== 'appointment' ? {
                     value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
                     message: 'Please enter a valid email address'
-                  } : undefined
+                  } : undefined,
+                  onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+                    // Check if the entered email matches the user's email
+                    if (e.target.value && userInfo?.email && e.target.value.toLowerCase() === userInfo.email.toLowerCase()) {
+                      setShowEmailAlert(true);
+                    } else {
+                      setShowEmailAlert(false);
+                    }
+                  }
                 })}
                 error={!!contactForm.formState.errors.email}
                 helperText={contactForm.formState.errors.email?.message}

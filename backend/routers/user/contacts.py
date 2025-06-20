@@ -13,7 +13,7 @@ from dependencies.auth import get_current_user, get_current_user_for_write
 # Import models and schemas
 import models
 import schemas
-from models.enums import PersonRelationshipType
+from models.enums import PersonRelationshipType, SystemWarningCode
 
 # Get logger
 logger = logging.getLogger(__name__)
@@ -21,7 +21,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.post("/contacts/", response_model=schemas.UserContactResponse)
+def generate_contact_warnings(contact_email: str, relationship: PersonRelationshipType, user_email: str) -> List[SystemWarningCode]:
+    """Generate warning codes for contact creation based on email and relationship"""
+    warnings = []
+    
+    if contact_email == user_email and relationship != PersonRelationshipType.SELF:
+        warnings.append(SystemWarningCode.CONTACT_USING_OWN_EMAIL_FOR_NON_SELF)
+    
+    return warnings
+
+
+@router.post("/contacts/", response_model=schemas.UserContactCreateResponse)
 async def create_contact(
     contact: schemas.UserContactCreate,
     current_user: models.User = Depends(get_current_user_for_write),
@@ -39,49 +49,44 @@ async def create_contact(
             contact.contact_user_id = current_user.id
             logger.info(f"Auto-populated contact_user_id for self-contact: {current_user.id}")
 
-        # Check for duplicate email if email is provided
-        if contact.email:
-            existing_contact = db.query(models.UserContact).filter(
+        # Check for existing self-contact with user's own email (for upsert logic)
+        if contact.email and contact.email == current_user.email and contact.relationship_to_owner == models.PersonRelationshipType.SELF:
+            existing_self_contact = db.query(models.UserContact).filter(
                 models.UserContact.owner_user_id == current_user.id,
-                models.UserContact.email == contact.email
+                models.UserContact.email == contact.email,
+                models.UserContact.relationship_to_owner == models.PersonRelationshipType.SELF
             ).first()
             
-            if existing_contact:
-                # For self-contacts, update and return the existing one instead of error
-                if (contact.relationship_to_owner == models.PersonRelationshipType.SELF or
-                    existing_contact.relationship_to_owner == models.PersonRelationshipType.SELF):
-                    logger.info(f"Found existing self-contact (ID: {existing_contact.id}), updating it")
-                    
-                    # Update existing self-contact with missing data
-                    existing_contact.relationship_to_owner = models.PersonRelationshipType.SELF
-                    existing_contact.updated_by = current_user.id
-                    existing_contact.updated_at = datetime.utcnow()
-                    
-                    # Populate contact_user_id if it's NULL for self-contacts
-                    if existing_contact.contact_user_id is None and contact.email == current_user.email:
-                        existing_contact.contact_user_id = current_user.id
-                        logger.info(f"Populated missing contact_user_id for existing self-contact: {current_user.id}")
-                    
-                    # Update other fields if they're empty
-                    if not existing_contact.first_name or existing_contact.first_name == "Self":
-                        existing_contact.first_name = contact.first_name
-                    if not existing_contact.last_name or existing_contact.last_name == "Self":
-                        existing_contact.last_name = contact.last_name
-                    if not existing_contact.notes:
-                        existing_contact.notes = contact.notes
-                    
-                    db.commit()
-                    db.refresh(existing_contact)
-                    
-                    # Calculate total operation time
-                    total_time = (datetime.utcnow() - start_time).total_seconds() * 1000
-                    logger.info(f"Self-contact updated successfully (ID: {existing_contact.id}) in {total_time:.2f}ms")
-                    
-                    return existing_contact
+            if existing_self_contact:
+                logger.info(f"Found existing self-contact (ID: {existing_self_contact.id}), updating it")
                 
-                raise HTTPException(
-                    status_code=409, 
-                    detail=f"Contact with email '{contact.email}' already exists"
+                # Update existing self-contact with missing data
+                existing_self_contact.updated_by = current_user.id
+                existing_self_contact.updated_at = datetime.utcnow()
+                
+                # Populate contact_user_id if it's NULL for self-contacts
+                if existing_self_contact.contact_user_id is None:
+                    existing_self_contact.contact_user_id = current_user.id
+                    logger.info(f"Populated missing contact_user_id for existing self-contact: {current_user.id}")
+                
+                # Update other fields if they're empty
+                if not existing_self_contact.first_name or existing_self_contact.first_name == "Self":
+                    existing_self_contact.first_name = contact.first_name
+                if not existing_self_contact.last_name or existing_self_contact.last_name == "Self":
+                    existing_self_contact.last_name = contact.last_name
+                if not existing_self_contact.notes:
+                    existing_self_contact.notes = contact.notes
+                
+                db.commit()
+                db.refresh(existing_self_contact)
+                
+                # Calculate total operation time
+                total_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+                logger.info(f"Self-contact updated successfully (ID: {existing_self_contact.id}) in {total_time:.2f}ms")
+                
+                return schemas.UserContactCreateResponse(
+                    contact=existing_self_contact,
+                    warnings=[]
                 )
         
         # Create the contact
@@ -111,7 +116,22 @@ async def create_contact(
             joinedload(models.UserContact.contact_user)
         ).filter(models.UserContact.id == db_contact.id).first()
         
-        return db_contact
+        # Generate warnings for the created contact
+        warnings = []
+        if contact.email and contact.relationship_to_owner:
+            warnings = generate_contact_warnings(
+                contact.email, 
+                contact.relationship_to_owner, 
+                current_user.email
+            )
+        
+        # Convert to response schema
+        contact_response = schemas.UserContactResponse.from_orm(db_contact)
+        
+        return schemas.UserContactCreateResponse(
+            contact=contact_response,
+            warnings=warnings
+        )
         
     except HTTPException:
         db.rollback()

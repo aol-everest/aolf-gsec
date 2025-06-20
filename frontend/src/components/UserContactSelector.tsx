@@ -10,6 +10,7 @@ import {
   Divider,
   Autocomplete,
   TextField,
+  Chip,
 } from '@mui/material';
 import { UserContact } from '../models/types';
 import { PrimaryButton } from './PrimaryButton';
@@ -122,20 +123,41 @@ export const UserContactSelector: React.FC<UserContactSelectorProps> = ({
             const displayName = isSelfContact ? selfDisplayName : `${contact.first_name} ${contact.last_name}`;
             const relationship = contact.relationship_to_owner;
             
+            // Check for duplicate emails in available contacts to show distinction
+            const hasDuplicateEmail = contact.email && availableContacts.filter(c => 
+              c.email && c.email.toLowerCase().trim() === contact.email!.toLowerCase().trim()
+            ).length > 1;
+            
             return (
               <Box component="li" {...props} key={contact.id}>
                 <Box sx={{ width: '100%' }}>
-                  <Typography variant="body2">
-                    {displayName}
-                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="body2">
+                      {displayName}
+                    </Typography>
+                    {hasDuplicateEmail && (
+                      <Chip 
+                        label="Shared Email" 
+                        size="small" 
+                        variant="outlined" 
+                        color="info"
+                        sx={{ fontSize: '0.7rem', height: '20px' }}
+                      />
+                    )}
+                  </Box>
                   {relationship && !isSelfContact && (
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.25 }}>
-                      {relationship}
+                      Relationship: {relationship}
                     </Typography>
                   )}
                   {contact.email && (
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.25 }}>
-                      {contact.email}
+                      Email: {contact.email}
+                    </Typography>
+                  )}
+                  {contact.phone && (
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.25 }}>
+                      Phone: {contact.phone}
                     </Typography>
                   )}
                 </Box>

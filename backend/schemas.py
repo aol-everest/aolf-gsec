@@ -22,6 +22,8 @@ from models.enums import (
     AOLTeacherStatus,
     AOLProgramType,
     AOLAffiliation,
+    SystemWarningCode,
+    SystemErrorCode,
 )
 from enum import Enum
 import json
@@ -1524,6 +1526,7 @@ class UserContactResponse(UserContactBase):
 
     class Config:
         orm_mode = True
+        from_attributes = True
         json_encoders = {
             datetime: lambda v: v.isoformat(),
             date: lambda v: v.strftime("%Y-%m-%d")
@@ -1544,6 +1547,14 @@ class UserContactSearchResponse(BaseModel):
     contacts: List[UserContactResponse]
     total_results: int
     search_query: str
+
+class UserContactCreateResponse(BaseModel):
+    """Schema for contact creation responses with optional warning codes"""
+    contact: UserContactResponse
+    warnings: Optional[List[SystemWarningCode]] = None
+
+    class Config:
+        orm_mode = True
 
 class BulkAppointmentUpdate(BaseModel):
     """Schema for bulk appointment status updates"""

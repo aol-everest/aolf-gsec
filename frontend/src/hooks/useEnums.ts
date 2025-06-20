@@ -7,7 +7,7 @@ import { useApi } from './useApi';
 export type EnumType = 'userRole' | 'appointmentStatus' | 'appointmentSubStatus' | 
   'appointmentType' | 'appointmentTimeOfDay' | 'honorificTitle' | 'primaryDomain' | 
   'relationshipType' | 'personRelationshipType' | 'attachmentType' | 'accessLevel' | 'entityType' |
-  'courseType' | 'sevaType' | 'roleInTeamProject';
+  'courseType' | 'sevaType' | 'roleInTeamProject' | 'systemWarningCodeMessages';
 
 // Map enum types to their endpoint paths
 const enumEndpoints: Record<EnumType, string> = {
@@ -25,7 +25,8 @@ const enumEndpoints: Record<EnumType, string> = {
   entityType: '/admin/entity-type-options',
   courseType: '/user-contacts/course-type-options',
   sevaType: '/user-contacts/seva-type-options',
-  roleInTeamProject: '/appointments/role-in-team-project-options'
+  roleInTeamProject: '/appointments/role-in-team-project-options',
+  systemWarningCodeMessages: '/system/warning-code-messages-map'
 };
 
 /**
@@ -78,7 +79,8 @@ const enumMapEndpoints: Record<EnumType, string> = {
   entityType: '/admin/entity-type-options-map',
   courseType: '/user-contacts/course-type-options-map',
   sevaType: '/user-contacts/seva-type-options-map',
-  roleInTeamProject: '/appointments/role-in-team-project-options-map'
+  roleInTeamProject: '/appointments/role-in-team-project-options-map',
+  systemWarningCodeMessages: '/system/warning-code-messages-map'
 };
 
 export const useEnumsMap = (enumType: EnumType) => {

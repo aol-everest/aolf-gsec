@@ -234,6 +234,15 @@ async def get_attachment_type_map():
     return {att_type.name: att_type.value for att_type in models.AttachmentType}
 
 # =============================================================================
+# SYSTEM WARNING AND ERROR CODE ENDPOINTS
+# =============================================================================
+
+@router.get("/system/warning-code-messages-map")
+async def get_system_warning_code_messages_map():
+    """Get a dictionary mapping of system warning code values to their user-friendly messages"""
+    return {warning.value: warning.message for warning in models.SystemWarningCode}
+
+# =============================================================================
 # USER-RELATED ENUM ENDPOINTS
 # =============================================================================
 

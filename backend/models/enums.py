@@ -545,6 +545,156 @@ class SevaType(str, enum.Enum):
 
 
 # ============================================================================
+# ERROR AND WARNING CODES
+# ============================================================================
+
+class SystemWarningCode(str, enum.Enum):
+    """
+    System-wide warning codes with categorized numeric prefixes:
+    
+    1xxx: Contact/User related warnings
+    2xxx: Appointment related warnings  
+    3xxx: Calendar/Event related warnings
+    4xxx: Authentication/Authorization warnings
+    5xxx: System/General warnings
+    """
+    
+    # 1xxx: Contact/User related warnings
+    CONTACT_USING_OWN_EMAIL_FOR_NON_SELF = "1001"
+    CONTACT_DUPLICATE_EMAIL_DIFFERENT_RELATIONSHIP = "1002"
+    CONTACT_MISSING_REQUIRED_INFO = "1003"
+    
+    # 2xxx: Appointment related warnings (for future use)
+    APPOINTMENT_CAPACITY_NEAR_LIMIT = "2001"
+    APPOINTMENT_DUPLICATE_REQUEST = "2002"
+    
+    # 3xxx: Calendar/Event related warnings (for future use)
+    EVENT_CAPACITY_EXCEEDED = "3001"
+    EVENT_SCHEDULING_CONFLICT = "3002"
+    
+    # 4xxx: Authentication/Authorization warnings (for future use)
+    AUTH_INSUFFICIENT_PERMISSIONS = "4001"
+    AUTH_SESSION_EXPIRING = "4002"
+    
+    # 5xxx: System/General warnings (for future use)
+    SYSTEM_MAINTENANCE_SCHEDULED = "5001"
+    SYSTEM_FEATURE_DEPRECATED = "5002"
+
+    def __str__(self):
+        return self.value
+    
+    @property
+    def message(self) -> str:
+        """Get the user-friendly warning message"""
+        messages = {
+            self.CONTACT_USING_OWN_EMAIL_FOR_NON_SELF: 
+                "You're using your own email for a non-self contact. We recommend using correct emails for other adults and it should be used only in case of children.",
+            self.CONTACT_DUPLICATE_EMAIL_DIFFERENT_RELATIONSHIP:
+                "This email is used for another contact with a different relationship.",
+            self.CONTACT_MISSING_REQUIRED_INFO:
+                "Some required information is missing for this contact.",
+            self.APPOINTMENT_CAPACITY_NEAR_LIMIT:
+                "This appointment is approaching its capacity limit.",
+            self.APPOINTMENT_DUPLICATE_REQUEST:
+                "A similar appointment request may already exist.",
+            self.EVENT_CAPACITY_EXCEEDED:
+                "This event has exceeded its capacity.",
+            self.EVENT_SCHEDULING_CONFLICT:
+                "There is a scheduling conflict with this event.",
+            self.AUTH_INSUFFICIENT_PERMISSIONS:
+                "You don't have sufficient permissions for this action.",
+            self.AUTH_SESSION_EXPIRING:
+                "Your session is about to expire.",
+            self.SYSTEM_MAINTENANCE_SCHEDULED:
+                "System maintenance is scheduled.",
+            self.SYSTEM_FEATURE_DEPRECATED:
+                "This feature is deprecated and will be removed in a future version."
+        }
+        return messages.get(self, f"Unknown warning ({self.value})")
+    
+    @property
+    def category(self) -> str:
+        """Get the category based on the numeric prefix"""
+        prefix = self.value[:1]
+        categories = {
+            "1": "Contact/User",
+            "2": "Appointment", 
+            "3": "Calendar/Event",
+            "4": "Authentication/Authorization",
+            "5": "System/General"
+        }
+        return categories.get(prefix, "Unknown")
+    
+    @property
+    def is_contact_warning(self) -> bool:
+        """Check if this is a contact-related warning"""
+        return self.value.startswith("1")
+    
+    @property
+    def is_appointment_warning(self) -> bool:
+        """Check if this is an appointment-related warning"""
+        return self.value.startswith("2")
+    
+    @property
+    def is_calendar_warning(self) -> bool:
+        """Check if this is a calendar-related warning"""
+        return self.value.startswith("3")
+
+
+class SystemErrorCode(str, enum.Enum):
+    """
+    System-wide error codes with categorized numeric prefixes:
+    
+    1xxx: Contact/User related errors
+    2xxx: Appointment related errors  
+    3xxx: Calendar/Event related errors
+    4xxx: Authentication/Authorization errors
+    5xxx: System/General errors
+    """
+    
+    # 1xxx: Contact/User related errors
+    CONTACT_NOT_FOUND = "1001"
+    CONTACT_CREATION_FAILED = "1002"
+    CONTACT_VALIDATION_FAILED = "1003"
+    
+    # 2xxx: Appointment related errors (for future use)
+    APPOINTMENT_NOT_FOUND = "2001"
+    APPOINTMENT_CREATION_FAILED = "2002"
+    APPOINTMENT_CAPACITY_EXCEEDED = "2003"
+    
+    # 3xxx: Calendar/Event related errors (for future use)
+    EVENT_NOT_FOUND = "3001"
+    EVENT_CREATION_FAILED = "3002"
+    EVENT_SCHEDULING_CONFLICT = "3003"
+    
+    # 4xxx: Authentication/Authorization errors (for future use)
+    AUTH_UNAUTHORIZED = "4001"
+    AUTH_FORBIDDEN = "4002"
+    AUTH_TOKEN_INVALID = "4003"
+    
+    # 5xxx: System/General errors (for future use)
+    SYSTEM_DATABASE_ERROR = "5001"
+    SYSTEM_EXTERNAL_SERVICE_ERROR = "5002"
+    SYSTEM_VALIDATION_ERROR = "5003"
+
+    def __str__(self):
+        return self.value
+    
+    @property
+    def category(self) -> str:
+        """Get the category based on the numeric prefix"""
+        prefix = self.value[:1]
+        categories = {
+            "1": "Contact/User",
+            "2": "Appointment", 
+            "3": "Calendar/Event",
+            "4": "Authentication/Authorization",
+            "5": "System/General"
+        }
+        return categories.get(prefix, "Unknown")
+
+
+# ============================================================================
 # MAPPING DATA
 # ============================================================================
 

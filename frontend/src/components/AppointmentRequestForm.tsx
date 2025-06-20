@@ -47,7 +47,7 @@ import { useMediaQuery } from '@mui/material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../hooks/useApi';
 import { useSnackbar } from 'notistack';
-import { Location, Dignitary, Appointment, RequestTypeConfig, PersonalAttendee, UserContact, UserContactCreateData, UserContactUpdateData, UserContactListResponse } from '../models/types';
+import { Location, Dignitary, Appointment, RequestTypeConfig, PersonalAttendee, UserContact, UserContactCreateData, UserContactUpdateData, UserContactListResponse, SystemWarningCode, UserContactCreateResponse } from '../models/types';
 import { EnumSelect } from './EnumSelect';
 import { useEnums } from '../hooks/useEnums';
 
@@ -96,6 +96,7 @@ import { ContactForm } from './ContactForm';
 import { AppointmentContactFields } from './AppointmentContactFields';
 import { ExistingContactSelector } from './ExistingContactSelector';
 import { UserContactSelector } from './UserContactSelector';
+import { useWarningMessages, getWarningMessage, getWarningMessages } from '../utils/warningUtils';
 
 import { SelectedDignitary as UserSelectedDignitary } from './selects/GenericDignitarySelector';
 import { SelectableChipGroup } from './SelectableChipGroup';
@@ -353,6 +354,12 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
   
   // State for self-attendance feature
   const [isUserAttending, setIsUserAttending] = useState(true);  // Changed to default to true
+  
+  // State for contact warnings
+  const [contactWarnings, setContactWarnings] = useState<SystemWarningCode[]>([]);
+  
+  // Get warning messages from backend
+  const { values: warningMessages = {} } = useWarningMessages();
 
   
   // These state variables are no longer needed as they're handled by UserDignitarySelector
@@ -604,12 +611,24 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
   // These mutations are no longer needed as they're handled by UserDignitarySelector
 
   // Mutation for creating new user contact
-  const createUserContactMutation = useMutation<UserContact, Error, UserContactCreateData>({
+  const createUserContactMutation = useMutation<UserContactCreateResponse, Error, UserContactCreateData>({
     mutationFn: async (data: UserContactCreateData) => {
-      const { data: response } = await api.post<UserContact>('/contacts/', data);
+      const { data: response } = await api.post<UserContactCreateResponse>('/contacts/', data);
       return response;
     },
-    onSuccess: (newContact) => {
+    onSuccess: (response) => {
+      const newContact = response.contact;
+      
+      // Handle warnings if present
+      if (response.warnings && response.warnings.length > 0) {
+        setContactWarnings(response.warnings);
+        // Show warning messages to user
+        const warningTexts = getWarningMessages(response.warnings, warningMessages);
+        warningTexts.forEach(message => {
+          enqueueSnackbar(message, { variant: 'warning', autoHideDuration: 8000 });
+        });
+      }
+      
       // Update the contacts list with the new contact
       setUserContacts(prev => [...prev, newContact]);
       
@@ -824,29 +843,20 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
   };
 
   // Email validation helper function
-  const validateEmailForDuplicates = (email: string, excludeContactId?: number): string[] => {
+  // Updated validation function - now focuses on required fields, not email duplicates
+  const validateContactForm = (contactData: UserContactCreateData): string[] => {
     const warnings: string[] = [];
     
-    if (!email || !email.trim()) {
-      return warnings;
+    if (!contactData.first_name || !contactData.first_name.trim()) {
+      warnings.push("First name is required");
     }
     
-    const normalizedEmail = email.toLowerCase().trim();
-    const userEmail = userInfo?.email?.toLowerCase().trim();
-    
-    // Check if email matches user's email
-    if (normalizedEmail === userEmail) {
-      warnings.push("This email matches your account email. We recommend entering a valid email for all adults.");
+    if (!contactData.last_name || !contactData.last_name.trim()) {
+      warnings.push("Last name is required");
     }
     
-    // Check for duplicates in selected contacts
-    const duplicateContacts = selectedUserContacts.filter(contact => 
-      contact.id !== excludeContactId && 
-      contact.email?.toLowerCase().trim() === normalizedEmail
-    );
-    
-    if (duplicateContacts.length > 0) {
-      warnings.push("This email is already used by another contact in this appointment.");
+    if (!contactData.relationship_to_owner) {
+      warnings.push("Relationship to you is required");
     }
     
     return warnings;
@@ -879,8 +889,8 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
         // Note: contact_user_id will be populated by the backend for self-contacts
       };
 
-      const newSelfContact = await createUserContactMutation.mutateAsync(selfContactData);
-      return newSelfContact;
+      const response = await createUserContactMutation.mutateAsync(selfContactData);
+      return response.contact;
     } catch (error: any) {
       // Handle 409 conflict gracefully
       if (error.response?.status === 409) {
@@ -979,8 +989,8 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
 
   const createAndAddContact = async (contactData: UserContactCreateData) => {
     try {
-      const newContact = await createUserContactMutation.mutateAsync(contactData);
-      addContactToList(newContact);
+      const response = await createUserContactMutation.mutateAsync(contactData);
+      addContactToList(response.contact);
     } catch (error) {
       console.error('Error creating contact:', error);
     }
@@ -2042,6 +2052,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                       formData={{
                         ...form.getValues()
                       }}
+                      initialAppointmentInstanceData={undefined}
                       onSave={(contact, appointmentInstanceData) => {
                         addContactToList(contact);
                         
@@ -2083,9 +2094,34 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                       formData={{
                         ...form.getValues()
                       }}
+                      initialAppointmentInstanceData={contactAppointmentInstanceFields[pendingContactForAppointmentInstance.id]}
                       onSave={handleAppointmentInstanceComplete}
                       onCancel={handleContactSelectionCancel}
                     />
+                  )}
+                  
+                  {/* Display contact warnings if any */}
+                  {contactWarnings.length > 0 && (
+                    <Grid item xs={12}>
+                      <Paper 
+                        elevation={1} 
+                        sx={{ 
+                          p: 2, 
+                          bgcolor: alpha(theme.palette.warning.light, 0.1),
+                          border: '1px solid',
+                          borderColor: alpha(theme.palette.warning.main, 0.3),
+                        }}
+                      >
+                        <Typography variant="subtitle2" color="warning.dark" gutterBottom>
+                          Contact Warnings
+                        </Typography>
+                          {contactWarnings.map((warning, index) => (
+                            <Typography key={index} variant="body2" color="warning.dark" sx={{ mb: 1 }}>
+                             • {getWarningMessage(warning, warningMessages)}
+                            </Typography>
+                          ))}
+                      </Paper>
+                    </Grid>
                   )}
 
                 </>
@@ -3000,6 +3036,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
             formData={{
               ...form.getValues()
             }}
+            initialAppointmentInstanceData={editingContact ? contactAppointmentInstanceFields[editingContact.id] : undefined}
             onSave={(contact, appointmentInstanceData) => {
               handleContactDialogSuccess(contact);
               

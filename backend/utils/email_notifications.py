@@ -593,6 +593,62 @@ def get_appointment_contacts_with_emails(db: Session, appointment: Appointment) 
     
     return filtered_contacts
 
+def get_consolidated_email_recipients(db: Session, appointment: Appointment) -> Dict[str, List[UserContact]]:
+    """
+    Get appointment contacts consolidated by email address with smart filtering.
+    
+    Returns:
+        Dict mapping email addresses to lists of contacts sharing that email
+        
+    Filtering Rules:
+    - Excludes emails where user's own email is used for non-self relationships
+    - Groups multiple contacts with same email together
+    """
+    if not hasattr(appointment, 'appointment_contacts') or not appointment.appointment_contacts:
+        return {}
+    
+    contact_ids = [ac.contact_id for ac in appointment.appointment_contacts]
+    if not contact_ids:
+        return {}
+    
+    # Get all contacts with emails (excluding SELF contacts)
+    contacts = db.query(UserContact).filter(
+        UserContact.id.in_(contact_ids),
+        UserContact.email.isnot(None),
+        UserContact.email != '',
+        UserContact.relationship_to_owner != PersonRelationshipType.SELF
+    ).all()
+    
+    # Additional filter for contacts with SELF as name (fallback check)
+    filtered_contacts = []
+    for contact in contacts:
+        if not (contact.first_name == PersonRelationshipType.SELF and contact.last_name == PersonRelationshipType.SELF):
+            filtered_contacts.append(contact)
+    
+    if not filtered_contacts:
+        return {}
+    
+    # Get the requester's email for filtering
+    requester_email = appointment.requester.email if appointment.requester else None
+    
+    # Group contacts by email address
+    email_groups = {}
+    for contact in filtered_contacts:
+        email = contact.email.lower().strip()  # Normalize email
+        
+        # Skip if this contact uses the requester's email for non-self relationship
+        if (requester_email and 
+            email == requester_email.lower().strip() and 
+            contact.relationship_to_owner != PersonRelationshipType.SELF):
+            logger.info(f"Skipping email to {email} - user's own email used for non-self contact ({contact.first_name} {contact.last_name})")
+            continue
+        
+        if email not in email_groups:
+            email_groups[email] = []
+        email_groups[email].append(contact)
+    
+    return email_groups
+
 def should_notify_contacts_for_trigger(trigger_type: EmailTrigger) -> bool:
     """Check if contact notifications are enabled for a specific trigger type."""
     if not ENABLE_CONTACT_NOTIFICATIONS:
@@ -623,18 +679,18 @@ def notify_appointment_contacts(
     old_data: Dict[str, Any] = None,
     new_data: Dict[str, Any] = None
 ):
-    """Send notifications to appointment contacts for specific trigger types."""
+    """Send consolidated notifications to appointment contacts for specific trigger types."""
     
     # Check if notifications are enabled for this trigger type
     if not should_notify_contacts_for_trigger(trigger_type):
         logger.debug(f"Contact notifications disabled for trigger {trigger_type.value}")
         return
     
-    # Get contacts with email addresses (excluding SELF contacts)
-    contacts = get_appointment_contacts_with_emails(db, appointment)
+    # Get consolidated email recipients (grouped by email address)
+    email_groups = get_consolidated_email_recipients(db, appointment)
     
-    if not contacts:
-        logger.debug(f"No contacts with emails found for appointment {appointment.id}")
+    if not email_groups:
+        logger.debug(f"No valid email recipients found for appointment {appointment.id}")
         return
     
     # Prepare base context
@@ -651,22 +707,47 @@ def notify_appointment_contacts(
             'new_data': new_data
         })
     
-    # Send notification to each contact
-    for contact in contacts:
+    # Send one consolidated email per email address
+    for email_address, contacts in email_groups.items():
         try:
-            # Create a temporary recipient object for the contact
-            class ContactRecipient:
-                def __init__(self, contact_obj):
-                    self.email = contact_obj.email
-                    self.first_name = contact_obj.first_name or 'Contact'
+            # Create recipient names list for this email address
+            recipient_names = []
+            primary_contact = contacts[0]  # Use first contact as primary
+            
+            for contact in contacts:
+                name = f"{contact.first_name} {contact.last_name}".strip()
+                if name:
+                    recipient_names.append(name)
+                else:
+                    recipient_names.append("Contact")
+            
+            # Create a consolidated recipient object
+            class ConsolidatedRecipient:
+                def __init__(self, email_addr, names_list, primary_contact_obj):
+                    self.email = email_addr
+                    self.first_name = names_list[0] if names_list else 'Contact'
                     self.role = UserRole.GENERAL
                     self.email_notification_preferences = {"appointment_created": True}
+                    self.all_names = names_list
+                    self.is_consolidated = len(names_list) > 1
             
-            recipient = ContactRecipient(contact)
+            recipient = ConsolidatedRecipient(email_address, recipient_names, primary_contact)
             
-            # Update context with contact-specific information
+            # Update context with consolidated contact information
             contact_context = context.copy()
-            contact_context['user_name'] = recipient.first_name
+            
+            if recipient.is_consolidated:
+                # Multiple contacts with same email - list all names
+                names_display = ", ".join(recipient_names)
+                contact_context['user_name'] = names_display
+                contact_context['is_consolidated_email'] = True
+                contact_context['contact_names'] = recipient_names
+                logger.info(f"Sending consolidated email to {email_address} for contacts: {names_display}")
+            else:
+                # Single contact
+                contact_context['user_name'] = recipient.first_name
+                contact_context['is_consolidated_email'] = False
+                contact_context['contact_names'] = recipient_names
             
             send_notification_email(
                 db=db,
@@ -676,10 +757,10 @@ def notify_appointment_contacts(
                 appointment_id=appointment.id
             )
             
-            logger.info(f"Contact notification ({trigger_type.value}) sent to {contact.email} for appointment {appointment.id}")
+            logger.info(f"Contact notification ({trigger_type.value}) sent to {email_address} for appointment {appointment.id}")
             
         except Exception as e:
-            logger.error(f"Error sending contact notification to {contact.email}: {str(e)}", exc_info=True)
+            logger.error(f"Error sending consolidated contact notification to {email_address}: {str(e)}", exc_info=True)
             continue
 
 def get_appointment_summary(appointment: Appointment) -> str:

@@ -55,6 +55,10 @@ from .enums import (
     # Attachment-related enums
     AttachmentType,
     
+    # Error and warning codes
+    SystemWarningCode,
+    SystemErrorCode,
+    
     # Status mapping and validation data
     STATUS_SUBSTATUS_MAPPING,
     VALID_STATUS_OPTIONS,
@@ -108,4 +112,6 @@ __all__ = [
     'CourseType',
     'SevaType',
     'AttendeeType',
+    'SystemWarningCode',
+    'SystemErrorCode',
 ]

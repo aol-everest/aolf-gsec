@@ -350,6 +350,31 @@ export interface UserContactCreateData {
   contact_user_id?: number;
 }
 
+// System warning and error codes - matching backend enum structure
+export enum SystemWarningCode {
+  // 1xxx: Contact/User related warnings
+  CONTACT_USING_OWN_EMAIL_FOR_NON_SELF = "1001",
+  CONTACT_DUPLICATE_EMAIL_DIFFERENT_RELATIONSHIP = "1002",
+  CONTACT_MISSING_REQUIRED_INFO = "1003",
+  // 2xxx: Appointment related warnings (for future use)
+  APPOINTMENT_CAPACITY_NEAR_LIMIT = "2001",
+  APPOINTMENT_DUPLICATE_REQUEST = "2002",
+  // 3xxx: Calendar/Event related warnings (for future use)
+  EVENT_CAPACITY_EXCEEDED = "3001",
+  EVENT_SCHEDULING_CONFLICT = "3002",
+  // 4xxx: Authentication/Authorization warnings (for future use)
+  AUTH_INSUFFICIENT_PERMISSIONS = "4001",
+  AUTH_SESSION_EXPIRING = "4002",
+  // 5xxx: System/General warnings (for future use)
+  SYSTEM_MAINTENANCE_SCHEDULED = "5001",
+  SYSTEM_FEATURE_DEPRECATED = "5002"
+}
+
+export interface UserContactCreateResponse {
+  contact: UserContact;
+  warnings?: SystemWarningCode[];
+}
+
 export interface UserContactUpdateData {
   first_name?: string;
   last_name?: string;
