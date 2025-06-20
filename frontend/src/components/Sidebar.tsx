@@ -125,11 +125,15 @@ export default function Sidebar({ drawerWidth, isOpen, handleDrawerToggle }: Sid
         </Typography>
       </Toolbar>
       <List>
-        {sidebarItems.map((item) => {
+        {sidebarItems.map((item, index) => {
           if (item.roles && !item.roles.includes(userRole || '')) {
             return null;
           }
-          return addSidebarMenuItem(item.label, item.icon, item.path);
+          return (
+            <React.Fragment key={item.path || item.label || index}>
+              {addSidebarMenuItem(item.label, item.icon, item.path)}
+            </React.Fragment>
+          );
         })}
       </List>
     </Box>
