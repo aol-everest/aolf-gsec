@@ -4,12 +4,7 @@ export type HonorificTitle = string;
 export type PrimaryDomain = string;
 
 export interface AppointmentFormData {
-  // POC Information (auto-populated for logged-in POCs)
-  pocFirstName: string;
-  pocLastName: string;
-  pocEmail: string;
-  pocPhone: string;
-  pocRelationshipType: RelationshipType;
+  // POC Information is now sourced from logged-in user directly
 
   // Dignitary Selection
   isExistingDignitary: boolean;

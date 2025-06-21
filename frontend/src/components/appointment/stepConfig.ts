@@ -5,9 +5,6 @@ export interface StepData {
   profileData?: any;
   
   // Step 1: Initial Information
-  pocFirstName?: string;
-  pocLastName?: string;
-  pocEmail?: string;
   requestType?: string;
   numberOfAttendees?: number;
   

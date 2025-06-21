@@ -39,7 +39,7 @@ import {
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import LocationAutocomplete from './LocationAutocomplete';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { formatHonorificTitle } from '../utils/formattingUtils';
 import NumberInput from './NumberInput';
 import { useTheme } from '@mui/material/styles';
@@ -131,9 +131,6 @@ interface Country {
 
 // Main form data interface combining all steps
 interface AppointmentRequestFormData {
-  pocFirstName: string;
-  pocLastName: string;
-  pocEmail: string;
   requestType: string;
   numberOfAttendees: number;
   purpose: string;
@@ -473,9 +470,6 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
   // A single, unified form for the entire appointment request wizard
   const form = useForm<AppointmentRequestFormData>({
     defaultValues: {
-      pocFirstName: userInfo?.first_name || '',
-      pocLastName: userInfo?.last_name || '',
-      pocEmail: userInfo?.email || '',
       requestType: 'Personal', // User has set this back
       numberOfAttendees: 1,
       purpose: '',
@@ -546,14 +540,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
 
   // These functions are no longer needed as they're handled by UserDignitarySelector
 
-  // Update form values when userInfo changes
-  useEffect(() => {
-    if (userInfo) {
-      form.setValue('pocFirstName', userInfo.first_name || '');
-      form.setValue('pocLastName', userInfo.last_name || '');
-      form.setValue('pocEmail', userInfo.email || '');
-    }
-  }, [userInfo, form]);
+
 
   // Set default request type when configs are loaded
   useEffect(() => {
@@ -1111,8 +1098,8 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
         return;
       }
     } else if (activeStep === 0) {
-      // Validate POC form
-      const isValid = await form.trigger(['pocFirstName', 'pocLastName', 'pocEmail', 'requestType']);
+      // Validate request type form
+      const isValid = await form.trigger(['requestType']);
       if (!isValid) {
         // Show error notification
         enqueueSnackbar('Please fill in all required fields', { 
@@ -1122,12 +1109,12 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
         return;
       }
       
-      const pocData = form.getValues();
+      const formData = form.getValues();
       
       // Check for existing appointments for non-dignitary requests
       if (!skipExistingCheck && 
           selectedRequestTypeConfig?.attendee_type !== attendeeTypeMap['DIGNITARY']) {
-        const { hasExisting, count } = hasExistingAppointments(appointmentSummary, pocData.requestType);
+        const { hasExisting, count } = hasExistingAppointments(appointmentSummary, formData.requestType);
         
         if (hasExisting) {
           // Show confirmation dialog
@@ -1364,38 +1351,48 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                 <Typography variant="h6" gutterBottom>
                   Your Information
                 </Typography>
-              </Grid>
-              
-              <Grid item xs={12} md={6} lg={4}>
-                <TextField
-                  fullWidth
-                  label="First Name"
-                  {...form.register('pocFirstName')}
-                  disabled
-                />
-              </Grid>
-              
-              <Grid item xs={12} md={6} lg={4}>
-                <TextField
-                  fullWidth
-                  label="Last Name"
-                  {...form.register('pocLastName')}
-                  disabled
-                />
-              </Grid>
-              
-              <Grid item xs={12} md={6} lg={4}>
-                <TextField
-                  fullWidth
-                  label="Email"
-                  type="email"
-                  {...form.register('pocEmail')}
-                  disabled
-                />
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  If you need to update your information, please do so in the <Link to="/profile" style={{ textDecoration: 'none' }}>profile</Link> page.
+                </Typography>
               </Grid>
               
               <Grid item xs={12}>
-                <Typography variant="h6" gutterBottom>
+                <Grid container spacing={1}>
+                  <Grid item xs={12} md={6} lg={3}>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                        Name
+                      </Typography>
+                      <Typography variant="body1" sx={{ mt: 0.13, minHeight: '24px' }}>
+                        {(userInfo?.first_name || '-') + ' ' + (userInfo?.last_name || '-')}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} md={6} lg={3}>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                        Email
+                      </Typography>
+                      <Typography variant="body1" sx={{ mt: 0.13, minHeight: '24px' }}>
+                        {userInfo?.email || '-'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} md={6} lg={3}>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                        Phone Number
+                      </Typography>
+                      <Typography variant="body1" sx={{ mt: 0.13, minHeight: '24px' }}>
+                        {userInfo?.phone_number || '-'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
+              </Grid>
+              
+              <Grid item xs={12}>
+                <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
                   What type of appointment are you requesting?
                 </Typography>
               </Grid>
