@@ -1,3 +1,14 @@
+
+-- REPEATED INSTRUCTIONS -----------------------------------------------------------------------------------------------------------
+
+We should keep everything else the same.
+
+Do not make any unrelated changes, only what is requested above. If you have any recommendations, ask me before making a change. Ask me if there is any ambiguity or questions.
+
+Please put together a plan. If you have any recommendations, ask me but do not plan to change. Ask me if there is any ambiguity or questions.
+
+------------------------------------------------------------------------------------------------------------------------------------
+
 Can you come up with a plan to add this functionality. Here are the high level things I am thinking:
 Backend: @backend 
 1. Database level changes (new table, etc)
