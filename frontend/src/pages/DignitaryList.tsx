@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Container, Typography, Paper, Box, Checkbox, useMediaQuery } from '@mui/material';
 import { createColumnHelper, ColumnDef } from '@tanstack/react-table';
 import Layout from '../components/Layout';
@@ -32,11 +32,12 @@ interface Dignitary {
 const DignitaryList: React.FC = () => {
   const api = useApi();
   const theme = useTheme();
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Check if we're on mobile
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  const { data: dignitaries = [], isLoading } = useQuery({
+  const { data: dignitaries = [], isLoading, refetch: refetchDignitaries } = useQuery({
     queryKey: ['assigned-dignitaries'],
     queryFn: async () => {
       try {
@@ -48,6 +49,16 @@ const DignitaryList: React.FC = () => {
       }
     },
   });
+
+  // Handle refresh functionality
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refetchDignitaries();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // Create column helper for dignitaries
   const columnHelper = createGenericColumnHelper<Dignitary>();
@@ -61,7 +72,7 @@ const DignitaryList: React.FC = () => {
           {info.getValue()}
         </TableCellComponents.PrimaryText>
       ),
-      size: 200,
+      size: 190,
       minSize: 150,
       maxSize: 250,
     }),
@@ -290,6 +301,8 @@ const DignitaryList: React.FC = () => {
             enableColumnVisibility={true}
             initialColumnVisibility={getColumnVisibility()}
             emptyMessage="No assigned dignitaries found."
+            onRefresh={handleRefresh}
+            refreshing={isRefreshing}
             tableProps={{
               stickyHeader: true,
               size: 'medium',

@@ -31,6 +31,7 @@ const ContactsList: React.FC = () => {
   const theme = useTheme();
   const queryClient = useQueryClient();
   const { enqueueSnackbar } = useSnackbar();
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Check if we're on mobile
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -46,7 +47,7 @@ const ContactsList: React.FC = () => {
   // Fetch relationship type map for display
   const { values: relationshipTypeMap = {} } = useEnumsMap('personRelationshipType');
 
-  const { data: contactsResponse, isLoading } = useQuery({
+  const { data: contactsResponse, isLoading, refetch: refetchContacts } = useQuery({
     queryKey: ['contacts'],
     queryFn: async () => {
       try {
@@ -66,6 +67,16 @@ const ContactsList: React.FC = () => {
       contact.relationship_to_owner !== relationshipTypeMap['SELF']
     );
   }, [contactsResponse?.contacts, relationshipTypeMap]);
+
+  // Handle refresh functionality
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refetchContacts();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // Handle edit contact
   const handleEditContact = (contact: UserContact) => {
@@ -170,9 +181,9 @@ const ContactsList: React.FC = () => {
           </Box>
         );
       },
-      size: 200,
+      size: 165,
       minSize: 150,
-      maxSize: 250,
+      maxSize: 200,
     }),
     columnHelper.accessor('email', {
       header: 'Email',
@@ -237,9 +248,9 @@ const ContactsList: React.FC = () => {
           </Box>
         );
       },
-      size: 120,
+      size: 108,
       minSize: 100,
-      maxSize: 140,
+      maxSize: 130,
     }),
     columnHelper.accessor('appointment_usage_count', {
       header: 'Requests',
@@ -394,6 +405,8 @@ const ContactsList: React.FC = () => {
             initialColumnVisibility={getColumnVisibility()}
             emptyMessage="No contacts found."
             initialSorting={[{ id: 'appointment_usage_count', desc: true }]}
+            onRefresh={handleRefresh}
+            refreshing={isRefreshing}
             tableProps={{
               stickyHeader: true,
               size: 'medium',
