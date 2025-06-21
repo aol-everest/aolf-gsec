@@ -1128,8 +1128,13 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
     } else if (activeStep === 1) {
       // Define fields for step 1 validation based on request type
       const step1Fields: (keyof AppointmentRequestFormData)[] = [
-        'purpose', 'preferredTimeOfDay', 'location_id'
+        'purpose', 'location_id'
       ];
+
+      // Only add preferredTimeOfDay for non-Personal requests
+      if (watchRequestType !== requestTypeMap['PERSONAL']) {
+        step1Fields.push('preferredTimeOfDay');
+      }
 
       if (watchRequestType === requestTypeMap['DIGNITARY']) {
         step1Fields.push('preferredDate');
@@ -1215,12 +1220,16 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
       try {
         let appointmentCreateData: any = {
           purpose: formData.purpose,
-          preferred_time_of_day: formData.preferredTimeOfDay,
           location_id: formData.location_id,
           requester_notes_to_secretariat: formData.requesterNotesToSecretariat,
           status: statusOptions[0],
           request_type: selectedRequestTypeConfig?.request_type || requestTypeMap['DIGNITARY'],
         };
+
+        // Only include preferred_time_of_day for non-Personal requests
+        if (selectedRequestTypeConfig?.request_type !== requestTypeMap['PERSONAL']) {
+          appointmentCreateData.preferred_time_of_day = formData.preferredTimeOfDay;
+        }
 
         // Add meeting goal for project/team meetings
         if (selectedRequestTypeConfig?.request_type === requestTypeMap['PROJECT_TEAM_MEETING']) {
@@ -1584,29 +1593,32 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                 </>
               )}
 
-              <Grid item xs={12} md={6} lg={4} key="time-of-day-grid-item">
-              <FormControl fullWidth required error={!!form.formState.errors.preferredTimeOfDay}>
-                  <InputLabel>Preferred Time of Day</InputLabel>
-                  <Select
-                    label="Preferred Time of Day *"
-                    value={form.watch('preferredTimeOfDay')}
-                    {...form.register('preferredTimeOfDay', { 
-                      required: 'Preferred time of day is required' 
-                    })}
-                  >
-                    {timeOfDayOptions.map((type) => (
-                      <MenuItem key={type} value={type}>
-                        {type}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {form.formState.errors.preferredTimeOfDay && (
-                    <FormHelperText>
-                      {form.formState.errors.preferredTimeOfDay.message}
-                    </FormHelperText>
-                  )}
-                </FormControl>
-              </Grid>
+              {/* Conditionally show Preferred Time of Day - not for Personal appointments */}
+              {watchRequestType !== requestTypeMap['PERSONAL'] && (
+                <Grid item xs={12} md={6} lg={4} key="time-of-day-grid-item">
+                  <FormControl fullWidth required error={!!form.formState.errors.preferredTimeOfDay}>
+                    <InputLabel>Preferred Time of Day</InputLabel>
+                    <Select
+                      label="Preferred Time of Day *"
+                      value={form.watch('preferredTimeOfDay')}
+                      {...form.register('preferredTimeOfDay', { 
+                        required: watchRequestType !== requestTypeMap['PERSONAL'] ? 'Preferred time of day is required' : false
+                      })}
+                    >
+                      {timeOfDayOptions.map((type) => (
+                        <MenuItem key={type} value={type}>
+                          {type}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {form.formState.errors.preferredTimeOfDay && (
+                      <FormHelperText>
+                        {form.formState.errors.preferredTimeOfDay.message}
+                      </FormHelperText>
+                    )}
+                  </FormControl>
+                </Grid>
+              )}
 
               <Grid item xs={12} md={6} lg={4} key="location-selector-grid-item">
                 <FormControl fullWidth required error={!!form.formState.errors.location_id}>
@@ -2294,14 +2306,16 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                 </Grid>
 
                 {/* Time */}
-                <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle2">
-                    Preferred Time of Day
-                  </Typography>
-                  <Typography variant="body1">
-                    {form.getValues('preferredTimeOfDay')}
-                  </Typography>
-                </Grid>
+                {watchRequestType !== requestTypeMap['PERSONAL'] && (
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2">
+                      Preferred Time of Day
+                    </Typography>
+                    <Typography variant="body1">
+                      {form.getValues('preferredTimeOfDay')}
+                    </Typography>
+                  </Grid>
+                )}
 
                 {/* Location */}
                 <Grid item xs={12}>
@@ -2424,7 +2438,7 @@ export const AppointmentRequestForm: React.FC<AppointmentRequestFormProps> = ({
                 }
               </Typography>
             </Grid>
-            {submittedAppointment.preferred_time_of_day && (
+            {submittedAppointment.preferred_time_of_day && selectedRequestTypeConfig?.request_type !== requestTypeMap['PERSONAL'] && (
               <Grid item xs={12}>
                 <Typography variant="body1">
                   <strong>Preferred Time:</strong> {submittedAppointment.preferred_time_of_day}
