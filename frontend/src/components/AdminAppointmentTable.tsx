@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Typography, Box } from '@mui/material';
-import { createColumnHelper, ColumnDef, FilterFn } from '@tanstack/react-table';
+import { createColumnHelper, ColumnDef } from '@tanstack/react-table';
 import { Appointment, AppointmentDignitary, AppointmentContact, StatusMap, SubStatusMap } from '../models/types';
 import { formatDate, formatDateRange } from '../utils/dateUtils';
 import { formatHonorificTitle } from '../utils/formattingUtils';
@@ -20,49 +20,14 @@ interface AdminAppointmentTableProps {
   relationshipTypeMap?: Record<string, string>;
   showAttendeeCount?: boolean;
   enableRowSelection?: boolean;
+  onRefresh?: () => void;
+  refreshing?: boolean;
 }
 
 // Create a column helper for appointments
 const appointmentColumnHelper = createColumnHelper<Appointment>();
 
-// Custom filter function for appointments
-const createAppointmentGlobalFilter = (relationshipTypeMap: Record<string, string> = {}): FilterFn<Appointment> => 
-  (row, columnId, value, addMeta) => {
-    const appointment = row.original;
-    const searchValue = String(value).toLowerCase();
-
-    // Search in basic appointment fields
-    const basicFields = [
-      appointment.id?.toString(),
-      appointment.request_type,
-      appointment.purpose,
-      appointment.status,
-      appointment.location?.name,
-      appointment.location?.city
-    ].filter(Boolean);
-
-    // Search in dignitaries
-    const dignitaryNames = (appointment.appointment_dignitaries || []).map(ad =>
-      `${formatHonorificTitle(ad.dignitary.honorific_title)} ${ad.dignitary.first_name} ${ad.dignitary.last_name}`
-    );
-
-    // Search in contacts with proper self-contact handling
-    const contactNames = (appointment.appointment_contacts || []).map(ac => {
-      const contact = ac.contact;
-      const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
-      const isSelfContact = contact.relationship_to_owner === relationshipTypeMap['SELF'] ||
-        (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName);
-      return isSelfContact ? selfDisplayName : `${contact.first_name} ${contact.last_name}`;
-    });
-
-    const allSearchableText = [
-      ...basicFields,
-      ...dignitaryNames,
-      ...contactNames
-    ].join(' ').toLowerCase();
-
-    return allSearchableText.includes(searchValue);
-  };
+// Hidden columns now provide comprehensive search functionality
 
 // Helper function to get attendees info (simplified for table display)
 const getAttendeesInfo = (appointment: Appointment, relationshipTypeMap: Record<string, string> = {}) => {
@@ -138,12 +103,146 @@ const getDateTimeDisplay = (appointment: Appointment, statusMap: StatusMap, subS
 // Create appointment-specific columns
 const createAppointmentColumns = (
   onEdit: (appointmentId: number) => void,
-  statusMap: StatusMap = {},
-  subStatusMap: SubStatusMap = {},
-  relationshipTypeMap: Record<string, string> = {},
-  showAttendeeCount: boolean = false
+  statusMap: StatusMap,
+  subStatusMap: SubStatusMap,
+  relationshipTypeMap: Record<string, string>,
+  showAttendeeCount: boolean
 ): ColumnDef<Appointment, any>[] => {
   const columns: ColumnDef<Appointment, any>[] = [];
+
+  // Hidden searchable columns for comprehensive search functionality
+  // These columns are permanently hidden but their data is searchable
+  
+  // Searchable requester info
+  columns.push(
+    appointmentColumnHelper.accessor((row) => {
+      const requester = row.requester;
+      if (!requester) return '';
+      return [
+        requester.first_name,
+        requester.last_name,
+        requester.email,
+        requester.phone_number
+      ].filter(Boolean).join(' ');
+    }, {
+      id: 'searchable_requester_info',
+      header: 'Searchable Requester Info',
+      enableHiding: false, // Permanently hidden
+      enableSorting: false,
+    })
+  );
+
+  // Searchable dignitary info
+  columns.push(
+    appointmentColumnHelper.accessor((row) => {
+      const dignitaries = row.appointment_dignitaries || [];
+      return dignitaries.map(ad => {
+        const dig = ad.dignitary;
+        return [
+          dig.honorific_title,
+          dig.first_name,
+          dig.last_name,
+          dig.email,
+          dig.phone,
+          dig.organization,
+          dig.title_in_organization,
+          dig.primary_domain,
+          dig.primary_domain_other,
+          dig.country,
+          dig.state,
+          dig.city
+        ].filter(Boolean).join(' ');
+      }).join(' ');
+    }, {
+      id: 'searchable_dignitary_info',
+      header: 'Searchable Dignitary Info',
+      enableHiding: false, // Permanently hidden
+      enableSorting: false,
+    })
+  );
+
+  // Searchable contact info
+  columns.push(
+    appointmentColumnHelper.accessor((row) => {
+      const contacts = row.appointment_contacts || [];
+      return contacts.map(ac => {
+        const contact = ac.contact;
+        const selfDisplayName = relationshipTypeMap['SELF'] || 'Self';
+        const isSelfContact = contact.relationship_to_owner === relationshipTypeMap['SELF'] ||
+          (contact.first_name === selfDisplayName && contact.last_name === selfDisplayName);
+        
+        return [
+          isSelfContact ? selfDisplayName : contact.first_name,
+          isSelfContact ? '' : contact.last_name,
+          contact.email,
+          contact.phone,
+          contact.relationship_to_owner
+        ].filter(Boolean).join(' ');
+      }).join(' ');
+    }, {
+      id: 'searchable_contact_info',
+      header: 'Searchable Contact Info',
+      enableHiding: false, // Permanently hidden
+      enableSorting: false,
+    })
+  );
+
+  // Searchable notes
+  columns.push(
+    appointmentColumnHelper.accessor((row) => {
+      return [
+        row.requester_notes_to_secretariat,
+        row.secretariat_meeting_notes,
+        row.secretariat_follow_up_actions,
+        row.secretariat_notes_to_requester
+      ].filter(Boolean).join(' ');
+    }, {
+      id: 'searchable_notes',
+      header: 'Searchable Notes',
+      enableHiding: false, // Permanently hidden
+      enableSorting: false,
+    })
+  );
+
+  // Searchable location info
+  columns.push(
+    appointmentColumnHelper.accessor((row) => {
+      const location = row.location;
+      if (!location) return '';
+      return [
+        location.name,
+        location.city,
+        location.state,
+        location.country
+      ].filter(Boolean).join(' ');
+    }, {
+      id: 'searchable_location_info',
+      header: 'Searchable Location Info',
+      enableHiding: false, // Permanently hidden
+      enableSorting: false,
+    })
+  );
+
+  // Searchable appointment instance info
+  columns.push(
+    appointmentColumnHelper.accessor((row) => {
+      const contacts = row.appointment_contacts || [];
+      return contacts.map(ac => {
+        return [
+          ac.course_attending,
+          (ac as any).course_attending_other, // Type assertion for newer field
+          ac.seva_type,
+          ac.role_in_team_project,
+          ac.role_in_team_project_other
+        ].filter(Boolean).join(' ');
+      }).join(' ');
+    }, {
+      id: 'searchable_appointment_instance_info',
+      header: 'Searchable Appointment Instance Info',
+      enableHiding: false, // Permanently hidden
+      enableSorting: false,
+    })
+  );
 
   // ID column
   columns.push(
@@ -152,7 +251,7 @@ const createAppointmentColumns = (
       header: 'ID',
       cell: (info) => (
         <TableCellComponents.PrimaryText>
-          #{info.getValue()}
+          {info.getValue()}
         </TableCellComponents.PrimaryText>
       ),
       ...standardColumnSizes.id,
@@ -359,6 +458,7 @@ const createAppointmentColumns = (
       minSize: 56,
       maxSize: 56,
       enableSorting: false,
+      enableHiding: false, // Prevent Actions column from showing in column visibility menu
     })
   );
 
@@ -375,7 +475,9 @@ export const AdminAppointmentTable: React.FC<AdminAppointmentTableProps> = ({
   subStatusMap = {},
   relationshipTypeMap = {},
   showAttendeeCount = false,
-  enableRowSelection = true
+  enableRowSelection = true,
+  onRefresh,
+  refreshing = false
 }) => {
   // Create appointment-specific columns
   const columns = useMemo(
@@ -383,11 +485,7 @@ export const AdminAppointmentTable: React.FC<AdminAppointmentTableProps> = ({
     [onEdit, statusMap, subStatusMap, relationshipTypeMap, showAttendeeCount]
   );
 
-  // Create appointment-specific global filter
-  const globalFilterFn = useMemo(
-    () => createAppointmentGlobalFilter(relationshipTypeMap),
-    [relationshipTypeMap]
-  );
+  // No longer need custom global filter since hidden columns provide comprehensive search
 
   // Convert selectedRows to the format expected by GenericTable
   const handleRowSelectionChange = (selectedIds: (string | number)[]) => {
@@ -398,18 +496,8 @@ export const AdminAppointmentTable: React.FC<AdminAppointmentTableProps> = ({
     }
   };
 
-  // Define searchable fields for appointments (used when enableSearch is true)
-  const searchableFields: (keyof Appointment)[] = [
-    'id',
-    'purpose',
-    'appointment_type',
-    'status',
-    'sub_status',
-    'preferred_date',
-    'appointment_date',
-    'appointment_time',
-    'location'
-  ];
+  // No need to define searchableFields since we're using hidden columns for comprehensive search
+  // The hidden columns will automatically be included in the search
 
   return (
     <GenericTable
@@ -419,11 +507,24 @@ export const AdminAppointmentTable: React.FC<AdminAppointmentTableProps> = ({
       selectedRows={selectedRows}
       onRowSelectionChange={handleRowSelectionChange}
       enableRowSelection={enableRowSelection}
-      globalFilterFn={globalFilterFn}
       getRowId={(row) => row.id.toString()}
       emptyMessage="No appointments found for the selected filters."
       selectionMessage={`${selectedRows.length} appointment${selectedRows.length === 1 ? '' : 's'} selected`}
-      searchableFields={searchableFields}
+      enableSearch={true}
+      searchPlaceholder="Search appointments..."
+      showSearchResultsCount={true}
+      searchResultsCountLabel="appointments"
+      onRefresh={onRefresh}
+      refreshing={refreshing}
+      enableColumnVisibility={true}
+      initialColumnVisibility={{
+        searchable_requester_info: false,
+        searchable_dignitary_info: false,
+        searchable_contact_info: false,
+        searchable_notes: false,
+        searchable_location_info: false,
+        searchable_appointment_instance_info: false,
+      }}
       initialSorting={[{ id: 'id', desc: true }]}
       tableProps={{
         stickyHeader: true,

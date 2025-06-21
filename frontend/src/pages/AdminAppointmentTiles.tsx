@@ -53,7 +53,7 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 
-import { SearchBox } from '../components/SearchBox';
+
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
@@ -323,7 +323,6 @@ interface FilterState {
   status: string | null;
   locationId: number | null;
   requestType: string | null;
-  searchTerm: string;
   startDate: Date | null;
   endDate: Date | null;
   notMetGurudev: boolean;
@@ -360,7 +359,6 @@ const AdminAppointmentTiles: React.FC = () => {
     status: null,
     locationId: null,
     requestType: null,
-    searchTerm: '',
     startDate: subDays(new Date(), 1),
     endDate: addDays(new Date(), 7),
     notMetGurudev: false,
@@ -496,10 +494,6 @@ const AdminAppointmentTiles: React.FC = () => {
       searchParams.set('requestType', filters.requestType);
     }
     
-    if (filters.searchTerm) {
-      searchParams.set('search', filters.searchTerm);
-    }
-    
     if (filters.startDate) {
       searchParams.set('startDate', filters.startDate.toISOString().split('T')[0]);
     }
@@ -540,7 +534,6 @@ const AdminAppointmentTiles: React.FC = () => {
       status: null,
       locationId: null,
       requestType: null,
-      searchTerm: '',
       startDate: filters.startDate,
       endDate: filters.endDate,
       notMetGurudev: false,
@@ -573,13 +566,7 @@ const AdminAppointmentTiles: React.FC = () => {
       hasAppliedFilters = true;
     }
     
-    // Parse search term
-    const searchParam = searchParams.get('search');
-    if (searchParam) {
-      logger(`Setting search term from URL: ${searchParam}`);
-      newFilters.searchTerm = searchParam;
-      hasAppliedFilters = true;
-    }
+
     
     // Parse date filters
     const startDateParam = searchParams.get('startDate');
@@ -667,7 +654,7 @@ const AdminAppointmentTiles: React.FC = () => {
   });
 
   // Fetch appointments using React Query with proper configuration
-  const { data: appointments = [], isLoading } = useQuery({
+  const { data: appointments = [], isLoading, refetch: refetchAppointments } = useQuery({
     queryKey: ['appointments', filters.startDate, filters.endDate],
     queryFn: async () => {
       try {
@@ -773,50 +760,7 @@ const AdminAppointmentTiles: React.FC = () => {
       appointment.request_type === filters.requestType
     );
     
-    // Apply search filter if search term exists
-    if (filters.searchTerm.trim()) {
-      logger(`Filtering by search term: ${filters.searchTerm}`);
-      const searchLower = filters.searchTerm.toLowerCase().trim();
-      
-      filtered = filtered.filter(appointment => {
-        // Check each searchable field
-        const matchesSearchableFields = searchableFields.some(field => {
-          const value = appointment[field];
-          // Handle different types of fields
-          if (typeof value === 'string') {
-            return value.toLowerCase().includes(searchLower);
-          } else if (typeof value === 'number') {
-            return value.toString().includes(searchLower);
-          } else if (value && typeof value === 'object' && 'name' in value) {
-            // For objects with name property (like location)
-            return (value.name as string).toLowerCase().includes(searchLower);
-          }
-          return false;
-        });
 
-        // Also search in location name if available
-        const locationMatch = appointment.location && 
-          SEARCH_CONFIG.locationFields.some(field => 
-            appointment.location[field]?.toLowerCase().includes(searchLower)
-          );
-
-        // Search in requester information if available
-        const requesterMatch = appointment.requester && 
-          SEARCH_CONFIG.requesterFields.some(field => 
-            appointment.requester?.[field]?.toLowerCase().includes(searchLower)
-          );
-
-        // Search in appointment dignitaries if available
-        const appointmentDignitariesMatch = appointment.appointment_dignitaries && 
-          appointment.appointment_dignitaries.some(ad => 
-            ad.dignitary && SEARCH_CONFIG.dignitaryFields.some(field => 
-              ad.dignitary[field]?.toLowerCase().includes(searchLower)
-            )
-          );
-
-        return matchesSearchableFields || locationMatch || requesterMatch || appointmentDignitariesMatch;
-      });
-    }
     
     // Apply additional filters
     
@@ -975,7 +919,7 @@ const AdminAppointmentTiles: React.FC = () => {
         // ID doesn't exist in filtered results - check if it exists at all
         const existsInAllAppointments = appointments.some(apt => apt.id === appointmentId);
         
-        if (existsInAllAppointments && (filters.status || filters.locationId || filters.searchTerm || filters.startDate || filters.endDate)) {
+        if (existsInAllAppointments && (filters.status || filters.locationId || filters.startDate || filters.endDate)) {
           // It exists but is filtered out - clear filters
           logger(`Clearing filters to show appointment ID ${appointmentId}`);
           // Don't clear status or request type when showing filtered appointment
@@ -985,7 +929,6 @@ const AdminAppointmentTiles: React.FC = () => {
               status: null,
               locationId: null,
               // Keep requestType as it's mandatory
-              searchTerm: '',
               startDate: null,
               endDate: null,
               notMetGurudev: false,
@@ -1142,12 +1085,7 @@ const AdminAppointmentTiles: React.FC = () => {
     setActiveStep(0);
   };
 
-  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    logger(`Setting search term: ${event.target.value}`);
-    isFilteringRef.current = true;
-    setFilters(prev => ({ ...prev, searchTerm: event.target.value }));
-    setActiveStep(0);
-  };
+
 
   // Handle date filter changes
   const handleStartDateChange = (date: Date | null) => {
@@ -1822,36 +1760,7 @@ const AdminAppointmentTiles: React.FC = () => {
               </Tabs>
             </Box>
             
-            {/* Search Bar */}
-            <Box>
-              <SearchBox
-                value={filters.searchTerm}
-                onChange={(value) => {
-                  isFilteringRef.current = true;
-                  setFilters(prev => ({ ...prev, searchTerm: value }));
-                  setActiveStep(0);
-                }}
-                placeholder="Search appointments..."
-                clearButtonVariant="text"
-                clearButtonText="Clear"
-                onClear={() => setFilters(prev => ({ ...prev, searchTerm: '' }))}
-                sx={{ mb: 1 }}
-              />
-              
-              {/* Show search results count when searching */}
-              {filters.searchTerm && (
-                <Box sx={{ mb: 1 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    Found {filteredAppointments.length} {filteredAppointments.length === 1 ? 'appointment' : 'appointments'} 
-                    {filters.status ? ` with status "${filters.status}"` : ''} 
-                    {filters.locationId ? ` at ${locations.find(l => l.id === filters.locationId)?.name || 'selected location'}` : ''}
-                    {filters.startDate ? ` from ${filters.startDate.toLocaleDateString()}` : ''}
-                    {filters.endDate ? ` to ${filters.endDate.toLocaleDateString()}` : ''}
-                    {filters.searchTerm ? ` matching "${filters.searchTerm}"` : ''}
-                  </Typography>
-                </Box>
-              )}
-            </Box>
+
 
             {/* Request Type Filters */}
             <Box>
@@ -2248,6 +2157,8 @@ const AdminAppointmentTiles: React.FC = () => {
                     relationshipTypeMap={relationshipTypeMap}
                     showAttendeeCount={true}
                     enableRowSelection={true}
+                    onRefresh={refetchAppointments}
+                    refreshing={isLoading}
                   />
                 </Box>
               ) : selectedAppointment ? (

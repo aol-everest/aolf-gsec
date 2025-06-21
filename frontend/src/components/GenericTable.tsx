@@ -83,6 +83,8 @@ interface GenericTableProps<T extends Record<string, any>> {
   showHeader?: boolean;
   onRefresh?: () => void;
   refreshing?: boolean;
+  showSearchResultsCount?: boolean;
+  searchResultsCountLabel?: string;
 }
 
 // Create a generic column helper factory
@@ -280,6 +282,8 @@ export function GenericTable<T extends Record<string, any>>({
   showHeader = false,
   onRefresh,
   refreshing = false,
+  showSearchResultsCount = false,
+  searchResultsCountLabel = 'Results',
 }: GenericTableProps<T>) {
   const logger = createDebugLogger('GenericTable');
   const theme = useTheme();
@@ -785,6 +789,13 @@ export function GenericTable<T extends Record<string, any>>({
           />
         )}
       </Box>
+
+      {/* Search results count */}
+      {showSearchResultsCount && enableSearch && searchInput.trim() && (
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 1, ml: 2, fontSize: '12px' }}>
+          {table.getFilteredRowModel().rows.length} {searchResultsCountLabel.toLowerCase()} found
+        </Typography>
+      )}
     </Box>
   );
 }
