@@ -516,6 +516,9 @@ export const AdminAppointmentTable: React.FC<AdminAppointmentTableProps> = ({
       searchResultsCountLabel="appointments"
       onRefresh={onRefresh}
       refreshing={refreshing}
+      enablePagination={true}
+      pageSize={10}
+      pageSizeOptions={[10, 25, 50, 100]}
       enableColumnVisibility={true}
       initialColumnVisibility={{
         searchable_requester_info: false,
