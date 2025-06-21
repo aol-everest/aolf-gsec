@@ -156,9 +156,10 @@ async def list_contacts(
     logger.info(f"Fetching contacts for user {current_user.email} (page: {page}, per_page: {per_page}, sort: {sort_by})")
     
     try:
-        # Build base query
+        # Build base query - exclude deleted contacts
         query = db.query(models.UserContact).filter(
-            models.UserContact.owner_user_id == current_user.id
+            models.UserContact.owner_user_id == current_user.id,
+            models.UserContact.is_deleted == False
         ).options(
             joinedload(models.UserContact.contact_user)
         )
@@ -257,7 +258,8 @@ async def get_contact(
             joinedload(models.UserContact.contact_user)
         ).filter(
             models.UserContact.id == contact_id,
-            models.UserContact.owner_user_id == current_user.id
+            models.UserContact.owner_user_id == current_user.id,
+            models.UserContact.is_deleted == False
         ).first()
         
         if not contact:
@@ -288,7 +290,8 @@ async def update_contact(
         # Find the contact
         contact = db.query(models.UserContact).filter(
             models.UserContact.id == contact_id,
-            models.UserContact.owner_user_id == current_user.id
+            models.UserContact.owner_user_id == current_user.id,
+            models.UserContact.is_deleted == False
         ).first()
         
         if not contact:
@@ -299,7 +302,8 @@ async def update_contact(
             existing_contact = db.query(models.UserContact).filter(
                 models.UserContact.owner_user_id == current_user.id,
                 models.UserContact.email == contact_update.email,
-                models.UserContact.id != contact_id
+                models.UserContact.id != contact_id,
+                models.UserContact.is_deleted == False
             ).first()
             
             if existing_contact:
@@ -345,7 +349,7 @@ async def delete_contact(
     current_user: models.User = Depends(get_current_user_for_write),
     db: Session = Depends(get_db)
 ):
-    """Delete a specific contact"""
+    """Delete a specific contact (hard delete if no appointments, soft delete if appointments exist)"""
     start_time = datetime.utcnow()
     logger.info(f"Deleting contact {contact_id} for user {current_user.email}")
     
@@ -353,7 +357,8 @@ async def delete_contact(
         # Find the contact
         contact = db.query(models.UserContact).filter(
             models.UserContact.id == contact_id,
-            models.UserContact.owner_user_id == current_user.id
+            models.UserContact.owner_user_id == current_user.id,
+            models.UserContact.is_deleted == False
         ).first()
         
         if not contact:
@@ -365,18 +370,26 @@ async def delete_contact(
         ).count()
         
         if appointment_contacts_count > 0:
-            raise HTTPException(
-                status_code=409, 
-                detail=f"Cannot delete contact. It is being used in {appointment_contacts_count} appointment(s). Please remove it from appointments first."
-            )
-        
-        # Delete the contact
-        db.delete(contact)
-        db.commit()
-        
-        # Calculate total operation time
-        total_time = (datetime.utcnow() - start_time).total_seconds() * 1000
-        logger.info(f"Contact {contact_id} deleted successfully in {total_time:.2f}ms")
+            # Soft delete: contact has appointment history
+            contact.is_deleted = True
+            contact.deleted_at = datetime.utcnow()
+            contact.deleted_by = current_user.id
+            contact.updated_by = current_user.id
+            contact.updated_at = datetime.utcnow()
+            
+            db.commit()
+            
+            # Calculate total operation time
+            total_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            logger.info(f"Contact {contact_id} soft deleted successfully (has {appointment_contacts_count} appointment associations) in {total_time:.2f}ms")
+        else:
+            # Hard delete: no appointment history
+            db.delete(contact)
+            db.commit()
+            
+            # Calculate total operation time
+            total_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+            logger.info(f"Contact {contact_id} hard deleted successfully (no appointment associations) in {total_time:.2f}ms")
         
     except HTTPException:
         db.rollback()
@@ -402,6 +415,7 @@ async def search_contacts(
         
         contacts = db.query(models.UserContact).filter(
             models.UserContact.owner_user_id == current_user.id,
+            models.UserContact.is_deleted == False,
             or_(
                 func.concat(models.UserContact.first_name, ' ', models.UserContact.last_name).ilike(search_term),
                 models.UserContact.email.ilike(search_term)
@@ -439,6 +453,7 @@ async def get_frequent_contacts(
     try:
         contacts = db.query(models.UserContact).filter(
             models.UserContact.owner_user_id == current_user.id,
+            models.UserContact.is_deleted == False,
             models.UserContact.appointment_usage_count > 0
         ).options(
             joinedload(models.UserContact.contact_user)

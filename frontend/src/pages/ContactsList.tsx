@@ -1,17 +1,20 @@
 import React, { useMemo, useState } from 'react';
-import { Container, Typography, Paper, Box, useMediaQuery, Dialog, DialogTitle, DialogContent, IconButton, Tooltip } from '@mui/material';
+import { Container, Typography, Paper, Box, useMediaQuery, Dialog, DialogTitle, DialogContent, IconButton, Tooltip, DialogActions, Button } from '@mui/material';
 import { Close as CloseIcon } from '@mui/icons-material';
 import { createColumnHelper, ColumnDef } from '@tanstack/react-table';
 import Layout from '../components/Layout';
 import { useApi } from '../hooks/useApi';
 import { useTheme } from '@mui/material/styles';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { GenericTable, TableCellComponents, standardColumnSizes, createGenericColumnHelper } from '../components/GenericTable';
 import { useEnumsMap } from '../hooks/useEnums';
 import { ContactForm } from '../components/ContactForm';
 import { UserContact } from '../models/types';
 import { ActionButton } from '../components/ActionButton';
-import { CloseIconFilledCircleV2, EditIconV2 } from '../components/iconsv2';
+import { CloseIconFilledCircleV2, EditIconV2, InfoCircleIconV2, TrashIconV2, WarningTriangleFilledIconV2 } from '../components/iconsv2';
+import { useSnackbar } from 'notistack';
+import PrimaryButton from '../components/PrimaryButton';
+import SecondaryButton from '../components/SecondaryButton';
 
 interface ContactsResponse {
   contacts: UserContact[];
@@ -27,6 +30,7 @@ const ContactsList: React.FC = () => {
   const api = useApi();
   const theme = useTheme();
   const queryClient = useQueryClient();
+  const { enqueueSnackbar } = useSnackbar();
   
   // Check if we're on mobile
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -34,6 +38,10 @@ const ContactsList: React.FC = () => {
   // Dialog state for editing contacts
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState<UserContact | null>(null);
+
+  // Dialog state for deleting contacts
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [contactToDelete, setContactToDelete] = useState<UserContact | null>(null);
 
   // Fetch relationship type map for display
   const { values: relationshipTypeMap = {} } = useEnumsMap('personRelationshipType');
@@ -77,6 +85,46 @@ const ContactsList: React.FC = () => {
   const handleCancelEdit = () => {
     setEditDialogOpen(false);
     setSelectedContact(null);
+  };
+
+  // Handle delete contact
+  const handleDeleteContact = (contact: UserContact) => {
+    setContactToDelete(contact);
+    setDeleteDialogOpen(true);
+  };
+
+  // Delete contact mutation
+  const deleteContactMutation = useMutation({
+    mutationFn: async (contactId: number) => {
+      await api.delete(`/contacts/${contactId}`);
+    },
+    onSuccess: () => {
+      enqueueSnackbar('Contact deleted successfully', { variant: 'success' });
+      setDeleteDialogOpen(false);
+      setContactToDelete(null);
+      // Refetch contacts to update the list
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+    },
+    onError: (error: any) => {
+      console.error('Failed to delete contact:', error);
+      enqueueSnackbar(`Failed to delete contact: ${error.response?.data?.detail || 'Unknown error'}`, { 
+        variant: 'error',
+        autoHideDuration: 6000
+      });
+    }
+  });
+
+  // Handle confirm delete
+  const handleConfirmDelete = () => {
+    if (contactToDelete) {
+      deleteContactMutation.mutate(contactToDelete.id);
+    }
+  };
+
+  // Handle cancel delete
+  const handleCancelDelete = () => {
+    setDeleteDialogOpen(false);
+    setContactToDelete(null);
   };
 
   // Create column helper for contacts
@@ -253,22 +301,40 @@ const ContactsList: React.FC = () => {
       id: 'actions',
       header: 'Actions',
       cell: ({ row }) => (
-        <Tooltip title="Edit Contact">
-          <ActionButton
-            onClick={(e) => {
-              e.stopPropagation();
-              handleEditContact(row.original);
-            }}
-          >
-            <EditIconV2 sx={{ width: 20, height: 20 }} />
-          </ActionButton>
-        </Tooltip>
+        <Box sx={{ display: 'flex', gap: 0.5 }}>
+          <Tooltip title="Edit Contact">
+            <ActionButton
+              onClick={(e) => {
+                e.stopPropagation();
+                handleEditContact(row.original);
+              }}
+            >
+              <EditIconV2 sx={{ width: 20, height: 20 }} />
+            </ActionButton>
+          </Tooltip>
+          <Tooltip title="Delete Contact">
+            <ActionButton
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDeleteContact(row.original);
+              }}
+              sx={{ 
+                '&:hover': {
+                  backgroundColor: 'error.light',
+                  borderColor: 'error.main'
+                }
+              }}
+            >
+              <TrashIconV2 sx={{ width: 20, height: 20, color: 'error.main' }} />
+            </ActionButton>
+          </Tooltip>
+        </Box>
       ),
-      size: 80,
-      minSize: 80,
-      maxSize: 80,
+      size: 120,
+      minSize: 120,
+      maxSize: 120,
     }),
-  ], [relationshipTypeMap]);
+  ], [relationshipTypeMap, handleEditContact, handleDeleteContact]);
 
   // Define responsive column visibility
   const getColumnVisibility = () => {
@@ -371,6 +437,105 @@ const ContactsList: React.FC = () => {
             />
           )}
         </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleCancelDelete}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'flex-start' }}>
+          <WarningTriangleFilledIconV2 sx={{ color: 'error.main' }} />
+          <Typography variant="h3" color="error.main" >
+            Delete Contact?
+          </Typography>
+        </DialogTitle>
+        
+        <DialogContent>
+          {contactToDelete && (
+            <Box>
+              <Typography variant="body1" gutterBottom>
+                Are you sure you want to delete this contact?
+              </Typography>
+              <Box sx={{ 
+                mt: 2, 
+                p: 2, 
+                backgroundColor: 'grey.50', 
+                borderRadius: 1.3,
+              }}>
+                <Typography variant="h6">
+                  {contactToDelete.first_name} {contactToDelete.last_name}
+                </Typography>
+                {contactToDelete.email && (
+                  <Typography variant="body2" color="text.secondary">
+                    {contactToDelete.email} • {contactToDelete.phone}
+                  </Typography>
+                )}
+                {contactToDelete.relationship_to_owner && (
+                  <Typography variant="body2" color="text.secondary">
+                    Relationship: {relationshipTypeMap[contactToDelete.relationship_to_owner] || contactToDelete.relationship_to_owner}
+                  </Typography>
+                )}
+                {contactToDelete.appointment_usage_count > 0 && (
+                  <Typography variant="body2" color="text.secondary">
+                    Used in {contactToDelete.appointment_usage_count} appointment{contactToDelete.appointment_usage_count > 1 ? 's' : ''}
+                  </Typography>
+                )}
+              </Box>
+              
+              {/* Show different warning messages based on appointment history */}
+              {contactToDelete.appointment_usage_count > 0 ? (
+                <Box sx={{ 
+                  mt: 2, 
+                  p: 2, 
+                  backgroundColor: 'warning.light', 
+                  borderRadius: 1.3, 
+                  // border: '1px solid', 
+                  // borderColor: 'error.main' 
+                  display: 'flex', alignItems: 'center', gap: 1.3
+                }}>
+                  <InfoCircleIconV2 sx={{ color: 'warning.main', fontSize: '1.5rem' }} /> 
+                  <Typography variant="body1" color="warning.main" sx={{ fontWeight: 'medium' }}>
+                    This contact will be removed from your list but preserved due to existing appointment history.
+                  </Typography>
+                </Box>
+              ) : (
+                <Box sx={{ 
+                  mt: 2, 
+                  p: 2, 
+                  backgroundColor: 'error.light', 
+                  borderRadius: 1.3, 
+                  // border: '1px solid', 
+                  // borderColor: 'error.main' 
+                }}>
+                  <Typography variant="body1" color="error.main" sx={{ fontWeight: 'medium' }}>
+                    This contact will be permanently deleted and cannot be recovered.
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <SecondaryButton onClick={handleCancelDelete}>
+            Cancel
+          </SecondaryButton>
+          <PrimaryButton 
+            onClick={handleConfirmDelete}
+            disabled={deleteContactMutation.isPending}
+            startIcon={<TrashIconV2 />}
+          >
+            {deleteContactMutation.isPending 
+              ? 'Deleting...' 
+              : contactToDelete && contactToDelete.appointment_usage_count > 0 
+                ? 'Remove Contact' 
+                : 'Delete Contact'
+            }
+          </PrimaryButton>
+        </DialogActions>
       </Dialog>
     </Layout>
   );

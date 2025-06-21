@@ -29,6 +29,11 @@ class UserContact(Base):
     appointment_usage_count = Column(Integer, default=0, nullable=False)
     last_used_at = Column(DateTime, nullable=True)
     
+    # Soft delete fields
+    is_deleted = Column(Boolean, default=False, nullable=False, index=True)
+    deleted_at = Column(DateTime, nullable=True)
+    deleted_by = Column(Integer, ForeignKey(f"{schema_prefix}users.id"), nullable=True)
+    
     # Audit fields
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(Integer, ForeignKey(f"{schema_prefix}users.id"), nullable=True)
@@ -56,6 +61,10 @@ class UserContact(Base):
         back_populates="updated_user_contacts",
         foreign_keys=[updated_by]
     )
+    deleted_by_user = relationship(
+        "User",
+        foreign_keys=[deleted_by]
+    )
     appointment_contacts = relationship(
         "AppointmentContact",
         back_populates="contact",
@@ -72,4 +81,6 @@ class UserContact(Base):
         Index('idx_user_contacts_owner_last_used', 'owner_user_id', 'last_used_at'),
         # Add index for email lookups since we might have multiple contacts with same email
         Index('idx_user_contacts_owner_email', 'owner_user_id', 'email'),
+        # Add composite index for active contacts filtering
+        Index('idx_user_contacts_owner_active', 'owner_user_id', 'is_deleted'),
     ) 
