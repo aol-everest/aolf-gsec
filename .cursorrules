@@ -9,4 +9,5 @@ When working with @/backend:
 - API routes are in `/routers/` directory
 - Environment configuration is in `/config/` directory 
 - For any database scripts, create them in `/scripts/` directory. Create one script each for DEV, UAT and PROD (unless otherwise asked by the user). For UAT and PROD prompt the user at the start for the password and reuse that across all commands.
+- Use the migration script templates in `/scripts/` directory: `template-migration-dev.sh`, `template-migration-uat.sh`, and `template-migration-prod.sh`. These templates include proper formatting with colors, emojis, logging, error handling, and safety checks. Copy the appropriate template and customize the SQL commands and descriptions for your specific migration.
 - For any Enums in the database, use the names for the associated Python Enums. The python backend will automatically translate them to the associated values.
