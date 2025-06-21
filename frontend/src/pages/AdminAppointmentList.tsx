@@ -198,27 +198,7 @@ const AdminAppointmentList: React.FC = () => {
                       getCount={(status) => appointments.filter(a => a.status === status).length}
                       getColor={(status) => getStatusColor(status, theme)}
                       onToggle={handleStatusFilter}
-                      sx={{
-                        pl: 0.5,
-                        pr: 0.5,
-                        color: '#9598A6',
-                        border: `1px solid rgba(149, 152, 166, 0.2)`,
-                        fontSize: '0.81rem',
-                        fontWeight: '500',
-                        backgroundColor: '#fff',
-                        borderRadius: '13px',
-                        '&:hover': {
-                          color: '#3D8BE8',
-                          border: '1px solid rgba(61, 139, 232, 0.2)',
-                          fontWeight: '500',
-                          backgroundColor: 'rgba(61, 139, 232, 0.1)',
-                        },
-                        '&.MuiChip-filled': {
-                          color: '#3D8BE8',
-                          fontWeight: '600',
-                          border: '1px solid rgba(61, 139, 232, 0.2)',
-                        }
-                      }}
+                      size="medium"
                     />
                   </Grid>
                 </Grid>
@@ -250,27 +230,7 @@ const AdminAppointmentList: React.FC = () => {
                         getCount={(locationId) => getLocationAppointmentCount(locationId)}
                         getColor={() => theme.palette.primary.main}
                         onToggle={handleLocationFilter}
-                        sx={{
-                          pl: 0.5,
-                          pr: 0.5,
-                          color: '#9598A6',
-                          border: `1px solid rgba(149, 152, 166, 0.2)`,
-                          fontSize: '0.81rem',
-                          fontWeight: '500',
-                          backgroundColor: '#fff',
-                          borderRadius: '13px',
-                          '&:hover': {
-                            color: '#3D8BE8',
-                            border: '1px solid rgba(61, 139, 232, 0.2)',
-                            fontWeight: '500',
-                            backgroundColor: 'rgba(61, 139, 232, 0.1)',
-                          },
-                          '&.MuiChip-filled': {
-                            color: '#3D8BE8',
-                            fontWeight: '600',
-                            border: '1px solid rgba(61, 139, 232, 0.2)',
-                          }
-                        }}
+                        size="medium"
                       />
                     ) : (
                       <Typography variant="body2" color="text.secondary">

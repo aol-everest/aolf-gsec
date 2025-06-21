@@ -1785,27 +1785,7 @@ const AdminAppointmentTiles: React.FC = () => {
                     getCount={(requestType) => getRequestTypeAppointmentCount(requestType, filters.status || 'All')}
                     getColor={(_, theme) => theme.palette.secondary.main}
                     onToggle={handleRequestTypeFilter}
-                    sx={{
-                      pl: 0.5,
-                      pr: 0.5,
-                      color: '#9598A6',
-                      border: `1px solid rgba(149, 152, 166, 0.2)`,
-                      fontSize: '0.81rem',
-                      fontWeight: '500',
-                      backgroundColor: '#fff',
-                      borderRadius: '13px',
-                      '&:hover': {
-                        color: '#3D8BE8',
-                        border: '1px solid rgba(61, 139, 232, 0.2)',
-                        fontWeight: '500',
-                        backgroundColor: 'rgba(61, 139, 232, 0.1)',
-                      },
-                      '&.MuiChip-filled': {
-                        color: '#3D8BE8',
-                        fontWeight: '600',
-                        border: '1px solid rgba(61, 139, 232, 0.2)',
-                      }
-                    }}
+                    size="medium"
                   />
                 </Grid>
               </Grid>
@@ -1839,30 +1819,7 @@ const AdminAppointmentTiles: React.FC = () => {
                       getColor={(_, theme) => theme.palette.primary.dark}
                       onToggle={handleLocationFilter}
                       // getIcon={() => <LocationThinIconV2 />}
-                      sx={{
-                        pl: 0.5,
-                        pr: 0.5,
-                        color: '#9598A6',
-                        border: `1px solid rgba(149, 152, 166, 0.2)`,
-                        fontSize: '0.81rem',
-                        fontWeight: '500',
-                        backgroundColor: '#fff',
-                        borderRadius: '13px',
-                        '&:hover': {
-                          color: '#3D8BE8',
-                          border: '1px solid rgba(61, 139, 232, 0.2)',
-                          fontWeight: '500',
-                          backgroundColor: 'rgba(61, 139, 232, 0.1)',
-                        },
-                        '&.MuiChip-filled': {
-                          color: '#3D8BE8',
-                          fontWeight: '600',
-                          // backgroundColor: '#3D8BE8',
-                          // fontWeight: '600',
-                          border: '1px solid rgba(61, 139, 232, 0.2)',
-                          // color: '#fff',
-                        }
-                      }}
+                      size="medium"
                     />
                   ) : (
                     <Typography variant="body2" color="text.secondary">
@@ -1882,31 +1839,21 @@ const AdminAppointmentTiles: React.FC = () => {
                     </Grid>
                     <Grid item xs={12} md={10} sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 1 }}>
                       {filters.startDate && (
-                        <Chip 
+                        <FilterChip
                           label={`From: ${filters.startDate.toLocaleDateString()}`}
-                          size="small" 
+                          value="startDate"
                           onDelete={() => setFilters(prev => ({ ...prev, startDate: null }))}
-                          sx={{ 
-                            color: '#3D8BE8', 
-                            borderRadius: '8px',
-                            pl:0, pt:0,
-                            backgroundColor: '#f9f9f9',
-                            border: '1px solid rgba(61, 139, 232, 0.2)',
-                          }}
+                          size="medium"
+                          selected={true}
                         />
                       )}
                       {filters.endDate && (
-                        <Chip 
+                        <FilterChip
                           label={`To: ${filters.endDate.toLocaleDateString()}`}
-                          size="small" 
+                          value="endDate"
                           onDelete={() => setFilters(prev => ({ ...prev, endDate: null }))}
-                          sx={{ 
-                            color: '#3D8BE8', 
-                            borderRadius: '8px',
-                            pl:0, pt:0,
-                            backgroundColor: '#f9f9f9',
-                            border: '1px solid rgba(61, 139, 232, 0.2)',
-                          }}
+                          size="medium"
+                          selected={true}
                         />
                       )}
                     </Grid>
@@ -1928,120 +1875,43 @@ const AdminAppointmentTiles: React.FC = () => {
                 </Grid>
                 <Grid item xs={12} md={10} sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
                   {/* Not Met Gurudev Filter Chip */}
-                  <Chip
-                    label={`Not met Gurudev recently (${getNotMetGurudevCount()})`}
-                    variant={filters.notMetGurudev ? "filled" : "outlined"}
-                    onClick={() => handleNotMetGurudevFilter(!filters.notMetGurudev)}
-                    sx={{
-                      height: '32px',
-                      pl: 0.5,
-                      pr: 0.5,
-                      color: filters.notMetGurudev ? '#3D8BE8' : '#9598A6',
-                      border: `1px solid ${filters.notMetGurudev ? 'rgba(61, 139, 232, 0.2)' : 'rgba(149, 152, 166, 0.2)'}`,
-                      fontSize: '0.81rem',
-                      fontWeight: filters.notMetGurudev ? '600' : '500',
-                      backgroundColor: filters.notMetGurudev ? 'rgba(61, 139, 232, 0.1)' : '#fff',
-                      borderRadius: '13px',
-                      '&:hover': {
-                        color: '#3D8BE8',
-                        border: '1px solid rgba(61, 139, 232, 0.2)',
-                        fontWeight: '500',
-                        backgroundColor: 'rgba(61, 139, 232, 0.1)',
-                      },
-                      '&.MuiChip-filled': {
-                        color: '#3D8BE8',
-                        fontWeight: '600',
-                        border: '1px solid rgba(61, 139, 232, 0.2)',
-                      }
-                    }}
+                  <FilterChip
+                    label="Not met Gurudev recently"
+                    value="notMetGurudev"
+                    selectedValue={filters.notMetGurudev ? "notMetGurudev" : null}
+                    count={getNotMetGurudevCount()}
+                    onToggle={() => handleNotMetGurudevFilter(!filters.notMetGurudev)}
+                    size="medium"
                   />
 
                   {/* Requested Last 3 Days Filter Chip */}
-                  <Chip
-                    label={`Requested in last 3 days (${getRequestedLast3DaysCount()})`}
-                    variant={filters.requestedLast3Days ? "filled" : "outlined"}
-                    onClick={() => handleRequestedLast3DaysFilter(!filters.requestedLast3Days)}
-                    sx={{
-                      height: '32px',
-                      pl: 0.5,
-                      pr: 0.5,
-                      color: filters.requestedLast3Days ? '#3D8BE8' : '#9598A6',
-                      border: `1px solid ${filters.requestedLast3Days ? 'rgba(61, 139, 232, 0.2)' : 'rgba(149, 152, 166, 0.2)'}`,
-                      fontSize: '0.81rem',
-                      fontWeight: filters.requestedLast3Days ? '600' : '500',
-                      backgroundColor: filters.requestedLast3Days ? 'rgba(61, 139, 232, 0.1)' : '#fff',
-                      borderRadius: '13px',
-                      '&:hover': {
-                        color: '#3D8BE8',
-                        border: '1px solid rgba(61, 139, 232, 0.2)',
-                        fontWeight: '500',
-                        backgroundColor: 'rgba(61, 139, 232, 0.1)',
-                      },
-                      '&.MuiChip-filled': {
-                        color: '#3D8BE8',
-                        fontWeight: '600',
-                        border: '1px solid rgba(61, 139, 232, 0.2)',
-                      }
-                    }}
+                  <FilterChip
+                    label="Requested in last 3 days"
+                    value="requestedLast3Days"
+                    selectedValue={filters.requestedLast3Days ? "requestedLast3Days" : null}
+                    count={getRequestedLast3DaysCount()}
+                    onToggle={() => handleRequestedLast3DaysFilter(!filters.requestedLast3Days)}
+                    size="medium"
                   />
 
                   {/* Is Teacher Filter Chip */}
-                  <Chip
-                    label={`Is a teacher (${getIsTeacherCount()})`}
-                    variant={filters.isTeacher ? "filled" : "outlined"}
-                    onClick={() => handleIsTeacherFilter(!filters.isTeacher)}
-                    sx={{
-                      height: '32px',
-                      pl: 0.5,
-                      pr: 0.5,
-                      color: filters.isTeacher ? '#3D8BE8' : '#9598A6',
-                      border: `1px solid ${filters.isTeacher ? 'rgba(61, 139, 232, 0.2)' : 'rgba(149, 152, 166, 0.2)'}`,
-                      fontSize: '0.81rem',
-                      fontWeight: filters.isTeacher ? '600' : '500',
-                      backgroundColor: filters.isTeacher ? 'rgba(61, 139, 232, 0.1)' : '#fff',
-                      borderRadius: '13px',
-                      '&:hover': {
-                        color: '#3D8BE8',
-                        border: '1px solid rgba(61, 139, 232, 0.2)',
-                        fontWeight: '500',
-                        backgroundColor: 'rgba(61, 139, 232, 0.1)',
-                      },
-                      '&.MuiChip-filled': {
-                        color: '#3D8BE8',
-                        fontWeight: '600',
-                        border: '1px solid rgba(61, 139, 232, 0.2)',
-                      }
-                    }}
+                  <FilterChip
+                    label="Is a teacher"
+                    value="isTeacher"
+                    selectedValue={filters.isTeacher ? "isTeacher" : null}
+                    count={getIsTeacherCount()}
+                    onToggle={() => handleIsTeacherFilter(!filters.isTeacher)}
+                    size="medium"
                   />
 
                   {/* Attendee Count Buckets Filter Chip with Dropdown */}
                   <Box ref={attendeeBucketAnchorRef}>
-                    <Chip
+                    <FilterChip
                       label={getAttendeeBucketChipLabel()}
-                      variant={filters.attendeeCountBuckets.length > 0 ? "filled" : "outlined"}
-                      onClick={() => setAttendeeBucketDropdownOpen(!attendeeBucketDropdownOpen)}
-                      sx={{
-                        height: '32px',
-                        pl: 0.5,
-                        pr: 0.5,
-                        color: filters.attendeeCountBuckets.length > 0 ? '#3D8BE8' : '#9598A6',
-                        border: `1px solid ${filters.attendeeCountBuckets.length > 0 ? 'rgba(61, 139, 232, 0.2)' : 'rgba(149, 152, 166, 0.2)'}`,
-                        fontSize: '0.81rem',
-                        fontWeight: filters.attendeeCountBuckets.length > 0 ? '600' : '500',
-                        backgroundColor: filters.attendeeCountBuckets.length > 0 ? 'rgba(61, 139, 232, 0.1)' : '#fff',
-                        borderRadius: '13px',
-                        '&:hover': {
-                          color: '#3D8BE8',
-                          border: '1px solid rgba(61, 139, 232, 0.2)',
-                          fontWeight: '500',
-                          backgroundColor: 'rgba(61, 139, 232, 0.1)',
-                        },
-                        '&.MuiChip-filled': {
-                          color: '#3D8BE8',
-                          fontWeight: '600',
-                          border: '1px solid rgba(61, 139, 232, 0.2)',
-                        }
-                      }}
+                      value="attendeeCountBuckets"
+                      selectedValue={filters.attendeeCountBuckets.length > 0 ? "attendeeCountBuckets" : null}
+                      onToggle={() => setAttendeeBucketDropdownOpen(!attendeeBucketDropdownOpen)}
+                      size="medium"
                     />
                   </Box>
 
